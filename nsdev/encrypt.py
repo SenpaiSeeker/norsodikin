@@ -89,5 +89,6 @@ class cipher:
             result = f"exec(__import__('nsdev').cipher(method='{self.method}', key={self.key}).start('{encoded_code}'))"
             with open(filename, "w") as file:
                 file.write(result)
+            self.log.info(f"code successfully saved to file {filename}")
         except Exception as e:
             self.log.error(f"Error saving file: {e}")
