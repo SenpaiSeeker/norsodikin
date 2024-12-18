@@ -77,7 +77,7 @@ class cipher:
         except Exception as e:
             self.log.error(e)
 
-    def save(filename: str, code: str):
+    def save(self, filename: str, code: str):
         try:
             cipher_classes = {
             "shift": ShiftChipher(key=self.key),
