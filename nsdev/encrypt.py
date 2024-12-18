@@ -60,7 +60,7 @@ class ShiftChipher:
 
 
 class cipher:
-    def __init__(self, method: str, key: int):
+    def __init__(self, method: str, key: int = 31099):
         self.method = method
         self.key = key
         self.log = LoggerHandler()
