@@ -4,13 +4,12 @@ import textwrap
 from .logger import LoggerHandler
 
 
-
 class BytesCipher:
     def __init__(self, key: int = 31099):
         if not isinstance(key, int):
             raise ValueError("Key harus berupa integer.")
         self.key = key
-      
+
     def _xor_encrypt_decrypt(self, data: bytes):
         key_bytes = self.key.to_bytes((self.key.bit_length() + 7) // 8, byteorder="big")
         return bytes([data[i] ^ key_bytes[i % len(key_bytes)] for i in range(len(data))])
@@ -59,19 +58,20 @@ class ShiftChipher:
         decoded = "".join(chr(int(code) - self.shift) for code in encoded_text.split(self.delimiter))
         return decoded
 
+
 class cipher:
     def __init__(self, method: str, key: int):
-        self.method = method 
-        self.key = key 
+        self.method = method
+        self.key = key
         self.log = LoggerHandler()
 
     def start(self, encrypted_data: str):
         try:
             cipher_classes = {
-            "shift": ShiftChipher(key=self.key),
-            "binary": BinaryCipher(key=self.key),
-            "bytes": BytesCipher(key=self.key),
-        }
+                "shift": ShiftChipher(key=self.key),
+                "binary": BinaryCipher(key=self.key),
+                "bytes": BytesCipher(key=self.key),
+            }
             cipher = cipher_classes.get(self.method)
             return cipher.decrypt(encrypted_data) if cipher else encrypted_data
         except Exception as e:
@@ -80,10 +80,10 @@ class cipher:
     def save(self, filename: str, code: str):
         try:
             cipher_classes = {
-            "shift": ShiftChipher(key=self.key),
-            "binary": BinaryCipher(key=self.key),
-            "bytes": BytesCipher(key=self.key),
-        }
+                "shift": ShiftChipher(key=self.key),
+                "binary": BinaryCipher(key=self.key),
+                "bytes": BytesCipher(key=self.key),
+            }
             cipher = cipher_classes.get(self.method)
             encoded_code = cipher.encrypt(code) if cipher else code
             result = f"exec(__import__('nsdev').cipher(method='{self.method}', key={self.key}).start('{encoded_code}'))"
