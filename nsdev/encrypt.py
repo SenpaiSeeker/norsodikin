@@ -1,8 +1,6 @@
 import base64
 import textwrap
 
-from .logger import LoggerHandler
-
 
 class BytesCipher:
     def __init__(self, key: int = 31099):
@@ -63,7 +61,7 @@ class cipher:
     def __init__(self, method: str, key: int = 31099):
         self.method = method
         self.key = key
-        self.log = LoggerHandler()
+        self.log = __import__("nsdev").logger.LoggerHandler()
 
     def start(self, encrypted_data: str):
         try:
