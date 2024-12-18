@@ -44,16 +44,16 @@ class BinaryCipher:
 
 
 class ShiftChipher:
-    def __init__(self, shift: int = 31099, delimiter: str = "/"):
-        self.shift = shift
+    def __init__(self, key: int = 31099, delimiter: str = "|"):
+        self.key = key
         self.delimiter = delimiter
 
     def encrypt(self, text: str) -> str:
-        encoded = self.delimiter.join(str(ord(char) + self.shift) for char in text)
+        encoded = self.delimiter.join(str(ord(char) + self.key) for char in text)
         return encoded
 
     def decrypt(self, encoded_text: str) -> str:
-        decoded = "".join(chr(int(code) - self.shift) for code in encoded_text.split(self.delimiter))
+        decoded = "".join(chr(int(code) - self.key) for code in encoded_text.split(self.delimiter))
         return decoded
 
 
