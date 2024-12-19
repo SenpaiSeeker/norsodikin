@@ -15,7 +15,7 @@ class BytesCipher:
     def encrypt(self, data: str):
         serialized_data = textwrap.dedent(data).encode("utf-8")
         encrypted_data = self._xor_encrypt_decrypt(serialized_data)
-        return base64.urlsafe_b64encode(encrypted_data).decode("utf-8").rstrip('=')
+        return base64.urlsafe_b64encode(encrypted_data).decode("utf-8").rstrip("=")
 
     def decrypt(self, encrypted_data: str):
         try:
@@ -27,7 +27,6 @@ class BytesCipher:
             return decrypted_bytes.decode("utf-8")
         except (ValueError, UnicodeDecodeError) as error:
             raise Exception(f"\033[1;31m[ERROR] \033[1;35m|| \033[1;37m{error}\033[0m")
-
 
 
 class BinaryCipher:
