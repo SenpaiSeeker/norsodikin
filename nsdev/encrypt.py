@@ -66,9 +66,9 @@ class cipher:
         self.key = key
         self.log = __import__("nsdev").logger.LoggerHandler()
         self.cipher_classes = {
-                "shift": ShiftChipher(key=self.key),
-                "binary": BinaryCipher(key=self.key),
-                "bytes": BytesCipher(key=self.key)
+            "shift": ShiftChipher(key=self.key),
+            "binary": BinaryCipher(key=self.key),
+            "bytes": BytesCipher(key=self.key),
         }
 
     def start(self, encrypted_data: str):
