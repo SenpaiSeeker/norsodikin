@@ -9,7 +9,7 @@ class BytesCipher:
     def encrypt(self, data: str):
         serialized_data = __import__("textwrap").dedent(data).encode("utf-8")
         encrypted_data = self._xor_encrypt_decrypt(serialized_data)
-        return base64.urlsafe_b64encode(encrypted_data).decode("utf-8").rstrip("=")
+        return __import__("base64").urlsafe_b64encode(encrypted_data).decode("utf-8").rstrip("=")
 
     def decrypt(self, encrypted_data: str):
         try:
