@@ -8,7 +8,7 @@ COLORS = {
 }
 
 
-class ColoredFormatter(logging.Formatter):
+class ColoredFormatter(__import__("logging").Formatter):
     def formatTime(self, record, datefmt=None):
         timezone = __import__("pytz").timezone("Asia/Jakarta")
         utc_time = __import__("datetime").datetime.utcfromtimestamp(record.created).replace(tzinfo=__import__("pytz").utc)
