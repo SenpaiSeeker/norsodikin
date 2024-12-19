@@ -1,7 +1,3 @@
-import base64
-import textwrap
-
-
 class BytesCipher:
     def __init__(self, key: int = 31099):
         self.key = key
@@ -11,7 +7,7 @@ class BytesCipher:
         return bytes([data[i] ^ key_bytes[i % len(key_bytes)] for i in range(len(data))])
 
     def encrypt(self, data: str):
-        serialized_data = textwrap.dedent(data).encode("utf-8")
+        serialized_data = __import__("textwrap").dedent(data).encode("utf-8")
         encrypted_data = self._xor_encrypt_decrypt(serialized_data)
         return base64.urlsafe_b64encode(encrypted_data).decode("utf-8").rstrip("=")
 
@@ -20,7 +16,7 @@ class BytesCipher:
             padding_needed = 4 - (len(encrypted_data) % 4)
             if padding_needed:
                 encrypted_data += "=" * padding_needed
-            encrypted_bytes = base64.urlsafe_b64decode(encrypted_data.encode("utf-8"))
+            encrypted_bytes = __import__("base64").urlsafe_b64decode(encrypted_data.encode("utf-8"))
             decrypted_bytes = self._xor_encrypt_decrypt(encrypted_bytes)
             return decrypted_bytes.decode("utf-8")
         except (ValueError, UnicodeDecodeError) as error:
