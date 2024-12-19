@@ -4,8 +4,6 @@ import textwrap
 
 class BytesCipher:
     def __init__(self, key: int = 31099):
-        if not isinstance(key, int):
-            raise ValueError("Key harus berupa integer.")
         self.key = key
 
     def _xor_encrypt_decrypt(self, data: bytes):
@@ -31,8 +29,6 @@ class BytesCipher:
 
 class BinaryCipher:
     def __init__(self, key: int = 31099):
-        if not isinstance(key, int) or key < 0:
-            raise ValueError("Kunci harus berupa integer positif.")
         self.key = key
 
     def encrypt(self, plaintext: str):
