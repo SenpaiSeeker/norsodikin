@@ -10,7 +10,7 @@ class LocalDataBase:
     def __init__(
         self,
         file_name: str = "database",
-        binary_keys: int = 14151819154911914,
+        binary_keys: int = 14151819154911914
     ):
         self.binary = __import__("nsdev").encryp.BinaryCipher(binary_keys)
         self.data_file = f"{file_name}.json"
@@ -156,7 +156,7 @@ class MongoDataBase:
         self,
         mongo_url: str,
         file_name: str = "database",
-        bytes_keys: int = 14151819154911914,
+        bytes_keys: int = 14151819154911914
     ):
         self.setup = __import__("pymongo").MongoClient(mongo_url)
         self.data = self.setup[file_name]
