@@ -65,27 +65,22 @@ class cipher:
         self.method = method
         self.key = key
         self.log = __import__("nsdev").logger.LoggerHandler()
+        self.cipher_classes = {
+                "shift": ShiftChipher(key=self.key),
+                "binary": BinaryCipher(key=self.key),
+                "bytes": BytesCipher(key=self.key)
+        }
 
     def start(self, encrypted_data: str):
         try:
-            cipher_classes = {
-                "shift": ShiftChipher(key=self.key),
-                "binary": BinaryCipher(key=self.key),
-                "bytes": BytesCipher(key=self.key),
-            }
-            cipher = cipher_classes.get(self.method)
+            cipher = self.cipher_classes.get(self.method)
             return cipher.decrypt(encrypted_data) if cipher else encrypted_data
         except Exception as e:
             self.log.error(e)
 
     def save(self, filename: str, code: str):
         try:
-            cipher_classes = {
-                "shift": ShiftChipher(key=self.key),
-                "binary": BinaryCipher(key=self.key),
-                "bytes": BytesCipher(key=self.key),
-            }
-            cipher = cipher_classes.get(self.method)
+            cipher = self.cipher_classes.get(self.method)
             encoded_code = cipher.encrypt(code) if cipher else code
             result = f"exec(__import__('nsdev').cipher(method='{self.method}', key={self.key}).start('{encoded_code}'))"
             with open(filename, "w") as file:
