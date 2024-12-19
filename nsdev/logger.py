@@ -1,9 +1,3 @@
-import datetime
-import logging
-import sys
-
-import pytz
-
 COLORS = {
     "INFO": "\033[1;92m",  # Full Bright Green
     "DEBUG": "\033[1;94m",  # Full Bright Blue
@@ -16,8 +10,8 @@ COLORS = {
 
 class ColoredFormatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):
-        timezone = pytz.timezone("Asia/Jakarta")
-        utc_time = datetime.datetime.utcfromtimestamp(record.created).replace(tzinfo=pytz.utc)
+        timezone = __import__("pytz").timezone("Asia/Jakarta")
+        utc_time = __import__("datetime").datetime.utcfromtimestamp(record.created).replace(tzinfo=__import__("pytz").utc)
         local_time = utc_time.astimezone(timezone)
 
         return local_time.strftime(datefmt) if datefmt else local_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -29,14 +23,14 @@ class ColoredFormatter(logging.Formatter):
 
 
 class LoggerHandler:
-    def __init__(self, log_level=logging.INFO):
-        self.logger = logging.getLogger(__name__)
+    def __init__(self, log_level=__import__("logging").INFO):
+        self.logger = __import__("logging").getLogger(__name__)
         self.logger.setLevel(log_level)
         formatter = ColoredFormatter(
             "\033[1;97m[%(asctime)s] %(levelname)s \033[1;96m| %(module)s:%(funcName)s:%(lineno)d\033[0m %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
-        stream_handler = logging.StreamHandler(sys.stdout)
+        stream_handler = __import__("logging").StreamHandler(__import__("sys").stdout)
         stream_handler.setFormatter(formatter)
         self.logger.addHandler(stream_handler)
 
