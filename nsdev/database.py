@@ -1,5 +1,3 @@
-from datetime import datetime
-
 #  _      ____   _____          _        _____       _______       ____           _____ ______  #
 # | |    / __ \ / ____|   /\   | |      |  __ \   /\|__   __|/\   |  _ \   /\    / ____|  ____| #
 # | |   | |  | | |       /  \  | |      | |  | | /  \  | |  /  \  | |_) | /  \  | (___ | |__    #
@@ -215,7 +213,11 @@ class MongoDataBase:
         expired_date = self.getVars(user_id, "EXPIRED_DATE")
 
         if expired_date:
-            exp_datetime = __import__("datetime").datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(__import__("pytz").timezone("Asia/Jakarta"))
+            exp_datetime = (
+                __import__("datetime")
+                .datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S")
+                .astimezone(__import__("pytz").timezone("Asia/Jakarta"))
+            )
             return exp_datetime.strftime("%d-%m-%Y")
         else:
             return None
