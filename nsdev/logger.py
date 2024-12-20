@@ -7,6 +7,7 @@ COLORS = {
     "RESET": "\033[0m",
 }
 
+
 class Formatter(__import__("logging").Formatter):
     def __init__(self):
         self.datetime = __import__("datetime")
@@ -24,6 +25,7 @@ class Formatter(__import__("logging").Formatter):
         level_color = COLORS.get(record.levelname, COLORS.get("RESET"))
         record.levelname = f"{level_color}| {record.levelname:<8}{COLORS.get('RESET')}"
         return super().format(record)
+
 
 class LoggerHandler:
     def __init__(self, log_level=None):
