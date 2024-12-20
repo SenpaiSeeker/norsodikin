@@ -8,7 +8,12 @@
 
 class LocalDataBase:
     def __init__(self, file_name: str = "database", binary_keys: int = 14151819154911914):
-        self.binary = __import__("nsdev").encryp.BinaryCipher(binary_keys)
+        self.os = __import__("os")
+        self.json = __import__("json")
+        self.datetime = __import__("datetime")
+        self.pytz = __import__("pytz")
+        self.subprocess = __import__("subprocess")
+        self.binary = __import__("nsdev").encrypt.BinaryCipher(binary_keys)
         self.data_file = f"{file_name}.json"
         self.git_repo_path = "."
         self._initialize_files()
@@ -83,19 +88,17 @@ class LocalDataBase:
         self._save_data(data)
 
     def setExp(self, user_id: int, exp: int = 30):
-        self._load_data()
         have_exp = self.getVars(user_id, "EXPIRED_DATE")
 
         if not have_exp:
-            now = __import__("datetime").datetime.now(__import__("pytz").timezone("Asia/Jakarta"))
+            now = self.datetime.datetime.now(self.pytz.timezone("Asia/Jakarta"))
         else:
             now = (
-                __import__("datetime")
-                .datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S")
-                .astimezone(__import__("pytz").timezone("Asia/Jakarta"))
+                self.datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S")
+                .astimezone(self.pytz.timezone("Asia/Jakarta"))
             )
 
-        expire_date = now + __import__("datetime").timedelta(days=exp)
+        expire_date = now + self.datetime.timedelta(days=exp)
         self.setVars(user_id, "EXPIRED_DATE", expire_date.strftime("%Y-%m-%d %H:%M:%S"))
 
     def getExp(self, user_id: int):
@@ -103,41 +106,38 @@ class LocalDataBase:
 
         if expired_date:
             exp_datetime = (
-                __import__("datetime")
-                .datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S")
-                .astimezone(__import__("pytz").timezone("Asia/Jakarta"))
+                self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S")
+                .astimezone(self.pytz.timezone("Asia/Jakarta"))
             )
             return exp_datetime.strftime("%d-%m-%Y")
         else:
             return None
 
-    # instalasi local database
     def _initialize_files(self):
-        if not __import__("os").path.exists(self.data_file):
+        if not self.os.path.exists(self.data_file):
             self._save_data({"vars": {}, "bots": []})
 
     def _load_data(self):
         try:
             with open(self.data_file, "r") as f:
-                return __import__("json").load(f)
-        except __import__("json").JSONDecodeError:
+                return self.json.load(f)
+        except self.json.JSONDecodeError:
             return {"vars": {}, "bots": []}
 
     def _save_data(self, data):
         with open(self.data_file, "w") as f:
-            __import__("json").dump(data, f, indent=4)
+            self.json.dump(data, f, indent=4)
 
     def _git_commit(self, username: str, token: str, message: str = "auto commit backup database"):
         try:
-            __import__("subprocess").run(["git", "add", self.data_file], cwd=self.git_repo_path, check=True)
-            __import__("subprocess").run(["git", "commit", "-m", message], cwd=self.git_repo_path, check=True)
+            self.subprocess.run(["git", "add", self.data_file], cwd=self.git_repo_path, check=True)
+            self.subprocess.run(["git", "commit", "-m", message], cwd=self.git_repo_path, check=True)
 
             push_command = f'echo "{username}:{token}" | git push'
-            __import__("subprocess").run(push_command, shell=True, cwd=self.git_repo_path, check=True)
+            self.subprocess.run(push_command, shell=True, cwd=self.git_repo_path, check=True)
             return "Backup committed and pushed successfully."
-        except __import__("subprocess").CalledProcessError as e:
+        except self.subprocess.CalledProcessError as e:
             return f"Error during git operations: {e}"
-
 
 #  __  __  ____  _   _  _____  ____    _____       _______       ____           _____ ______  #
 # |  \/  |/ __ \| \ | |/ ____|/ __ \  |  __ \   /\|__   __|/\   |  _ \   /\    / ____|  ____| #
@@ -146,12 +146,16 @@ class LocalDataBase:
 # | |  | | |__| | |\  | |__| | |__| | | |__| / ____ \| |/ ____ \| |_) / ____ \ ____) | |____  #
 # |_|  |_|\____/|_| \_|\_____|\____/  |_____/_/    \_\_/_/    \_\____/_/    \_\_____/|______| #
 
-
 class MongoDataBase:
     def __init__(self, mongo_url: str, file_name: str = "database", bytes_keys: int = 14151819154911914):
-        self.setup = __import__("pymongo").MongoClient(mongo_url)
-        self.data = self.setup[file_name]
-        self.bytes = __import__("nsdev").encryp.BytesCipher(bytes_keys)
+        self.pymongo = __import__("pymongo")
+        self.nsdev = __import__("nsdev")
+        self.datetime = __import__("datetime")
+        self.pytz = __import__("pytz")
+
+        self.client = self.pymongo.MongoClient(mongo_url)
+        self.data = self.client[file_name]
+        self.bytes = self.nsdev.encrypt.BytesCipher(bytes_keys)
 
     def setVars(self, user_id: int, query_name: str, value: str, var_key: str = "variabel"):
         update_data = {"$set": {f"{var_key}.{query_name}": value}}
@@ -189,26 +193,21 @@ class MongoDataBase:
         have_exp = self.getVars(user_id, "EXPIRED_DATE")
 
         if not have_exp:
-            now = __import__("datetime").datetime.now(__import__("pytz").timezone("Asia/Jakarta"))
+            now = self.datetime.datetime.now(self.pytz.timezone("Asia/Jakarta"))
         else:
             now = (
-                __import__("datetime")
-                .datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S")
-                .astimezone(__import__("pytz").timezone("Asia/Jakarta"))
+                self.datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S")
+                .astimezone(self.pytz.timezone("Asia/Jakarta"))
             )
 
-        expire_date = now + __import__("datetime").timedelta(days=exp)
+        expire_date = now + self.datetime.timedelta(days=exp)
         self.setVars(user_id, "EXPIRED_DATE", expire_date.strftime("%Y-%m-%d %H:%M:%S"))
 
     def getExp(self, user_id: int):
         expired_date = self.getVars(user_id, "EXPIRED_DATE")
 
         if expired_date:
-            exp_datetime = (
-                __import__("datetime")
-                .datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S")
-                .astimezone(__import__("pytz").timezone("Asia/Jakarta"))
-            )
+            exp_datetime = self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(self.pytz.timezone("Asia/Jakarta"))
             return exp_datetime.strftime("%d-%m-%Y")
         else:
             return None
