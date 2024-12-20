@@ -1,17 +1,21 @@
 COLORS = {
-    "INFO": "\033[1;92m",  # Full Bright Green
-    "DEBUG": "\033[1;94m",  # Full Bright Blue
-    "WARNING": "\033[1;93m",  # Full Bright Yellow
-    "ERROR": "\033[1;91m",  # Full Bright Red
-    "CRITICAL": "\033[1;95m",  # Full Bright Magenta
-    "RESET": "\033[0m",  # Reset color
+    "INFO": "\033[1;92m",
+    "DEBUG": "\033[1;94m",
+    "WARNING": "\033[1;93m",
+    "ERROR": "\033[1;91m",
+    "CRITICAL": "\033[1;95m",
+    "RESET": "\033[0m",
 }
 
+class Formatter(__import__("logging").Formatter):
+    def __init__(self):
+        self.datetime = __import__("datetime")
+        self.pytz = __import__("pytz")
+        super().__init__()
 
-class ColoredFormatter(__import__("logging").Formatter):
     def formatTime(self, record, datefmt=None):
-        timezone = __import__("pytz").timezone("Asia/Jakarta")
-        utc_time = __import__("datetime").datetime.utcfromtimestamp(record.created).replace(tzinfo=__import__("pytz").utc)
+        timezone = self.pytz.timezone("Asia/Jakarta")
+        utc_time = self.datetime.datetime.utcfromtimestamp(record.created).replace(tzinfo=self.pytz.utc)
         local_time = utc_time.astimezone(timezone)
 
         return local_time.strftime(datefmt) if datefmt else local_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -21,16 +25,21 @@ class ColoredFormatter(__import__("logging").Formatter):
         record.levelname = f"{level_color}| {record.levelname:<8}{COLORS.get('RESET')}"
         return super().format(record)
 
-
 class LoggerHandler:
-    def __init__(self, log_level=__import__("logging").INFO):
-        self.logger = __import__("logging").getLogger(__name__)
+    def __init__(self, log_level=None):
+        self.logging = __import__("logging")
+        self.sys = __import__("sys")
+
+        log_level = log_level or self.logging.INFO
+        self.logger = self.logging.getLogger(__name__)
         self.logger.setLevel(log_level)
-        formatter = ColoredFormatter(
-            "\033[1;97m[%(asctime)s] %(levelname)s \033[1;96m| %(module)s:%(funcName)s:%(lineno)d\033[0m %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
+
+        formatter = Formatter()
+        formatter._style._fmt = (
+            "\033[1;97m[%(asctime)s] %(levelname)s \033[1;96m| %(module)s:%(funcName)s:%(lineno)d\033[0m %(message)s"
         )
-        stream_handler = __import__("logging").StreamHandler(__import__("sys").stdout)
+
+        stream_handler = self.logging.StreamHandler(self.sys.stdout)
         stream_handler.setFormatter(formatter)
         self.logger.addHandler(stream_handler)
 
