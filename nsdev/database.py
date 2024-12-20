@@ -93,10 +93,7 @@ class LocalDataBase:
         if not have_exp:
             now = self.datetime.datetime.now(self.pytz.timezone("Asia/Jakarta"))
         else:
-            now = (
-                self.datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S")
-                .astimezone(self.pytz.timezone("Asia/Jakarta"))
-            )
+            now = self.datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S").astimezone(self.pytz.timezone("Asia/Jakarta"))
 
         expire_date = now + self.datetime.timedelta(days=exp)
         self.setVars(user_id, "EXPIRED_DATE", expire_date.strftime("%Y-%m-%d %H:%M:%S"))
@@ -105,9 +102,8 @@ class LocalDataBase:
         expired_date = self.getVars(user_id, "EXPIRED_DATE")
 
         if expired_date:
-            exp_datetime = (
-                self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S")
-                .astimezone(self.pytz.timezone("Asia/Jakarta"))
+            exp_datetime = self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(
+                self.pytz.timezone("Asia/Jakarta")
             )
             return exp_datetime.strftime("%d-%m-%Y")
         else:
@@ -139,12 +135,14 @@ class LocalDataBase:
         except self.subprocess.CalledProcessError as e:
             return f"Error during git operations: {e}"
 
+
 #  __  __  ____  _   _  _____  ____    _____       _______       ____           _____ ______  #
 # |  \/  |/ __ \| \ | |/ ____|/ __ \  |  __ \   /\|__   __|/\   |  _ \   /\    / ____|  ____| #
 # | \  / | |  | |  \| | |  __| |  | | | |  | | /  \  | |  /  \  | |_) | /  \  | (___ | |__    #
 # | |\/| | |  | | . ` | | |_ | |  | | | |  | |/ /\ \ | | / /\ \ |  _ < / /\ \  \___ \|  __|   #
 # | |  | | |__| | |\  | |__| | |__| | | |__| / ____ \| |/ ____ \| |_) / ____ \ ____) | |____  #
 # |_|  |_|\____/|_| \_|\_____|\____/  |_____/_/    \_\_/_/    \_\____/_/    \_\_____/|______| #
+
 
 class MongoDataBase:
     def __init__(self, mongo_url: str, file_name: str = "database", bytes_keys: int = 14151819154911914):
@@ -195,10 +193,7 @@ class MongoDataBase:
         if not have_exp:
             now = self.datetime.datetime.now(self.pytz.timezone("Asia/Jakarta"))
         else:
-            now = (
-                self.datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S")
-                .astimezone(self.pytz.timezone("Asia/Jakarta"))
-            )
+            now = self.datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S").astimezone(self.pytz.timezone("Asia/Jakarta"))
 
         expire_date = now + self.datetime.timedelta(days=exp)
         self.setVars(user_id, "EXPIRED_DATE", expire_date.strftime("%Y-%m-%d %H:%M:%S"))
@@ -207,7 +202,9 @@ class MongoDataBase:
         expired_date = self.getVars(user_id, "EXPIRED_DATE")
 
         if expired_date:
-            exp_datetime = self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(self.pytz.timezone("Asia/Jakarta"))
+            exp_datetime = self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(
+                self.pytz.timezone("Asia/Jakarta")
+            )
             return exp_datetime.strftime("%d-%m-%Y")
         else:
             return None
