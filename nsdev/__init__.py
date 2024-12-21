@@ -1,6 +1,14 @@
-from .encrypt import BinaryCipher, BytesCipher, ShiftChipher, cipher
-from .logger import LoggerHandler
-from .addUser import SSHUserManager
-from .database import LocalDataBase MongoDataBase 
+nsdev = __import__("nsdev")
 
-__version__ = "0.1.dev1"
+BinaryCipher = nsdev.encrypt.BinaryCipher
+BytesCipher = nsdev.encrypt.BytesCipher
+ShiftChipher = nsdev.encrypt.ShiftChipher
+cipher = nsdev.encrypt.cipher
+
+LoggerHandler = nsdev.logger.LoggerHandler
+SSHUserManager = nsdev.addUser.SSHUserManager
+
+LocalDataBase = nsdev.database.LocalDataBase
+MongoDataBase = nsdev.database.MongoDataBase
+
+__version__ = "0.1.dev2"
