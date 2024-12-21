@@ -10,7 +10,7 @@ class SSHUserManager:
         self.requests = __import__("requests")
 
     def generate_random_string(self, length):
-        return ''.join(self.random.choices(self.string.ascii_letters + self.string.digits, k=length))
+        return "".join(self.random.choices(self.string.ascii_letters + self.string.digits, k=length))
 
     def send_telegram_message(self, message):
         inline_keyboard = {"inline_keyboard": [[{"text": "Powered By", "url": "https://t.me/NorSodikin"}]]}
@@ -30,7 +30,9 @@ class SSHUserManager:
             if result.returncode == 0:
                 message = f"Pengguna {ssh_username} sudah ada. Silakan pilih nama pengguna yang berbeda."
             else:
-                self.subprocess.run(["sudo", "adduser", "--disabled-password", "--gecos", "", ssh_username, "--force-badname"], check=True)
+                self.subprocess.run(
+                    ["sudo", "adduser", "--disabled-password", "--gecos", "", ssh_username, "--force-badname"], check=True
+                )
                 self.subprocess.run(["sudo", "chpasswd"], input=f"{ssh_username}:{ssh_password}", text=True, check=True)
                 self.subprocess.run(["sudo", "usermod", "-aG", "sudo", ssh_username], check=True)
 
