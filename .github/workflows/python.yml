@@ -30,13 +30,10 @@ jobs:
         run: autoflake --in-place --recursive --remove-all-unused-imports --remove-unused-variables --ignore-init-module-imports .
 
       - name: Format Code with Black
-        run: black . --line-length 88
+        run: black . --line-length 256
 
       - name: Sort Imports with Isort
         run: isort . --profile black
 
       - name: Commit Changes
         uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_message: "Apply code improvements with linting and formatting"
-          file_pattern: "."
