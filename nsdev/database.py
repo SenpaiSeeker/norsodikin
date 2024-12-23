@@ -57,14 +57,7 @@ class LocalDataBase:
     def allVars(self, user_id: int, var_key: str = "variabel"):
         return self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {})
 
-    def saveBot(
-        self,
-        user_id: int,
-        api_id: int,
-        api_hash: str,
-        value: str,
-        is_token: bool = False
-    ):
+    def saveBot(self, user_id: int, api_id: int, api_hash: str, value: str, is_token: bool = False):
         data = self._load_data()
         field = "bot_token" if is_token else "session_string"
         entry = {
@@ -150,12 +143,7 @@ class LocalDataBase:
 
 
 class MongoDataBase:
-    def __init__(
-        self,
-        mongo_url: str,
-        file_name: str = "database",
-        bytes_keys: int = 14151819154911914
-    ):
+    def __init__(self, mongo_url: str, file_name: str = "database", bytes_keys: int = 14151819154911914):
         self.pymongo = __import__("pymongo")
         self.nsdev = __import__("nsdev")
         self.datetime = __import__("datetime")
@@ -217,14 +205,7 @@ class MongoDataBase:
         else:
             return None
 
-    def saveBot(
-        self,
-        user_id: int,
-        api_id: int,
-        api_hash: str,
-        value: str,
-        is_token: bool = False
-    ):
+    def saveBot(self, user_id: int, api_id: int, api_hash: str, value: str, is_token: bool = False):
         update_data = {
             "$set": {
                 "api_id": self.bytes.encrypt(str(api_id)),
