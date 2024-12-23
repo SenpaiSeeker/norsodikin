@@ -63,7 +63,7 @@ class LocalDataBase:
         api_id: int,
         api_hash: str,
         value: str,
-        is_token: bool = False,
+        is_token: bool = False
     ):
         data = self._load_data()
         field = "bot_token" if is_token else "session_string"
@@ -154,7 +154,7 @@ class MongoDataBase:
         self,
         mongo_url: str,
         file_name: str = "database",
-        bytes_keys: int = 14151819154911914,
+        bytes_keys: int = 14151819154911914
     ):
         self.pymongo = __import__("pymongo")
         self.nsdev = __import__("nsdev")
@@ -223,7 +223,7 @@ class MongoDataBase:
         api_id: int,
         api_hash: str,
         value: str,
-        is_token: bool = False,
+        is_token: bool = False
     ):
         update_data = {
             "$set": {
