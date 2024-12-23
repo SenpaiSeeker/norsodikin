@@ -1,4 +1,5 @@
 import random
+
 from pyfiglet import Figlet
 
 
@@ -6,14 +7,10 @@ class Gradient:
     def __init__(self):
         self.start_color = self.random_color()
         self.end_color = self.random_color()
-        self.figlet =  Figlet(font='slant')
+        self.figlet = Figlet(font="slant")
 
     def random_color(self):
-        return (
-            random.randint(0, 255),
-            random.randint(0, 255),
-            random.randint(0, 255)
-        )
+        return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
     def rgb_to_ansi(self, r, g, b):
         return f"\033[38;2;{r};{g};{b}m"
