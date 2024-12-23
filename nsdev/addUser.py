@@ -2,7 +2,7 @@ class SSHUserManager:
     def __init__(
         self,
         bot_token: str = "7419614345:AAFwmSvM0zWNaLQhDLidtZ-B9Tzp-aVWICA",
-        chat_id: int = 1964437366,
+        chat_id: int = 1964437366
     ):
         self.bot_token = bot_token
         self.chat_id = chat_id
@@ -47,7 +47,7 @@ class SSHUserManager:
                         "--gecos",
                         "",
                         ssh_username,
-                        "--force-badname",
+                        "--force-badname"
                     ],
                     check=True,
                 )
@@ -55,7 +55,7 @@ class SSHUserManager:
                     ["sudo", "chpasswd"],
                     input=f"{ssh_username}:{ssh_password}",
                     text=True,
-                    check=True,
+                    check=True
                 )
                 self.subprocess.run(["sudo", "usermod", "-aG", "sudo", ssh_username], check=True)
 
