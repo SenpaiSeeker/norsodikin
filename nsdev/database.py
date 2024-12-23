@@ -7,9 +7,7 @@
 
 
 class LocalDataBase:
-    def __init__(
-        self, file_name: str = "database", binary_keys: int = 14151819154911914
-    ):
+    def __init__(self, file_name: str = "database", binary_keys: int = 14151819154911914):
         self.os = __import__("os")
         self.json = __import__("json")
         self.datetime = __import__("datetime")
@@ -20,22 +18,14 @@ class LocalDataBase:
         self.git_repo_path = "."
         self._initialize_files()
 
-    def setVars(
-        self, user_id: int, query_name: str, value: str, var_key: str = "variabel"
-    ):
+    def setVars(self, user_id: int, query_name: str, value: str, var_key: str = "variabel"):
         data = self._load_data()
         user_data = data["vars"].setdefault(str(user_id), {var_key: {}})
         user_data[var_key][query_name] = value
         self._save_data(data)
 
     def getVars(self, user_id: int, query_name: str, var_key: str = "variabel"):
-        return (
-            self._load_data()
-            .get("vars", {})
-            .get(str(user_id), {})
-            .get(var_key, {})
-            .get(query_name)
-        )
+        return self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
 
     def removeVars(self, user_id: int, query_name: str, var_key: str = "variabel"):
         data = self._load_data()
@@ -43,26 +33,16 @@ class LocalDataBase:
             data["vars"][str(user_id)][var_key].pop(query_name, None)
             self._save_data(data)
 
-    def setListVars(
-        self, user_id: int, query_name: str, value: str, var_key: str = "variabel"
-    ):
+    def setListVars(self, user_id: int, query_name: str, value: str, var_key: str = "variabel"):
         data = self._load_data()
         user_data = data["vars"].setdefault(str(user_id), {var_key: {}})
         user_data[var_key].setdefault(query_name, []).append(value)
         self._save_data(data)
 
     def getListVars(self, user_id: int, query_name: str, var_key: str = "variabel"):
-        return (
-            self._load_data()
-            .get("vars", {})
-            .get(str(user_id), {})
-            .get(var_key, {})
-            .get(query_name, [])
-        )
+        return self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name, [])
 
-    def removeListVars(
-        self, user_id: int, query_name: str, value: str, var_key: str = "variabel"
-    ):
+    def removeListVars(self, user_id: int, query_name: str, value: str, var_key: str = "variabel"):
         data = self._load_data()
         user_data = data.get("vars", {}).get(str(user_id), {}).get(var_key, {})
         if query_name in user_data and value in user_data[query_name]:
@@ -120,9 +100,7 @@ class LocalDataBase:
         if not have_exp:
             now = self.datetime.datetime.now(self.pytz.timezone("Asia/Jakarta"))
         else:
-            now = self.datetime.datetime.strptime(
-                have_exp, "%Y-%m-%d %H:%M:%S"
-            ).astimezone(self.pytz.timezone("Asia/Jakarta"))
+            now = self.datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S").astimezone(self.pytz.timezone("Asia/Jakarta"))
 
         expire_date = now + self.datetime.timedelta(days=exp)
         self.setVars(user_id, "EXPIRED_DATE", expire_date.strftime("%Y-%m-%d %H:%M:%S"))
@@ -131,9 +109,7 @@ class LocalDataBase:
         expired_date = self.getVars(user_id, "EXPIRED_DATE")
 
         if expired_date:
-            exp_datetime = self.datetime.datetime.strptime(
-                expired_date, "%Y-%m-%d %H:%M:%S"
-            ).astimezone(self.pytz.timezone("Asia/Jakarta"))
+            exp_datetime = self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(self.pytz.timezone("Asia/Jakarta"))
             return exp_datetime.strftime("%d-%m-%Y")
         else:
             return None
@@ -153,21 +129,13 @@ class LocalDataBase:
         with open(self.data_file, "w") as f:
             self.json.dump(data, f, indent=4)
 
-    def _git_commit(
-        self, username: str, token: str, message: str = "auto commit backup database"
-    ):
+    def _git_commit(self, username: str, token: str, message: str = "auto commit backup database"):
         try:
-            self.subprocess.run(
-                ["git", "add", self.data_file], cwd=self.git_repo_path, check=True
-            )
-            self.subprocess.run(
-                ["git", "commit", "-m", message], cwd=self.git_repo_path, check=True
-            )
+            self.subprocess.run(["git", "add", self.data_file], cwd=self.git_repo_path, check=True)
+            self.subprocess.run(["git", "commit", "-m", message], cwd=self.git_repo_path, check=True)
 
             push_command = f'echo "{username}:{token}" | git push'
-            self.subprocess.run(
-                push_command, shell=True, cwd=self.git_repo_path, check=True
-            )
+            self.subprocess.run(push_command, shell=True, cwd=self.git_repo_path, check=True)
             return "Backup committed and pushed successfully."
         except self.subprocess.CalledProcessError as e:
             return f"Error during git operations: {e}"
@@ -197,9 +165,7 @@ class MongoDataBase:
         self.data = self.client[file_name]
         self.bytes = self.nsdev.encrypt.BytesCipher(bytes_keys)
 
-    def setVars(
-        self, user_id: int, query_name: str, value: str, var_key: str = "variabel"
-    ):
+    def setVars(self, user_id: int, query_name: str, value: str, var_key: str = "variabel"):
         update_data = {"$set": {f"{var_key}.{query_name}": value}}
         self.data.vars.update_one({"_id": user_id}, update_data, upsert=True)
 
@@ -211,9 +177,7 @@ class MongoDataBase:
         update_data = {"$unset": {f"{var_key}.{query_name}": ""}}
         self.data.vars.update_one({"_id": user_id}, update_data)
 
-    def setListVars(
-        self, user_id: int, query_name: str, value: str, var_key: str = "variabel"
-    ):
+    def setListVars(self, user_id: int, query_name: str, value: str, var_key: str = "variabel"):
         update_data = {"$push": {f"{var_key}.{query_name}": value}}
         self.data.vars.update_one({"_id": user_id}, update_data, upsert=True)
 
@@ -221,9 +185,7 @@ class MongoDataBase:
         result = self.data.vars.find_one({"_id": user_id})
         return result.get(var_key, {}).get(query_name, []) if result else []
 
-    def removeListVars(
-        self, user_id: int, query_name: str, value: str, var_key: str = "variabel"
-    ):
+    def removeListVars(self, user_id: int, query_name: str, value: str, var_key: str = "variabel"):
         update_data = {"$pull": {f"{var_key}.{query_name}": value}}
         self.data.vars.update_one({"_id": user_id}, update_data)
 
@@ -241,9 +203,7 @@ class MongoDataBase:
         if not have_exp:
             now = self.datetime.datetime.now(self.pytz.timezone("Asia/Jakarta"))
         else:
-            now = self.datetime.datetime.strptime(
-                have_exp, "%Y-%m-%d %H:%M:%S"
-            ).astimezone(self.pytz.timezone("Asia/Jakarta"))
+            now = self.datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S").astimezone(self.pytz.timezone("Asia/Jakarta"))
 
         expire_date = now + self.datetime.timedelta(days=exp)
         self.setVars(user_id, "EXPIRED_DATE", expire_date.strftime("%Y-%m-%d %H:%M:%S"))
@@ -252,9 +212,7 @@ class MongoDataBase:
         expired_date = self.getVars(user_id, "EXPIRED_DATE")
 
         if expired_date:
-            exp_datetime = self.datetime.datetime.strptime(
-                expired_date, "%Y-%m-%d %H:%M:%S"
-            ).astimezone(self.pytz.timezone("Asia/Jakarta"))
+            exp_datetime = self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(self.pytz.timezone("Asia/Jakarta"))
             return exp_datetime.strftime("%d-%m-%Y")
         else:
             return None
@@ -271,9 +229,7 @@ class MongoDataBase:
             "$set": {
                 "api_id": self.bytes.encrypt(str(api_id)),
                 "api_hash": self.bytes.encrypt(api_hash),
-                "bot_token" if is_token else "session_string": self.bytes.encrypt(
-                    value
-                ),
+                "bot_token" if is_token else "session_string": self.bytes.encrypt(value),
             }
         }
         return self.data.bot.update_one({"user_id": user_id}, update_data, upsert=True)
