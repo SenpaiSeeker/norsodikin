@@ -22,9 +22,15 @@ class Gradient:
 
     def interpolate_color(self, factor):
         return (
-            int(self.start_color[0] + (self.end_color[0] - self.start_color[0]) * factor),
-            int(self.start_color[1] + (self.end_color[1] - self.start_color[1]) * factor),
-            int(self.start_color[2] + (self.end_color[2] - self.start_color[2]) * factor),
+            int(
+                self.start_color[0] + (self.end_color[0] - self.start_color[0]) * factor
+            ),
+            int(
+                self.start_color[1] + (self.end_color[1] - self.start_color[1]) * factor
+            ),
+            int(
+                self.start_color[2] + (self.end_color[2] - self.start_color[2]) * factor
+            ),
         )
 
     def render_text(self, text):

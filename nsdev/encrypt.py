@@ -4,19 +4,28 @@ class BytesCipher:
 
     def _xor_encrypt_decrypt(self, data: bytes):
         key_bytes = self.key.to_bytes((self.key.bit_length() + 7) // 8, byteorder="big")
-        return bytes([data[i] ^ key_bytes[i % len(key_bytes)] for i in range(len(data))])
+        return bytes(
+            [data[i] ^ key_bytes[i % len(key_bytes)] for i in range(len(data))]
+        )
 
     def encrypt(self, data: str):
         serialized_data = __import__("textwrap").dedent(data).encode("utf-8")
         encrypted_data = self._xor_encrypt_decrypt(serialized_data)
-        return __import__("base64").urlsafe_b64encode(encrypted_data).decode("utf-8").rstrip("=")
+        return (
+            __import__("base64")
+            .urlsafe_b64encode(encrypted_data)
+            .decode("utf-8")
+            .rstrip("=")
+        )
 
     def decrypt(self, encrypted_data: str):
         try:
             padding_needed = 4 - (len(encrypted_data) % 4)
             if padding_needed:
                 encrypted_data += "=" * padding_needed
-            encrypted_bytes = __import__("base64").urlsafe_b64decode(encrypted_data.encode("utf-8"))
+            encrypted_bytes = __import__("base64").urlsafe_b64decode(
+                encrypted_data.encode("utf-8")
+            )
             decrypted_bytes = self._xor_encrypt_decrypt(encrypted_bytes)
             return decrypted_bytes.decode("utf-8")
         except (ValueError, UnicodeDecodeError) as error:
@@ -28,13 +37,18 @@ class BinaryCipher:
         self.key = key
 
     def encrypt(self, plaintext: str):
-        encrypted_bits = "".join(format(ord(char) ^ (self.key % 256), "08b") for char in plaintext)
+        encrypted_bits = "".join(
+            format(ord(char) ^ (self.key % 256), "08b") for char in plaintext
+        )
         return encrypted_bits
 
     def decrypt(self, encrypted_bits: str):
         if len(encrypted_bits) % 8 != 0:
             raise ValueError("Data biner yang dienkripsi tidak valid.")
-        decrypted_chars = [chr(int(encrypted_bits[i : i + 8], 2) ^ (self.key % 256)) for i in range(0, len(encrypted_bits), 8)]
+        decrypted_chars = [
+            chr(int(encrypted_bits[i : i + 8], 2) ^ (self.key % 256))
+            for i in range(0, len(encrypted_bits), 8)
+        ]
         return "".join(decrypted_chars)
 
 
@@ -48,7 +62,9 @@ class ShiftChipher:
         return encoded
 
     def decrypt(self, encoded_text: str) -> str:
-        decoded = "".join(chr(int(code) - self.key) for code in encoded_text.split(self.delimiter))
+        decoded = "".join(
+            chr(int(code) - self.key) for code in encoded_text.split(self.delimiter)
+        )
         return decoded
 
 

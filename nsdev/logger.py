@@ -16,10 +16,16 @@ class Formatter(__import__("logging").Formatter):
 
     def formatTime(self, record, datefmt=None):
         timezone = self.pytz.timezone("Asia/Jakarta")
-        utc_time = self.datetime.datetime.utcfromtimestamp(record.created).replace(tzinfo=self.pytz.utc)
+        utc_time = self.datetime.datetime.utcfromtimestamp(record.created).replace(
+            tzinfo=self.pytz.utc
+        )
         local_time = utc_time.astimezone(timezone)
 
-        return local_time.strftime(datefmt) if datefmt else local_time.strftime("%Y-%m-%d %H:%M:%S")
+        return (
+            local_time.strftime(datefmt)
+            if datefmt
+            else local_time.strftime("%Y-%m-%d %H:%M:%S")
+        )
 
     def format(self, record):
         level_color = COLORS.get(record.levelname, COLORS.get("RESET"))
@@ -37,9 +43,7 @@ class LoggerHandler:
         self.logger.setLevel(log_level)
 
         formatter = Formatter()
-        formatter._style._fmt = (
-            "\033[1;97m[%(asctime)s] %(levelname)s \033[1;96m| %(module)s:%(funcName)s:%(lineno)d\033[0m %(message)s"
-        )
+        formatter._style._fmt = "\033[1;97m[%(asctime)s] %(levelname)s \033[1;96m| %(module)s:%(funcName)s:%(lineno)d\033[0m %(message)s"
 
         stream_handler = self.logging.StreamHandler(self.sys.stdout)
         stream_handler.setFormatter(formatter)
