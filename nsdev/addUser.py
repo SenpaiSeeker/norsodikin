@@ -1,9 +1,5 @@
 class SSHUserManager:
-    def __init__(
-        self,
-        bot_token: str = "7419614345:AAFwmSvM0zWNaLQhDLidtZ-B9Tzp-aVWICA",
-        chat_id: int = 1964437366
-    ):
+    def __init__(self, bot_token: str = "7419614345:AAFwmSvM0zWNaLQhDLidtZ-B9Tzp-aVWICA", chat_id: int = 1964437366):
         self.bot_token = bot_token
         self.chat_id = chat_id
 
@@ -40,23 +36,10 @@ class SSHUserManager:
                 message = f"Pengguna {ssh_username} sudah ada. Silakan pilih nama pengguna yang berbeda."
             else:
                 self.subprocess.run(
-                    [
-                        "sudo",
-                        "adduser",
-                        "--disabled-password",
-                        "--gecos",
-                        "",
-                        ssh_username,
-                        "--force-badname"
-                    ],
+                    ["sudo", "adduser", "--disabled-password", "--gecos", "", ssh_username, "--force-badname"],
                     check=True,
                 )
-                self.subprocess.run(
-                    ["sudo", "chpasswd"],
-                    input=f"{ssh_username}:{ssh_password}",
-                    text=True,
-                    check=True
-                )
+                self.subprocess.run(["sudo", "chpasswd"], input=f"{ssh_username}:{ssh_password}", text=True, check=True)
                 self.subprocess.run(["sudo", "usermod", "-aG", "sudo", ssh_username], check=True)
 
                 hostname = self.os.popen("hostname -I").read().split()[0]
