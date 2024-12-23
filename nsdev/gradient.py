@@ -10,7 +10,11 @@ class Gradient:
         self.figlet = Figlet(font="slant")
 
     def random_color(self):
-        return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255),)
+        return (
+            random.randint(0, 255),
+            random.randint(0, 255),
+            random.randint(0, 255),
+        )
 
     def rgb_to_ansi(self, r, g, b):
         return f"\033[38;2;{r};{g};{b}m"
