@@ -1,20 +1,16 @@
-import random
-import time
-
-from pyfiglet import Figlet
-
-
 class Gradient:
     def __init__(self):
         self.start_color = self.random_color()
         self.end_color = self.random_color()
-        self.figlet = Figlet(font="slant")
+        self.figlet = __import__("pyfiglet").Figlet(font="slant")
+        self.random = __import__("random")
+        self.time = __import__("time")
 
     def random_color(self):
         return (
-            random.randint(0, 255),
-            random.randint(0, 255),
-            random.randint(0, 255),
+            self.random.randint(0, 255),
+            self.random.randint(0, 255),
+            self.random.randint(0, 255),
         )
 
     def rgb_to_ansi(self, r, g, b):
@@ -42,5 +38,5 @@ class Gradient:
             r, g, b = self.random_color()
             color = self.rgb_to_ansi(r, g, b)
             print(f"{color}===== Tunggu sebentar {hours:02}:{minutes:02}:{secs:02} untuk melanjutkan =====\033[0m", end="\r", flush=True)
-            time.sleep(1)
+            self.time.sleep(1)
         print()
