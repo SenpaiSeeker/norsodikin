@@ -24,24 +24,26 @@ class Gradient:
         )
 
     def render_text(self, text):
-        text = self.figlet.renderText(text)
-        for i, char in enumerate(text):
-            factor = i / max(len(text) - 1, 1)
+        rendered_text = self.figlet.renderText(text)
+        for i, char in enumerate(rendered_text):
+            factor = i / max(len(rendered_text) - 1, 1)
             r, g, b = self.interpolate_color(factor)
             print(self.rgb_to_ansi(r, g, b) + char, end="")
         print("\033[0m")
 
-    def countdown(self, seconds):
+    def countdown(self, seconds, text="Tungu sebentar {time} untuk melanjutkan"):
+        bar_length = 30
         for remaining in range(seconds, -1, -1):
             hours, remainder = divmod(remaining, 3600)
             minutes, secs = divmod(remainder, 60)
+            time_display = f"{hours:02}:{minutes:02}:{secs:02}"
+
             r, g, b = self.random_color()
             color = self.rgb_to_ansi(r, g, b)
-            print(f"{color}===== Tunggu sebentar {hours:02}:{minutes:02}:{secs:02} untuk melanjutkan =====\033[0m", end="\r", flush=True)
+
+            progress = int(((seconds - remaining) / seconds) * bar_length) if seconds > 0 else bar_length
+            bar = "=" * progress + "-" * (bar_length - progress)
+
+            print(f"\033[2K\r{color}[{bar}] {text.format(time=time_display)}\033[0m", end="", flush=True)
             self.time.sleep(1)
         print()
-
-
-apt = Gradient()
-
-apt.render_text("NorSodikin")
