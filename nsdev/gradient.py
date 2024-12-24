@@ -1,10 +1,10 @@
 class Gradient:
     def __init__(self):
-        self.start_color = self.random_color()
-        self.end_color = self.random_color()
         self.figlet = __import__("pyfiglet").Figlet(font="slant")
         self.random = __import__("random")
         self.time = __import__("time")
+        self.start_color = self.random_color()
+        self.end_color = self.random_color()
 
     def random_color(self):
         return (
@@ -40,3 +40,7 @@ class Gradient:
             print(f"{color}===== Tunggu sebentar {hours:02}:{minutes:02}:{secs:02} untuk melanjutkan =====\033[0m", end="\r", flush=True)
             self.time.sleep(1)
         print()
+
+apt = Gradient()
+
+apt.render_text("NorSodikin")
