@@ -41,6 +41,7 @@ class Gradient:
             self.time.sleep(1)
         print()
 
+
 apt = Gradient()
 
 apt.render_text("NorSodikin")
