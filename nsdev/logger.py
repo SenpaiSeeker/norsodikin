@@ -78,6 +78,7 @@ class LoggerHandler:
     def critical(self, message):
         self.log("CRITICAL", message)
 
+
 try:
     logger = LoggerHandler()
     logger.debug("Ini adalah pesan debug.")
@@ -85,5 +86,5 @@ try:
     logger.warning("Ini adalah pesan peringatan.")
     logger.error("Ini adalah pesan error.")
     logger.critical("Ini adalah pesan kritis.")
-except:
+except BaseException:
     pass
