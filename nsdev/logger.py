@@ -1,12 +1,4 @@
-COLORS = {
-    "INFO": "\033[1;92m",
-    "DEBUG": "\033[1;94m",
-    "WARNING": "\033[1;93m",
-    "ERROR": "\033[1;91m",
-    "CRITICAL": "\033[1;95m",
-    "TIME": "\033[1;97m",
-    "RESET": "\033[0m"
-}
+COLORS = {"INFO": "\033[1;92m", "DEBUG": "\033[1;94m", "WARNING": "\033[1;93m", "ERROR": "\033[1;91m", "CRITICAL": "\033[1;95m", "TIME": "\033[1;97m", "RESET": "\033[0m"}
 
 
 class CustomFormatter:
@@ -39,8 +31,8 @@ class CustomFormatter:
 
 
 class LoggerHandler:
-    def __init__(self, name=__name__,  log_level="DEBUG", tz="Asia/Jakarta"):
-        self.name = name 
+    def __init__(self, name=__name__, log_level="DEBUG", tz="Asia/Jakarta"):
+        self.name = name
         self.LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
         self.datetime = __import__("datetime")
         self.inspect = __import__("inspect")
