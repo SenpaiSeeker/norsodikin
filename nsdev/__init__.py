@@ -10,4 +10,4 @@ MongoDataBase = nsdev.database.MongoDataBase
 LoggerHandler = nsdev.logger.LoggerHandler
 SSHUserManager = nsdev.addUser.SSHUserManager
 
-__version__ = "0.1.dev2"
+__version__ = "0.1"
