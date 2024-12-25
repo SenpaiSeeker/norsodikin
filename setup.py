@@ -12,7 +12,7 @@ with open("requirements.txt", encoding="utf-8") as r:
 setup(
     name="norsodikin",
     version=version,
-    description="Library of @NorSodikin",
+    description="Library of special mission and encrypted code",
     long_description="A collection of useful tools and utilities.",
     long_description_content_type="text/markdown",
     author="NorSodikin",
