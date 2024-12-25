@@ -5,7 +5,7 @@ COLORS = {
     "ERROR": "\033[1;91m",
     "CRITICAL": "\033[1;95m",
     "TIME": "\033[1;97m",
-    "RESET": "\033[0m",
+    "RESET": "\033[0m"
 }
 
 
@@ -39,9 +39,8 @@ class CustomFormatter:
 
 
 class LoggerHandler:
-    LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
-
-    def __init__(self, log_level="DEBUG", tz="Asia/Jakarta"):
+    def __init__(self, name=__name__ log_level="DEBUG", tz="Asia/Jakarta"):
+        self.name = name 
         self.LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
         self.datetime = __import__("datetime")
         self.inspect = __import__("inspect")
@@ -55,7 +54,7 @@ class LoggerHandler:
             record = {
                 "created": self.datetime.datetime.now().timestamp(),
                 "levelname": level,
-                "module": frame.f_globals.get("__name__", "<unknown>"),
+                "module": frame.f_globals.get(self.name, "<unknown>"),
                 "funcName": frame.f_code.co_name,
                 "lineno": frame.f_lineno,
                 "message": message,
