@@ -39,7 +39,7 @@ class CustomFormatter:
 
 
 class LoggerHandler:
-    def __init__(self, name=__name__ log_level="DEBUG", tz="Asia/Jakarta"):
+    def __init__(self, name=__name__,  log_level="DEBUG", tz="Asia/Jakarta"):
         self.name = name 
         self.LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
         self.datetime = __import__("datetime")
