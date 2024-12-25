@@ -38,7 +38,7 @@ class BinaryCipher:
         return "".join(decrypted_chars)
 
 
-class ShiftChipher:
+class ShiftCipher:
     def __init__(self, key: int = 31099, delimiter: str = "|"):
         self.key = key
         self.delimiter = delimiter
@@ -57,7 +57,7 @@ class cipher:
         self.method = method
         self.key = key
         self.log = __import__("nsdev").logger.LoggerHandler()
-        self.cipher_classes = {"shift": ShiftChipher(key=self.key), "binary": BinaryCipher(key=self.key), "bytes": BytesCipher(key=self.key)}
+        self.cipher_classes = {"shift": ShiftCipher(key=self.key), "binary": BinaryCipher(key=self.key), "bytes": BytesCipher(key=self.key)}
 
     def start(self, encrypted_data: str):
         try:
