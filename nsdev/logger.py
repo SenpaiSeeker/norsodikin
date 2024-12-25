@@ -1,9 +1,3 @@
-import inspect
-import sys
-from datetime import datetime
-
-from pytz import timezone, utc
-
 COLORS = {
     "INFO": "\033[1;92m",
     "DEBUG": "\033[1;94m",
@@ -17,12 +11,14 @@ COLORS = {
 
 class CustomFormatter:
     def __init__(self, fmt=None, datefmt=None, tz="Asia/Jakarta"):
+        self.datetime = __import__("datetime")
+        self.pytz = __import__("pytz")
         self.fmt = fmt or "%(asctime)s %(levelname)s %(module)s:%(funcName)s:%(lineno)d %(message)s"
         self.datefmt = datefmt or "%Y-%m-%d %H:%M:%S"
-        self.tz = timezone(tz)
+        self.tz = self.pytz.timezone(tz)
 
     def formatTime(self, record):
-        utc_time = datetime.utcfromtimestamp(record["created"]).replace(tzinfo=utc)
+        utc_time = self.datetime.datetime.utcfromtimestamp(record["created"]).replace(tzinfo=self.pytz.utc)
         local_time = utc_time.astimezone(self.tz)
         return local_time.strftime(self.datefmt)
 
@@ -46,14 +42,18 @@ class LoggerHandler:
     LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
 
     def __init__(self, log_level="DEBUG", tz="Asia/Jakarta"):
+        self.LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
+        self.datetime = __import__("datetime")
+        self.inspect = __import__("inspect")
+        self.sys = __import__("sys")
         self.log_level = self.LEVELS.get(log_level.upper(), 20)
         self.formatter = CustomFormatter(tz=tz)
 
     def log(self, level, message):
         if self.LEVELS[level] >= self.log_level:
-            frame = inspect.currentframe().f_back
+            frame = self.inspect.currentframe().f_back
             record = {
-                "created": datetime.now().timestamp(),
+                "created": self.datetime.datetime.now().timestamp(),
                 "levelname": level,
                 "module": frame.f_globals.get("__name__", "<unknown>"),
                 "funcName": frame.f_code.co_name,
@@ -61,7 +61,7 @@ class LoggerHandler:
                 "message": message,
             }
             formatted_message = self.formatter.format(record)
-            print(formatted_message, file=sys.stdout)
+            print(formatted_message, file=self.sys.stdout)
 
     def debug(self, message):
         self.log("DEBUG", message)
@@ -78,12 +78,12 @@ class LoggerHandler:
     def critical(self, message):
         self.log("CRITICAL", message)
 
-
-if __name__ == "__main__":
-    logger = LoggerHandler(log_level="DEBUG")
-
+try:
+    logger = LoggerHandler()
     logger.debug("Ini adalah pesan debug.")
     logger.info("Ini adalah pesan info.")
     logger.warning("Ini adalah pesan peringatan.")
     logger.error("Ini adalah pesan error.")
     logger.critical("Ini adalah pesan kritis.")
+except:
+    pass
