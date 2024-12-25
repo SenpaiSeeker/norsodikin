@@ -1,6 +1,7 @@
-import sys
 import inspect
+import sys
 from datetime import datetime
+
 from pytz import timezone, utc
 
 COLORS = {
@@ -12,6 +13,7 @@ COLORS = {
     "TIME": "\033[1;97m",
     "RESET": "\033[0m",
 }
+
 
 class CustomFormatter:
     def __init__(self, fmt=None, datefmt=None, tz="Asia/Jakarta"):
@@ -28,16 +30,17 @@ class CustomFormatter:
         level_color = COLORS.get(record["levelname"], COLORS["RESET"])
         record["levelname"] = f"{level_color}| {record['levelname']:<8}{COLORS['RESET']}"
         record["message"] = f"{level_color}| {record['message']}{COLORS['RESET']}"
-        
+
         formatted_time = self.formatTime(record)
         return self.fmt % {
             "asctime": f"{COLORS['TIME']}[{formatted_time}]{COLORS['RESET']}",
             "levelname": record["levelname"],
             "module": f"\033[1;96m| {record.get('module', '<unknown>')}",
-            "funcName": record.get('funcName', '<unknown>'),
-            "lineno": record.get('lineno', 0),
-            "message": record["message"]
+            "funcName": record.get("funcName", "<unknown>"),
+            "lineno": record.get("lineno", 0),
+            "message": record["message"],
         }
+
 
 class LoggerHandler:
     LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
@@ -74,6 +77,7 @@ class LoggerHandler:
 
     def critical(self, message):
         self.log("CRITICAL", message)
+
 
 if __name__ == "__main__":
     logger = LoggerHandler(log_level="DEBUG")
