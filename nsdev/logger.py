@@ -79,13 +79,3 @@ class LoggerHandler:
 
     def critical(self, message):
         self.log("CRITICAL", message)
-
-
-if __name__ == "__main__":
-    logger = LoggerHandler(log_level="DEBUG")
-
-    logger.debug("Ini adalah pesan debug.")
-    logger.info("Ini adalah pesan info.")
-    logger.warning("Ini adalah pesan peringatan.")
-    logger.error("Ini adalah pesan error.")
-    logger.critical("Ini adalah pesan kritis.")
