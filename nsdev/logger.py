@@ -1,11 +1,10 @@
-COLORS = {"INFO": "\033[1;92m", "DEBUG": "\033[1;94m", "WARNING": "\033[1;93m", "ERROR": "\033[1;91m", "CRITICAL": "\033[1;95m", "TIME": "\033[1;97m", "RESET": "\033[0m"}
-
-
 class CustomFormatter:
     def __init__(self, fmt=None, datefmt=None, tz="Asia/Jakarta"):
         self.datetime = __import__("datetime")
         self.pytz = __import__("pytz")
-        self.fmt = fmt or "%(asctime)s %(levelname)s %(module)s:%(funcName)s:%(lineno)d %(message)s"
+        self.sys = __import__("sys")
+        self.os = __import__("os")
+        self.fmt = fmt or "{asctime} {levelname} {module}:{funcName}:{lineno} {message}"
         self.datefmt = datefmt or "%Y-%m-%d %H:%M:%S"
         self.tz = self.pytz.timezone(tz)
 
@@ -15,38 +14,64 @@ class CustomFormatter:
         return local_time.strftime(self.datefmt)
 
     def format(self, record):
+        COLORS = {
+            "INFO": "\033[38;2;0;255;0m",      # Green
+            "DEBUG": "\033[38;2;0;128;255m",   # Light Blue
+            "WARNING": "\033[38;2;255;255;0m", # Yellow
+            "ERROR": "\033[38;2;255;0;0m",     # Red
+            "CRITICAL": "\033[38;2;255;0;255m", # Magenta
+            "TIME": "\033[38;2;255;255;255m",   # White
+            "MODULE": "\033[38;2;0;255;255m",   # Cyan
+            "RESET": "\033[0m",
+        }
+
         level_color = COLORS.get(record["levelname"], COLORS["RESET"])
         record["levelname"] = f"{level_color}| {record['levelname']:<8}{COLORS['RESET']}"
         record["message"] = f"{level_color}| {record['message']}{COLORS['RESET']}"
 
         formatted_time = self.formatTime(record)
-        return self.fmt % {
-            "asctime": f"{COLORS['TIME']}[{formatted_time}]{COLORS['RESET']}",
-            "levelname": record["levelname"],
-            "module": f"\033[1;96m| {record.get('module', '<unknown>')}",
-            "funcName": record.get("funcName", "<unknown>"),
-            "lineno": record.get("lineno", 0),
-            "message": record["message"],
-        }
-
+        return self.fmt.format(
+            asctime=f"{COLORS['TIME']}[{formatted_time}]{COLORS['RESET']}",
+            levelname=record["levelname"],
+            module=f"{COLORS['MODULE']}| {self.os.path.basename(record.get('module', '<unknown>'))}",
+            funcName=record.get("funcName", "<unknown>"),
+            lineno=record.get("lineno", 0),
+            message=record["message"],
+        )
 
 class LoggerHandler:
-    def __init__(self, name=__name__, log_level="DEBUG", tz="Asia/Jakarta"):
-        self.name = name
+    def __init__(self, log_level="DEBUG", tz="Asia/Jakarta"):
         self.LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
         self.datetime = __import__("datetime")
-        self.inspect = __import__("inspect")
         self.sys = __import__("sys")
+        self.os = __import__("os")
         self.log_level = self.LEVELS.get(log_level.upper(), 20)
         self.formatter = CustomFormatter(tz=tz)
+        self.get_frame = self.load_get_frame_function()
+
+    def get_frame_fallback(self, n):
+        try:
+            raise Exception
+        except Exception:
+            frame = self.sys.exc_info()[2].tb_frame.f_back
+            for _ in range(n):
+                frame = frame.f_back
+            return frame
+
+    def load_get_frame_function(self):
+        if hasattr(self.sys, "_getframe"):
+            return self.sys._getframe
+        else:
+            return self.get_frame_fallback
 
     def log(self, level, message):
         if self.LEVELS[level] >= self.log_level:
-            frame = self.inspect.currentframe().f_back
+            frame = self.get_frame(2)
+            filename = self.os.path.basename(frame.f_globals.get("__file__", "<unknown>"))
             record = {
                 "created": self.datetime.datetime.now().timestamp(),
                 "levelname": level,
-                "module": frame.f_globals.get(self.name, "<unknown>"),
+                "module": filename,
                 "funcName": frame.f_code.co_name,
                 "lineno": frame.f_lineno,
                 "message": message,
@@ -68,14 +93,3 @@ class LoggerHandler:
 
     def critical(self, message):
         self.log("CRITICAL", message)
-
-
-try:
-    logger = LoggerHandler()
-    logger.debug("Ini adalah pesan debug.")
-    logger.info("Ini adalah pesan info.")
-    logger.warning("Ini adalah pesan peringatan.")
-    logger.error("Ini adalah pesan error.")
-    logger.critical("Ini adalah pesan kritis.")
-except BaseException:
-    pass
