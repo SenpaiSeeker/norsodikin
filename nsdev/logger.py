@@ -15,13 +15,13 @@ class CustomFormatter:
 
     def format(self, record):
         COLORS = {
-            "INFO": "\033[38;2;0;255;0m",  # Green
-            "DEBUG": "\033[38;2;0;128;255m",  # Light Blue
-            "WARNING": "\033[38;2;255;255;0m",  # Yellow
-            "ERROR": "\033[38;2;255;0;0m",  # Red
-            "CRITICAL": "\033[38;2;255;0;255m",  # Magenta
-            "TIME": "\033[38;2;255;255;255m",  # White
-            "MODULE": "\033[38;2;0;255;255m",  # Cyan
+            "INFO": "\033[38;2;0;255;0m",      # Green
+            "DEBUG": "\033[38;2;0;128;255m",   # Light Blue
+            "WARNING": "\033[38;2;255;255;0m", # Yellow
+            "ERROR": "\033[38;2;255;0;0m",     # Red
+            "CRITICAL": "\033[38;2;255;0;255m", # Magenta
+            "TIME": "\033[38;2;255;255;255m",   # White
+            "MODULE": "\033[38;2;0;255;255m",   # Cyan
             "RESET": "\033[0m",
         }
 
@@ -39,7 +39,6 @@ class CustomFormatter:
             message=record["message"],
         )
 
-
 class LoggerHandler:
     def __init__(self, log_level="DEBUG", tz="Asia/Jakarta"):
         self.LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
@@ -48,22 +47,7 @@ class LoggerHandler:
         self.os = __import__("os")
         self.log_level = self.LEVELS.get(log_level.upper(), 20)
         self.formatter = CustomFormatter(tz=tz)
-        self.get_frame = self.load_get_frame_function()
-
-    def get_frame_fallback(self, n):
-        try:
-            raise Exception
-        except Exception:
-            frame = self.sys.exc_info()[2].tb_frame.f_back
-            for _ in range(n):
-                frame = frame.f_back
-            return frame
-
-    def load_get_frame_function(self):
-        if hasattr(self.sys, "_getframe"):
-            return self.sys._getframe
-        else:
-            return self.get_frame_fallback
+        self.get_frame = self.sys._getframe
 
     def log(self, level, message):
         if self.LEVELS[level] >= self.log_level:
