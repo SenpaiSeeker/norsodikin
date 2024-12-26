@@ -4,7 +4,7 @@ class CustomFormatter:
         self.pytz = __import__("pytz")
         self.sys = __import__("sys")
         self.os = __import__("os")
-        self.fmt = fmt or "{asctime} {levelname} {module}:{funcName}:{lineno} {message}"
+        self.fmt = fmt or "{asctime} {levelname} {module}:{funcName}:{lineno:<3} {message}"
         self.datefmt = datefmt or "%Y-%m-%d %H:%M:%S"
         self.tz = self.pytz.timezone(tz)
 
@@ -26,12 +26,12 @@ class CustomFormatter:
         }
 
         level_color = COLORS.get(record["levelname"], COLORS["RESET"])
-        record["levelname"] = f"{level_color}| {record['levelname']:<8}{COLORS['RESET']}"
+        record["levelname"] = f"{level_color}| {record['levelname']:<8}"
         record["message"] = f"{level_color}| {record['message']}{COLORS['RESET']}"
 
         formatted_time = self.formatTime(record)
         return self.fmt.format(
-            asctime=f"{COLORS['TIME']}[{formatted_time}]{COLORS['RESET']}",
+            asctime=f"{COLORS['TIME']}| [{formatted_time}]",
             levelname=record["levelname"],
             module=f"{COLORS['MODULE']}| {self.os.path.basename(record.get('module', '<unknown>'))}",
             funcName=record.get("funcName", "<unknown>"),
@@ -79,3 +79,13 @@ class LoggerHandler:
 
     def critical(self, message):
         self.log("CRITICAL", message)
+
+
+if __name__ == "__main__":
+    logger = LoggerHandler(log_level="DEBUG")
+
+    logger.debug("Ini adalah pesan debug.")
+    logger.info("Ini adalah pesan info.")
+    logger.warning("Ini adalah pesan peringatan.")
+    logger.error("Ini adalah pesan error.")
+    logger.critical("Ini adalah pesan kritis.")
