@@ -4,7 +4,7 @@ class CustomFormatter:
         self.pytz = __import__("pytz")
         self.sys = __import__("sys")
         self.os = __import__("os")
-        self.fmt = fmt or "{asctime} {levelname} {module}:{funcName}:{lineno:<3} {message}"
+        self.fmt = fmt or "{asctime} {levelname} {module}:{funcName}:{lineno} {message}"
         self.datefmt = datefmt or "%Y-%m-%d %H:%M:%S"
         self.tz = self.pytz.timezone(tz)
 
