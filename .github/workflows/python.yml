@@ -1,4 +1,4 @@
-name: Python Code Improvements
+name: Code Improvements
 
 on: [push, pull_request]
 
@@ -20,20 +20,57 @@ jobs:
           python -m pip install --upgrade pip
           pip install autopep8 autoflake black flake8 isort
 
-      - name: Run Flake8 for Linting
-        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+      - name: Run Flake8 for Python Linting
+        run: |
+          flake8 . \
+            --count \
+            --select=E9,F63,F7,F82 \
+            --show-source \
+            --statistics
 
-      - name: Fix Syntax with Autopep8
-        run: autopep8 --verbose --in-place --recursive --aggressive --aggressive --ignore=W605 . --exclude __init__.py
+      - name: Fix Python Syntax with Autopep8
+        run: |
+          autopep8 . \
+            --verbose \
+            --in-place \
+            --recursive \
+            --aggressive \
+            --aggressive \
+            --ignore=W605 \
+            --exclude __init__.py
 
-      - name: Remove Unused Imports and Variables
-        run: autoflake --in-place --recursive --remove-all-unused-imports --remove-unused-variables --ignore-init-module-imports .
+      - name: Remove Unused Imports and Variables in Python
+        run: |
+          autoflake . \
+            --in-place \
+            --recursive \
+            --remove-all-unused-imports \
+            --remove-unused-variables \
+            --ignore-init-module-imports
 
-      - name: Format Code with Black
+      - name: Format Python Code with Black
         run: black . --line-length 256
 
-      - name: Sort Imports with Isort
+      - name: Sort Python Imports with Isort
         run: isort . --profile black
+
+      - name: Lint and Format JavaScript Code
+        run: |
+          npm install -g eslint prettier
+          eslint --fix .
+          prettier --write .
+
+      - name: Format Shell Scripts
+        run: |
+          sudo apt-get install -y shfmt
+          find . -name "*.sh" -exec shfmt -w {} +
+
+      - name: Generate Commit Message with Timestamp
+        id: timestamp
+        run: |
+          echo "commit_message=$(date '+%Y:%m:%d %H:%M:%S' --date='Asia/Jakarta')" >> $GITHUB_ENV
 
       - name: Commit Changes
         uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Code improvement: ${{ env.commit_message }}"
