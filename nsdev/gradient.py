@@ -33,6 +33,7 @@ class Gradient:
 
     def countdown(self, seconds, text="Tungu sebentar {time} untuk melanjutkan"):
         bar_length = 30
+        print()
         for remaining in range(seconds, -1, -1):
             hours, remainder = divmod(remaining, 3600)
             minutes, secs = divmod(remainder, 60)
