@@ -1,82 +1,72 @@
-class BytesCipher:
-    def __init__(self, key: int = 31099):
-        self.key = key
+class CipherHandler:
+    def __init__(self, **options):
+        self.method = options.get("method", "shift")
+        self.key = options.get("key", 31099)
+        self.delimiter = options.get("delimiter", "|")
+        self.log = __import__("nsdev").logger.LoggerHandler()
 
     def _xor_encrypt_decrypt(self, data: bytes):
         key_bytes = self.key.to_bytes((self.key.bit_length() + 7) // 8, byteorder="big")
         return bytes([data[i] ^ key_bytes[i % len(key_bytes)] for i in range(len(data))])
 
-    def encrypt(self, data: str):
+    def encrypt_bytes(self, data: str) -> str:
         serialized_data = __import__("textwrap").dedent(data).encode("utf-8")
         encrypted_data = self._xor_encrypt_decrypt(serialized_data)
         return __import__("base64").urlsafe_b64encode(encrypted_data).decode("utf-8").rstrip("=")
 
-    def decrypt(self, encrypted_data: str):
+    def decrypt_bytes(self, encrypted_data: str) -> str:
         try:
-            padding_needed = 4 - (len(encrypted_data) % 4)
-            if padding_needed:
-                encrypted_data += "=" * padding_needed
+            encrypted_data += "=" * (4 - len(encrypted_data) % 4) if len(encrypted_data) % 4 != 0 else ""
             encrypted_bytes = __import__("base64").urlsafe_b64decode(encrypted_data.encode("utf-8"))
             decrypted_bytes = self._xor_encrypt_decrypt(encrypted_bytes)
             return decrypted_bytes.decode("utf-8")
         except (ValueError, UnicodeDecodeError) as error:
-            raise Exception(f"\033[1;31m[ERROR] \033[1;35m|| \033[1;37m{error}\033[0m")
+            self.log.error(error)
 
-
-class BinaryCipher:
-    def __init__(self, key: int = 31099):
-        self.key = key
-
-    def encrypt(self, plaintext: str):
+    def encrypt_binary(self, plaintext: str) -> str:
         encrypted_bits = "".join(format(ord(char) ^ (self.key % 256), "08b") for char in plaintext)
         return encrypted_bits
 
-    def decrypt(self, encrypted_bits: str):
+    def decrypt_binary(self, encrypted_bits: str) -> str:
         if len(encrypted_bits) % 8 != 0:
-            raise ValueError("Data biner yang dienkripsi tidak valid.")
+            self.log.error("Data biner yang dienkripsi tidak valid.")
         decrypted_chars = [chr(int(encrypted_bits[i : i + 8], 2) ^ (self.key % 256)) for i in range(0, len(encrypted_bits), 8)]
         return "".join(decrypted_chars)
 
-
-class ShiftCipher:
-    def __init__(self, key: int = 31099, delimiter: str = "|"):
-        self.key = key
-        self.delimiter = delimiter
-
-    def encrypt(self, text: str) -> str:
+    def encrypt_shift(self, text: str) -> str:
         encoded = self.delimiter.join(str(ord(char) + self.key) for char in text)
         return encoded
 
-    def decrypt(self, encoded_text: str) -> str:
+    def decrypt_shift(self, encoded_text: str) -> str:
         decoded = "".join(chr(int(code) - self.key) for code in encoded_text.split(self.delimiter))
         return decoded
 
+    def encrypt(self, data: str) -> str:
+        if self.method == "bytes":
+            return self.encrypt_bytes(data)
+        elif self.method == "binary":
+            return self.encrypt_binary(data)
+        elif self.method == "shift":
+            return self.encrypt_shift(data)
+        else:
+            self.log.error(f"Metode enkripsi '{self.method}' tidak dikenali.")
 
-class cipher:
-    def __init__(self, method: str, key: int = 31099):
-        self.method = method
-        self.key = key
-        self.log = __import__("nsdev").logger.LoggerHandler()
-        self.cipher_classes = {
-            "shift": ShiftCipher(key=self.key),
-            "binary": BinaryCipher(key=self.key),
-            "bytes": BytesCipher(key=self.key),
-        }
-
-    def start(self, encrypted_data: str):
-        try:
-            cipher = self.cipher_classes.get(self.method)
-            return cipher.decrypt(encrypted_data) if cipher else encrypted_data
-        except Exception as e:
-            self.log.error(e)
+    def decrypt(self, encrypted_data: str) -> str:
+        if self.method == "bytes":
+            return self.decrypt_bytes(encrypted_data)
+        elif self.method == "binary":
+            return self.decrypt_binary(encrypted_data)
+        elif self.method == "shift":
+            return self.decrypt_shift(encrypted_data)
+        else:
+            self.log.error(f"Metode dekripsi '{self.method}' tidak dikenali.")
 
     def save(self, filename: str, code: str):
         try:
-            cipher = self.cipher_classes.get(self.method)
-            encoded_code = cipher.encrypt(code) if cipher else code
-            result = f"exec(__import__('nsdev').cipher(method='{self.method}', key={self.key}).start('{encoded_code}'))"
+            encrypted_code = self.encrypt(code)
+            result = f"exec(__import__('nsdev').CipherHandler(method='{self.method}', key={self.key}).decrypt('{encrypted_code}'))"
             with open(filename, "w") as file:
                 file.write(result)
-            self.log.info(f"code successfully saved to file {filename}")
+            self.log.info(f"Kode berhasil disimpan ke file {filename}")
         except Exception as e:
-            self.log.error(f"Error saving file: {e}")
+            self.log.error(f"Saving file: {e}")
