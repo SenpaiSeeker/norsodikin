@@ -3,13 +3,13 @@ class DataBase:
         """
         Inisialisasi database dengan parameter opsional.
 
-        :param options: 
+        :param options:
             - storage_type: 'local' (default) atau 'mongo'
             - file_name: Nama file untuk database lokal (default: 'database')
             - binary_keys: Kunci enkripsi untuk CipherHandler (default: 14151819154911914)
             - method_encrypt: metode enkripsi untuk CipherHandler (default: bytes)
             - mongo_url: URL MongoDB (untuk storage_type='mongo')
-            - git_repo_path: Path untuk operasi git (default: '.') 
+            - git_repo_path: Path untuk operasi git (default: '.')
         """
         self.os = __import__("os")
         self.json = __import__("json")
@@ -35,7 +35,7 @@ class DataBase:
             self._initialize_files()
 
         self.cipher = __import__("nsdev").encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt, delimiter="/")
-        
+
     def _initialize_files(self):
         if not self.os.path.exists(self.data_file):
             self._save_data({"vars": {}, "bots": []})
