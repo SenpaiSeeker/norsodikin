@@ -1,5 +1,13 @@
 class CipherHandler:
     def __init__(self, **options):
+        """
+        Inisialisasi CipherHandler dengan opsi konfigurasi.
+
+        :param options: 
+            - method (str): Metode enkripsi yang digunakan. Pilihan: 'shift', 'bytes', 'binary'. Default: 'shift'.
+            - key (int): Kunci enkripsi/dekripsi. Default: 31099.
+            - delimiter (str): Delimiter yang digunakan untuk metode 'shift'. Default: '|'.
+        """
         self.method = options.get("method", "shift")
         self.key = options.get("key", 31099)
         self.delimiter = options.get("delimiter", "|")
