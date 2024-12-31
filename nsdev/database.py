@@ -160,6 +160,16 @@ class DataBase:
         else:
             return None
 
+    def checkAndDeleteIfExpired(self, user_id):
+        user_exp = self.getExp(user_id)
+        today = self.datetime.datetime.now(self.pytz.timezone("Asia/Jakarta")).strftime("%d-%m-%Y")
+
+        if user_exp == today:
+            self.removeAllVars(user_id)
+            self.removeBot(user_id)
+            return True
+        return False
+
     def saveBot(self, user_id, api_id, api_hash, value, is_token=False):
         field = "bot_token" if is_token else "session_string"
         if self.storage_type == "mongo":
