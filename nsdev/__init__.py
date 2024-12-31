@@ -1,5 +1,5 @@
 from .addUser import SSHUserManager
-from .database import LocalDataBase, MongoDataBase
+from .database import DataBase
 from .encrypt import CipherHandler
 from .gradient import Gradient
 from .logger import LoggerHandler
