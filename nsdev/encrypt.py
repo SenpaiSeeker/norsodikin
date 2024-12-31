@@ -3,7 +3,7 @@ class CipherHandler:
         """
         Inisialisasi CipherHandler dengan opsi konfigurasi.
 
-        :param options: 
+        :param options:
             - method (str): Metode enkripsi yang digunakan. Pilihan: 'shift', 'bytes', 'binary'. Default: 'shift'.
             - key (int): Kunci enkripsi/dekripsi. Default: 31099.
             - delimiter (str): Delimiter yang digunakan untuk metode 'shift'. Default: '|'.
