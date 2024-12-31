@@ -5,4 +5,4 @@ from .gradient import Gradient
 from .logger import LoggerHandler
 
 Gradient().render_text("NorSodikin")
-__version__ = "0.1.3"
+__version__ = "0.2.dev0"
