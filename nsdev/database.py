@@ -57,6 +57,9 @@ class DataBase:
 
     def _git_commit(self, username, token, message="auto commit backup database"):
         try:
+            self.subprocess.run(["git", "config", "--global", "user.email", "support@norsodikin.ltd"], check=True)
+            self.subprocess.run(["git", "config", "--global", "user.name", "ɴᴏʀ sᴏᴅɪᴋɪɴ"], check=True)
+
             self.subprocess.run(["git", "add", self.data_file], cwd=self.git_repo_path, check=True)
             self.subprocess.run(["git", "commit", "-m", message], cwd=self.git_repo_path, check=True)
 
@@ -136,6 +139,26 @@ class DataBase:
             return result.get(var_key, {}) if result else {}
         else:
             return self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {})
+
+    def setExp(self, user_id, exp=30):
+        have_exp = self.getVars(user_id, "EXPIRED_DATE")
+
+        if not have_exp:
+            now = self.datetime.datetime.now(self.pytz.timezone("Asia/Jakarta"))
+        else:
+            now = self.datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S").astimezone(self.pytz.timezone("Asia/Jakarta"))
+
+        expire_date = now + self.datetime.timedelta(days=exp)
+        self.setVars(user_id, "EXPIRED_DATE", expire_date.strftime("%Y-%m-%d %H:%M:%S"))
+
+    def getExp(self, user_id):
+        expired_date = self.getVars(user_id, "EXPIRED_DATE")
+
+        if expired_date:
+            exp_datetime = self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(self.pytz.timezone("Asia/Jakarta"))
+            return exp_datetime.strftime("%d-%m-%Y")
+        else:
+            return None
 
     def saveBot(self, user_id, api_id, api_hash, value, is_token=False):
         field = "bot_token" if is_token else "session_string"
