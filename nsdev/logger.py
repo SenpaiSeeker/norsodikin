@@ -1,12 +1,16 @@
-class CustomFormatter:
-    def __init__(self, fmt=None, datefmt=None, tz="Asia/Jakarta"):
+class LoggerHandler:
+    def __init__(self, log_level="DEBUG", tz="Asia/Jakarta", fmt=None, datefmt=None):
+        self.LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
         self.datetime = __import__("datetime")
         self.pytz = __import__("pytz")
         self.sys = __import__("sys")
         self.os = __import__("os")
+
+        self.log_level = self.LEVELS.get(log_level.upper(), 20)
+        self.tz = self.pytz.timezone(tz)
         self.fmt = fmt or "{asctime} {levelname} {module}:{funcName}:{lineno} {message}"
         self.datefmt = datefmt or "%Y-%m-%d %H:%M:%S"
-        self.tz = self.pytz.timezone(tz)
+        self.get_frame = 
 
     def formatTime(self, record):
         utc_time = self.datetime.datetime.utcfromtimestamp(record["created"]).replace(tzinfo=self.pytz.utc)
@@ -39,20 +43,9 @@ class CustomFormatter:
             message=record["message"],
         )
 
-
-class LoggerHandler:
-    def __init__(self, log_level="DEBUG", tz="Asia/Jakarta"):
-        self.LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
-        self.datetime = __import__("datetime")
-        self.sys = __import__("sys")
-        self.os = __import__("os")
-        self.log_level = self.LEVELS.get(log_level.upper(), 20)
-        self.formatter = CustomFormatter(tz=tz)
-        self.get_frame = self.sys._getframe
-
     def log(self, level, message):
-        if self.LEVELS[level] >= self.log_level:
-            frame = self.get_frame(2)
+        if self.LEVELS.get(level, 0) >= self.log_level:
+            frame = self.sys._getframe(2)
             filename = self.os.path.basename(frame.f_globals.get("__file__", "<unknown>"))
             record = {
                 "created": self.datetime.datetime.now().timestamp(),
@@ -62,7 +55,7 @@ class LoggerHandler:
                 "lineno": frame.f_lineno,
                 "message": message,
             }
-            formatted_message = self.formatter.format(record)
+            formatted_message = self.format(record)
             print(formatted_message, file=self.sys.stdout)
 
     def debug(self, message):
