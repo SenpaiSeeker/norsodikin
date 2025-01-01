@@ -1,5 +1,14 @@
 class LoggerHandler:
     def __init__(self, **options):
+        """
+        Inisialisasi logger dengan parameter opsional.
+
+        :param options:
+            - log_level: Level log (default: 'DEBUG')
+            - tz: Zona waktu untuk waktu lokal (default: 'Asia/Jakarta')
+            - fmt: Format log (default: '{asctime} {levelname} {module}:{funcName}:{lineno} {message}')
+            - datefmt: Format tanggal dan waktu (default: '%Y-%m-%d %H:%M:%S')
+        """
         self.LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
         self.datetime = __import__("datetime")
         self.pytz = __import__("pytz")
