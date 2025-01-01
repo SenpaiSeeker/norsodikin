@@ -164,7 +164,7 @@ class DataBase:
         user_exp = self.getExp(user_id)
         today = self.datetime.datetime.now(self.pytz.timezone("Asia/Jakarta")).strftime("%d-%m-%Y")
 
-        if user_exp == today:
+        if not user_exp or user_exp == today:
             self.removeAllVars(user_id)
             self.removeBot(user_id)
             return True
