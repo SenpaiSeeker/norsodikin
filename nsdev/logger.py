@@ -10,7 +10,6 @@ class LoggerHandler:
         self.tz = self.pytz.timezone(tz)
         self.fmt = fmt or "{asctime} {levelname} {module}:{funcName}:{lineno} {message}"
         self.datefmt = datefmt or "%Y-%m-%d %H:%M:%S"
-        self.get_frame = 
 
     def formatTime(self, record):
         utc_time = self.datetime.datetime.utcfromtimestamp(record["created"]).replace(tzinfo=self.pytz.utc)
