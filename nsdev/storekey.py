@@ -1,5 +1,5 @@
 class KeyManager:
-    def __init__(self,  filename: str = "temp_key.txt"):
+    def __init__(self, filename: str = "temp_key.txt"):
         self.argparse = __import__("argparse")
         self.tempfile = __import__("tempfile")
         self.os = __import__("os")
@@ -21,7 +21,7 @@ class KeyManager:
             try:
                 with open(self.temp_file, "r") as file:
                     saved_key = self.cipher.decrypt(file.read().strip())
-                return saved_key 
+                return saved_key
             except OSError as e:
                 self.logger.error(f"Terjadi kesalahan saat membaca key: {e}")
                 self.sys.exit(1)
