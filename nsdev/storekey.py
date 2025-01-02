@@ -5,12 +5,13 @@ class KeyManager:
         self.os = __import__("os")
         self.sys = __import__("sys")
         self.logger = __import__("nsdev").logger.LoggerHandler()
+        self.cipher = __import__("nsdev").encrypt.CipherHandler(method="bytes")
         self.temp_file = self.os.path.join(self.tempfile.gettempdir(), filename)
 
     def save_key(self, key):
         try:
-            with open(self.temp_file, "w") as f:
-                f.write(key)
+            with open(self.temp_file, "w") as file:
+                file.write(self.cipher.encrypt(key))
         except OSError as e:
             self.logger.error(f"Terjadi kesalahan saat menyimpan key: {e}")
             self.sys.exit(1)
@@ -18,8 +19,8 @@ class KeyManager:
     def read_key(self):
         if self.os.path.exists(self.temp_file):
             try:
-                with open(self.temp_file, "r") as f:
-                    saved_key = f.read().strip()
+                with open(self.temp_file, "r") as file:
+                    saved_key = self.cipher.decrypt(file.read().strip())
                 return saved_key 
             except OSError as e:
                 self.logger.error(f"Terjadi kesalahan saat membaca key: {e}")
