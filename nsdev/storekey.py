@@ -34,4 +34,4 @@ class KeyManager:
         parser.add_argument("--key", type=str, help="Key yang ingin disimpan atau digunakan.")
         args = parser.parse_args()
 
-        return self.save_key(args.key) if args.key else self.read_key(
+        return self.save_key(args.key) if args.key else self.read_key()
