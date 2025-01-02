@@ -1,11 +1,11 @@
 class KeyManager:
-    def __init__(self):
+    def __init__(self,  filename: str = "temp_key.txt"):
         self.argparse = __import__("argparse")
         self.tempfile = __import__("tempfile")
         self.os = __import__("os")
         self.sys = __import__("sys")
         self.logger = __import__("nsdev").logger.LoggerHandler()
-        self.temp_file = self.os.path.join(self.tempfile.gettempdir(), "temp_key.txt")
+        self.temp_file = self.os.path.join(self.tempfile.gettempdir(), filename)
 
     def save_key(self, key):
         try:
