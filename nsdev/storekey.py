@@ -41,6 +41,6 @@ class KeyManager:
         self.logger.error(message)
         self.sys.exit(1)
 
-   def _handle_warning(self, message: str):
+    def _handle_warning(self, message: str):
         self.logger.warning(message)
         self.sys.exit(1)
