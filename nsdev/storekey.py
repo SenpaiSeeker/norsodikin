@@ -1,55 +1,46 @@
 class KeyManager:
-    def __init__(self, filename: str = "temp_key.json"):
-        self.os = __import__("os")
-        self.sys = __import__("sys")
-        self.json = __import__("json")
+    def __init__(self, filename: str = "temp_key.txt"):
         self.argparse = __import__("argparse")
         self.tempfile = __import__("tempfile")
-
+        self.os = __import__("os")
+        self.sys = __import__("sys")
         nsdev = __import__("nsdev")
+
         self.logger = nsdev.logger.LoggerHandler()
         self.cipher = nsdev.encrypt.CipherHandler(method="bytes")
 
         self.temp_file = self.os.path.join(self.tempfile.gettempdir(), filename)
 
-    def save_key(self, key: str, env: str):
+    def save_key(self, key: str):
         try:
-            data = {
-                "key": self.cipher.encrypt(key),
-                "env": self.cipher.encrypt(env),
-            }
             with open(self.temp_file, "w") as file:
-                self.json.dump(data, file, indent=4)
+                file.write(self.cipher.encrypt(key))
         except OSError as e:
-            self.logger.error(f"Kesalahan saat menyimpan key: {e}")
-            self.sys.exit(1)
+            self._handle_error(f"Terjadi kesalahan saat menyimpan key: {e}")
 
     def read_key(self):
-        if not self.os.path.exists(self.temp_file):
-            self.logger.warning("Tidak ada key yang disimpan. Jalankan ulang program dengan --key dan --env")
-            self.sys.exit(1)
-
         try:
             with open(self.temp_file, "r") as file:
-                data = self.json.load(file)
-            return (
-                self.cipher.decrypt(data["key"]),
-                self.cipher.decrypt(data["env"]),
-            )
+                return self.cipher.decrypt(file.read().strip())
+        except FileNotFoundError:
+            self._handle_warning("Tidak ada key yang disimpan. Jalankan ulang program dengan --key")
         except OSError as e:
-            self.logger.error(f"Kesalahan saat membaca key: {e}")
-            self.sys.exit(1)
-        except self.json.JSONDecodeError as e:
-            self.logger.error(f"Kesalahan format file JSON: {e}")
-            self.sys.exit(1)
+            self._handle_error(f"Terjadi kesalahan saat membaca key: {e}")
 
-    def handle_arguments(self):
+    def handle_arguments(self) -> str:
         parser = self.argparse.ArgumentParser()
         parser.add_argument("--key", type=str, help="Key yang ingin disimpan atau digunakan.")
-        parser.add_argument("--env", type=str, help="Nama file environment.")
         args = parser.parse_args()
 
-        if args.key and args.env:
-            self.save_key(args.key, args.env)
+        if args.key:
+            self.save_key(args.key)
 
         return self.read_key()
+
+    def _handle_error(self, message: str):
+        self.logger.error(message)
+        self.sys.exit(1)
+
+   def _handle_warning(self, message: str):
+        self.logger.warning(message)
+        self.sys.exit(1)
