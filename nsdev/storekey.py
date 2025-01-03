@@ -18,7 +18,7 @@ class KeyManager:
         except OSError as e:
             self._handle_error(f"Terjadi kesalahan saat menyimpan key: {e}")
 
-    def read_key(self):
+    def read_key(self) -> str:
         try:
             with open(self.temp_file, "r") as file:
                 return self.cipher.decrypt(file.read().strip())
