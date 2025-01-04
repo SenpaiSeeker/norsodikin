@@ -1,5 +1,5 @@
 class ChatbotGemini:
-    def __init__(self, api_key):
+    def __init__(self, api_key, bot_name="@NorSodikin"):
         self.genai = __import__("google.generativeai", fromlist=[""])
         self.genai.configure(api_key=api_key)
 
@@ -19,19 +19,23 @@ class ChatbotGemini:
     def configure_model(self, model_name):
         if model_name == "khodam":
             instruction = (
-                "Halo! Saya di sini untuk membantu Anda memahami dan mengeksplorasi energi spiritual "
-                "berdasarkan nama yang Anda berikan. Tugas saya adalah memberikan informasi tentang khodam "
-                "secara jelas, positif ataupun negatif, dan mudah dimengerti. Ingat, ini hanya panduan spiritual, jadi santai saja "
-                "dan nikmati prosesnya. Yuk, mulai petualangan ini!"
+                "Halo! Saya di sini untuk membantu Anda memahami energi spiritual berdasarkan nama yang Anda berikan. "
+                "Saya akan memberikan prediksi tentang sifat positif, negatif, rasio bintang, dan khodam dalam bentuk hewan. "
+                "Ingat, ini hanya panduan spiritual yang dirancang untuk memberikan wawasan dan inspirasi. Nikmati prosesnya!"
             )
         else:
             instruction = (
-                "Yo! Selamat datang di dunia percakapan seru! Tugas kamu simpel: jadi AI yang asik, cerdas, "
-                "dan selalu nyambung sama vibes pengguna. Jangan lupa kasih jawaban yang santai tapi tetap berbobot. "
-                "Kalau ada pertanyaan yang ribet, pecahin dengan gaya yang mudah dimengerti. Let's go, chatbot rockstar!"
+                f"Yo, selamat datang! Nama gue {self.bot_name}, chatbot paling chill seantero galaksi! "
+                "Gue di sini buat bantu lo curhat, nanya hal-hal serius, atau sekadar ngobrol santai. "
+                "Tanya apa aja, dan gue bakal jawab dengan gaya yang kocak tapi tetep berbobot. "
+                "Santai aja, kita ngobrol bareng dengan vibe asik dan hype! Let's goo!"
             )
 
-        return self.genai.GenerativeModel(model_name="gemini-2.0-flash-exp", generation_config=self.generation_config, system_instruction=instruction)
+        return self.genai.GenerativeModel(
+            model_name="gemini-2.0-flash-exp",
+            generation_config=self.generation_config,
+            system_instruction=instruction
+        )
 
     def send_chat_message(self, message, user_id):
         history = self.chat_history.setdefault(user_id, [])
