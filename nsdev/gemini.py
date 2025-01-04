@@ -11,7 +11,7 @@ class ChatbotGemini:
             "response_mime_type": "text/plain",
         }
 
-        self.bot_name = bot_name 
+        self.bot_name = bot_name
         self.chat_model = self.configure_model("chatbot")
         self.khodam_model = self.configure_model("khodam")
 
