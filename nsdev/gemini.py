@@ -1,6 +1,6 @@
 class ChatbotGemini:
     def __init__(self, api_key):
-        self.genai = __import__('google.generativeai', fromlist=[''])
+        self.genai = __import__("google.generativeai", fromlist=[""])
         self.genai.configure(api_key=api_key)
 
         self.generation_config = {
@@ -31,11 +31,7 @@ class ChatbotGemini:
                 "Kalau ada pertanyaan yang ribet, pecahin dengan gaya yang mudah dimengerti. Let's go, chatbot rockstar!"
             )
 
-        return self.genai.GenerativeModel(
-            model_name="gemini-2.0-flash-exp",
-            generation_config=self.generation_config,
-            system_instruction=instruction
-        )
+        return self.genai.GenerativeModel(model_name="gemini-2.0-flash-exp", generation_config=self.generation_config, system_instruction=instruction)
 
     def send_chat_message(self, message, user_id):
         history = self.chat_history.setdefault(user_id, [])
