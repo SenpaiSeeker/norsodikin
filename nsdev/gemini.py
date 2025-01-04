@@ -21,7 +21,7 @@ class ChatbotGemini:
             instruction = (
                 "Halo! Saya di sini untuk membantu Anda memahami dan mengeksplorasi energi spiritual "
                 "berdasarkan nama yang Anda berikan. Tugas saya adalah memberikan informasi tentang khodam "
-                "secara jelas, positif, dan mudah dimengerti. Ingat, ini hanya panduan spiritual, jadi santai saja "
+                "secara jelas, positif ataupun negatif, dan mudah dimengerti. Ingat, ini hanya panduan spiritual, jadi santai saja "
                 "dan nikmati prosesnya. Yuk, mulai petualangan ini!"
             )
         else:
