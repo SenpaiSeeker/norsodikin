@@ -1,0 +1,51 @@
+class ChatbotGemini:
+    def __init__(self, api_key):
+        self.genai = __import__('google.generativeai', fromlist=[''])
+        self.genai.configure(api_key=api_key)
+
+        self.generation_config = {
+            "temperature": 1,
+            "top_p": 0.95,
+            "top_k": 40,
+            "max_output_tokens": 8192,
+            "response_mime_type": "text/plain",
+        }
+
+        self.chat_model = self.configure_model("chatbot")
+        self.khodam_model = self.configure_model("khodam")
+
+        self.chat_history = {}
+
+    def configure_model(self, model_name):
+        if model_name == "khodam":
+            instruction = (
+                "Halo! Saya di sini untuk membantu Anda memahami dan mengeksplorasi energi spiritual "
+                "berdasarkan nama yang Anda berikan. Tugas saya adalah memberikan informasi tentang khodam "
+                "secara jelas, positif, dan mudah dimengerti. Ingat, ini hanya panduan spiritual, jadi santai saja "
+                "dan nikmati prosesnya. Yuk, mulai petualangan ini!"
+            )
+        else:
+            instruction = (
+                "Yo! Selamat datang di dunia percakapan seru! Tugas kamu simpel: jadi AI yang asik, cerdas, "
+                "dan selalu nyambung sama vibes pengguna. Jangan lupa kasih jawaban yang santai tapi tetap berbobot. "
+                "Kalau ada pertanyaan yang ribet, pecahin dengan gaya yang mudah dimengerti. Let's go, chatbot rockstar!"
+            )
+
+        return self.genai.GenerativeModel(
+            model_name="gemini-2.0-flash-exp",
+            generation_config=self.generation_config,
+            system_instruction=instruction
+        )
+
+    def send_chat_message(self, message, user_id):
+        history = self.chat_history.setdefault(user_id, [])
+        history.append({"role": "user", "parts": message})
+
+        response = self.chat_model.start_chat(history=history).send_message(message)
+        history.append({"role": "assistant", "parts": response.text})
+
+        return response.text
+
+    def send_khodam_message(self, name):
+        response = self.khodam_model.start_chat(history=[]).send_message(name)
+        return response.text
