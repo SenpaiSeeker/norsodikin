@@ -14,10 +14,7 @@ class KeyManager:
 
     def save_key(self, key: str, env: str):
         try:
-            data = {
-                "key": self.cipher.encrypt(key),
-                "env": self.cipher.encrypt(env)
-            }
+            data = {"key": self.cipher.encrypt(key), "env": self.cipher.encrypt(env)}
             with open(self.temp_file, "w") as file:
                 self.json.dump(data, file, indent=4)
         except OSError as e:
@@ -32,10 +29,7 @@ class KeyManager:
         try:
             with open(self.temp_file, "r") as file:
                 data = self.json.load(file)
-            return (
-                self.cipher.decrypt(data["key"]),
-                self.cipher.decrypt(data["env"])
-            )
+            return (self.cipher.decrypt(data["key"]), self.cipher.decrypt(data["env"]))
         except OSError as e:
             self.logger.error(f"Kesalahan saat membaca key: {e}")
             self.sys.exit(1)
