@@ -16,7 +16,7 @@ class KeyManager:
         try:
             data = {
                 "key": self.cipher.encrypt(key),
-                "env": self.cipher.encrypt(env),
+                "env": self.cipher.encrypt(env)
             }
             with open(self.temp_file, "w") as file:
                 self.json.dump(data, file, indent=4)
@@ -34,7 +34,7 @@ class KeyManager:
                 data = self.json.load(file)
             return (
                 self.cipher.decrypt(data["key"]),
-                self.cipher.decrypt(data["env"]),
+                self.cipher.decrypt(data["env"])
             )
         except OSError as e:
             self.logger.error(f"Kesalahan saat membaca key: {e}")
