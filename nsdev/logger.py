@@ -38,7 +38,7 @@ class LoggerHandler:
         }
 
         level_color = COLORS.get(record["levelname"], COLORS["RESET"])
-        record["levelname"] = f"{level_color}| {record['levelname']:<8}"
+        record["levelname"] = f"{level_color}| {record['levelname']}"
         record["message"] = f"{level_color}| {record['message']}{COLORS['RESET']}"
 
         formatted_time = self.formatTime(record)
