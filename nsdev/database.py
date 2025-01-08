@@ -14,7 +14,7 @@ class DataBase:
         self.os = __import__("os")
         self.json = __import__("json")
         self.datetime = __import__("datetime")
-        self.pytz = __import__("pytz")
+        self.zoneinfo = __import__("zoneinfo")
         self.subprocess = __import__("subprocess")
 
         self.storage_type = options.get("storage_type", "local")
@@ -34,7 +34,11 @@ class DataBase:
             self.data_file = f"{self.file_name}.json"
             self._initialize_files()
 
-        self.cipher = __import__("nsdev").encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt, delimiter="/")
+        try:
+            nsdev = __import__("nsdev")
+            self.cipher = nsdev.encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt, delimiter="/")
+        except ImportError as e:
+            raise ImportError("Failed to import nsdev or CipherHandler: {}".format(e))
 
     def _initialize_files(self):
         if not self.os.path.exists(self.data_file):
@@ -55,73 +59,54 @@ class DataBase:
         with open(self.data_file, "w") as f:
             self.json.dump(data, f, indent=4)
 
-    def _git_commit(self, username, token, message="auto commit backup database"):
-        try:
-            self.subprocess.run(["git", "config", "--global", "user.email", "support@norsodikin.ltd"], check=True)
-            self.subprocess.run(["git", "config", "--global", "user.name", "ɴᴏʀ sᴏᴅɪᴋɪɴ"], check=True)
-
-            self.subprocess.run(["git", "add", self.data_file], cwd=self.git_repo_path, check=True)
-            self.subprocess.run(["git", "commit", "-m", message], cwd=self.git_repo_path, check=True)
-
-            push_command = f'echo "{username}:{token}" | git push'
-            self.subprocess.run(push_command, shell=True, cwd=self.git_repo_path, check=True)
-            return "Backup committed and pushed successfully."
-        except self.subprocess.CalledProcessError as e:
-            return f"Error during git operations: {e}"
-
     def setVars(self, user_id, query_name, value, var_key="variabel"):
+        encrypted_value = self.cipher.encrypt(value)
         if self.storage_type == "mongo":
-            update_data = {"$set": {f"{var_key}.{query_name}": value}}
+            update_data = {"$set": {f"{var_key}.{query_name}": encrypted_value}}
             self.data.vars.update_one({"_id": user_id}, update_data, upsert=True)
         else:
             data = self._load_data()
             user_data = data["vars"].setdefault(str(user_id), {var_key: {}})
-            user_data[var_key][query_name] = value
+            user_data[var_key][query_name] = encrypted_value
             self._save_data(data)
 
     def getVars(self, user_id, query_name, var_key="variabel"):
         if self.storage_type == "mongo":
             result = self.data.vars.find_one({"_id": user_id})
-            return result.get(var_key, {}).get(query_name, None) if result else None
+            encrypted_value = result.get(var_key, {}).get(query_name, None) if result else None
         else:
-            return self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
-
-    def removeVars(self, user_id, query_name, var_key="variabel"):
-        if self.storage_type == "mongo":
-            update_data = {"$unset": {f"{var_key}.{query_name}": ""}}
-            self.data.vars.update_one({"_id": user_id}, update_data)
-        else:
-            data = self._load_data()
-            if str(user_id) in data["vars"]:
-                data["vars"][str(user_id)][var_key].pop(query_name, None)
-                self._save_data(data)
+            encrypted_value = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
+        return self.cipher.decrypt(encrypted_value) if encrypted_value else None
 
     def setListVars(self, user_id, query_name, value, var_key="variabel"):
+        encrypted_value = self.cipher.encrypt(value)
         if self.storage_type == "mongo":
-            update_data = {"$push": {f"{var_key}.{query_name}": value}}
+            update_data = {"$push": {f"{var_key}.{query_name}": encrypted_value}}
             self.data.vars.update_one({"_id": user_id}, update_data, upsert=True)
         else:
             data = self._load_data()
             user_data = data["vars"].setdefault(str(user_id), {var_key: {}})
-            user_data[var_key].setdefault(query_name, []).append(value)
+            user_data[var_key].setdefault(query_name, []).append(encrypted_value)
             self._save_data(data)
 
     def getListVars(self, user_id, query_name, var_key="variabel"):
         if self.storage_type == "mongo":
             result = self.data.vars.find_one({"_id": user_id})
-            return result.get(var_key, {}).get(query_name, []) if result else []
+            encrypted_values = result.get(var_key, {}).get(query_name, []) if result else []
         else:
-            return self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name, [])
+            encrypted_values = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name, [])
+        return [self.cipher.decrypt(value) for value in encrypted_values]
 
     def removeListVars(self, user_id, query_name, value, var_key="variabel"):
+        encrypted_value = self.cipher.encrypt(value)
         if self.storage_type == "mongo":
-            update_data = {"$pull": {f"{var_key}.{query_name}": value}}
+            update_data = {"$pull": {f"{var_key}.{query_name}": encrypted_value}}
             self.data.vars.update_one({"_id": user_id}, update_data)
         else:
             data = self._load_data()
             user_data = data.get("vars", {}).get(str(user_id), {}).get(var_key, {})
-            if query_name in user_data and value in user_data[query_name]:
-                user_data[query_name].remove(value)
+            if query_name in user_data and encrypted_value in user_data[query_name]:
+                user_data[query_name].remove(encrypted_value)
                 self._save_data(data)
 
     def removeAllVars(self, user_id, var_key="variabel"):
@@ -136,17 +121,18 @@ class DataBase:
     def allVars(self, user_id, var_key="variabel"):
         if self.storage_type == "mongo":
             result = self.data.vars.find_one({"_id": user_id})
-            return result.get(var_key, {}) if result else {}
+            encrypted_data = result.get(var_key, {}) if result else {}
         else:
-            return self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {})
+            encrypted_data = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {})
+        return {key: self.cipher.decrypt(value) for key, value in encrypted_data.items()}
 
     def setExp(self, user_id, exp=30):
         have_exp = self.getVars(user_id, "EXPIRED_DATE")
 
         if not have_exp:
-            now = self.datetime.datetime.now(self.pytz.timezone("Asia/Jakarta"))
+            now = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
         else:
-            now = self.datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S").astimezone(self.pytz.timezone("Asia/Jakarta"))
+            now = self.datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S").astimezone(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
 
         expire_date = now + self.datetime.timedelta(days=exp)
         self.setVars(user_id, "EXPIRED_DATE", expire_date.strftime("%Y-%m-%d %H:%M:%S"))
@@ -155,14 +141,14 @@ class DataBase:
         expired_date = self.getVars(user_id, "EXPIRED_DATE")
 
         if expired_date:
-            exp_datetime = self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(self.pytz.timezone("Asia/Jakarta"))
+            exp_datetime = self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
             return exp_datetime.strftime("%d-%m-%Y")
         else:
             return None
 
     def checkAndDeleteIfExpired(self, user_id):
         user_exp = self.getExp(user_id)
-        today = self.datetime.datetime.now(self.pytz.timezone("Asia/Jakarta")).strftime("%d-%m-%Y")
+        today = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta")).strftime("%d-%m-%Y")
 
         if not user_exp or user_exp == today:
             self.removeAllVars(user_id)
@@ -172,30 +158,25 @@ class DataBase:
 
     def saveBot(self, user_id, api_id, api_hash, value, is_token=False):
         field = "bot_token" if is_token else "session_string"
+        encrypted_data = {
+            "api_id": self.cipher.encrypt(str(api_id)),
+            "api_hash": self.cipher.encrypt(api_hash),
+            field: self.cipher.encrypt(value),
+        }
         if self.storage_type == "mongo":
-            update_data = {
-                "$set": {
-                    "api_id": self.cipher.encrypt(str(api_id)),
-                    "api_hash": self.cipher.encrypt(api_hash),
-                    field: self.cipher.encrypt(value),
-                }
-            }
-            self.data.bot.update_one({"user_id": user_id}, update_data, upsert=True)
+            filter_query = {"user_id": user_id}
+            update_data = {"$set": encrypted_data}
+            self.data.bot.update_one(filter_query, update_data, upsert=True)
         else:
             data = self._load_data()
-            entry = {
-                "user_id": user_id,
-                "api_id": self.cipher.encrypt(str(api_id)),
-                "api_hash": self.cipher.encrypt(api_hash),
-                field: self.cipher.encrypt(value),
-            }
+            entry = {"user_id": user_id, **encrypted_data}
             data["bots"].append(entry)
             self._save_data(data)
 
     def getBots(self, is_token=False):
         field = "bot_token" if is_token else "session_string"
         if self.storage_type == "mongo":
-            return [
+            bots = [
                 {
                     "name": str(bot_data["user_id"]),
                     "api_id": int(self.cipher.decrypt(str(bot_data["api_id"]))),
@@ -205,7 +186,7 @@ class DataBase:
                 for bot_data in self.data.bot.find({"user_id": {"$exists": 1}})
             ]
         else:
-            return [
+            bots = [
                 {
                     "name": str(bot_data["user_id"]),
                     "api_id": int(self.cipher.decrypt(str(bot_data["api_id"]))),
@@ -214,6 +195,7 @@ class DataBase:
                 }
                 for bot_data in self._load_data()["bots"]
             ]
+        return bots
 
     def removeBot(self, user_id):
         if self.storage_type == "mongo":
