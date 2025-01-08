@@ -10,11 +10,7 @@ class Button:
 
     def parse_buttons_and_text(self, text):
         buttons = self.re.findall(r"\\| ([^|]+) - ([^|]+) \\|", text)
-        remaining_text = (
-            self.re.split(r"\\| [^|]+ - [^|]+ \\|", text)[0].strip()
-            if "|" in text
-            else text.strip()
-        )
+        remaining_text = self.re.split(r"\\| [^|]+ - [^|]+ \\|", text)[0].strip() if "|" in text else text.strip()
         return buttons, remaining_text
 
     def create_keyboard(self, text, inline_cmd=None, is_id=None):
@@ -27,15 +23,7 @@ class Button:
             if not self.get_urls(cb_data):
                 cb_data = f"{inline_cmd} {is_id}_{cb_data}" if inline_cmd and is_id else cb_data
 
-            button = (
-                self.types.InlineKeyboardButton(label, user_id=cb_data)
-                if "user" in extra_params
-                else (
-                    self.types.InlineKeyboardButton(label, url=cb_data)
-                    if self.get_urls(cb_data)
-                    else self.types.InlineKeyboardButton(label, callback_data=cb_data)
-                )
-            )
+            button = self.types.InlineKeyboardButton(label, user_id=cb_data) if "user" in extra_params else (self.types.InlineKeyboardButton(label, url=cb_data) if self.get_urls(cb_data) else self.types.InlineKeyboardButton(label, callback_data=cb_data))
 
             if "same" in extra_params and layout:
                 layout[-1].append(button)
@@ -47,10 +35,7 @@ class Button:
     def build_button_grid(self, buttons, row_inline=None, row_width=2):
         row_inline = row_inline or {}
 
-        grid = [
-            [self.types.InlineKeyboardButton(**data) for data in buttons[i:i + row_width]]
-            for i in range(0, len(buttons), row_width)
-        ]
+        grid = [[self.types.InlineKeyboardButton(**data) for data in buttons[i : i + row_width]] for i in range(0, len(buttons), row_width)]
 
         if row_inline:
             grid.append([self.types.InlineKeyboardButton(**row_inline)])
