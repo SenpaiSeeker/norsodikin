@@ -11,17 +11,17 @@ class LoggerHandler:
         """
         self.LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
         self.datetime = __import__("datetime")
-        self.pytz = __import__("pytz")
+        self.zoneinfo = __import__("zoneinfo")
         self.sys = __import__("sys")
         self.os = __import__("os")
 
         self.log_level = self.LEVELS.get(options.get("log_level", "DEBUG").upper(), 20)
-        self.tz = self.pytz.timezone(options.get("tz", "Asia/Jakarta"))
+        self.tz = self.zoneinfo.ZoneInfo(options.get("tz", "Asia/Jakarta"))
         self.fmt = options.get("fmt", "{asctime} {levelname} {module}:{funcName}:{lineno} {message}")
         self.datefmt = options.get("datefmt", "%Y-%m-%d %H:%M:%S")
 
     def formatTime(self, record):
-        utc_time = self.datetime.datetime.utcfromtimestamp(record["created"]).replace(tzinfo=self.pytz.utc)
+        utc_time = self.datetime.datetime.utcfromtimestamp(record["created"])
         local_time = utc_time.astimezone(self.tz)
         return local_time.strftime(self.datefmt)
 
@@ -64,7 +64,7 @@ class LoggerHandler:
                 "message": message,
             }
             formatted_message = self.format(record)
-            print(formatted_message, file=self.sys.stdout)
+            print(formatted_message)
 
     def debug(self, message):
         self.log("DEBUG", message)
