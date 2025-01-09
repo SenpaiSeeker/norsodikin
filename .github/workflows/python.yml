@@ -28,7 +28,7 @@ jobs:
         run: autoflake --in-place --recursive --remove-all-unused-imports --remove-unused-variables --ignore-init-module-imports .
 
       - name: Format Python Code with Black
-        run: black . --line-length 256
+        run: black . --line-length 188
 
       - name: Sort Python Imports with Isort
         run: isort . --profile black
