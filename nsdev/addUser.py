@@ -44,7 +44,13 @@ class SSHUserManager:
 
                 hostname = self.os.popen("hostname -I").read().split()[0]
 
-                message = "*Informasi login SSH:*\n\n" f"*Nama Pengguna:* {ssh_username}\n" f"*Kata Sandi:* {ssh_password}\n" f"*Nama Host:* {hostname}\n\n" "_Gunakan informasi di atas untuk terhubung menggunakan PuTTY atau klien SSH apa pun._"
+                message = (
+                    "*Informasi login SSH:*\n\n"
+                    f"*Nama Pengguna:* {ssh_username}\n"
+                    f"*Kata Sandi:* {ssh_password}\n"
+                    f"*Nama Host:* {hostname}\n\n"
+                    "_Gunakan informasi di atas untuk terhubung menggunakan PuTTY atau klien SSH apa pun._"
+                )
         except Exception as e:
             message = f"Terjadi kesalahan: {str(e)}"
 
