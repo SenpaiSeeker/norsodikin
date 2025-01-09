@@ -26,7 +26,9 @@ class Button:
             button = (
                 self.pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
                 if "user" in extra_params
-                else (self.pyrogram.types.InlineKeyboardButton(label, url=cb_data) if self.get_urls(cb_data) else self.pyrogram.types.InlineKeyboardButton(label, callback_data=cb_data))
+                else (
+                    self.pyrogram.types.InlineKeyboardButton(label, url=cb_data) if self.get_urls(cb_data) else self.pyrogram.types.InlineKeyboardButton(label, callback_data=cb_data)
+                )
             )
 
             if "same" in extra_params and layout:
