@@ -45,6 +45,6 @@ class Gradient:
             progress = int(((seconds - remaining) / seconds) * bar_length) if seconds > 0 else bar_length
             bar = "=" * progress + "-" * (bar_length - progress)
 
-            print(f"\033[2K\r{color}[{bar}] {text.format(time=time_display)}\033[0m", end="", flush=True)
+            print(f"\033[2K\r\033[97m[{bar}] {color}{text.format(time=time_display)}\033[0m", end="", flush=True)
             await self.asyncio.sleep(1)
         print()
