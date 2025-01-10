@@ -8,9 +8,9 @@ class Gradient:
 
     def random_color(self):
         return (
-            self.random.randint(0, 255),
-            self.random.randint(0, 255),
-            self.random.randint(0, 255),
+            self.random.randint(128, 255),
+            self.random.randint(128, 255),
+            self.random.randint(128, 255),
         )
 
     def rgb_to_ansi(self, r, g, b):
@@ -35,16 +35,19 @@ class Gradient:
         bar_length = 30
         print()
         for remaining in range(seconds, -1, -1):
-            hours, remainder = divmod(remaining, 3600)
-            minutes, secs = divmod(remainder, 60)
-            time_display = f"{hours:02}:{minutes:02}:{secs:02}"
-
-            r, g, b = self.random_color()
-            color = self.rgb_to_ansi(r, g, b)
+            if remaining >= 3600:
+                time_display = f"{remaining // 3600:02}:{(remaining % 3600) // 60:02}:{remaining % 60:02}"
+            elif remaining >= 60:
+                time_display = f"{remaining // 60:02}:{remaining % 60:02}"
+            else:
+                time_display = f"{remaining:02}"
+                
+            text_color = self.rgb_to_ansi(*self.random_color())
+            bar_color = self.rgb_to_ansi(*self.random_color())
 
             progress = int(((seconds - remaining) / seconds) * bar_length) if seconds > 0 else bar_length
-            bar = "=" * progress + "-" * (bar_length - progress)
+            bar = f"{bar_color}[{'=' * progress}{'-' * (bar_length - progress)}]\033[0m"
 
-            print(f"\033[2K\r\033[97m[{bar}] {color}{text.format(time=time_display)}\033[0m", end="", flush=True)
+            print(f"{bar} {text_color}{text.format(time=time_display)}\033[0m", end="\r", flush=True)
             await self.asyncio.sleep(1)
         print()
