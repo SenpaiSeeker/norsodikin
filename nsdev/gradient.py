@@ -44,10 +44,11 @@ class Gradient:
 
             text_color = self.rgb_to_ansi(*self.random_color())
             bar_color = self.rgb_to_ansi(*self.random_color())
+            reset_color = "\033[0m"
 
             progress = int(((seconds - remaining) / seconds) * bar_length) if seconds > 0 else bar_length
-            bar = f"{bar_color}[{'=' * progress}{'-' * (bar_length - progress)}]\033[0m"
+            bar = f"{bar_color}[{'=' * progress}{'-' * (bar_length - progress)}]{reset_color}"
 
-            print(f"{bar} {text_color}{text.format(time=time_display)}\033[0m", end="\r", flush=True)
+            print(f"{bar} {text_color}{text.format(time=time_display)}{reset_color}", end="\r", flush=True)
             await self.asyncio.sleep(1)
         print()
