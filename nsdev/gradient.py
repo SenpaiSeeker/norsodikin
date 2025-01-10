@@ -41,7 +41,7 @@ class Gradient:
                 time_display = f"{remaining // 60:02}:{remaining % 60:02}"
             else:
                 time_display = f"{remaining:02}"
-                
+
             text_color = self.rgb_to_ansi(*self.random_color())
             bar_color = self.rgb_to_ansi(*self.random_color())
 
