@@ -31,8 +31,7 @@ class Gradient:
             print(self.rgb_to_ansi(r, g, b) + char, end="")
         print("\033[0m")
 
-    async def countdown(self, seconds, text="Tunggu sebentar {time} untuk melanjutkan"):
-        bar_length = 30
+    async def countdown(self, seconds, text="Tunggu sebentar {time} untuk melanjutkan", bar_length=30):
         print()
         for remaining in range(seconds, -1, -1):
             if remaining >= 3600:
@@ -47,8 +46,8 @@ class Gradient:
             reset_color = "\033[0m"
 
             progress = int(((seconds - remaining) / seconds) * bar_length) if seconds > 0 else bar_length
-            bar = f"{bar_color}[{'=' * progress}{'-' * (bar_length - progress)}]{reset_color}"
+            bar = f"{bar_color}[{'■' * progress}{'□' * (bar_length - progress)}]{reset_color}"
 
-            print(f"{bar} {text_color}{text.format(time=time_display)}{reset_color}", end="\r", flush=True)
+            print(f"\033[2K\r{bar} {text_color}{text.format(time=time_display)}{reset_color}", end="", flush=True)
             await self.asyncio.sleep(1)
         print()
