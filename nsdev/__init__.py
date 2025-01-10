@@ -7,5 +7,4 @@ from .gradient import Gradient
 from .logger import LoggerHandler
 from .storekey import KeyManager
 
-Gradient().render_text("NorSodikin")
-__version__ = "0.2.dev2"
+__version__ = "0.2.dev3"
