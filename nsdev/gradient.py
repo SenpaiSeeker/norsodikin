@@ -2,7 +2,7 @@ class Gradient:
     def __init__(self):
         self.figlet = __import__("pyfiglet").Figlet(font="slant")
         self.random = __import__("random")
-        self.time = __import__("time")
+        self.asyncio = __import__("asyncio")
         self.start_color = self.random_color()
         self.end_color = self.random_color()
 
@@ -31,7 +31,7 @@ class Gradient:
             print(self.rgb_to_ansi(r, g, b) + char, end="")
         print("\033[0m")
 
-    def countdown(self, seconds, text="Tungu sebentar {time} untuk melanjutkan"):
+    async def countdown(self, seconds, text="Tunggu sebentar {time} untuk melanjutkan"):
         bar_length = 30
         print()
         for remaining in range(seconds, -1, -1):
@@ -46,5 +46,5 @@ class Gradient:
             bar = "=" * progress + "-" * (bar_length - progress)
 
             print(f"\033[2K\r{color}[{bar}] {text.format(time=time_display)}\033[0m", end="", flush=True)
-            self.time.sleep(1)
+            await self.asyncio.sleep(1)
         print()
