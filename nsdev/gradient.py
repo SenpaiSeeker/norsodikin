@@ -25,29 +25,35 @@ class Gradient:
 
     def render_text(self, text):
         rendered_text = self.figlet.renderText(text)
+        output = []
         for i, char in enumerate(rendered_text):
             factor = i / max(len(rendered_text) - 1, 1)
             r, g, b = self.interpolate_color(factor)
-            print(self.rgb_to_ansi(r, g, b) + char, end="")
-        print("\033[0m")
+            output.append(f"{self.rgb_to_ansi(r, g, b)}{char}")
+        print("".join(output) + "\033[0m")
 
-    async def countdown(self, seconds, text="Tunggu sebentar {time} untuk melanjutkan", bar_length=30):
+    async def countdown(self, seconds, text="Tunggu {time} untuk melanjutkan ", bar_length=30):
         print()
         for remaining in range(seconds, -1, -1):
-            if remaining >= 3600:
-                time_display = f"{remaining // 3600:02}:{(remaining % 3600) // 60:02}:{remaining % 60:02}"
-            elif remaining >= 60:
-                time_display = f"{remaining // 60:02}:{remaining % 60:02}"
-            else:
-                time_display = f"{remaining:02}"
+            time_display = (
+                f"{remaining // 3600:02}:{(remaining % 3600) // 60:02}:{remaining % 60:02}"
+                if remaining >= 3600
+                else f"{remaining // 60:02}:{remaining % 60:02}" if remaining >= 60
+                else f"{remaining:02}"
+            )
 
-            color = [self.rgb_to_ansi(*self.random_color()) for _ in range(3)]
-            reset_color = "\033[0m"
-
-            progress_percentage = f"{color[1]}{int(((seconds - remaining) / seconds) * 100) if seconds > 0 else 100}%"
             progress = int(((seconds - remaining) / seconds) * bar_length) if seconds > 0 else bar_length
-            bar = f"{color[0]}[{'■' * progress}{'□' * (bar_length - progress)}]"
+            progress_color = [self.rgb_to_ansi(*self.interpolate_color(i / bar_length)) for i in range(bar_length)]
 
-            print(f"\033[2K\r{bar} {progress_percentage} {color[2]}{text.format(time=time_display)}{reset_color}", end="", flush=True)
+            bar = "".join(
+                f"{progress_color[i]}{'■' if i < progress else '□'}" for i in range(bar_length)
+            )
+
+            percentage = f"{int(((seconds - remaining) / seconds) * 100)}%" if seconds > 0 else "100%"
+
+            bar_with_brackets = f"{progress_color[0]}[" + bar + f"{progress_color[-1]}]"
+
+            random_text_color = self.rgb_to_ansi(*self.random_color())
+            print(f"\033[2K\r{bar_with_brackets} {percentage} {random_text_color}{text.format(time=time_display)}\033[0m", end="", flush=True)
             await self.asyncio.sleep(1)
         print()
