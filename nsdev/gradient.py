@@ -38,16 +38,13 @@ class Gradient:
             time_display = (
                 f"{remaining // 3600:02}:{(remaining % 3600) // 60:02}:{remaining % 60:02}"
                 if remaining >= 3600
-                else f"{remaining // 60:02}:{remaining % 60:02}" if remaining >= 60
-                else f"{remaining:02}"
+                else f"{remaining // 60:02}:{remaining % 60:02}" if remaining >= 60 else f"{remaining:02}"
             )
 
             progress = int(((seconds - remaining) / seconds) * bar_length) if seconds > 0 else bar_length
             progress_color = [self.rgb_to_ansi(*self.interpolate_color(i / bar_length)) for i in range(bar_length)]
 
-            bar = "".join(
-                f"{progress_color[i]}{'■' if i < progress else '□'}" for i in range(bar_length)
-            )
+            bar = "".join(f"{progress_color[i]}{'■' if i < progress else '□'}" for i in range(bar_length))
 
             percentage = f"{int(((seconds - remaining) / seconds) * 100)}%" if seconds > 0 else "100%"
 
