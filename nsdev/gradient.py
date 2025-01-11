@@ -41,13 +41,13 @@ class Gradient:
             else:
                 time_display = f"{remaining:02}"
 
-            text_color = self.rgb_to_ansi(*self.random_color())
-            bar_color = self.rgb_to_ansi(*self.random_color())
+            color = [self.rgb_to_ansi(*self.random_color()) for _ in range(3)]
             reset_color = "\033[0m"
 
+            progress_percentage = f"{color[1]}{int(((seconds - remaining) / seconds) * 100) if seconds > 0 else 100}%"
             progress = int(((seconds - remaining) / seconds) * bar_length) if seconds > 0 else bar_length
-            bar = f"{bar_color}[{'■' * progress}{'□' * (bar_length - progress)}]{reset_color}"
+            bar = f"{color[0]}[{'■' * progress}{'□' * (bar_length - progress)}]"
 
-            print(f"\033[2K\r{bar} {text_color}{text.format(time=time_display)}{reset_color}", end="", flush=True)
+            print(f"\033[2K\r{bar} {progress_percentage} {color[2]}{text.format(time=time_display)}{reset_color}", end="", flush=True)
             await self.asyncio.sleep(1)
         print()
