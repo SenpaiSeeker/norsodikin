@@ -48,9 +48,9 @@ class Gradient:
 
             percentage = f"{int(((seconds - remaining) / seconds) * 100)}%" if seconds > 0 else "100%"
 
-            bar_with_brackets = f"{progress_color[0]}[" + bar + f"{progress_color[-1]}]"
+            bar_with_brackets = f"{progress_color[0]}[{bar}{percentage}]"
 
             random_text_color = self.rgb_to_ansi(*self.random_color())
-            print(f"\033[2K\r{bar_with_brackets} {percentage} {random_text_color}{text.format(time=time_display)}\033[0m", end="", flush=True)
+            print(f"\033[2K\r{bar_with_brackets} {random_text_color}{text.format(time=time_display)}\033[0m", end="", flush=True)
             await self.asyncio.sleep(1)
         print()
