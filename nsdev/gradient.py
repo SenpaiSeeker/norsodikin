@@ -32,14 +32,19 @@ class Gradient:
             output.append(f"{self.rgb_to_ansi(r, g, b)}{char}")
         print("".join(output) + "\033[0m")
 
+    def gettime(self, seconds):
+        result = []
+        time_units = [(60, "s"), (60, "m"), (24, "h"), (7, "d"), (4.34812, "w")]
+        for unit_seconds, suffix in time_units:
+            seconds, value = divmod(seconds, unit_seconds)
+            if value > 0:
+                result.append(f"{int(value)}{suffix}")
+        return ":".join(result[::-1]) if result else "0s"
+
     async def countdown(self, seconds, text="Tunggu {time} untuk melanjutkan ", bar_length=30):
         print()
         for remaining in range(seconds, -1, -1):
-            time_display = (
-                f"{remaining // 3600:02}:{(remaining % 3600) // 60:02}:{remaining % 60:02}"
-                if remaining >= 3600
-                else f"{remaining // 60:02}:{remaining % 60:02}" if remaining >= 60 else f"{remaining:02}"
-            )
+            time_display = self.gettime(remaining)
 
             progress = int(((seconds - remaining) / seconds) * bar_length) if seconds > 0 else bar_length
             progress_color = [self.rgb_to_ansi(*self.interpolate_color(i / bar_length)) for i in range(bar_length)]
