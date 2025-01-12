@@ -9,8 +9,8 @@ class Button:
         return self.re.findall(self.url_pattern, text)
 
     def parse_buttons_and_text(self, text):
-        button_data = re.findall(r"\| ([^|]+) - ([^|]+) \|", text)
-        extracted_text = re.split(r"\| [^|]+ - [^|]+ \|", text)[0].strip() if "|" in text else text.strip()
+        button_data = self.re.findall(r"\| ([^|]+) - ([^|]+) \|", text)
+        extracted_text = self.re.split(r"\| [^|]+ - [^|]+ \|", text)[0].strip() if "|" in text else text.strip()
         return button_data, extracted_text
         
     def create_keyboard(self, text, inline_cmd=None, is_id=None):
