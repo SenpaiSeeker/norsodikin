@@ -3,6 +3,7 @@ class Gradient:
         self.figlet = __import__("pyfiglet").Figlet(font="slant")
         self.random = __import__("random")
         self.asyncio = __import__("asyncio")
+        self.time = __import__("time")
         self.start_color = self.random_color()
         self.end_color = self.random_color()
 
