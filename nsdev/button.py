@@ -12,7 +12,7 @@ class Button:
         button_data = self.re.findall(r"\| ([^|]+) - ([^|]+) \|", text)
         extracted_text = self.re.split(r"\| [^|]+ - [^|]+ \|", text)[0].strip() if "|" in text else text.strip()
         return button_data, extracted_text
-        
+
     def create_keyboard(self, text, inline_cmd=None, is_id=None):
         layout = []
         buttons, remaining_text = self.parse_buttons_and_text(text)
