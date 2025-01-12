@@ -3,7 +3,7 @@ class Button:
         self.re = __import__("re")
         self.pyrogram = __import__("pyrogram")
 
-        self.url_pattern = r"(?:https?://)?(?:www\\.)?[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}(?:[/?]\\S+)?|tg://\\S+$"
+        self.url_pattern = r"(?:https?://)?(?:www\.)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:[/?]\S+)?|tg://\S+$"
 
     def get_urls(self, text):
         return self.re.findall(self.url_pattern, text)
