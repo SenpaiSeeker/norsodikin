@@ -1,5 +1,5 @@
-from .argument import Argument
 from .addUser import SSHUserManager
+from .argument import Argument
 from .button import Button
 from .database import DataBase
 from .encrypt import CipherHandler
