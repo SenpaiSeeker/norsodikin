@@ -5,7 +5,7 @@ class Argument:
     async def getUserId(self, message, username):
         if entities := message.entities:
             entity = entities[1 if message.text.startswith("/") else 0]
-            return (await message._client.get_chat(username)).id if entity.type == enums.MessageEntityType.MENTION else entity.user.id if entity.type == enums.MessageEntityType.TEXT_MENTION else username
+            return (await message._client.get_chat(username)).id if entity.type == self.pyrogram.enums.MessageEntityType.MENTION else entity.user.id if entity.type == self.pyrogram.enums.MessageEntityType.TEXT_MENTION else username
         return username
 
     async def userId(self, message, text):
