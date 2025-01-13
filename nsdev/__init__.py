@@ -1,3 +1,4 @@
+from .argument import Argument
 from .addUser import SSHUserManager
 from .button import Button
 from .database import DataBase
