@@ -2,13 +2,16 @@ class Argument:
     def __init__(self):
         self.pyrogram = __import__("pyrogram")
 
-    def getArg(self, message):
+    def getMessage(self, message, is_arg=False):
         return (
-            message.reply_to_message.text or message.reply_to_message.caption
-            if message.reply_to_message and len(message.command) < 2
+            (message.reply_to_message.text or message.reply_to_message.caption
+             if message.reply_to_message and len(message.command) < 2
+             else message.text.split(None, 1)[1] if len(message.command) > 1 else "")
+            if is_arg
+            else message.reply_to_message if message.reply_to_message
             else message.text.split(None, 1)[1] if len(message.command) > 1 else ""
         )
-
+    
     async def getUserId(self, message, username):
         if entities := message.entities:
             entity = entities[1 if message.text.startswith("/") else 0]
