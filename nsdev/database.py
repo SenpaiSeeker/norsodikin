@@ -36,7 +36,7 @@ class DataBase:
 
         try:
             nsdev = __import__("nsdev")
-            self.cipher = nsdev.encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt, delimiter="/")
+            self.cipher = nsdev.encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
         except ImportError as e:
             raise ImportError("Failed to import nsdev or CipherHandler: {}".format(e))
 
