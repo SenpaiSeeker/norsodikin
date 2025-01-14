@@ -50,12 +50,9 @@ class Button:
         return self.types.InlineKeyboardMarkup(grid)
 
     def module(self, page_n, module_dict, same=2, line=5, left_arrow="<<", right_arrow=">>"):
-        modules = [
-            self.pyrogram.types.InlineKeyboardButton(x.__MODULE__.lower(), callback_data=f"help_module({x.__MODULE__})")
-            for x in module_dict.keys()
-        ]
+        modules = [self.pyrogram.types.InlineKeyboardButton(x.__MODULE__.lower(), callback_data=f"help_module({x.__MODULE__})") for x in module_dict.keys()]
 
-        pairs = [modules[i:i + same] for i in range(0, len(modules), same)]
+        pairs = [modules[i : i + same] for i in range(0, len(modules), same)]
 
         if len(modules) % 1 == 1:
             pairs.append((modules[-1],))
@@ -64,14 +61,15 @@ class Button:
         modulo_page = page_n % max_num_pages
 
         pairs = (
-            pairs[modulo_page * line:line * (modulo_page + 1)] + [
+            pairs[modulo_page * line : line * (modulo_page + 1)]
+            + [
                 (
                     self.pyrogram.types.InlineKeyboardButton(left_arrow, callback_data=f"help_prev({modulo_page})"),
-                    self.pyrogram.types.InlineKeyboardButton(right_arrow, callback_data=f"help_next({modulo_page})")
+                    self.pyrogram.types.InlineKeyboardButton(right_arrow, callback_data=f"help_next({modulo_page})"),
                 )
             ]
-            if len(pairs) > line else pairs
+            if len(pairs) > line
+            else pairs
         )
 
         return pairs
-
