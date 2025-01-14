@@ -61,7 +61,7 @@ class Button:
         if len(modules) % 1 == 1:
             pairs.append((modules[-1],))
 
-        max_num_pages = self.ceil(len(pairs) / line)
+        max_num_pages = self.math.ceil(len(pairs) / line)
         modulo_page = page_n % max_num_pages
 
         pairs = (
