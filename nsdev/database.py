@@ -81,13 +81,18 @@ class DataBase:
     def setListVars(self, user_id, query_name, value, var_key="variabel"):
         encrypted_value = self.cipher.encrypt(value)
         if self.storage_type == "mongo":
-            update_data = {"$push": {f"{var_key}.{query_name}": encrypted_value}}
-            self.data.vars.update_one({"_id": user_id}, update_data, upsert=True)
+            result = self.data.vars.find_one({"_id": user_id})
+            existing_values = result.get(var_key, {}).get(query_name, []) if result else []
+            if encrypted_value not in existing_values:
+                update_data = {"$push": {f"{var_key}.{query_name}": encrypted_value}}
+                self.data.vars.update_one({"_id": user_id}, update_data, upsert=True)
         else:
             data = self._load_data()
             user_data = data["vars"].setdefault(str(user_id), {var_key: {}})
-            user_data[var_key].setdefault(query_name, []).append(encrypted_value)
-            self._save_data(data)
+            user_list = user_data[var_key].setdefault(query_name, [])
+            if encrypted_value not in user_list:
+                user_list.append(encrypted_value)
+                self._save_data(data)
 
     def getListVars(self, user_id, query_name, var_key="variabel"):
         if self.storage_type == "mongo":
@@ -100,8 +105,11 @@ class DataBase:
     def removeListVars(self, user_id, query_name, value, var_key="variabel"):
         encrypted_value = self.cipher.encrypt(value)
         if self.storage_type == "mongo":
-            update_data = {"$pull": {f"{var_key}.{query_name}": encrypted_value}}
-            self.data.vars.update_one({"_id": user_id}, update_data)
+            result = self.data.vars.find_one({"_id": user_id})
+            existing_values = result.get(var_key, {}).get(query_name, []) if result else []
+            if encrypted_value in existing_values:
+                update_data = {"$pull": {f"{var_key}.{query_name}": encrypted_value}}
+                self.data.vars.update_one({"_id": user_id}, update_data)
         else:
             data = self._load_data()
             user_data = data.get("vars", {}).get(str(user_id), {}).get(var_key, {})
@@ -204,3 +212,4 @@ class DataBase:
             data = self._load_data()
             data["bots"] = [bot for bot in data["bots"] if bot["user_id"] != user_id]
             self._save_data(data)
+
