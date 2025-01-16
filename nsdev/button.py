@@ -47,7 +47,7 @@ class Button:
         if row_inline:
             grid.append([self.pyrogram.types.InlineKeyboardButton(**row_inline)])
 
-        return self.types.InlineKeyboardMarkup(grid)
+        return self.pyrogram.types.InlineKeyboardMarkup(grid)
 
     def module(self, page_n, module_dict, same=2, line=5, left_arrow="<<", right_arrow=">>"):
         modules = [self.pyrogram.types.InlineKeyboardButton(x.__MODULE__.lower(), callback_data=f"help_module({x.__MODULE__})") for x in module_dict.keys()]
