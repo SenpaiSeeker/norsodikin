@@ -8,4 +8,4 @@ from .gradient import Gradient
 from .logger import LoggerHandler
 from .storekey import KeyManager
 
-__version__ = "0.2.dev8"
+__version__ = "0.2.dev9"
