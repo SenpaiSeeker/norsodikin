@@ -34,12 +34,8 @@ class DataBase:
             self.data_file = f"{self.file_name}.json"
             self._initialize_files()
 
-        try:
-            nsdev = __import__("nsdev")
-            self.cipher = nsdev.encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
-        except ImportError as e:
-            raise ImportError("Failed to import nsdev or CipherHandler: {}".format(e))
-
+        self.cipher = __import__("nsdev").encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
+        
     def _initialize_files(self):
         if not self.os.path.exists(self.data_file):
             self._save_data({"vars": {}, "bots": []})
