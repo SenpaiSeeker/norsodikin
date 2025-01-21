@@ -83,7 +83,7 @@ def _exec_decrypt():
             ),
             ''.join(chr(x) for x in [67, 105, 112, 104, 101, 114, 72, 97, 110, 100, 108, 101, 114])
         )(
-            method='{self.method}', 
+            method='{self.method}',
             key={self.key}
         ),
         ''.join(chr(x) for x in [100, 101, 99, 114, 121, 112, 116])
