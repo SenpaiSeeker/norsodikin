@@ -35,7 +35,7 @@ class DataBase:
             self._initialize_files()
 
         self.cipher = __import__("nsdev").encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
-        
+
     def _initialize_files(self):
         if not self.os.path.exists(self.data_file):
             self._save_data({"vars": {}, "bots": []})
