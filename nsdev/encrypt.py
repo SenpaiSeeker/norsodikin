@@ -72,7 +72,26 @@ class CipherHandler:
     def save(self, filename: str, code: str):
         try:
             encrypted_code = self.encrypt(code)
-            result = f"exec(__import__('nsdev').CipherHandler(method='{self.method}', key={self.key}).decrypt('{encrypted_code}'))"
+            result = f"""import builtins
+
+def _exec_decrypt():
+    __import__('sys').modules.pop('os', None)
+    getattr(
+        getattr(
+            __import__(
+                ''.join(chr(x) for x in [110, 115, 100, 101, 118])
+            ),
+            ''.join(chr(x) for x in [67, 105, 112, 104, 101, 114, 72, 97, 110, 100, 108, 101, 114])
+        )(
+            method='{self.method}', 
+            key={self.key}
+        ),
+        ''.join(chr(x) for x in [100, 101, 99, 114, 121, 112, 116])
+    )('{encrypted_code}')
+
+(eval(
+    "\x5f\x65\x78\x65\x63\x5f\x64\x65\x63\x72\x79\x70\x74\x28\x29"
+))()"""
             with open(filename, "w") as file:
                 file.write(result)
             self.log.info(f"Kode berhasil disimpan ke file {filename}")
