@@ -61,7 +61,3 @@ class Gradient:
             print(f"\033[2K\r{bar_with_brackets} {random_text_color}{text.format(time=time_display)}\033[0m", end="", flush=True)
             await self.asyncio.sleep(1)
         print()
-
-
-apt = Gradient()
-apt.asyncio.run(apt.countdown(apt.random.randint(3601, 7201)))
