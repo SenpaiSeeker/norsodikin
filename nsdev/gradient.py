@@ -44,20 +44,17 @@ class Gradient:
 
     async def countdown(self, seconds, text="Tunggu {time} untuk melanjutkan", bar_length=30):
         print()
-        animation_frames = ["■", "□", "■", "□", "■"]
+        animation_wave = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█", "▇", "▆", "▅", "▄", "▃", "▂", "▁"]
         for remaining in range(seconds, -1, -1):
             time_display = self.gettime(remaining)
 
-            progress = int(((seconds - remaining) / seconds) * bar_length) if seconds > 0 else bar_length
             progress_color = [self.rgb_to_ansi(*self.interpolate_color(i / bar_length)) for i in range(bar_length)]
-
-            shift = remaining % len(animation_frames)
-            bar = "".join(f"{progress_color[i]}{animation_frames[(i + shift) % len(animation_frames)]}" for i in range(bar_length))
-
-            percentage = f"{int(((seconds - remaining) / seconds) * 100)}%" if seconds > 0 else "100%"
-            bar_with_brackets = f"{progress_color[0]}[{bar}{percentage}]"
-
-            random_text_color = self.rgb_to_ansi(*self.random_color())
-            print(f"\033[2K\r{bar_with_brackets} {random_text_color}{text.format(time=time_display)}\033[0m", end="", flush=True)
+            
+            shift = remaining % len(animation_wave)
+            bar = "".join(f"{progress_color[i]}{animation_wave[(i + shift) % len(animation_wave)]}" for i in range(bar_length))
+            
+            random_text_color = self.rgb_to_ansi(*self.random_color()) 
+            print(f"\033[2K{bar} {random_text_color}{text.format(time=time_display)}\033[0m", end="\r", flush=True)
             await self.asyncio.sleep(1)
         print()
+
