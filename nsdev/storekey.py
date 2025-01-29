@@ -9,6 +9,7 @@ class KeyManager:
         nsdev = __import__("nsdev")
         self.logger = nsdev.logger.LoggerHandler()
         self.cipher = nsdev.encrypt.CipherHandler(method="bytes")
+        self.gradient = nsdev.gradient.Gradient()
 
         self.temp_file = self.os.path.join(self.tempfile.gettempdir(), filename)
 
@@ -24,7 +25,9 @@ class KeyManager:
     def read_key(self):
         if not self.os.path.exists(self.temp_file):
             self.logger.warning("Tidak ada key yang disimpan. Jalankan ulang program dengan --key dan --env")
-            self.sys.exit(1)
+            key = imput(f"{self.gradient.rgb_to_ansi(*self.gradient.random_color()}Masukkan kunci (angka):/033[0m ")
+            env = imput(f"{self.gradient.rgb_to_ansi(*self.gradient.random_color()}Masukkan nama env yang sudah dibuat:/033[0m ")
+            self.save_key(key, env)
 
         try:
             with open(self.temp_file, "r") as file:
