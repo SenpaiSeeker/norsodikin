@@ -5,20 +5,17 @@ class KeyManager:
         self.json = __import__("json")
         self.argparse = __import__("argparse")
         self.tempfile = __import__("tempfile")
-        
+
         nsdev = __import__("nsdev")
         self.logger = nsdev.logger.LoggerHandler()
         self.cipher = nsdev.encrypt.CipherHandler(method="bytes")
         self.gradient = nsdev.gradient.Gradient()
-        
+
         self.temp_file = self.os.path.join(self.tempfile.gettempdir(), filename)
 
     def save_key(self, key: str, env: str):
         try:
-            data = {
-                "key": self.cipher.encrypt(key),
-                "env": self.cipher.encrypt(env)
-            }
+            data = {"key": self.cipher.encrypt(key), "env": self.cipher.encrypt(env)}
             with open(self.temp_file, "w") as file:
                 self.json.dump(data, file, indent=4)
         except OSError as e:
