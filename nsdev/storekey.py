@@ -24,7 +24,6 @@ class KeyManager:
 
     def read_key(self):
         if not self.os.path.exists(self.temp_file):
-            self.logger.warning("Tidak ada key yang disimpan. Jalankan ulang program dengan --key dan --env")
             key = input(f"{self.gradient.rgb_to_ansi(*self.gradient.random_color())}Masukkan kunci (angka):\033[0m ")
             env = input(f"{self.gradient.rgb_to_ansi(*self.gradient.random_color())}Masukkan nama env yang sudah dibuat:\033[0m ")
             self.save_key(key, env)
