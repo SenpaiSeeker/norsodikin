@@ -5,17 +5,20 @@ class KeyManager:
         self.json = __import__("json")
         self.argparse = __import__("argparse")
         self.tempfile = __import__("tempfile")
-
+        
         nsdev = __import__("nsdev")
         self.logger = nsdev.logger.LoggerHandler()
         self.cipher = nsdev.encrypt.CipherHandler(method="bytes")
         self.gradient = nsdev.gradient.Gradient()
-
+        
         self.temp_file = self.os.path.join(self.tempfile.gettempdir(), filename)
 
     def save_key(self, key: str, env: str):
         try:
-            data = {"key": self.cipher.encrypt(key), "env": self.cipher.encrypt(env)}
+            data = {
+                "key": self.cipher.encrypt(key),
+                "env": self.cipher.encrypt(env)
+            }
             with open(self.temp_file, "w") as file:
                 self.json.dump(data, file, indent=4)
         except OSError as e:
@@ -25,14 +28,14 @@ class KeyManager:
     def read_key(self):
         if not self.os.path.exists(self.temp_file):
             self.logger.warning("Tidak ada key yang disimpan. Jalankan ulang program dengan --key dan --env")
-            key = imput(f"{self.gradient.rgb_to_ansi(*self.gradient.random_color()}Masukkan kunci (angka):/033[0m ")
-            env = imput(f"{self.gradient.rgb_to_ansi(*self.gradient.random_color()}Masukkan nama env yang sudah dibuat:/033[0m ")
+            key = input(f"{self.gradient.rgb_to_ansi(*self.gradient.random_color())}Masukkan kunci (angka):\033[0m ")
+            env = input(f"{self.gradient.rgb_to_ansi(*self.gradient.random_color())}Masukkan nama env yang sudah dibuat:\033[0m ")
             self.save_key(key, env)
 
         try:
             with open(self.temp_file, "r") as file:
                 data = self.json.load(file)
-            return (self.cipher.decrypt(data["key"]), self.cipher.decrypt(data["env"]))
+            return self.cipher.decrypt(data["key"]), self.cipher.decrypt(data["env"])
         except OSError as e:
             self.logger.error(f"Kesalahan saat membaca key: {e}")
             self.sys.exit(1)
