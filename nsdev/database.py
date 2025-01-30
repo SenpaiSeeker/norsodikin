@@ -62,7 +62,8 @@ class DataBase:
             self.data.vars.update_one({"_id": user_id}, update_data, upsert=True)
         else:
             data = self._load_data()
-            user_data = data["vars"].setdefault(str(user_id), {var_key: {}})
+            user_data = data["vars"].setdefault(str(user_id), {})
+            user_data[var_key] = user_data.get(var_key, {})
             user_data[var_key][query_name] = encrypted_value
             self._save_data(data)
 
@@ -84,7 +85,8 @@ class DataBase:
                 self.data.vars.update_one({"_id": user_id}, update_data, upsert=True)
         else:
             data = self._load_data()
-            user_data = data["vars"].setdefault(str(user_id), {var_key: {}})
+            user_data = data["vars"].setdefault(str(user_id), {})
+            user_data[var_key] = user_data.get(var_key, {})
             user_list = user_data[var_key].setdefault(query_name, [])
             if encrypted_value not in user_list:
                 user_list.append(encrypted_value)
