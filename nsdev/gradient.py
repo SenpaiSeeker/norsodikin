@@ -43,7 +43,6 @@ class Gradient:
         return ":".join(result[::-1]) if result else "0s"
 
     async def countdown(self, seconds, text="Tunggu {time} untuk melanjutkan", bar_length=30):
-        print("\033[2K\033[0m")
         animation_wave = "▁▂▃▄▅▆▇█▇▆▅▄▃▂▁"
         for remaining in range(seconds, -1, -1):
             time_display = self.gettime(remaining)
@@ -55,3 +54,4 @@ class Gradient:
             random_text_color = self.rgb_to_ansi(*self.random_color())
             print(f"\033[2K{bar} {random_text_color}{text.format(time=time_display)}\033[0m", end="\r", flush=True)
             await self.asyncio.sleep(1)
+        print("\033[2K\033[0m")
