@@ -152,6 +152,16 @@ class DataBase:
         else:
             return None
 
+    def daysLeft(self, user_id):
+        user_exp = self.getExp(user_id)
+        today = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
+        
+        if user_exp:
+            exp_datetime = self.datetime.datetime.strptime(user_exp, "%d-%m-%Y").astimezone(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
+            return (exp_datetime - today).days
+        
+        return None
+
     def checkAndDeleteIfExpired(self, user_id):
         user_exp = self.getExp(user_id)
         today = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta")).strftime("%d-%m-%Y")
