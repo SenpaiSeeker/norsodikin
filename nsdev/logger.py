@@ -38,12 +38,12 @@ class LoggerHandler:
         }
 
         level_color = COLORS.get(record["levelname"], COLORS["RESET"])
-        record["levelname"] = f"{level_color}| {record['levelname']}"
+        record["levelname"] = f"{level_color}| {record['levelname']:<8}"
         record["message"] = f"{level_color}| {record['message']}{COLORS['RESET']}"
 
         formatted_time = self.formatTime(record)
         return self.fmt.format(
-            asctime=f"{COLORS['TIME']}| [{formatted_time}]",
+            asctime=f"{COLORS['TIME']}[{formatted_time}]",
             levelname=record["levelname"],
             module=f"{COLORS['MODULE']}| {self.os.path.basename(record.get('module', '<unknown>'))}",
             funcName=record.get("funcName", "<unknown>"),
