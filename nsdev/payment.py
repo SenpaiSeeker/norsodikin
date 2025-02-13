@@ -1,6 +1,9 @@
 class PaymentMidtrans:
     def __init__(self, server_key, client_key, is_production=True):
-        self.midtransclient = __import__("midtransclient")
+        try:
+            self.midtransclient = __import__("midtransclient")
+        except Exception:
+            __import__("os").system("pip install midtransclient")
         self.snap = self.midtransclient.Snap(
             is_production=is_production,
             server_key=server_key,
