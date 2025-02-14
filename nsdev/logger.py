@@ -27,16 +27,15 @@ class LoggerHandler:
 
     def format(self, record):
         COLORS = {
-    "INFO": "\033[1;38;5;46m",    # Green maksimal (0,5,0)
-    "DEBUG": "\033[1;38;5;21m",    # Blue murni (0,0,5)
-    "WARNING": "\033[1;38;5;226m", # Yellow murni (5,5,0)
-    "ERROR": "\033[1;38;5;196m",   # Red murni (5,0,0)
-    "CRITICAL": "\033[1;38;5;201m",# Magenta murni (5,0,5)
-    "TIME": "\033[1;38;5;231m",    # White penuh (5,5,5)
-    "MODULE": "\033[1;38;5;51m",   # Cyan murni (0,5,5)
-    "RESET": "\033[0m",
-}
-
+            "INFO": "\033[1;38;5;46m",  # Green maksimal (0,5,0)
+            "DEBUG": "\033[1;38;5;21m",  # Blue murni (0,0,5)
+            "WARNING": "\033[1;38;5;226m",  # Yellow murni (5,5,0)
+            "ERROR": "\033[1;38;5;196m",  # Red murni (5,0,0)
+            "CRITICAL": "\033[1;38;5;201m",  # Magenta murni (5,0,5)
+            "TIME": "\033[1;38;5;231m",  # White penuh (5,5,5)
+            "MODULE": "\033[1;38;5;51m",  # Cyan murni (0,5,5)
+            "RESET": "\033[0m",
+        }
 
         level_color = COLORS.get(record["levelname"], COLORS["RESET"])
         record["levelname"] = f"{level_color}| {record['levelname']:<8}"
