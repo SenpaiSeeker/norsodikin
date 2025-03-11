@@ -20,13 +20,8 @@ class LoggerHandler:
         self.fmt = options.get("fmt", "{asctime} {levelname} {module}:{funcName}:{lineno} {message}")
         self.datefmt = options.get("datefmt", "%Y-%m-%d %H:%M:%S")
 
-    def formatTime(self, record):
-        utc_time = self.datetime.datetime.utcfromtimestamp(record["created"])
-        local_time = utc_time.astimezone(self.tz)
-        return local_time.strftime(self.datefmt)
-
-    def format(self, record, isNoModuleLog=False):
-        COLORS = {
+    def get_colors(self):
+        return {
             "INFO": "\033[1;38;5;46m",  # Green maksimal (0,5,0)
             "DEBUG": "\033[1;38;5;21m",  # Blue murni (0,0,5)
             "WARNING": "\033[1;38;5;226m",  # Yellow murni (5,5,0)
@@ -34,27 +29,36 @@ class LoggerHandler:
             "CRITICAL": "\033[1;38;5;201m",  # Magenta murni (5,0,5)
             "TIME": "\033[1;38;5;231m",  # White penuh (5,5,5)
             "MODULE": "\033[1;38;5;51m",  # Cyan murni (0,5,5)
+            "PIPE": "\033[1;38;5;93m",  # Ungu terang untuk simbol '|'
             "RESET": "\033[0m",
         }
 
-        level_color = COLORS.get(record["levelname"], COLORS["RESET"])
-        record["levelname"] = f"{level_color}| {record['levelname']:<8}"
-        record["message"] = f"{level_color}| {record['message']}{COLORS['RESET']}"
+    def formatTime(self, record):
+        utc_time = self.datetime.datetime.utcfromtimestamp(record["created"])
+        local_time = utc_time.astimezone(self.tz)
+        return local_time.strftime(self.datefmt)
+
+    def format(self, record, isNoModuleLog=False):
+        level_color = self.get_colors().get(record["levelname"], self.get_colors()["RESET"])
+        pipe_color = self.get_colors()["PIPE"]
+
+        record["levelname"] = f"{pipe_color}|{self.get_colors()['RESET']} {level_color}{record['levelname']:<8}"
+        record["message"] = f"{pipe_color}|{self.get_colors()['RESET']} {level_color}{record['message']}{self.get_colors()['RESET']}"
 
         formatted_time = self.formatTime(record)
 
         if isNoModuleLog:
             fmt = "{asctime} {levelname} {message}"
             return fmt.format(
-                asctime=f"{COLORS['TIME']}[{formatted_time}]",
+                asctime=f"{self.get_colors()['TIME']}[{formatted_time}]",
                 levelname=record["levelname"],
                 message=record["message"],
             )
         else:
             return self.fmt.format(
-                asctime=f"{COLORS['TIME']}[{formatted_time}]",
+                asctime=f"{self.get_colors()['TIME']}[{formatted_time}]",
                 levelname=record["levelname"],
-                module=f"{COLORS['MODULE']}| {self.os.path.basename(record.get('module', '<unknown>'))}",
+                module=f"{pipe_color}|{self.get_colors()['RESET']} {self.get_colors()['MODULE']}{self.os.path.basename(record.get('module', '<unknown>'))}",
                 funcName=record.get("funcName", "<unknown>"),
                 lineno=record.get("lineno", 0),
                 message=record["message"],
