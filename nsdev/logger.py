@@ -25,7 +25,7 @@ class LoggerHandler:
         local_time = utc_time.astimezone(self.tz)
         return local_time.strftime(self.datefmt)
 
-    def format(self, record):
+    def format(self, record, isNoModuleLog=False):
         COLORS = {
             "INFO": "\033[1;38;5;46m",  # Green maksimal (0,5,0)
             "DEBUG": "\033[1;38;5;21m",  # Blue murni (0,0,5)
@@ -42,41 +42,50 @@ class LoggerHandler:
         record["message"] = f"{level_color}| {record['message']}{COLORS['RESET']}"
 
         formatted_time = self.formatTime(record)
-        return self.fmt.format(
-            asctime=f"{COLORS['TIME']}[{formatted_time}]",
-            levelname=record["levelname"],
-            module=f"{COLORS['MODULE']}| {self.os.path.basename(record.get('module', '<unknown>'))}",
-            funcName=record.get("funcName", "<unknown>"),
-            lineno=record.get("lineno", 0),
-            message=record["message"],
-        )
 
-    def log(self, level, message):
+        if isNoModuleLog:
+            fmt = "{asctime} {levelname} {message}"
+            return fmt.format(
+                asctime=f"{COLORS['TIME']}[{formatted_time}]",
+                levelname=record["levelname"],
+                message=record["message"],
+            )
+        else:
+            return self.fmt.format(
+                asctime=f"{COLORS['TIME']}[{formatted_time}]",
+                levelname=record["levelname"],
+                module=f"{COLORS['MODULE']}| {self.os.path.basename(record.get('module', '<unknown>'))}",
+                funcName=record.get("funcName", "<unknown>"),
+                lineno=record.get("lineno", 0),
+                message=record["message"],
+            )
+
+    def log(self, level, message, isNoModuleLog=False):
         if self.LEVELS.get(level, 0) >= self.log_level:
             frame = self.sys._getframe(2)
             filename = self.os.path.basename(frame.f_globals.get("__file__", "<unknown>"))
             record = {
                 "created": self.datetime.datetime.now().timestamp(),
                 "levelname": level,
-                "module": filename,
-                "funcName": frame.f_code.co_name,
-                "lineno": frame.f_lineno,
+                "module": filename if not isNoModuleLog else "",
+                "funcName": frame.f_code.co_name if not isNoModuleLog else "",
+                "lineno": frame.f_lineno if not isNoModuleLog else "",
                 "message": message,
             }
-            formatted_message = self.format(record)
+            formatted_message = self.format(record, isNoModuleLog=isNoModuleLog)
             print(formatted_message)
 
-    def debug(self, message):
-        self.log("DEBUG", message)
+    def debug(self, message, isNoModuleLog=False):
+        self.log("DEBUG", message, isNoModuleLog=isNoModuleLog)
 
-    def info(self, message):
-        self.log("INFO", message)
+    def info(self, message, isNoModuleLog=False):
+        self.log("INFO", message, isNoModuleLog=isNoModuleLog)
 
-    def warning(self, message):
-        self.log("WARNING", message)
+    def warning(self, message, isNoModuleLog=False):
+        self.log("WARNING", message, isNoModuleLog=isNoModuleLog)
 
-    def error(self, message):
-        self.log("ERROR", message)
+    def error(self, message, isNoModuleLog=False):
+        self.log("ERROR", message, isNoModuleLog=isNoModuleLog)
 
-    def critical(self, message):
-        self.log("CRITICAL", message)
+    def critical(self, message, isNoModuleLog=False):
+        self.log("CRITICAL", message, isNoModuleLog=isNoModuleLog)
