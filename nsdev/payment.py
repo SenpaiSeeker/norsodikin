@@ -14,7 +14,7 @@ class PaymentMidtrans:
                     "order_id": order_id,
                     "gross_amount": gross_amount,
                 },
-                "enabled_payments": ["other_qris"]
+                "enabled_payments": ["other_qris"],
             }
             return self.snap.create_transaction(param)
         except Exception as e:
