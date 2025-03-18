@@ -18,7 +18,7 @@ class PaymentMidtrans:
                 "enabled_payments": ["other_qris"],
                 "callbacks": {
                     "finish": self.callback_url,
-                }
+                },
             }
             return self.snap.create_transaction(param)
         except Exception as e:
