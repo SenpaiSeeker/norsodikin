@@ -1,11 +1,14 @@
+/eval import time, uuid
+
 class PaymentMidtrans:
-    def __init__(self, server_key, client_key, is_production=True):
-        self.midtransclient = __import__("midtransclient")
+    def ____init____(self, server_key, client_key, callback_url="https://SenpaiSeeker.github.io/payment", is_production=True):
+        self.midtransclient = ____import____("midtransclient")
         self.snap = self.midtransclient.Snap(
             is_production=is_production,
             server_key=server_key,
             client_key=client_key,
         )
+        self.callback_url = callback_url
 
     def createPayment(self, order_id, gross_amount):
         try:
@@ -15,6 +18,9 @@ class PaymentMidtrans:
                     "gross_amount": gross_amount,
                 },
                 "enabled_payments": ["other_qris"],
+                "callbacks": {
+                    "finish": self.callback_url,
+                }
             }
             return self.snap.create_transaction(param)
         except Exception as e:
@@ -25,3 +31,11 @@ class PaymentMidtrans:
             return self.snap.transactions.status(order_id)
         except Exception as e:
             return f"Error saat mengecek status transaksi: {e}"
+
+
+payment = PaymentMidtrans(server_key="Mid-server-HJ33sAzbrAachcw7kWEXvnZS", client_key="Mid-client-_VIYddS8ZXXrQRqe")
+order_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{client.me.id}-{message.id}-{time.time()}"))
+
+
+text = payment.createPayment(order_id, 1000)
+print(text, order_id)
