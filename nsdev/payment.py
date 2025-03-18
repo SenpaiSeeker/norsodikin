@@ -1,8 +1,6 @@
-/eval import time, uuid
-
 class PaymentMidtrans:
-    def ____init____(self, server_key, client_key, callback_url="https://SenpaiSeeker.github.io/payment", is_production=True):
-        self.midtransclient = ____import____("midtransclient")
+    def __init__(self, server_key, client_key, callback_url="https://SenpaiSeeker.github.io/payment", is_production=True):
+        self.midtransclient = __import__("midtransclient")
         self.snap = self.midtransclient.Snap(
             is_production=is_production,
             server_key=server_key,
@@ -31,11 +29,3 @@ class PaymentMidtrans:
             return self.snap.transactions.status(order_id)
         except Exception as e:
             return f"Error saat mengecek status transaksi: {e}"
-
-
-payment = PaymentMidtrans(server_key="Mid-server-HJ33sAzbrAachcw7kWEXvnZS", client_key="Mid-client-_VIYddS8ZXXrQRqe")
-order_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{client.me.id}-{message.id}-{time.time()}"))
-
-
-text = payment.createPayment(order_id, 1000)
-print(text, order_id)
