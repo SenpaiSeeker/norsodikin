@@ -4,18 +4,15 @@ class LoggerHandler:
         Inisialisasi logger dengan parameter opsional.
 
         :param options:
-            - log_level: Level log (default: 'DEBUG')
             - tz: Zona waktu untuk waktu lokal (default: 'Asia/Jakarta')
             - fmt: Format log (default: '{asctime} {levelname} {module}:{funcName}:{lineno} {message}')
             - datefmt: Format tanggal dan waktu (default: '%Y-%m-%d %H:%M:%S')
         """
-        self.LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
         self.datetime = __import__("datetime")
         self.zoneinfo = __import__("zoneinfo")
         self.sys = __import__("sys")
         self.os = __import__("os")
 
-        self.log_level = self.LEVELS.get(options.get("log_level", "DEBUG").upper(), 20)
         self.tz = self.zoneinfo.ZoneInfo(options.get("tz", "Asia/Jakarta"))
         self.fmt = options.get("fmt", "{asctime} {levelname} {module}:{funcName}:{lineno} {message}")
         self.datefmt = options.get("datefmt", "%Y-%m-%d %H:%M:%S")
@@ -65,19 +62,18 @@ class LoggerHandler:
             )
 
     def log(self, level, message, isNoModuleLog=False):
-        if self.LEVELS.get(level, 0) >= self.log_level:
-            frame = self.sys._getframe(2)
-            filename = self.os.path.basename(frame.f_globals.get("__file__", "<unknown>"))
-            record = {
-                "created": self.datetime.datetime.now().timestamp(),
-                "levelname": level,
-                "module": filename if not isNoModuleLog else "",
-                "funcName": frame.f_code.co_name if not isNoModuleLog else "",
-                "lineno": frame.f_lineno if not isNoModuleLog else "",
-                "message": message,
-            }
-            formatted_message = self.format(record, isNoModuleLog=isNoModuleLog)
-            print(formatted_message)
+        frame = self.sys._getframe(2)
+        filename = self.os.path.basename(frame.f_globals.get("__file__", "<unknown>"))
+        record = {
+            "created": self.datetime.datetime.now().timestamp(),
+            "levelname": level,
+            "module": filename if not isNoModuleLog else "",
+            "funcName": frame.f_code.co_name if not isNoModuleLog else "",
+            "lineno": frame.f_lineno if not isNoModuleLog else "",
+            "message": message,
+        }
+        formatted_message = self.format(record, isNoModuleLog=isNoModuleLog)
+        print(formatted_message)
 
     def debug(self, message, isNoModuleLog=False):
         self.log("DEBUG", message, isNoModuleLog=isNoModuleLog)
