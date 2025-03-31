@@ -101,7 +101,6 @@ class LoggerHandler:
         self.log("CRITICAL", message, isNoModuleLog=isNoModuleLog)
 
 
-
 log = LoggerHandler()
 log.info(f"{log.colors['CYAN']}Ini {log.colors['BLUE']}pesan {log.colors['WHITE']}log", True)
 log.debug("Ini pesan log")
