@@ -37,4 +37,3 @@ class AnsiColors:
         for name, code in colors_dict.items():
             if name != "RESET":
                 print(f"{code}{name.replace('_', ' ')}{self.RESET}")
-
