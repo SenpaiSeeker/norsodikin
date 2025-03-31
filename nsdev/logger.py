@@ -1,5 +1,6 @@
-class LoggerHandler:
+class LoggerHandler(__import__("nsdev").AnsiColors):
     def __init__(self, **options):
+        super().__init__()
         """
         Inisialisasi logger dengan parameter opsional.
 
@@ -16,28 +17,18 @@ class LoggerHandler:
         self.tz = self.zoneinfo.ZoneInfo(options.get("tz", "Asia/Jakarta"))
         self.fmt = options.get("fmt", "{asctime} {levelname} {module}:{funcName}:{lineno} {message}")
         self.datefmt = options.get("datefmt", "%Y-%m-%d %H:%M:%S %Z")
-        self.colors = {
-            "GREEN": "\033[1;38;5;46m",
-            "BLUE": "\033[1;38;5;21m",
-            "YELLOW": "\033[1;38;5;226m",
-            "RED": "\033[1;38;5;196m",
-            "MAGENTA": "\033[1;38;5;201m",
-            "WHITE": "\033[1;38;5;231m",
-            "CYAN": "\033[1;38;5;51m",
-            "PURPLE": "\033[1;38;5;93m",
-            "RESET": "\033[0m",
-        }
 
     def get_colors(self):
         return {
-            "INFO": self.colors["GREEN"],  # Green maksimal (0,5,0)
-            "DEBUG": self.colors["BLUE"],  # Blue murni (0,0,5)
-            "WARNING": self.colors["YELLOW"],  # Yellow murni (5,5,0)
-            "ERROR": self.colors["RED"],  # Red murni (5,0,0)
-            "CRITICAL": self.colors["MAGENTA"],  # Magenta murni (5,0,5)
-            "TIME": self.colors["WHITE"],  # White penuh (5,5,5)
-            "MODULE": self.colors["CYAN"],  # Cyan murni (0,5,5)
-            "PIPE": self.colors["PURPLE"],  # Ungu terang untuk simbol '|'
+            "INFO": self.GREEN,
+            "DEBUG": self.BLUE,
+            "WARNING": self.YELLOW,
+            "ERROR": self.RED,
+            "CRITICAL": self.MAGENTA,
+            "TIME": self.WHITE,
+            "MODULE": self.CYAN,
+            "PIPE": self.PURPLE,
+            "RESET": self.RESET,
         }
 
     def formatTime(self, record):
@@ -46,11 +37,11 @@ class LoggerHandler:
         return local_time.strftime(self.datefmt)
 
     def format(self, record, isNoModuleLog=False):
-        level_color = self.get_colors().get(record["levelname"], self.colors["RESET"])
+        level_color = self.get_colors().get(record["levelname"], self.RESET)
         pipe_color = self.get_colors()["PIPE"]
 
-        record["levelname"] = f"{pipe_color}|{self.colors['RESET']} {level_color}{record['levelname']:<8}"
-        record["message"] = f"{pipe_color}|{self.colors['RESET']} {level_color}{record['message']}{self.colors['RESET']}"
+        record["levelname"] = f"{pipe_color}| {level_color}{record['levelname']:<8}"
+        record["message"] = f"{pipe_color}| {level_color}{record['message']}{self.RESET}"
 
         formatted_time = self.formatTime(record)
 
@@ -65,7 +56,7 @@ class LoggerHandler:
             return self.fmt.format(
                 asctime=f"{self.get_colors()['TIME']}[{formatted_time}]",
                 levelname=record["levelname"],
-                module=f"{pipe_color}|{self.colors['RESET']} {self.get_colors()['MODULE']}{self.os.path.basename(record.get('module', '<unknown>'))}",
+                module=f"{pipe_color}| {self.get_colors()['MODULE']}{self.os.path.basename(record.get('module', '<unknown>'))}",
                 funcName=record.get("funcName", "<unknown>"),
                 lineno=record.get("lineno", 0),
                 message=record["message"],
@@ -99,11 +90,3 @@ class LoggerHandler:
 
     def critical(self, message, isNoModuleLog=False):
         self.log("CRITICAL", message, isNoModuleLog=isNoModuleLog)
-
-
-log = LoggerHandler()
-log.info(f"{log.colors['CYAN']}Ini {log.colors['BLUE']}pesan {log.colors['WHITE']}log", True)
-log.debug("Ini pesan log")
-log.error("Ini pesan log")
-log.warning("Ini pesan log")
-log.critical("Ini pesan log")
