@@ -31,9 +31,3 @@ class AnsiColors:
         self.LIGHT_BROWN = "\033[1;38;5;180m"
         self.LIGHT_AQUA = "\033[1;38;5;159m"
         self.LIGHT_PURPLE = "\033[1;38;5;183m"
-
-    def print_all_colors(self):
-        colors_dict = vars(self)
-        for name, code in colors_dict.items():
-            if name != "RESET":
-                print(f"{code}{name.replace('_', ' ')}{self.RESET}")
