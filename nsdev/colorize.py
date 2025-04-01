@@ -59,4 +59,3 @@ class AnsiColors:
         self.LIGHT_OLIVE = "\033[1;38;5;100m"
         self.LIGHT_BEIGE = "\033[1;38;5;253m"
         self.LIGHT_MINT = "\033[1;38;5;157m"
-    
