@@ -65,8 +65,12 @@ class LoggerHandler(__import__("nsdev").AnsiColors):
         formatted_message = self.format(record)
         print(formatted_message)
 
-    def print(self, message):
-        print(f"{self.CYAN}[ {self.WHITE}{self.formatTime()} {self.CYAN}] {self.WHITE}| {message}{self.RESET}")
+    def print(self, message, isPrint=True):
+        text = f"{self.CYAN}[ {self.WHITE}{self.formatTime()} {self.CYAN}] {self.WHITE}| {message}{self.RESET}"
+        if isPrint:
+            print(text)
+        else:
+            return text
 
     def debug(self, message):
         self.log("DEBUG", message)
