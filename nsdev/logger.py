@@ -36,7 +36,7 @@ class LoggerHandler(__import__("nsdev").AnsiColors):
         local_time = utc_time.astimezone(self.tz)
         return local_time.strftime(self.datefmt)
 
-    def format(self, record, isNoModuleLog=False):
+    def format(self, record):
         level_color = self.get_colors().get(record["levelname"], self.RESET)
         pipe_color = self.get_colors()["PIPE"]
 
