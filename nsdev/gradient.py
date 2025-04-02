@@ -47,7 +47,7 @@ class Gradient:
         for remaining in range(seconds, -1, -1):
             time_display = self.gettime(remaining)
 
-            progress_color = [self.rgb_to_ansi(*self.interpolate_color(i * bar_length)) for i in range(bar_length)]
+            progress_color = [self.rgb_to_ansi(*self.interpolate_color(i / bar_length)) for i in range(bar_length)]
             shift = remaining % len(animation_wave)
             bar = "".join(f"{progress_color[i]}{animation_wave[(i + shift) % len(animation_wave)]}" for i in range(bar_length))
 
