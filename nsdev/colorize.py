@@ -59,3 +59,7 @@ class AnsiColors:
         self.LIGHT_OLIVE = "\033[1;38;5;100m"
         self.LIGHT_BEIGE = "\033[1;38;5;253m"
         self.LIGHT_MINT = "\033[1;38;5;157m"
+        
+    def random_color(self):
+        return __import__("random").choice([code for name, code in vars(self).items() if name != "RESET"],), self.RESET
+
