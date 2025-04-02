@@ -40,27 +40,18 @@ class LoggerHandler(__import__("nsdev").AnsiColors):
         level_color = self.get_colors().get(record["levelname"], self.RESET)
         pipe_color = self.get_colors()["PIPE"]
 
-        record["levelname"] = f"{pipe_color}| {level_color}{record['levelname']:<8}"
-        record["message"] = f"{pipe_color}| {level_color}{record['message']}{self.RESET}"
+        if isNoModuleLog:
+            record["message"] = f"{pipe_color}| {record['message']}{self.RESET}"
+        else:
+            record["levelname"] = f"{pipe_color}| {level_color}{record['levelname']:<8}"
+            record["message"] = f"{pipe_color}| {level_color}{record['message']}{self.RESET}"
 
         formatted_time = self.formatTime(record)
-
-        if isNoModuleLog:
-            fmt = "{asctime} {levelname} {message}"
-            return fmt.format(
-                asctime=f"{self.get_colors()['TIME']}[{formatted_time}]",
-                levelname=record["levelname"],
-                message=record["message"],
-            )
-        else:
-            return self.fmt.format(
-                asctime=f"{self.get_colors()['TIME']}[{formatted_time}]",
-                levelname=record["levelname"],
-                module=f"{pipe_color}| {self.get_colors()['MODULE']}{self.os.path.basename(record.get('module', '<unknown>'))}",
-                funcName=record.get("funcName", "<unknown>"),
-                lineno=record.get("lineno", 0),
-                message=record["message"],
-            )
+        
+        return (f"{self.fmt.format(asctime=f'{self.get_colors()['TIME']}[{formatted_time}]', levelname=record['levelname'],"
+                f" module=f'{pipe_color}| {self.get_colors()['MODULE']}{self.os.path.basename(record.get('module', '<unknown>'))}',"
+                f" funcName=record.get('funcName', '<unknown>'), lineno=record.get('lineno', 0), message=record['message'])}"
+                if not isNoModuleLog else f"{self.get_colors()['TIME']}[{formatted_time}] {record['message']}")
 
     def log(self, level, message, isNoModuleLog=False):
         frame = self.sys._getframe(2)
@@ -89,4 +80,4 @@ class LoggerHandler(__import__("nsdev").AnsiColors):
         self.log("ERROR", message, isNoModuleLog=isNoModuleLog)
 
     def critical(self, message, isNoModuleLog=False):
-        self.log("CRITICAL", message, isNoModuleLog=isNoModuleLog)
+        self.log("CRITICAL", message
