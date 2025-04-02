@@ -42,7 +42,7 @@ class LoggerHandler(__import__("nsdev").AnsiColors):
 
         record["levelname"] = f"{pipe_color}| {level_color}{record['levelname']:<8}" if not isNoModuleLog else ""
         record["message"] = f"{pipe_color}| {level_color}{record['message']}{self.RESET}"
-        
+
         formatted_time = self.formatTime(record)
 
         return (
