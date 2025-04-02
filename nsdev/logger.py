@@ -44,13 +44,13 @@ class LoggerHandler(__import__("nsdev").AnsiColors):
         record["message"] = f"{pipe_color}| {level_color}{record['message']}{self.RESET}"
 
         return self.fmt.format(
-                asctime=f"{self.get_colors()['TIME']}[ {self.formatTime()} ]",
-                levelname=record["levelname"],
-                module=f"{pipe_color}| {self.get_colors()['MODULE']}{self.os.path.basename(record.get('module', '<unknown>'))}",
-                funcName=record.get("funcName", "<unknown>"),
-                lineno=record.get("lineno", 0),
-                message=record["message"],
-            )
+            asctime=f"{self.get_colors()['TIME']}[ {self.formatTime()} ]",
+            levelname=record["levelname"],
+            module=f"{pipe_color}| {self.get_colors()['MODULE']}{self.os.path.basename(record.get('module', '<unknown>'))}",
+            funcName=record.get("funcName", "<unknown>"),
+            lineno=record.get("lineno", 0),
+            message=record["message"],
+        )
 
     def log(self, level, message):
         frame = self.sys._getframe(2)
