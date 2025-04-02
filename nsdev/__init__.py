@@ -10,4 +10,4 @@ from .logger import LoggerHandler
 from .payment import PaymentMidtrans
 from .storekey import KeyManager
 
-__version__ = "0.2.6"
+__version__ = "0.2.7"
