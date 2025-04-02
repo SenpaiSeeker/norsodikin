@@ -57,9 +57,9 @@ class LoggerHandler(__import__("nsdev").AnsiColors):
         filename = self.os.path.basename(frame.f_globals.get("__file__", "<unknown>"))
         record = {
             "levelname": level,
-            "module": filename if not isNoModuleLog else "",
-            "funcName": frame.f_code.co_name if not isNoModuleLog else "",
-            "lineno": frame.f_lineno if not isNoModuleLog else "",
+            "module": filename,
+            "funcName": frame.f_code.co_name,
+            "lineno": frame.f_lineno,
             "message": message,
         }
         formatted_message = self.format(record)
