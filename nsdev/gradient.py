@@ -15,9 +15,6 @@ class Gradient:
         )
 
     def rgb_to_ansi(self, r, g, b):
-        """
-        Konversi RGB ke ANSI 256 color untuk kompatibilitas terminal yang lebih luas.
-        """
         ansi_code = 16 + (36 * (r // 51)) + (6 * (g // 51)) + (b // 51)
         return f"\033[38;5;{ansi_code}m"
 
@@ -64,6 +61,6 @@ class Gradient:
             print(
                 f"\033[2K{bar} {random_text_color}{text.format(time=time_display)}\033[0m",
                 end="\r",
-                flush=True,
+                flush=True
             )
             await self.asyncio.sleep(1)
