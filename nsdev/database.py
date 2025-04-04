@@ -1,10 +1,3 @@
-import datetime
-import importlib
-import json
-import os
-import zoneinfo
-
-
 class DataBase:
     def __init__(self, **options):
         """
@@ -17,6 +10,12 @@ class DataBase:
             - mongo_url: URL MongoDB (untuk storage_type='mongo')
             - git_repo_path: Path untuk operasi git (default: '.')
         """
+        self.os = __import__("os")
+        self.json = __import__("json")
+        self.datetime = __import__("datetime")
+        self.zoneinfo = __import__("zoneinfo")
+        self.subprocess = __import__("subprocess")
+
         self.storage_type = options.get("storage_type", "local")
         self.file_name = options.get("file_name", "database")
         self.binary_keys = options.get("binary_keys", 14151819154911914)
@@ -24,21 +23,22 @@ class DataBase:
         self.git_repo_path = options.get("git_repo_path", ".")
 
         if self.storage_type == "mongo":
-            pymongo = importlib.import_module("pymongo")
+            self.pymongo = __import__("pymongo")
             self.mongo_url = options.get("mongo_url")
             if not self.mongo_url:
                 raise ValueError("mongo_url is required for MongoDB storage")
-            self.client = pymongo.MongoClient(self.mongo_url)
+            self.client = self.pymongo.MongoClient(self.mongo_url)
             self.data = self.client[self.file_name]
         else:
             self.data_file = f"{self.file_name}.json"
             self._initialize_files()
 
-        nsdev = importlib.import_module("nsdev.encrypt")
-        self.cipher = nsdev.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
+        self.cipher = __import__("nsdev").encrypt.CipherHandler(
+            key=self.binary_keys, method=self.method_encrypt
+        )
 
     def _initialize_files(self):
-        if not os.path.exists(self.data_file):
+        if not self.os.path.exists(self.data_file):
             self._save_data({"vars": {}, "bots": []})
 
     def _load_data(self):
@@ -46,15 +46,16 @@ class DataBase:
             raise RuntimeError("_load_data is not applicable for MongoDB storage")
         try:
             with open(self.data_file, "r") as f:
-                return json.load(f)
-        except json.JSONDecodeError:
+                content = f.read()
+                return self.json.loads(content) if content.strip() else {"vars": {}, "bots": []}
+        except (self.json.JSONDecodeError, FileNotFoundError):
             return {"vars": {}, "bots": []}
 
     def _save_data(self, data):
         if self.storage_type == "mongo":
             raise RuntimeError("_save_data is not applicable for MongoDB storage")
         with open(self.data_file, "w") as f:
-            json.dump(data, f, indent=4)
+            self.json.dump(data, f, indent=4)
 
     def setVars(self, user_id, query_name, value, var_key="variabel"):
         encrypted_value = self.cipher.encrypt(value)
@@ -73,10 +74,16 @@ class DataBase:
             result = self.data.vars.find_one({"_id": user_id})
             encrypted_value = result.get(var_key, {}).get(query_name, None) if result else None
         else:
-            encrypted_value = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
+            encrypted_value = (
+                self._load_data()
+                .get("vars", {})
+                .get(str(user_id), {})
+                .get(var_key, {})
+                .get(query_name)
+            )
         return self.cipher.decrypt(encrypted_value) if encrypted_value else None
 
-    def setListVars(self, user_id, query_name, value, var_key="variabel"):
+    def setListVars(self, user_id, query_name, value, var_key="variabel"):"""
         encrypted_value = self.cipher.encrypt(value)
         if self.storage_type == "mongo":
             result = self.data.vars.find_one({"_id": user_id})
@@ -98,7 +105,13 @@ class DataBase:
             result = self.data.vars.find_one({"_id": user_id})
             encrypted_values = result.get(var_key, {}).get(query_name, []) if result else []
         else:
-            encrypted_values = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name, [])
+            encrypted_values = (
+                self._load_data()
+                .get("vars", {})
+                .get(str(user_id), {})
+                .get(var_key, {})
+                .get(query_name, [])
+            )
         return [self.cipher.decrypt(value) for value in encrypted_values]
 
     def removeListVars(self, user_id, query_name, value, var_key="variabel"):
@@ -130,37 +143,45 @@ class DataBase:
             result = self.data.vars.find_one({"_id": user_id})
             encrypted_data = result.get(var_key, {}) if result else {}
         else:
-            encrypted_data = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {})
+            encrypted_data = (
+                self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {})
+            )
         return {key: self.cipher.decrypt(value) for key, value in encrypted_data.items()}
 
     def setExp(self, user_id, exp=30):
         have_exp = self.getVars(user_id, "EXPIRED_DATE")
         if not have_exp:
-            now = datetime.datetime.now(zoneinfo.ZoneInfo("Asia/Jakarta"))
+            now = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
         else:
-            now = datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S").astimezone(zoneinfo.ZoneInfo("Asia/Jakarta"))
-        expire_date = now + datetime.timedelta(days=exp)
+            now = self.datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S").astimezone(
+                self.zoneinfo.ZoneInfo("Asia/Jakarta")
+            )
+        expire_date = now + self.datetime.timedelta(days=exp)
         self.setVars(user_id, "EXPIRED_DATE", expire_date.strftime("%Y-%m-%d %H:%M:%S"))
 
     def getExp(self, user_id):
         expired_date = self.getVars(user_id, "EXPIRED_DATE")
         if expired_date:
-            exp_datetime = datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(zoneinfo.ZoneInfo("Asia/Jakarta"))
+            exp_datetime = self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(
+                self.zoneinfo.ZoneInfo("Asia/Jakarta")
+            )
             return exp_datetime.strftime("%d-%m-%Y")
         else:
             return None
 
     def daysLeft(self, user_id):
         user_exp = self.getExp(user_id)
-        today = datetime.datetime.now(zoneinfo.ZoneInfo("Asia/Jakarta"))
+        today = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
         if user_exp:
-            exp_datetime = datetime.datetime.strptime(user_exp, "%d-%m-%Y").astimezone(zoneinfo.ZoneInfo("Asia/Jakarta"))
+            exp_datetime = self.datetime.datetime.strptime(user_exp, "%d-%m-%Y").astimezone(
+                self.zoneinfo.ZoneInfo("Asia/Jakarta")
+            )
             return (exp_datetime - today).days
         return None
 
     def checkAndDeleteIfExpired(self, user_id):
         user_exp = self.getExp(user_id)
-        today = datetime.datetime.now(zoneinfo.ZoneInfo("Asia/Jakarta")).strftime("%d-%m-%Y")
+        today = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta")).strftime("%d-%m-%Y")
         if not user_exp or user_exp == today:
             self.removeAllVars(user_id)
             self.removeBot(user_id)
