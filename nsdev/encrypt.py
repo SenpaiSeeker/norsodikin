@@ -40,10 +40,7 @@ class CipherHandler:
         if len(encrypted_bits) % 8 != 0:
             self.log.error("Data biner yang dienkripsi tidak valid.")
             return None
-        decrypted_chars = [
-            chr(int(encrypted_bits[i : i + 8], 2) ^ (self.key % 256))
-            for i in range(0, len(encrypted_bits), 8)
-        ]
+        decrypted_chars = [chr(int(encrypted_bits[i : i + 8], 2) ^ (self.key % 256)) for i in range(0, len(encrypted_bits), 8)]
         return "".join(decrypted_chars)
 
     def encrypt_shift(self, text: str) -> str:
@@ -85,9 +82,7 @@ class CipherHandler:
             encrypted_code = self.encrypt(code)
             if encrypted_code is None:
                 raise ValueError("Encryption failed.")
-            result = (
-                f"exec(__import__('nsdev').CipherHandler(method='{self.method}', key={self.key}).decrypt('{encrypted_code}'))"
-            )
+            result = f"exec(__import__('nsdev').CipherHandler(method='{self.method}', key={self.key}).decrypt('{encrypted_code}'))"
             with open(filename, "w") as file:
                 file.write(result)
             self.log.info(f"Kode berhasil disimpan ke file {filename}")
