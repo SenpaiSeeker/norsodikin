@@ -33,9 +33,7 @@ class DataBase:
             self.data_file = f"{self.file_name}.json"
             self._initialize_files()
 
-        self.cipher = __import__("nsdev").encrypt.CipherHandler(
-            key=self.binary_keys, method=self.method_encrypt
-        )
+        self.cipher = __import__("nsdev").encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
 
     def _initialize_files(self):
         if not self.os.path.exists(self.data_file):
@@ -74,13 +72,7 @@ class DataBase:
             result = self.data.vars.find_one({"_id": user_id})
             encrypted_value = result.get(var_key, {}).get(query_name, None) if result else None
         else:
-            encrypted_value = (
-                self._load_data()
-                .get("vars", {})
-                .get(str(user_id), {})
-                .get(var_key, {})
-                .get(query_name)
-            )
+            encrypted_value = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
         return self.cipher.decrypt(encrypted_value) if encrypted_value else None
 
     def setListVars(self, user_id, query_name, value, var_key="variabel"):
@@ -105,13 +97,7 @@ class DataBase:
             result = self.data.vars.find_one({"_id": user_id})
             encrypted_values = result.get(var_key, {}).get(query_name, []) if result else []
         else:
-            encrypted_values = (
-                self._load_data()
-                .get("vars", {})
-                .get(str(user_id), {})
-                .get(var_key, {})
-                .get(query_name, [])
-            )
+            encrypted_values = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name, [])
         return [self.cipher.decrypt(value) for value in encrypted_values]
 
     def removeListVars(self, user_id, query_name, value, var_key="variabel"):
@@ -143,9 +129,7 @@ class DataBase:
             result = self.data.vars.find_one({"_id": user_id})
             encrypted_data = result.get(var_key, {}) if result else {}
         else:
-            encrypted_data = (
-                self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {})
-            )
+            encrypted_data = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {})
         return {key: self.cipher.decrypt(value) for key, value in encrypted_data.items()}
 
     def setExp(self, user_id, exp=30):
@@ -153,18 +137,14 @@ class DataBase:
         if not have_exp:
             now = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
         else:
-            now = self.datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S").astimezone(
-                self.zoneinfo.ZoneInfo("Asia/Jakarta")
-            )
+            now = self.datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S").astimezone(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
         expire_date = now + self.datetime.timedelta(days=exp)
         self.setVars(user_id, "EXPIRED_DATE", expire_date.strftime("%Y-%m-%d %H:%M:%S"))
 
     def getExp(self, user_id):
         expired_date = self.getVars(user_id, "EXPIRED_DATE")
         if expired_date:
-            exp_datetime = self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(
-                self.zoneinfo.ZoneInfo("Asia/Jakarta")
-            )
+            exp_datetime = self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
             return exp_datetime.strftime("%d-%m-%Y")
         else:
             return None
@@ -173,9 +153,7 @@ class DataBase:
         user_exp = self.getExp(user_id)
         today = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
         if user_exp:
-            exp_datetime = self.datetime.datetime.strptime(user_exp, "%d-%m-%Y").astimezone(
-                self.zoneinfo.ZoneInfo("Asia/Jakarta")
-            )
+            exp_datetime = self.datetime.datetime.strptime(user_exp, "%d-%m-%Y").astimezone(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
             return (exp_datetime - today).days
         return None
 
