@@ -1,9 +1,9 @@
-import os
-import json
 import datetime
-import zoneinfo
-import subprocess
 import importlib
+import json
+import os
+import zoneinfo
+
 
 class DataBase:
     def __init__(self, **options):
@@ -22,7 +22,7 @@ class DataBase:
         self.binary_keys = options.get("binary_keys", 14151819154911914)
         self.method_encrypt = options.get("method_encrypt", "bytes")
         self.git_repo_path = options.get("git_repo_path", ".")
-        
+
         if self.storage_type == "mongo":
             pymongo = importlib.import_module("pymongo")
             self.mongo_url = options.get("mongo_url")
@@ -33,7 +33,7 @@ class DataBase:
         else:
             self.data_file = f"{self.file_name}.json"
             self._initialize_files()
-        
+
         nsdev = importlib.import_module("nsdev.encrypt")
         self.cipher = nsdev.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
 
