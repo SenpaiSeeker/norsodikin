@@ -83,7 +83,7 @@ class DataBase:
             )
         return self.cipher.decrypt(encrypted_value) if encrypted_value else None
 
-    def setListVars(self, user_id, query_name, value, var_key="variabel"):"""
+    def setListVars(self, user_id, query_name, value, var_key="variabel"):
         encrypted_value = self.cipher.encrypt(value)
         if self.storage_type == "mongo":
             result = self.data.vars.find_one({"_id": user_id})
