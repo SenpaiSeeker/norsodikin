@@ -9,16 +9,16 @@ class CipherHandler:
             - delimiter (str): Delimiter yang digunakan untuk metode 'shift'. Default: '|'.
         """
         self.method = options.get("method", "shift")
-        self.key = options.get("key", 31099)
+        self.key = int(options.get("key", 31099))
         self.delimiter = options.get("delimiter", "|")
         self.log = __import__("nsdev").logger.LoggerHandler()
 
-    def _xor_encrypt_decrypt(self, data: bytes):
+    def _xor_encrypt_decrypt(self, data: bytes) -> bytes:
         key_bytes = self.key.to_bytes((self.key.bit_length() + 7) // 8, byteorder="big")
         return bytes([data[i] ^ key_bytes[i % len(key_bytes)] for i in range(len(data))])
 
     def encrypt_bytes(self, data: str) -> str:
-        serialized_data = __import__("textwrap").dedent(data).encode("utf-8")
+        serialized_data = data.encode("utf-8")
         encrypted_data = self._xor_encrypt_decrypt(serialized_data)
         return __import__("base64").urlsafe_b64encode(encrypted_data).decode("utf-8").rstrip("=")
 
@@ -40,7 +40,9 @@ class CipherHandler:
         if len(encrypted_bits) % 8 != 0:
             self.log.error("Data biner yang dienkripsi tidak valid.")
             return None
-        decrypted_chars = [chr(int(encrypted_bits[i : i + 8], 2) ^ (self.key % 256)) for i in range(0, len(encrypted_bits), 8)]
+        decrypted_chars = [
+            chr(int(encrypted_bits[i : i + 8], 2) ^ (self.key % 256)) for i in range(0, len(encrypted_bits), 8)
+        ]
         return "".join(decrypted_chars)
 
     def encrypt_shift(self, text: str) -> str:
