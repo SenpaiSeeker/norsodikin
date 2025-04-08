@@ -67,5 +67,3 @@ class Gradient:
         end_time = self.time.perf_counter()
 
         return (end_time - start_time) * 1000
-
-        
