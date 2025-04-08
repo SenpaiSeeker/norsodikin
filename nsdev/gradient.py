@@ -60,3 +60,12 @@ class Gradient:
             random_text_color = self.rgb_to_ansi(*self.random_color())
             print(f"\033[2K{bar} {random_text_color}{text.format(time=time_display)}\033[0m", end="\r", flush=True)
             await self.asyncio.sleep(1)
+
+    async def ping(self):
+        start_time = self.time.perf_counter()
+        await self.asyncio.sleep(self.random.uniform(0.1, 0.5))
+        end_time = self.time.perf_counter()
+
+        return (end_time - start_time) * 1000
+
+        
