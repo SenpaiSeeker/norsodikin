@@ -131,7 +131,7 @@ class DataBase:
         else:
             encrypted_data = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {})
         return {
-            key: ([self.cipher.decrypt(v) for v in value] if isinstance(value, list) else self.cipher.decrypt(value) if isinstance(value, str) else value)
+            key: ([self.cipher.decrypt(v) for v in value] if isinstance(value, list) else self.cipher.decrypt(value) if isinstance(value, str) else value,)
             for key, value in encrypted_data.items()
         }
 
