@@ -60,5 +60,11 @@ class AnsiColors:
         self.LIGHT_BEIGE = "\033[1;38;5;253m"
         self.LIGHT_MINT = "\033[1;38;5;157m"
 
+    def print_all_colors(self):
+        colors_dict = vars(self)
+        for name, code in colors_dict.items():
+            if name != "RESET":
+                print(f"{code}{name}{self.RESET}")
+
     def random_color(self):
         return __import__("random").choice([code for name, code in vars(self).items() if name != "RESET"]), self.RESET
