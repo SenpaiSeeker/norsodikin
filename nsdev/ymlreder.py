@@ -6,7 +6,7 @@ class YamlHandler(__import__("nsdev").AnsiColors):
 
     def loadAndConvert(self, filePath):
         try:
-            with open(filePath, "r", encoding='utf-8') as file:
+            with open(filePath, "r", encoding="utf-8") as file:
                 rawData = self.yaml.safe_load(file)
                 return self._convertToNamespace(rawData)
         except FileNotFoundError:
