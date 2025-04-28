@@ -1,8 +1,8 @@
 class YamlHandler(__import__("nsdev").AnsiColors):
-    def __init__(self, filePath):
+    def __init__(self):
+        super().__init__()
         self.yaml = __import__("yaml")
         self.SimpleNamespace = __import__("types").SimpleNamespace
-        super().__init__()
 
     def loadAndConvert(self, filePath):
         try:
