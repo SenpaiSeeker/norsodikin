@@ -11,4 +11,4 @@ from .payment import PaymentMidtrans
 from .storekey import KeyManager
 from .ymlreder import YamlHandler
 
-__version__ = "0.2.15"
+__version__ = "0.2.16"
