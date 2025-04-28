@@ -12,7 +12,7 @@ class YamlHandler(__import__("nsdev").AnsiColors):
         except FileNotFoundError:
             print(f"{self.YELLOW}File {self.LIGHT_CYAN}'{self.filePath}' {self.RED}tidak ditemukan.{self.RESET}")
         except self.yaml.YAMLError as e:
-            print(f"{self.RED}Kesalahan saat memproses file YAML: {e}{self.RESET}")
+            print(f"{self.YELLOW}Kesalahan saat memproses file YAML: {self.RED}{e}{self.RESET}")
         return None
 
     def _convertToNamespace(self, data):
