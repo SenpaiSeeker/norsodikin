@@ -1,12 +1,12 @@
 class YamlHandler(__import__("nsdev").AnsiColors):
     def __init__(self, filePath):
-        self.yaml = __import__('yaml')
-        self.SimpleNamespace = __import__('types').SimpleNamespace
+        self.yaml = __import__("yaml")
+        self.SimpleNamespace = __import__("types").SimpleNamespace
         super().__init__()
 
     def loadAndConvert(self, filePath):
         try:
-            with open(filePath, 'r') as file:
+            with open(filePath, "r") as file:
                 rawData = self.yaml.safe_load(file)
                 return self._convertToNamespace(rawData)
         except FileNotFoundError:
