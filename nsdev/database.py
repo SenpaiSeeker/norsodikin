@@ -10,7 +10,7 @@ class DataBase:
             - method_encrypt (str): Metode enkripsi untuk CipherHandler (default: 'bytes').
             - mongo_url (str): URL MongoDB (wajib jika storage_type='mongo').
             - git_autocommit (bool): Aktifkan auto-commit Git setelah perubahan data (default: False).
-       """
+        """
         self.os = __import__("os")
         self.json = __import__("json")
         self.datetime = __import__("datetime")
