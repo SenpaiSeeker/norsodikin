@@ -2,14 +2,15 @@ class DataBase:
     def __init__(self, **options):
         """
         Inisialisasi database dengan parameter opsional.
+
         :param options:
-            - storage_type: 'local' (default) atau 'mongo'
-            - file_name: Nama file untuk database lokal (default: 'database')
-            - binary_keys: Kunci enkripsi untuk CipherHandler (default: 14151819154911914)
-            - method_encrypt: metode enkripsi untuk CipherHandler (default: bytes)
-            - mongo_url: URL MongoDB (untuk storage_type='mongo')
-            - git_repo_path: Path untuk operasi git (default: '.')
-        """
+            - storage_type (str): 'local' (default) atau 'mongo'.
+            - file_name (str): Nama file untuk database lokal (default: 'database').
+            - binary_keys (int): Kunci enkripsi untuk CipherHandler (default: 14151819154911914).
+            - method_encrypt (str): Metode enkripsi untuk CipherHandler (default: 'bytes').
+            - mongo_url (str): URL MongoDB (wajib jika storage_type='mongo').
+            - git_autocommit (bool): Aktifkan auto-commit Git setelah perubahan data (default: False).
+       """
         self.os = __import__("os")
         self.json = __import__("json")
         self.datetime = __import__("datetime")
@@ -20,7 +21,7 @@ class DataBase:
         self.file_name = options.get("file_name", "database")
         self.binary_keys = options.get("binary_keys", 14151819154911914)
         self.method_encrypt = options.get("method_encrypt", "bytes")
-        self.git_repo_path = options.get("git_repo_path", ".")
+        self.git_autocommit = options.get("git_autocommit", False)
 
         if self.storage_type == "mongo":
             self.pymongo = __import__("pymongo")
@@ -49,11 +50,20 @@ class DataBase:
         except (self.json.JSONDecodeError, FileNotFoundError):
             return {"vars": {}, "bots": []}
 
+    def _git_commit(self, message="Auto-commit: database updated"):
+        if self.git_autocommit:
+            try:
+                self.subprocess.run(["git", "add", self.data_file], check=True)
+                self.subprocess.run(["git", "commit", "-m", message], check=True)
+            except Exception as e:
+                print(f"\033[1;38;5;196m[ERROR] Git auto-commit failed: \033[1;38;5;226m{e}\033[0m")
+
     def _save_data(self, data):
         if self.storage_type == "mongo":
             raise RuntimeError("_save_data is not applicable for MongoDB storage")
         with open(self.data_file, "w") as f:
             self.json.dump(data, f, indent=4)
+        self._git_commit(f"Auto-commit: updated {self.data_file}")
 
     def setVars(self, user_id, query_name, value, var_key="variabel"):
         encrypted_value = self.cipher.encrypt(value)
