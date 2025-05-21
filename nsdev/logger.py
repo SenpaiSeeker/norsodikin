@@ -63,12 +63,12 @@ class LoggerHandler(__import__("nsdev").AnsiColors):
             "message": message,
         }
         formatted_message = self.format(record)
-        print(formatted_message)
+        print(f"\033[2K{formatted_message}")
 
     def print(self, message, isPrint=True):
         text = f"{self.CYAN}[ {self.WHITE}{self.formatTime()} {self.CYAN}] {self.WHITE}| {message}{self.RESET}"
         if isPrint:
-            print(text)
+            print(f"\033[2K{text}")
         else:
             return text
 
