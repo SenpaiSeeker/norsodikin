@@ -1,6 +1,5 @@
-class ImageGenerator(__import__("nsdev").logger.LoggerHandler):
+class ImageGenerator:
     def __init__(self, auth_cookie_u: str, auth_cookie_srchhpgusr: str, logging_enabled: bool = True):
-        super().__init__()
         self.httpx = __import__("httpx")
         self.re = __import__("re")
         self.time = __import__("time")
@@ -8,9 +7,11 @@ class ImageGenerator(__import__("nsdev").logger.LoggerHandler):
         self.client = self.httpx.AsyncClient(cookies={"_U": auth_cookie_u, "SRCHHPGUSR": auth_cookie_srchhpgusr})
         self.logging_enabled = logging_enabled
 
+        self.log = __import__("nsdev").logger.LoggerHandler()
+
     def __log(self, message: str):
         if self.logging_enabled:
-            self.print(message)
+            self.log.print(message)
 
     async def generate(self, prompt: str, num_images: int, max_cycles: int = 4):
         images = []
@@ -19,7 +20,7 @@ class ImageGenerator(__import__("nsdev").logger.LoggerHandler):
 
         while len(images) < num_images and cycle < max_cycles:
             cycle += 1
-            self.__log(f"{self.GREEN}Memulai siklus {cycle}...")
+            self.__log(f"{self.log.GREEN}Memulai siklus {cycle}...")
 
             translator = __import__("deep_translator").GoogleTranslator(source="auto", target="en")
             response = await self.client.post(
@@ -32,7 +33,7 @@ class ImageGenerator(__import__("nsdev").logger.LoggerHandler):
             if response.status_code != 302:
                 raise Exception("Permintaan gagal! Pastikan URL benar dan ada redirect.")
 
-            self.__log(f"{self.GREEN}Permintaan berhasil dikirim!")
+            self.__log(f"{self.log.GREEN}Permintaan berhasil dikirim!")
 
             if "being reviewed" in response.text or "has been blocked" in response.text:
                 raise Exception("Prompt sedang ditinjau atau diblokir!")
@@ -40,9 +41,9 @@ class ImageGenerator(__import__("nsdev").logger.LoggerHandler):
                 raise Exception("Bahasa yang digunakan tidak didukung oleh Bing!")
 
             result_id = response.headers["Location"].replace("&nfy=1", "").split("id=")[-1]
-            results_url = f"https://www.bing.com/images/create/async/results/ {result_id}?q={prompt}"
+            results_url = f"https://www.bing.com/images/create/async/results/{result_id}?q={prompt}"
 
-            self.__log(f"{self.GREEN}Menunggu hasil gambar...")
+            self.__log(f"{self.log.GREEN}Menunggu hasil gambar...")
             start_cycle_time = self.time.time()
 
             while True:
@@ -61,7 +62,7 @@ class ImageGenerator(__import__("nsdev").logger.LoggerHandler):
                 raise Exception("Tidak ada gambar baru yang dihasilkan. Coba periksa prompt Anda.")
 
             images.extend(new_images)
-            self.__log(f"Siklus {cycle} selesai dalam {round(self.time.time() - start_cycle_time, 2)} detik.")
+            self.__log(f"{self.log.GREEN}Siklus {cycle} selesai dalam {round(self.time.time() - start_cycle_time, 2)} detik.")
 
-        self.__log(f"Pembuatan gambar selesai dalam {round(self.time.time() - start_time, 2)} detik.")
+        self.__log(f"{self.log.GREEN}Pembuatan gambar selesai dalam {round(self.time.time() - start_time, 2)} detik.")
         return images[:num_images]
