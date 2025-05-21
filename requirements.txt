@@ -1,2 +1,4 @@
 pyfiglet
 pymongo
+httpx
+deep-translator==1.11.4
