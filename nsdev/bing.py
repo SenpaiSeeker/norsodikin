@@ -1,4 +1,4 @@
-class ImageGenerator(__import__("nsdev").LoggerHandler):
+class ImageGenerator(__import__("nsdev").logger.LoggerHandler):
     def __init__(self, auth_cookie_u: str, auth_cookie_srchhpgusr: str, logging_enabled: bool = True):
         super().__init__()
         self.httpx = __import__("httpx")
