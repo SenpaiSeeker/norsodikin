@@ -1,5 +1,6 @@
 from .addUser import SSHUserManager
 from .argument import Argument
+from .bing import ImageGenerator
 from .button import Button
 from .colorize import AnsiColors
 from .database import DataBase
