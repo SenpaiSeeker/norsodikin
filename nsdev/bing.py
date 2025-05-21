@@ -20,7 +20,7 @@ class AsyncImageGenerator(__import__("nsdev").LoggerHandler):
             cycle += 1
             self.__log(f"{self.GREEN}Memulai siklus {cycle}...")
 
-            translator = __import__("deep_translator").GoogleTranslator(source='auto', target='en')
+            translator = __import__("deep_translator").GoogleTranslator(source="auto", target="en")
             response = await self.client.post(
                 url=f"https://www.bing.com/images/create?q= {translator.translate(prompt)}&rt=3&FORM=GENCRE",
                 data={"q": prompt, "qs": "ds"},
@@ -55,10 +55,7 @@ class AsyncImageGenerator(__import__("nsdev").LoggerHandler):
                     continue
                 break
 
-            new_images = [
-                "https://tse" + link.split("?w=")[0]
-                for link in self.re.findall('src="https://tse([^"]+)"', response.text)
-            ]
+            new_images = ["https://tse" + link.split("?w=")[0] for link in self.re.findall('src="https://tse([^"]+)"', response.text)]
             if not new_images:
                 raise Exception("Tidak ada gambar baru yang dihasilkan. Coba periksa prompt Anda.")
 
