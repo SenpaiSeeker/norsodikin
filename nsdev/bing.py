@@ -41,7 +41,7 @@ class ImageGenerator:
                 raise Exception("Bahasa yang digunakan tidak didukung oleh Bing!")
 
             result_id = response.headers["Location"].replace("&nfy=1", "").split("id=")[-1]
-            results_url = f"https://www.bing.com/images/create/async/results/{result_id}?q={prompt}"
+            results_url = f"https://www.bing.com/images/create/async/results/{result_id}?q={translator.translate(prompt)}"
 
             self.__log(f"{self.log.GREEN}Menunggu hasil gambar...")
             start_cycle_time = self.time.time()
