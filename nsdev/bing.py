@@ -1,4 +1,4 @@
-class AsyncImageGenerator(__import__("nsdev").LoggerHandler):
+class ImageGenerator(__import__("nsdev").LoggerHandler):
     def __init__(self, auth_cookie_u: str, auth_cookie_srchhpgusr: str, logging_enabled: bool = True):
         self.httpx = __import__("httpx")
         self.re = __import__("re")
