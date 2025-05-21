@@ -24,7 +24,7 @@ class ImageGenerator:
 
             translator = __import__("deep_translator").GoogleTranslator(source="auto", target="en")
             response = await self.client.post(
-                url=f"https://www.bing.com/images/create?q= {translator.translate(prompt)}&rt=3&FORM=GENCRE",
+                url=f"https://www.bing.com/images/create?q={translator.translate(prompt)}&rt=3&FORM=GENCRE",
                 data={"q": prompt, "qs": "ds"},
                 follow_redirects=False,
                 timeout=200,
