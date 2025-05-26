@@ -27,11 +27,7 @@ class ChatbotGemini:
                 "Mari kita ngobrol dengan suasana santai dan menyenangkan!"
             )
 
-        return self.genai.GenerativeModel(
-            model_name="gemini-2.0-flash-exp",
-            generation_config=self.generation_config,
-            system_instruction=instruction
-        )
+        return self.genai.GenerativeModel(model_name="gemini-2.0-flash-exp", generation_config=self.generation_config, system_instruction=instruction)
 
     def send_chat_message(self, message, user_id, bot_name):
         history = self.chat_history.setdefault(user_id, [])
