@@ -55,11 +55,21 @@ class ImageGenerator:
                 if response.status_code != 200 or "errorMessage" in response.text:
                     self.time.sleep(1)
                     continue
-                break
 
-            new_images = ["https://tse" + link.split("?w=")[0] for link in self.re.findall('src="https://tse([^"]+)"', response.text)]
-            if not new_images:
-                raise Exception("Tidak ada gambar baru yang dihasilkan. Coba periksa prompt Anda.")
+                new_images = []
+                try:
+                    new_images = [
+                        "https://tse" + link.split("?w=")[0]
+                        for link in self.re.findall(r'src="https://tse([^"]+)"', response.text)
+                    ]
+                except Exception as e:
+                    self.__log(f"{self.log.RED}Gagal mengekstrak gambar: {e}")
+                    new_images = []
+
+                if new_images:
+                    break
+
+                self.time.sleep(1)
 
             images.extend(new_images)
             self.__log(f"{self.log.GREEN}Siklus {cycle} selesai dalam {round(self.time.time() - start_cycle_time, 2)} detik.")
