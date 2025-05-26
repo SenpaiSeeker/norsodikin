@@ -58,7 +58,7 @@ class ImageGenerator:
 
                 new_images = []
                 try:
-                    new_images = list(set(["https://tse" + link.split("?w=")[0] for link in self.re.findall(r'src="https://tse([^"]+)"', response.text)]))
+                    new_images = list(set(["https://tse" + link.split("?w=")[0] for link in self.re.findall(r'src="https://tse([^"]+)"', response.text),]))
                 except Exception as e:
                     self.__log(f"{self.log.RED}Gagal mengekstrak gambar: {e}")
                     new_images = []
