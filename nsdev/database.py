@@ -28,8 +28,8 @@ class DataBase:
             self.client = self.pymongo.MongoClient(self.mongo_url)
             self.data = self.client[self.file_name]
         elif self.storage_type == "sqlite":
-            self.db_file = f"{self.file_name}.db"
-            self.conn = sqlite3.connect(self.db_file)
+            self.db_file = f"{self.file_name}.db" 
+            self.conn = __import__("sqlite3").connect(self.db_file)
             self.cursor = self.conn.cursor()
             self._initialize_sqlite()
         else:
