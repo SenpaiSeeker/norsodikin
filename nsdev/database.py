@@ -28,7 +28,7 @@ class DataBase:
             self.client = self.pymongo.MongoClient(self.mongo_url)
             self.data = self.client[self.file_name]
         elif self.storage_type == "sqlite":
-            self.db_file = f"{self.file_name}.db" 
+            self.db_file = f"{self.file_name}.db"
             self.conn = __import__("sqlite3").connect(self.db_file)
             self.cursor = self.conn.cursor()
             self._initialize_sqlite()
@@ -58,13 +58,16 @@ class DataBase:
 
     # SQLite-specific methods
     def _initialize_sqlite(self):
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS vars (
                 user_id TEXT PRIMARY KEY,
                 data TEXT
             )
-        """)
-        self.cursor.execute("""
+        """
+        )
+        self.cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS bots (
                 user_id TEXT PRIMARY KEY,
                 api_id TEXT,
@@ -72,7 +75,8 @@ class DataBase:
                 bot_token TEXT,
                 session_string TEXT
             )
-        """)
+        """
+        )
         self.conn.commit()
 
     def _sqlite_get_vars(self, user_id):
@@ -81,8 +85,7 @@ class DataBase:
         return self.json.loads(row[0]) if row and row[0] else {"vars": {}}
 
     def _sqlite_set_vars(self, user_id, data):
-        self.cursor.execute("INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)",
-                            (user_id, self.json.dumps(data)))
+        self.cursor.execute("INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)", (user_id, self.json.dumps(data)))
         self.conn.commit()
 
     def _sqlite_get_bots(self):
@@ -90,11 +93,13 @@ class DataBase:
         return self.cursor.fetchall()
 
     def _sqlite_set_bot(self, user_id, encrypted_data):
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             INSERT OR REPLACE INTO bots (user_id, api_id, api_hash, bot_token, session_string)
             VALUES (?, ?, ?, ?, ?)
-        """, (user_id, encrypted_data["api_id"], encrypted_data["api_hash"],
-              encrypted_data.get("bot_token"), encrypted_data.get("session_string")))
+        """,
+            (user_id, encrypted_data["api_id"], encrypted_data["api_hash"], encrypted_data.get("bot_token"), encrypted_data.get("session_string")),
+        )
         self.conn.commit()
 
     def _sqlite_remove_bot(self, user_id):
