@@ -7,7 +7,6 @@ class DataBase:
             - binary_keys (int): Kunci enkripsi untuk CipherHandler (default: 14151819154911914).
             - method_encrypt (str): Metode enkripsi untuk CipherHandler (default: 'bytes').
             - mongo_url (str): URL MongoDB (wajib jika storage_type='mongo').
-            - git_autocommit (bool): Aktifkan auto-commit Git setelah perubahan data (default: False).
         """
         self.os = __import__("os")
         self.json = __import__("json")
@@ -54,7 +53,6 @@ class DataBase:
     def _save_data(self, data):
         with open(self.data_file, "w") as f:
             self.json.dump(data, f, indent=4)
-        self._git_commit(f"Auto-commit: updated {self.data_file}")
 
     # SQLite-specific methods
     def _initialize_sqlite(self):
