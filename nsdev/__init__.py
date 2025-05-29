@@ -12,4 +12,4 @@ from .payment import PaymentMidtrans
 from .storekey import KeyManager
 from .ymlreder import YamlHandler
 
-__version__ = "0.3.9.dev0"
+__version__ = "0.3.9.dev1"
