@@ -30,11 +30,11 @@ class ImageGenerator:
             self.__log(f"{self.log.GREEN}Memulai siklus {cycle}...")
 
             translator = __import__("deep_translator").GoogleTranslator(source="auto", target="en")
-            translator.translate(prompt)
+            translated_prompt = translator.translate(cleaned_prompt)
 
             response = await self.client.post(
-                url=f"https://www.bing.com/images/create?q={cleaned_prompt}&rt=3&FORM=GENCRE",
-                data={"q": cleaned_prompt, "qs": "ds"},
+                url=f"https://www.bing.com/images/create?q={translated_prompt}&rt=3&FORM=GENCRE",
+                data={"q": translated_prompt, "qs": "ds"},
                 follow_redirects=False,
                 timeout=200,
             )
