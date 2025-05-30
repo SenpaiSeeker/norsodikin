@@ -3,6 +3,7 @@ class ImageGenerator:
         self.httpx = __import__("httpx")
         self.re = __import__("re")
         self.time = __import__("time")
+        self.urllib_parse = __import__("urllib.parse")
 
         self.client = self.httpx.AsyncClient(cookies={"_U": auth_cookie_u, "SRCHHPGUSR": auth_cookie_srchhpgusr})
         self.logging_enabled = logging_enabled
@@ -13,19 +14,27 @@ class ImageGenerator:
         if self.logging_enabled:
             self.log.print(message)
 
-    async def generate(self, prompt: str, num_images: int, max_cycles: int = 4):
+    def _clean_text(self, text: str):
+        text = ''.join(char for char in text if char.isprintable())
+        return self.urllib_parse.quote(text)
+
+    async def generate(self, prompt: str, num_images: int, max_cycles: int = 5):
         images = []
         cycle = 0
         start_time = self.time.time()
+
+        cleaned_prompt = self._clean_text(prompt)
 
         while len(images) < num_images and cycle < max_cycles:
             cycle += 1
             self.__log(f"{self.log.GREEN}Memulai siklus {cycle}...")
 
             translator = __import__("deep_translator").GoogleTranslator(source="auto", target="en")
+            translated_prompt = translator.translate(prompt)
+
             response = await self.client.post(
-                url=f"https://www.bing.com/images/create?q={translator.translate(prompt)}&rt=3&FORM=GENCRE",
-                data={"q": translator.translate(prompt), "qs": "ds"},
+                url=f"https://www.bing.com/images/create?q={cleaned_prompt}&rt=3&FORM=GENCRE",
+                data={"q": cleaned_prompt, "qs": "ds"},
                 follow_redirects=False,
                 timeout=200,
             )
@@ -41,7 +50,7 @@ class ImageGenerator:
                 raise Exception("Bahasa yang digunakan tidak didukung oleh Bing!")
 
             result_id = response.headers["Location"].replace("&nfy=1", "").split("id=")[-1]
-            results_url = f"https://www.bing.com/images/create/async/results/{result_id}?q={translator.translate(prompt)}"
+            results_url = f"https://www.bing.com/images/create/async/results/{result_id}?q={cleaned_prompt}"
 
             self.__log(f"{self.log.GREEN}Menunggu hasil gambar...")
             start_cycle_time = self.time.time()
