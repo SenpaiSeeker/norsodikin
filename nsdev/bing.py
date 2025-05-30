@@ -3,7 +3,7 @@ class ImageGenerator:
         self.httpx = __import__("httpx")
         self.re = __import__("re")
         self.time = __import__("time")
-        self.urllib_parse = __import__("urllib.parse")
+        self.urllib = __import__("urllib")
         self.client = self.httpx.AsyncClient(cookies={"_U": auth_cookie_u, "SRCHHPGUSR": auth_cookie_srchhpgusr})
         self.logging_enabled = logging_enabled
 
@@ -15,7 +15,7 @@ class ImageGenerator:
 
     def __clean_text(self, text: str) -> str:
         cleaned_text = " ".join(text.split())
-        return self.urllib_parse.quote(cleaned_text)
+        return self.urllib.parse.quote(cleaned_text)
 
     async def generate(self, prompt: str, num_images: int, max_cycles: int = 4):
         images = []
