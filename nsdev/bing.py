@@ -4,7 +4,6 @@ class ImageGenerator:
         self.re = __import__("re")
         self.time = __import__("time")
         self.urllib_parse = __import__("urllib.parse")
-
         self.client = self.httpx.AsyncClient(cookies={"_U": auth_cookie_u, "SRCHHPGUSR": auth_cookie_srchhpgusr})
         self.logging_enabled = logging_enabled
 
@@ -14,27 +13,31 @@ class ImageGenerator:
         if self.logging_enabled:
             self.log.print(message)
 
-    def _clean_text(self, text: str):
-        text = "".join(char for char in text if char.isprintable())
-        return self.urllib_parse.quote(text)
+    def __clean_text(self, text: str) -> str:
+        """
+        Membersihkan teks dari karakter non-printable dan whitespace berlebih.
+        """
+        # Hapus newline, tab, dan spasi berlebih
+        cleaned_text = " ".join(text.split())
+        # Encode teks untuk URL
+        return self.urllib_parse.quote(cleaned_text)
 
-    async def generate(self, prompt: str, num_images: int, max_cycles: int = 5):
+    async def generate(self, prompt: str, num_images: int, max_cycles: int = 4):
         images = []
         cycle = 0
         start_time = self.time.time()
-
-        cleaned_prompt = self._clean_text(prompt)
 
         while len(images) < num_images and cycle < max_cycles:
             cycle += 1
             self.__log(f"{self.log.GREEN}Memulai siklus {cycle}...")
 
             translator = __import__("deep_translator").GoogleTranslator(source="auto", target="en")
-            translated_prompt = translator.translate(cleaned_prompt)
+            translated_prompt = translator.translate(prompt)
+            cleaned_translated_prompt = self.__clean_text(translated_prompt)
 
             response = await self.client.post(
-                url=f"https://www.bing.com/images/create?q={translated_prompt}&rt=3&FORM=GENCRE",
-                data={"q": translated_prompt, "qs": "ds"},
+                url=f"https://www.bing.com/images/create?q={cleaned_translated_prompt}&rt=3&FORM=GENCRE",
+                data={"q": cleaned_translated_prompt, "qs": "ds"},
                 follow_redirects=False,
                 timeout=200,
             )
@@ -50,7 +53,7 @@ class ImageGenerator:
                 raise Exception("Bahasa yang digunakan tidak didukung oleh Bing!")
 
             result_id = response.headers["Location"].replace("&nfy=1", "").split("id=")[-1]
-            results_url = f"https://www.bing.com/images/create/async/results/{result_id}?q={cleaned_prompt}"
+            results_url = f"https://www.bing.com/images/create/async/results/{result_id}?q={cleaned_translated_prompt}"
 
             self.__log(f"{self.log.GREEN}Menunggu hasil gambar...")
             start_cycle_time = self.time.time()
