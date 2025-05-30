@@ -3,6 +3,17 @@ class Argument:
         self.asyncio = __import__("asyncio")
         self.pyrogram = __import__("pyrogram")
 
+    def getNamebot(self, bot_token):
+        url = f"https://api.telegram.org/bot{bot_token}/getMe"
+        try:
+            response = self.requests.get(url)
+            data = response.json()
+            if data.get("ok"):
+                return data["result"]["first_name"]
+            return "Bot token invalid"
+        except self.requests.exceptions.RequestException as error:
+            return str(error)
+
     def getMessage(self, message, is_arg=False):
         if is_arg:
             if message.reply_to_message and len(message.command) < 2:
