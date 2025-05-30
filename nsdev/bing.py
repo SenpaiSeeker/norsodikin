@@ -14,12 +14,7 @@ class ImageGenerator:
             self.log.print(message)
 
     def __clean_text(self, text: str) -> str:
-        """
-        Membersihkan teks dari karakter non-printable dan whitespace berlebih.
-        """
-        # Hapus newline, tab, dan spasi berlebih
         cleaned_text = " ".join(text.split())
-        # Encode teks untuk URL
         return self.urllib_parse.quote(cleaned_text)
 
     async def generate(self, prompt: str, num_images: int, max_cycles: int = 4):
