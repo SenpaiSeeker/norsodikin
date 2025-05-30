@@ -15,7 +15,7 @@ class ImageGenerator:
             self.log.print(message)
 
     def _clean_text(self, text: str):
-        text = ''.join(char for char in text if char.isprintable())
+        text = "".join(char for char in text if char.isprintable())
         return self.urllib_parse.quote(text)
 
     async def generate(self, prompt: str, num_images: int, max_cycles: int = 5):
@@ -30,7 +30,7 @@ class ImageGenerator:
             self.__log(f"{self.log.GREEN}Memulai siklus {cycle}...")
 
             translator = __import__("deep_translator").GoogleTranslator(source="auto", target="en")
-            translated_prompt = translator.translate(prompt)
+            translator.translate(prompt)
 
             response = await self.client.post(
                 url=f"https://www.bing.com/images/create?q={cleaned_prompt}&rt=3&FORM=GENCRE",
