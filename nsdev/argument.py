@@ -2,6 +2,7 @@ class Argument:
     def __init__(self):
         self.asyncio = __import__("asyncio")
         self.pyrogram = __import__("pyrogram")
+        self.requests = __import__("requests")
 
     def getNamebot(self, bot_token):
         url = f"https://api.telegram.org/bot{bot_token}/getMe"
