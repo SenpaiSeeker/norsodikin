@@ -13,7 +13,7 @@ class ImageGenerator:
         if self.logging_enabled:
             self.log.print(message)
 
-    def __clean_text(self, text: str) -> str:
+    def __clean_text(self, text: str):
         cleaned_text = " ".join(text.split())
         return self.urllib.parse.quote(cleaned_text)
 
