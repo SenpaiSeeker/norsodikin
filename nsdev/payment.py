@@ -29,3 +29,45 @@ class PaymentMidtrans:
             return self.snap.transactions.status(order_id)
         except Exception as e:
             return f"Error saat mengecek status transaksi: {e}"
+
+class PaymentTripay:
+    def __init__(self, api_key):
+        self.api_key = api_key
+        self.base_url = "https://tripay.co.id/api" 
+        
+        self.requests = __import__('requests')
+
+    def createPayment(self, method, amount, order_id, customer_name):
+        url = f"{self.base_url}/transaction/create"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}"
+        }
+        payload = {
+            "method": method,
+            "merchant_ref": order_id,
+            "amount": amount,
+            "customer_name": customer_name
+        }
+
+        response = self.requests.post(url, headers=headers, json=payload)
+
+        if response.status_code != 200:
+            raise Exception(f"Error creating payment: {response.json().get('message')}")
+
+        return response.json()
+
+    def checkPayment(self, reference):
+        url = f"{self.base_url}/transaction/detail"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}"
+        }
+        params = {
+            "reference": reference
+        }
+
+        response = self.requests.get(url, headers=headers, params=params)
+
+        if response.status_code != 200:
+            raise Exception(f"Error checking payment: {response.json().get('message')}")
+
+        return response.json()
