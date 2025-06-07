@@ -8,7 +8,7 @@ from .encrypt import CipherHandler
 from .gemini import ChatbotGemini
 from .gradient import Gradient
 from .logger import LoggerHandler
-from .payment import PaymentMidtrans
+from .payment import PaymentMidtrans, PaymentTripay
 from .storekey import KeyManager
 from .ymlreder import YamlHandler
 
