@@ -1,4 +1,6 @@
 pyfiglet
 pymongo
 httpx
+fake-useragent
+pyyml
 deep-translator==1.11.4
