@@ -13,7 +13,7 @@ class ImageGenerator:
         if self.logging_enabled:
             self.log.print(message)
 
-    def __clean_text(self, text: str):
+    def __clean_text(self, text: str) -> str:
         cleaned_text = " ".join(text.split())
         return self.urllib.parse.quote(cleaned_text)
 
@@ -33,7 +33,7 @@ class ImageGenerator:
             response = await self.client.post(
                 url=f"https://www.bing.com/images/create?q={cleaned_translated_prompt}&rt=3&FORM=GENCRE",
                 data={"q": cleaned_translated_prompt, "qs": "ds"},
-                follow_redirects=False,
+                follow_redirects=True,
                 timeout=200,
             )
 
@@ -48,7 +48,11 @@ class ImageGenerator:
             if "image creator in more languages" in response.text:
                 raise Exception("Bahasa yang digunakan tidak didukung oleh Bing!")
 
-            result_id = response.headers["Location"].replace("&nfy=1", "").split("id=")[-1]
+            if "Location" in response.headers:
+                result_id = response.headers["Location"].replace("&nfy=1", "").split("id=")[-1]
+            else:
+                result_id = response.url.path.split("/")[-1].split("?")[0]
+
             results_url = f"https://www.bing.com/images/create/async/results/{result_id}?q={cleaned_translated_prompt}"
 
             self.__log(f"{self.log.GREEN}Menunggu hasil gambar...")
