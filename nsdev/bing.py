@@ -6,7 +6,10 @@ class ImageGenerator:
         self.urllib = __import__("urllib")
         self.user_agent = __import__("fake_useragent")
         self.client = self.httpx.AsyncClient(
-            cookies={"_U": auth_cookie_u, "SRCHHPGUSR": auth_cookie_srchhpgusr,},
+            cookies={
+                "_U": auth_cookie_u,
+                "SRCHHPGUSR": auth_cookie_srchhpgusr,
+            },
             headers={
                 "User-Agent": self.user_agent.UserAgent().random,
                 "Accept-Language": "en-US,en;q=0.9",
