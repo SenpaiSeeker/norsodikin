@@ -4,7 +4,22 @@ class ImageGenerator:
         self.re = __import__("re")
         self.time = __import__("time")
         self.urllib = __import__("urllib")
-        self.client = self.httpx.AsyncClient(cookies={"_U": auth_cookie_u, "SRCHHPGUSR": auth_cookie_srchhpgusr})
+        self.client = self.httpx.AsyncClient(
+            cookies={"_U": auth_cookie_u, "SRCHHPGUSR": auth_cookie_srchhpgusr},
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "none",
+                "Sec-Fetch-User": "?1",
+                "DNT": "1"
+            }
+        )
         self.logging_enabled = logging_enabled
         self.log = __import__("nsdev").logger.LoggerHandler()
 
@@ -30,8 +45,18 @@ class ImageGenerator:
                 translated_prompt = translator.translate(prompt)
                 cleaned_translated_prompt = self.__clean_text(translated_prompt)
 
+                create_url = f"https://www.bing.com/images/create?q={cleaned_translated_prompt}&rt=3&FORM=GENCRE"
+                self.__log(f"{self.log.GREEN}Mengakses URL: {create_url}")
+                
+                response = await self.client.get(create_url)
+                
+                if response.status_code != 200:
+                    self.__log(f"{self.log.RED}Status code tidak valid: {response.status_code}")
+                    self.__log(f"{self.log.RED}Response: {response.text[:200]}...")
+                    raise Exception("Gagal mengakses halaman create!")
+
                 response = await self.client.post(
-                    url=f"https://www.bing.com/images/create?q={cleaned_translated_prompt}&rt=3&FORM=GENCRE",
+                    url=create_url,
                     data={"q": cleaned_translated_prompt, "qs": "ds"},
                     follow_redirects=False,
                     timeout=200,
