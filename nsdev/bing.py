@@ -17,8 +17,8 @@ class ImageGenerator:
                 "Sec-Fetch-Mode": "navigate",
                 "Sec-Fetch-Site": "none",
                 "Sec-Fetch-User": "?1",
-                "DNT": "1"
-            }
+                "DNT": "1",
+            },
         )
         self.logging_enabled = logging_enabled
         self.log = __import__("nsdev").logger.LoggerHandler()
@@ -47,9 +47,9 @@ class ImageGenerator:
 
                 create_url = f"https://www.bing.com/images/create?q={cleaned_translated_prompt}&rt=3&FORM=GENCRE"
                 self.__log(f"{self.log.GREEN}Mengakses URL: {create_url}")
-                
+
                 response = await self.client.get(create_url)
-                
+
                 if response.status_code != 200:
                     self.__log(f"{self.log.RED}Status code tidak valid: {response.status_code}")
                     self.__log(f"{self.log.RED}Response: {response.text[:200]}...")
