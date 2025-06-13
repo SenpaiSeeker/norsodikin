@@ -37,7 +37,8 @@ class ImageGenerator:
                 timeout=200,
             )
 
-            if response.status_code != 200:
+            if response.status_code != 302:
+                print(response.text)
                 raise Exception("Permintaan gagal! Pastikan URL benar dan ada redirect.")
 
             self.__log(f"{self.log.GREEN}Permintaan berhasil dikirim!")
