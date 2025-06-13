@@ -4,7 +4,14 @@ class ImageGenerator:
         self.re = __import__("re")
         self.time = __import__("time")
         self.urllib = __import__("urllib")
-        self.client = self.httpx.AsyncClient(cookies={"_U": auth_cookie_u, "SRCHHPGUSR": auth_cookie_srchhpgusr})
+        self.client = self.httpx.AsyncClient(
+            cookies={"_U": auth_cookie_u, "SRCHHPGUSR": auth_cookie_srchhpgusr},
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Referer": "https://www.bing.com/" 
+            }
+        )
         self.logging_enabled = logging_enabled
 
         self.log = __import__("nsdev").logger.LoggerHandler()
@@ -85,3 +92,45 @@ class ImageGenerator:
 
         self.__log(f"{self.log.GREEN}Pembuatan gambar selesai dalam {round(self.time.time() - start_time, 2)} detik.")
         return images[:num_images]
+
+/eval import requests
+from bs4 import BeautifulSoup
+
+# URL target (misalnya halaman pencarian gambar Bing)
+url = "https://www.bing.com/images/create" 
+
+# Cookies yang diperlukan (Anda harus mendapatkan cookies ini dari sesi browser Anda)
+cookies = {
+    # Ganti dengan cookies yang valid dari sesi Anda
+    "_U": "1ewaLJjPia7P4DG_NsMPYcVhmTF-njPL4h3KVmopIjVK9j-S7kUG2xhxnmtHv5x-n-pPQvkRliCrNunKt2o078mmMTXMzGslwpg5We-9RudoT0yyr4TLyNxuHK2NhkDwGMpqNfTj89anPclN9RjvsVHyNQFcrbO03Vm0Gk3dj4lRbnuu1CjGB6i6NzI4u3esX5JJGJKvcfmgiy1nPYbmxuw",
+    "SRCHHPGUSR": "SRCHLANG=id&IG=FA8775C26BDB4C37AAB0F87570B9B751&DM=1&BRW=M&BRH=S&CW=1325&CH=661&SCW=1326&SCH=661&DPR=1.5&UTC=420&HV=1749790146&HVE=CfDJ8Inh5QCoSQBNls38F2rbEpRLdgYGUEzSBinYFQAdQfDlrJUPnL45ofQK8wvKMkGC_f6YsLQ9rk9QqdHs_aD7NwjafNXAhGoVWkMZ8XLkYidSvPadzGC612c2Wm_UeWWIxmjxkQOZ94c6yV7NoUjy-epQyfY9O3OtnUpQl3dokMjVmWqGFk3jsuh-OYgiuyc2jg&PRVCW=1325&PRVCH=661&WTS=63885386946&PREFCOL=1"
+}
+
+# Headers untuk mensimulasikan permintaan dari browser
+
+
+# Data payload untuk deskripsi gambar (contoh: "seorang astronot bermain gitar di bulan")
+payload = {
+    "q": """Ilustrasi anime chibi seorang cowok imut dengan ekspresi ceria yang menular. Ia mengenakan hoodie putih bersih dengan tulisan "NOR SODIKIN" dalam font small caps futuristik, efek glow 3D timbul yang memancarkan cahaya lembut. Latar belakangnya adalah langit malam bertabur bintang berkilauan, dengan sentuhan magis tema pemrograman Python: kode-kode Python bercahaya melayang di antara bintang, menciptakan suasana digital-astral yang memukau. Gaya artistik: dreamy, ethereal, dengan palet warna neon lembut dan efek bokeh yang indah.""",
+    "FORM": "CREATED"
+}
+
+# Kirim permintaan POST ke server Bing
+response = requests.post(url, headers=headers, cookies=cookies, data=payload)
+
+# Periksa apakah permintaan berhasil
+if response.status_code == 200:
+    print("Permintaan berhasil!")
+    
+    # Parsing HTML menggunakan BeautifulSoup
+    soup = BeautifulSoup(response.text, "html.parser")
+    
+    # Cari elemen yang mengandung gambar hasil
+    image_elements = soup.find_all("img")  # Sesuaikan dengan struktur HTML Bing
+    
+    for img in image_elements:
+        src = img.get("src")
+        if src and src.startswith("http"):  # Pastikan URL gambar valid
+            await message.reply_photo(url)
+else:
+    print(f"Permintaan gagal dengan status code: {response.status_code}")
