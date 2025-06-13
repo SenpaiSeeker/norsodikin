@@ -45,7 +45,7 @@ class ImageGenerator:
                 translated_prompt = translator.translate(prompt)
                 cleaned_translated_prompt = self.__clean_text(translated_prompt)
 
-                create_url = f"https://www.bing.com/images/create?q={cleaned_translated_prompt}&rt=3&FORM=GENCRE"
+                create_url = f"https://www.bing.com/images/create?{cleaned_translated_prompt}FORM=GENCRE"
                 self.__log(f"{self.log.GREEN}Mengakses URL: {create_url}")
 
                 response = await self.client.get(create_url)
