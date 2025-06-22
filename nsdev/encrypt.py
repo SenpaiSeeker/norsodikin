@@ -9,11 +9,11 @@ class CipherHandler:
             - delimiter (str): Delimiter yang digunakan untuk metode 'shift'. Default: '|'.
         """
         self.log = __import__("nsdev").logger.LoggerHandler()
-        self.method = options.get("method", "shift")
-        self.key = self._normalize_key(options.get("key", 31099))
-        self.delimiter = options.get("delimiter", "|")
+        self.method = options.get("method", "shift")
+        self.key = self._normalize_key(options.get("key", 31099))
+        self.delimiter = options.get("delimiter", "|")
 
-    def _normalize_key(self, key):
+    def _normalize_key(self, key):
         try:
             if isinstance(key, list):
                 return int("".join(map(str, key)))
