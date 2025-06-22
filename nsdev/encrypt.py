@@ -47,7 +47,7 @@ class CipherHandler:
     def decrypt_binary(self, encrypted_bits: str) -> str:
         if len(encrypted_bits) % 8 != 0:
             raise ValueError("Data biner yang dienkripsi tidak valid.")
-        decrypted_chars = [chr(int(encrypted_bits[i:i + 8], 2) ^ (self.key % 256)) for i in range(0, len(encrypted_bits), 8)]
+        decrypted_chars = [chr(int(encrypted_bits[i : i + 8], 2) ^ (self.key % 256)) for i in range(0, len(encrypted_bits), 8)]
         return "".join(decrypted_chars)
 
     def decrypt_bytes(self, encrypted_data: str) -> str:
