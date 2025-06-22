@@ -8,7 +8,7 @@ class CipherHandler:
             - key (int | list[int]): Kunci enkripsi/dekripsi. Default: 31099.
             - delimiter (str): Delimiter yang digunakan untuk metode 'shift'. Default: '|'.
         """
-        self.log = __import__("nsdev").logger.LoggerHandler()
+        self.log = __import__("nsdev").logger.LoggerHandler()
         self.method = options.get("method", "shift")
         self.key = self._normalize_key(options.get("key", 31099))
         self.delimiter = options.get("delimiter", "|")
