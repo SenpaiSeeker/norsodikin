@@ -1,5 +1,5 @@
 class CipherHandler:
-    def __init__(self, **options):
+    def __init__(self, **options):
         """
         Inisialisasi CipherHandler dengan opsi konfigurasi.
 
