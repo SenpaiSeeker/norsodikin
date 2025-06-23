@@ -1,108 +1,64 @@
-class CipherHandler:
-    def __init__(self, **options):
-        """
-        Inisialisasi CipherHandler dengan opsi konfigurasi.
+import asyncio
+import importlib
+from time import time
 
-        :param options:
-            - method (str): Metode enkripsi yang digunakan. Pilihan: 'shift', 'bytes', 'binary'. Default: 'shift'.
-            - key (int | list[int]): Kunci enkripsi/dekripsi. Default: 31099.
-            - delimiter (str): Delimiter yang digunakan untuk metode 'shift'. Default: '|'.
-        """
-        self.log = __import__("nsdev").logger.LoggerHandler()
-        self.method = options.get("method", "shift")
-        self.key = self._normalize_key(options.get("key", 31099))
-        self.delimiter = options.get("delimiter", "|")
+from nsdev import LoggerHandler
+from pyrogram import Client, handlers
+from pyromod import listen
 
-    def _normalize_key(self, key):
-        try:
-            if isinstance(key, list):
-                return int("".join(map(str, key)))
-            elif isinstance(key, int):
-                return key
-            else:
-                raise ValueError("Key must be an integer or a list of integers.")
-        except Exception as e:
-            raise ValueError(f"Key normalization failed: {e}")
+from FsubBuilderBot.config import Config
+from FsubBuilderBot.Modules import modules
 
-    def _offset(self, index):
-        try:
-            return len(str(self.key)) * (index + 1)
-        except Exception as e:
-            raise Exception(f"Offset calculation failed at index {index}: {e}")
+uptime = time()
+log = LoggerHandler()
 
-    def _xor_encrypt_decrypt(self, data: bytes) -> bytes:
-        key_bytes = self.key.to_bytes((self.key.bit_length() + 7) // 8, byteorder="big")
-        return bytes([data[i] ^ key_bytes[i % len(key_bytes)] for i in range(len(data))])
 
-    def decrypt(self, encrypted_data: str) -> str:
-        if self.method == "bytes":
-            return self.decrypt_bytes(encrypted_data)
-        elif self.method == "binary":
-            return self.decrypt_binary(encrypted_data)
-        elif self.method == "shift":
-            return self.decrypt_shift(encrypted_data)
-        else:
-            raise ValueError(f"Metode dekripsi '{self.method}' tidak dikenali.")
+class Bot(Client):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.bot = []
 
-    def decrypt_binary(self, encrypted_bits: str) -> str:
-        if len(encrypted_bits) % 8 != 0:
-            raise ValueError("Data biner yang dienkripsi tidak valid.")
-        decrypted_chars = [chr(int(encrypted_bits[i : i + 8], 2) ^ (self.key % 256)) for i in range(0, len(encrypted_bits), 8)]
-        return "".join(decrypted_chars)
+    def getmention(self, me, logs=False, no_tag=False, tag_and_id=False):
+        name = f"{me.first_name} {me.last_name}" if me.last_name else me.first_name
+        link = f"tg://user?id={me.id}"
+        return (
+            f"{me.id}|{name}"
+            if logs
+            else name if no_tag else f"<a href='{link}'>{name}</a>{' | <code>' + str(me.id) + '</code>' if tag_and_id else ''}"
+        )
 
-    def decrypt_bytes(self, encrypted_data: str) -> str:
-        try:
-            codes = list(map(int, encrypted_data.split(self.delimiter)))
-            return "".join(chr(code - self._offset(i)) for i, code in enumerate(codes))
-        except Exception as e:
-            raise Exception(f"Decryption failed: {e}")
+    def on_message(self, filters=None, group=-1):
+        def decorator(func):
+            for xb in self.bot:
+                xb.add_handler(handlers.MessageHandler(func, filters), group)
+            return func
 
-    def decrypt_shift(self, encoded_text: str) -> str:
-        try:
-            decoded = "".join(chr(int(code) - self.key) for code in encoded_text.split(self.delimiter))
-            return decoded
-        except ValueError as error:
-            raise ValueError(f"Error during shift decryption: {error}")
+        return decorator
 
-    def encrypt(self, data: str) -> str:
-        if self.method == "bytes":
-            return self.encrypt_bytes(data)
-        elif self.method == "binary":
-            return self.encrypt_binary(data)
-        elif self.method == "shift":
-            return self.encrypt_shift(data)
-        else:
-            raise ValueError(f"Metode enkripsi '{self.method}' tidak dikenali.")
+    def on_callback_query(self, filters=None, group=-1):
+        def decorator(func):
+            for xb in self.bot:
+                xb.add_handler(handlers.CallbackQueryHandler(func, filters), group)
+            return func
 
-    def encrypt_binary(self, plaintext: str) -> str:
-        encrypted_bits = "".join(format(ord(char) ^ (self.key % 256), "08b") for char in plaintext)
-        return encrypted_bits
+        return decorator
 
-    def encrypt_bytes(self, message: str) -> str:
-        try:
-            encrypted_values = [str(ord(char) + self._offset(i)) for i, char in enumerate(message)]
-            return self.delimiter.join(encrypted_values)
-        except Exception as e:
-            raise Exception(f"Encryption failed: {e}")
+    async def get_module(self):
+        for mod in modules:
+            await asyncio.sleep(0.5)
+            try:
+                importlib.reload(importlib.import_module(f"FsubBuilderBot.Modules.{mod}"))
+                log.print(f"{log.BLUE}Module {log.WHITE}{mod} {log.GREEN}loaded successfully.")
+            except Exception as e:
+                log.print(f"{log.YELLOW}Failed to load module {log.WHITE}{mod}: {log.RED}{e}")
+        log.print(f"{log.LIGHT_BLUE}=" * 50)
 
-    def encrypt_shift(self, text: str) -> str:
-        encoded = self.delimiter.join(str(ord(char) + self.key) for char in text)
-        return encoded
+    async def start(self):
+        await super().start()
+        self.bot.append(self)
+        text = f"{log.CYAN}[ {log.GREEN}Bot: {log.WHITE}{self.getmention(self.me, logs=True)} {log.BLUE}- {log.GREEN}Starting {log.CYAN}]"
+        log.print(text)
 
-    def run_encrypted_code(self, encrypted: str):
-        try:
-            exec(self.decrypt(encrypted))
-        except Exception as e:
-            raise Exception(f"Execution failed: {e}")
 
-    def save(self, filename: str, code: str):
-        encrypted_code = self.encrypt(code)
-        if encrypted_code is None:
-            raise ValueError("Encryption failed.")
-        result = f"__import__('nsdev').CipherHandler(method='{self.method}', key={self.key}).run_encrypted_code('{encrypted_code}')"
-        try:
-            with open(filename, "w") as file:
-                file.write(result)
-            self.log.info(f"Kode berhasil disimpan ke file {filename}")
-        except Exception as e:
-            raise IOError(f"Saving file failed: {e}")
+bot = Bot(**Config.RANDOM_API, bot_token=Config.BOT_TOKEN)
+from FsubBuilderBot.Core import telegram
