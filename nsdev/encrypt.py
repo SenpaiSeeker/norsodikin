@@ -2,12 +2,11 @@ import asyncio
 import importlib
 from time import time
 
-from nsdev import LoggerHandler
-from pyrogram import Client, handlers
-from pyromod import listen
-
 from FsubBuilderBot.config import Config
 from FsubBuilderBot.Modules import modules
+from pyrogram import Client, handlers
+
+from nsdev import LoggerHandler
 
 uptime = time()
 log = LoggerHandler()
@@ -21,11 +20,7 @@ class Bot(Client):
     def getmention(self, me, logs=False, no_tag=False, tag_and_id=False):
         name = f"{me.first_name} {me.last_name}" if me.last_name else me.first_name
         link = f"tg://user?id={me.id}"
-        return (
-            f"{me.id}|{name}"
-            if logs
-            else name if no_tag else f"<a href='{link}'>{name}</a>{' | <code>' + str(me.id) + '</code>' if tag_and_id else ''}"
-        )
+        return f"{me.id}|{name}" if logs else name if no_tag else f"<a href='{link}'>{name}</a>{' | <code>' + str(me.id) + '</code>' if tag_and_id else ''}"
 
     def on_message(self, filters=None, group=-1):
         def decorator(func):
@@ -61,4 +56,3 @@ class Bot(Client):
 
 
 bot = Bot(**Config.RANDOM_API, bot_token=Config.BOT_TOKEN)
-from FsubBuilderBot.Core import telegram
