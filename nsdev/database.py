@@ -17,7 +17,6 @@ class DataBase:
         self.file_name = options.get("file_name", "database")
         self.binary_keys = options.get("binary_keys", 14151819154911914)
         self.method_encrypt = options.get("method_encrypt", "bytes")
-        self.git_autocommit = options.get("git_autocommit", False)
 
         if self.storage_type == "mongo":
             self.pymongo = __import__("pymongo")
