@@ -106,3 +106,60 @@ class CipherHandler:
             self.log.info(f"Kode berhasil disimpan ke file {filename}")
         except Exception as e:
             raise IOError(f"Saving file failed: {e}")
+
+
+
+
+class AsciiManager(__import__("nsdev").AnsiColors):
+    def __init__(self, key):
+        super().__init__()
+        try:
+            self.no_format_key = key
+            self.key = self._normalize_key(self.no_format_key)
+        except Exception as e:
+            raise Exception(f"Initialization failed: {e}")
+
+    def _normalize_key(self, key):
+        try:
+            if isinstance(key, list):
+                return int("".join(map(str, key)))
+            elif isinstance(key, int):
+                return key
+            else:
+                raise Exception("Key must be an integer or a list of integers.")
+        except Exception as e:
+            raise Exception(f"Key normalization failed: {e}")
+
+    def _offset(self, index):
+        try:
+            return len(str(self.key)) * (index + 1)
+        except Exception as e:
+            raise Exception(f"Offset calculation failed at index {index}: {e}")
+
+    def encrypt(self, message):
+        try:
+            return [int(ord(char) + self._offset(i)) for i, char in enumerate(message)]
+        except Exception as e:
+            raise Exception(f"Encryption failed: {e}")
+
+    def decrypt(self, encrypted):
+        try:
+            return "".join(chr(int(code) - self._offset(i)) for i, code in enumerate(encrypted))
+        except Exception as e:
+            raise Exception(f"Decryption failed: {e}")
+
+    def run_encrypted_code(self, encrypted):
+        try:
+            exec(self.decrypt(encrypted))
+        except Exception as e:
+            raise Exception(f"Execution failed: {e}")
+
+    def save_data(self, filename, message):
+        try:
+            with open(filename, "w") as file:
+                encrypted = self.encrypt(message)
+                result = f"__import__('nsdev').AsciiManager({self.no_format_key}).run_encrypted_code({encrypted})"
+                file.write(result)
+                print(f"{self.GREEN}Kode berhasil disimpan ke file {filename}")
+        except Exception as e:
+            raise Exception(f"Failed to save data to {filename}: {e}")
