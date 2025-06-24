@@ -89,17 +89,11 @@ class CipherHandler:
         encoded = self.delimiter.join(str(ord(char) + self.key) for char in text)
         return encoded
 
-    def run_encrypted_code(self, encrypted: str):
-        try:
-            exec(self.decrypt(encrypted))
-        except Exception as e:
-            raise Exception(f"Execution failed: {e}")
-
     def save(self, filename: str, code: str):
         encrypted_code = self.encrypt(code)
         if encrypted_code is None:
             raise ValueError("Encryption failed.")
-        result = f"__import__('nsdev').CipherHandler(method='{self.method}', key={self.key}).run_encrypted_code('{encrypted_code}')"
+        result = f"exec(__import__('nsdev').CipherHandler(method='{self.method}', key={self.key}).decrypt('{encrypted_code}')"
         try:
             with open(filename, "w") as file:
                 file.write(result)
@@ -146,16 +140,10 @@ class AsciiManager(__import__("nsdev").AnsiColors):
         except Exception as e:
             raise Exception(f"Decryption failed: {e}")
 
-    def run_encrypted_code(self, encrypted):
-        try:
-            exec(self.decrypt(encrypted))
-        except Exception as e:
-            raise Exception(f"Execution failed: {e}")
-
     def save_data(self, filename, code):
         try:
             with open(filename, "w") as file:
-                result = f"__import__('nsdev').AsciiManager({self.no_format_key}).run_encrypted_code({self.encrypt(code)})"
+                result = f"exec(__import__('nsdev').AsciiManager({self.no_format_key}).decrypt({self.encrypt(code)})"
                 file.write(result)
                 print(f"{self.GREEN}Kode berhasil disimpan ke file {filename}")
         except Exception as e:
