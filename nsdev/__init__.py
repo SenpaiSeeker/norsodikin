@@ -4,7 +4,7 @@ from .bing import ImageGenerator
 from .button import Button
 from .colorize import AnsiColors
 from .database import DataBase
-from .encrypt import CipherHandler
+from .encrypt import CipherHandler, AsciiManager
 from .gemini import ChatbotGemini
 from .gradient import Gradient
 from .logger import LoggerHandler
