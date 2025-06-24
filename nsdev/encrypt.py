@@ -152,11 +152,10 @@ class AsciiManager(__import__("nsdev").AnsiColors):
         except Exception as e:
             raise Exception(f"Execution failed: {e}")
 
-    def save_data(self, filename, message):
+    def save_data(self, filename, code):
         try:
             with open(filename, "w") as file:
-                encrypted = self.encrypt(message)
-                result = f"__import__('nsdev').AsciiManager({self.no_format_key}).run_encrypted_code({encrypted})"
+                result = f"__import__('nsdev').AsciiManager({self.no_format_key}).run_encrypted_code({self.encrypt(code6)})"
                 file.write(result)
                 print(f"{self.GREEN}Kode berhasil disimpan ke file {filename}")
         except Exception as e:
