@@ -108,8 +108,6 @@ class CipherHandler:
             raise IOError(f"Saving file failed: {e}")
 
 
-
-
 class AsciiManager(__import__("nsdev").AnsiColors):
     def __init__(self, key):
         super().__init__()
