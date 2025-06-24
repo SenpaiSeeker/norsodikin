@@ -155,7 +155,7 @@ class AsciiManager(__import__("nsdev").AnsiColors):
     def save_data(self, filename, code):
         try:
             with open(filename, "w") as file:
-                result = f"__import__('nsdev').AsciiManager({self.no_format_key}).run_encrypted_code({self.encrypt(code6)})"
+                result = f"__import__('nsdev').AsciiManager({self.no_format_key}).run_encrypted_code({self.encrypt(code)})"
                 file.write(result)
                 print(f"{self.GREEN}Kode berhasil disimpan ke file {filename}")
         except Exception as e:
