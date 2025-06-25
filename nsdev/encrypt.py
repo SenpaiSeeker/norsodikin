@@ -103,10 +103,10 @@ class CipherHandler:
 
 
 class AsciiManager(__import__("nsdev").AnsiColors):
-    def __init__(self, key):
+    def __init__(self, key, import_key_by_config=None):
         super().__init__()
         try:
-            self.no_format_key = key
+            self.no_format_key = import_key_by_config if import_key_by_config else key
             self.key = self._normalize_key(self.no_format_key)
         except Exception as e:
             raise Exception(f"Initialization failed: {e}")
