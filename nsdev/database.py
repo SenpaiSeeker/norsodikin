@@ -85,6 +85,10 @@ class DataBase:
         self.cursor.execute("INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)", (user_id, self.json.dumps(data)))
         self.conn.commit()
 
+    def _sqlite_remove_vars(self, user_id):
+        self.cursor.execute("DELETE FROM vars WHERE user_id = ?", (user_id,))    
+        self.conn.commit()
+
     def _sqlite_get_bots(self):
         self.cursor.execute("SELECT user_id, api_id, api_hash, bot_token, session_string FROM bots")
         return self.cursor.fetchall()
