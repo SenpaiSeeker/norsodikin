@@ -86,7 +86,7 @@ class DataBase:
         self.conn.commit()
 
     def _sqlite_remove_vars(self, user_id):
-        self.cursor.execute("DELETE FROM vars WHERE user_id = ?", (user_id,))    
+        self.cursor.execute("DELETE FROM vars WHERE user_id = ?", (user_id,))
         self.conn.commit()
 
     def _sqlite_get_bots(self):
