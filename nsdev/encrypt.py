@@ -34,8 +34,8 @@ class CipherHandler:
         key_bytes = self.key.to_bytes((self.key.bit_length() + 7) // 8, byteorder="big")
 
         if isinstance(data, str):
-            data = data.encode('utf-8')
-            
+            data = data.encode("utf-8")
+
         return bytes([data[i] ^ key_bytes[i % len(key_bytes)] for i in range(len(data))])
 
     def decrypt(self, encrypted_data: str) -> str:
