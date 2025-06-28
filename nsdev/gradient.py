@@ -15,15 +15,18 @@ class Gradient:
         )
 
     def rgb_to_ansi(self, r, g, b):
-        ansi_code = 16 + (36 * (r // 51)) + (6 * (g // 51)) + (b // 51)
+        r_scaled = int(round(r / 255 * 5))
+        g_scaled = int(round(g / 255 * 5))
+        b_scaled = int(round(b / 255 * 5))
+
+        ansi_code = 16 + (36 * r_scaled) + (6 * g_scaled) + b_scaled
         return f"\033[38;5;{ansi_code}m"
 
     def interpolate_color(self, factor):
-        return (
-            int(self.start_color[0] + (self.end_color[0] - self.start_color[0]) * factor),
-            int(self.start_color[1] + (self.end_color[1] - self.start_color[1]) * factor),
-            int(self.start_color[2] + (self.end_color[2] - self.start_color[2]) * factor),
-        )
+        r = max(0, min(255, int(self.start_color[0] + (self.end_color[0] - self.start_color[0]) * factor)))
+        g = max(0, min(255, int(self.start_color[1] + (self.end_color[1] - self.start_color[1]) * factor)))
+        b = max(0, min(255, int(self.start_color[2] + (self.end_color[2] - self.start_color[2]) * factor)))
+        return r, g, b
 
     def render_text(self, text):
         rendered_text = self.figlet.renderText(text)
