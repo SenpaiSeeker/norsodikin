@@ -122,15 +122,17 @@ class VioletMediaPayClient(__import__("nsdev").YamlHandler):
 
         async with self.httpx.AsyncClient(verify=False) as client:
             response = await client.post(url, data=payload)
-            return self.loadAndConvert({
-                "api_response": response.json(),
-                "ref_kode": ref_kode,
-                "customer": {
-                    "nama": cus_nama,
-                    "email": cus_email,
-                    "phone": cus_phone,
-                },
-            })
+            return self.loadAndConvert(
+                {
+                    "api_response": response.json(),
+                    "ref_kode": ref_kode,
+                    "customer": {
+                        "nama": cus_nama,
+                        "email": cus_email,
+                        "phone": cus_phone,
+                    },
+                }
+            )
 
     async def check_transaction(self, ref: str, ref_id: str):
         url = f"{self.base_url}/transactions"
