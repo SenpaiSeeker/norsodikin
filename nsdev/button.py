@@ -9,29 +9,35 @@ class Button:
     def get_urls(self, text):
         return self.re.findall(self.url_pattern, text)
 
-    def parse_inline_buttons_and_text(self, text):
-        button_data = self.re.findall(r"\|\s*([^|]+?)\s*-\s*([^|]+?)\s*\|", text)
-        extracted_text = self.re.sub(r"\|\s*[^|]+?\s*-\s*[^|]+?\s*\|", "", text).strip()
-        return button_data, extracted_text
+    def parse_buttons_and_text(self, text, mode="inline"):
+        if mode == "inline":
+            pattern = r"\|\s*([^|]+?)\s*-\s*([^|]+?)\s*\|"
+            button_data = self.re.findall(pattern, text)
+            extracted_text = self.re.sub(pattern, "", text).strip()
+            return [(label.strip(), payload.strip()) for label, payload in button_data], extracted_text
 
-    def parse_reply_buttons_and_text(self, text):
-        button_data = self.re.findall(r"\[([^\]]+)\]", text)
-        extracted_text = self.re.sub(r"\[[^\]]+\]", "", text).strip()
+        elif mode == "reply":
+            pattern = r"\|\s*([^\|]+?)\s*\|"
+            raw_data = self.re.findall(pattern, text)
+            extracted_text = self.re.sub(pattern, "", text).strip()
 
-        buttons = []
-        if button_data:
-            raw_buttons = button_data[0].split(" - ")
-            for b in raw_buttons:
-                if ";" in b:
-                    label, *params = b.split(";")
-                    buttons.append((label.strip(), [p.strip() for p in params]))
-                else:
-                    buttons.append((b.strip(), []))
-        return buttons, extracted_text
+            buttons = []
+            for chunk in raw_data:
+                parts = chunk.split("-")
+                for part in parts:
+                    if ";" in part:
+                        label, *params = part.split(";")
+                        buttons.append((label.strip().strip("]"), [p.strip() for p in params]))
+                    else:
+                        buttons.append((part.strip().strip("]"), []))
+            return buttons, extracted_text
+
+        else:
+            raise ValueError("Invalid parse mode. Use 'inline' or 'reply'.")
 
     def create_keyboard(self, text, inline_cmd=None, is_id=None):
         layout = []
-        buttons, remaining_text = self.parse_inline_buttons_and_text(text)
+        buttons, remaining_text = self.parse_buttons_and_text(text, mode="inline")
 
         for label, payload in buttons:
             cb_data, *extra_params = payload.split(";")
@@ -40,7 +46,9 @@ class Button:
                 cb_data = f"{inline_cmd} {is_id}_{cb_data}" if inline_cmd and is_id else cb_data
 
             if "user" in extra_params:
-                button = self.pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
+                button = self.pyrogram.types.InlineKeyboardButton(
+                    label, user_id=cb_data
+                )
             elif self.get_urls(cb_data):
                 button = self.pyrogram.types.InlineKeyboardButton(label, url=cb_data)
             else:
@@ -55,7 +63,7 @@ class Button:
 
     def create_reply_keyboard(self, text):
         layout = []
-        buttons, remaining_text = self.parse_reply_buttons_and_text(text)
+        buttons, remaining_text = self.parse_buttons_and_text(text, mode="reply")
 
         for label, params in buttons:
             button = self.pyrogram.types.KeyboardButton(label)
@@ -72,7 +80,10 @@ class Button:
     def build_button_grid(self, buttons, row_inline=None, row_width=2):
         row_inline = row_inline or {}
 
-        grid = [[self.pyrogram.types.InlineKeyboardButton(**data) for data in buttons[i : i + row_width]] for i in range(0, len(buttons), row_width)]
+        grid = [
+            [self.pyrogram.types.InlineKeyboardButton(**data) for data in buttons[i : i + row_width]]
+            for i in range(0, len(buttons), row_width)
+        ]
 
         if row_inline:
             grid.append([self.pyrogram.types.InlineKeyboardButton(**row_inline)])
@@ -80,7 +91,12 @@ class Button:
         return self.pyrogram.types.InlineKeyboardMarkup(grid)
 
     def module(self, page_n, module_dict, same=2, line=5, left_arrow="<<", right_arrow=">>"):
-        modules = [self.pyrogram.types.InlineKeyboardButton(x.__MODULE__.lower(), callback_data=f"help_module({x.__MODULE__})") for x in module_dict.keys()]
+        modules = [
+            self.pyrogram.types.InlineKeyboardButton(
+                x.__MODULE__.lower(), callback_data=f"help_module({x.__MODULE__})"
+            )
+            for x in module_dict.keys()
+        ]
 
         pairs = [modules[i : i + same] for i in range(0, len(modules), same)]
 
@@ -94,8 +110,12 @@ class Button:
             pairs[modulo_page * line : line * (modulo_page + 1)]
             + [
                 (
-                    self.pyrogram.types.InlineKeyboardButton(left_arrow, callback_data=f"help_prev({modulo_page})"),
-                    self.pyrogram.types.InlineKeyboardButton(right_arrow, callback_data=f"help_next({modulo_page})"),
+                    self.pyrogram.types.InlineKeyboardButton(
+                        left_arrow, callback_data=f"help_prev({modulo_page})"
+                    ),
+                    self.pyrogram.types.InlineKeyboardButton(
+                        right_arrow, callback_data=f"help_next({modulo_page})"
+                    ),
                 )
             ]
             if len(pairs) > line
