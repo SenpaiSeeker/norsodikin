@@ -37,6 +37,7 @@ class PaymentTripay:
         self.base_url = "https://tripay.co.id/api"
 
         self.requests = __import__("requests")
+        self.convert = __import__("nsdev").YamlHandler()
 
     def createPayment(self, method, amount, order_id, customer_name):
         url = f"{self.base_url}/transaction/create"
@@ -48,7 +49,7 @@ class PaymentTripay:
         if response.status_code != 200:
             raise Exception(f"Error creating payment: {response.json().get('message')}")
 
-        return response.json()
+        return self.convert._convertToNamespace(response.json())
 
     def checkPayment(self, reference):
         url = f"{self.base_url}/transaction/detail"
@@ -60,7 +61,7 @@ class PaymentTripay:
         if response.status_code != 200:
             raise Exception(f"Error checking payment: {response.json().get('message')}")
 
-        return response.json()
+        return self.convert._convertToNamespace(response.json())
 
 
 class VioletMediaPayClient:
