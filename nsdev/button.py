@@ -40,17 +40,11 @@ class Button:
                 cb_data = f"{inline_cmd} {is_id}_{cb_data}" if inline_cmd and is_id else cb_data
 
             if "user" in extra_params:
-                button = self.pyrogram.types.InlineKeyboardButton(
-                    label, user_id=cb_data
-                )
+                button = self.pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
             elif self.get_urls(cb_data):
-                button = self.pyrogram.types.InlineKeyboardButton(
-                    label, url=cb_data
-                )
+                button = self.pyrogram.types.InlineKeyboardButton(label, url=cb_data)
             else:
-                button = self.pyrogram.types.InlineKeyboardButton(
-                    label, callback_data=cb_data
-                )
+                button = self.pyrogram.types.InlineKeyboardButton(label, callback_data=cb_data)
 
             if "same" in extra_params and layout:
                 layout[-1].append(button)
@@ -78,13 +72,7 @@ class Button:
     def build_button_grid(self, buttons, row_inline=None, row_width=2):
         row_inline = row_inline or {}
 
-        grid = [
-            [
-                self.pyrogram.types.InlineKeyboardButton(**data)
-                for data in buttons[i : i + row_width]
-            ]
-            for i in range(0, len(buttons), row_width)
-        ]
+        grid = [[self.pyrogram.types.InlineKeyboardButton(**data) for data in buttons[i : i + row_width]] for i in range(0, len(buttons), row_width)]
 
         if row_inline:
             grid.append([self.pyrogram.types.InlineKeyboardButton(**row_inline)])
@@ -92,12 +80,7 @@ class Button:
         return self.pyrogram.types.InlineKeyboardMarkup(grid)
 
     def module(self, page_n, module_dict, same=2, line=5, left_arrow="<<", right_arrow=">>"):
-        modules = [
-            self.pyrogram.types.InlineKeyboardButton(
-                x.__MODULE__.lower(), callback_data=f"help_module({x.__MODULE__})"
-            )
-            for x in module_dict.keys()
-        ]
+        modules = [self.pyrogram.types.InlineKeyboardButton(x.__MODULE__.lower(), callback_data=f"help_module({x.__MODULE__})") for x in module_dict.keys()]
 
         pairs = [modules[i : i + same] for i in range(0, len(modules), same)]
 
@@ -111,12 +94,8 @@ class Button:
             pairs[modulo_page * line : line * (modulo_page + 1)]
             + [
                 (
-                    self.pyrogram.types.InlineKeyboardButton(
-                        left_arrow, callback_data=f"help_prev({modulo_page})"
-                    ),
-                    self.pyrogram.types.InlineKeyboardButton(
-                        right_arrow, callback_data=f"help_next({modulo_page})"
-                    ),
+                    self.pyrogram.types.InlineKeyboardButton(left_arrow, callback_data=f"help_prev({modulo_page})"),
+                    self.pyrogram.types.InlineKeyboardButton(right_arrow, callback_data=f"help_next({modulo_page})"),
                 )
             ]
             if len(pairs) > line
