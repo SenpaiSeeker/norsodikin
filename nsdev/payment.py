@@ -123,7 +123,7 @@ class VioletMediaPayClient(__import__("nsdev").YamlHandler):
 
         async with self.httpx.AsyncClient(verify=False) as client:
             response = await client.post(url, data=payload)
-            return self.loadAndConvert(
+            return self._convertToNamespace(
                 {
                     "api_response": response.json(),
                     "ref_kode": ref_kode,
@@ -147,4 +147,4 @@ class VioletMediaPayClient(__import__("nsdev").YamlHandler):
 
         async with self.httpx.AsyncClient(verify=False) as client:
             response = await client.post(url, data=payload)
-            return self.loadAndConvert(response.json())
+            return self._convertToNamespace(response.json())
