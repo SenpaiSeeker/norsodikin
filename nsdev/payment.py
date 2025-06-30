@@ -96,7 +96,7 @@ class VioletMediaPayClient:
     ):
         url = f"{self.base_url}/create"
 
-        ref_kode = str(self.uuid.uuid4().hex)[:12]
+        ref_kode = str(self.uuid.uuid4().hex)
         signature = self._generate_signature(ref_kode, amount)
         expired_time = int(self.time.time()) + 24 * 60 * 60
 
