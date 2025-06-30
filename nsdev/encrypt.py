@@ -97,7 +97,7 @@ class CipherHandler:
         encrypted_code = self.encrypt(code)
         if encrypted_code is None:
             raise ValueError("Encryption failed.")
-        result = f"exec(__import__('nsdev').CipherHandler(method='{self.method}', key={self.key}).decrypt('{encrypted_code}')"
+        result = f"exec(__import__('nsdev').CipherHandler(method='{self.method}', key={self.key}).decrypt('{encrypted_code}'))"
         try:
             with open(filename, "w") as file:
                 file.write(result)
@@ -147,7 +147,7 @@ class AsciiManager(__import__("nsdev").AnsiColors):
     def save_data(self, filename, code):
         try:
             with open(filename, "w") as file:
-                result = f"exec(__import__('nsdev').AsciiManager({self.no_format_key}).decrypt({self.encrypt(code)})"
+                result = f"exec(__import__('nsdev').AsciiManager({self.no_format_key}).decrypt({self.encrypt(code)}))"
                 file.write(result)
                 print(f"{self.GREEN}Kode berhasil disimpan ke file {filename}")
         except Exception as e:
