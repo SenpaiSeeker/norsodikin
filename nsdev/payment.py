@@ -122,12 +122,25 @@ class VioletMediaPayClient:
 
         async with self.httpx.AsyncClient(verify=False) as client:
             response = await client.post(url, data=payload)
-            return {"api_response": response.json(), "ref_kode": ref_kode, "customer": {"nama": cus_nama, "email": cus_email, "phone": cus_phone,}}
+            return {
+                "api_response": response.json(),
+                "ref_kode": ref_kode,
+                "customer": {
+                    "nama": cus_nama,
+                    "email": cus_email,
+                    "phone": cus_phone,
+                },
+            }
 
     async def check_transaction(self, ref: str, ref_id: str):
         url = f"{self.base_url}/transactions"
 
-        payload = {"api_key": self.api_key, "secret_key": self.secret_key, "ref": ref, "ref_id": ref_id,}
+        payload = {
+            "api_key": self.api_key,
+            "secret_key": self.secret_key,
+            "ref": ref,
+            "ref_id": ref_id,
+        }
 
         async with self.httpx.AsyncClient(verify=False) as client:
             response = await client.post(url, data=payload)
