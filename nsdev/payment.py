@@ -63,20 +63,20 @@ class PaymentTripay:
         return response.json()
 
 
-class VioletMediaPayClient(__import__("nsdev").YamlHandler):
+class VioletMediaPayClient:
     def __init__(
         self,
         api_key: str,
         secret_key: str,
         live: bool = False,
     ):
-        super().__init__()
         self.httpx = __import__("httpx")
         self.hmac = __import__("hmac")
         self.hashlib = __import__("hashlib")
         self.time = __import__("time")
         self.uuid = __import__("uuid")
         self.faker = __import__("faker").Faker("id_ID")
+        self.convert = __import__("nsdev").YamlHandler()
 
         self.api_key = api_key
         self.secret_key = secret_key
@@ -123,7 +123,7 @@ class VioletMediaPayClient(__import__("nsdev").YamlHandler):
 
         async with self.httpx.AsyncClient(verify=False) as client:
             response = await client.post(url, data=payload)
-            return self._convertToNamespace(
+            return self.convert._convertToNamespace(
                 {
                     "api_response": response.json(),
                     "ref_kode": ref_kode,
@@ -147,4 +147,4 @@ class VioletMediaPayClient(__import__("nsdev").YamlHandler):
 
         async with self.httpx.AsyncClient(verify=False) as client:
             response = await client.post(url, data=payload)
-            return self._convertToNamespace(response.json())
+            return self.convert._convertToNamespace(response.json())
