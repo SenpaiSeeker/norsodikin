@@ -70,6 +70,7 @@ class VioletMediaPayClient(__import__("nsdev").YamlHandler):
         secret_key: str,
         live: bool = False,
     ):
+        super().__init__()
         self.httpx = __import__("httpx")
         self.hmac = __import__("hmac")
         self.hashlib = __import__("hashlib")
