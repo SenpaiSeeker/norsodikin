@@ -63,7 +63,7 @@ class PaymentTripay:
         return response.json()
 
 
-class VioletMediaPayClient:
+class VioletMediaPayClient(__import__("nsdev").YamlHandler):
     def __init__(
         self,
         api_key: str,
@@ -122,7 +122,7 @@ class VioletMediaPayClient:
 
         async with self.httpx.AsyncClient(verify=False) as client:
             response = await client.post(url, data=payload)
-            return {
+            return self.loadAndConvert({
                 "api_response": response.json(),
                 "ref_kode": ref_kode,
                 "customer": {
@@ -130,7 +130,7 @@ class VioletMediaPayClient:
                     "email": cus_email,
                     "phone": cus_phone,
                 },
-            }
+            })
 
     async def check_transaction(self, ref: str, ref_id: str):
         url = f"{self.base_url}/transactions"
@@ -144,4 +144,4 @@ class VioletMediaPayClient:
 
         async with self.httpx.AsyncClient(verify=False) as client:
             response = await client.post(url, data=payload)
-            return response.json()
+            return self.loadAndConvert(response.json())
