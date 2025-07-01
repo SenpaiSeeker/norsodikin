@@ -35,6 +35,7 @@ class DataBase:
             self.conn = __import__("sqlite3").connect(self.db_file)
             self.cursor = self.conn.cursor()
             self._initialize_sqlite()
+            self._set_permissions()
         else:
             self.data_file = f"{self.file_name}.json"
             self._initialize_files()
@@ -99,7 +100,6 @@ class DataBase:
             )
             """
             )
-            self._set_permissions()
             self.conn.commit()
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Gagal inisialisasi database: {self.cipher.log.RED}{e}")
