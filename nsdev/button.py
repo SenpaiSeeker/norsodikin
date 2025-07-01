@@ -3,7 +3,7 @@ class Button:
         self.re = __import__("re")
         self.math = __import__("math")
         self.pyrogram = __import__("pyrogram")
-        
+
     def get_urls(self, text):
         return self.re.findall(r"(?:https?://)?(?:www\.)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:[/?]\S+)?|tg://\S+$", text)
 
