@@ -106,7 +106,7 @@ class DataBase:
 
     def _set_permissions(self):
         try:
-            self.os.chmod(self.db_path, self.stat.S_IRUSR | self.stat.S_IWUSR | self.stat.S_IRGRP | self.stat.S_IROTH | self.stat.S_IWGRP | self.stat.S_IWOTH)
+            self.os.chmod(self.db_file, self.stat.S_IRUSR | self.stat.S_IWUSR | self.stat.S_IRGRP | self.stat.S_IROTH | self.stat.S_IWGRP | self.stat.S_IWOTH)
             self.cipher.log.print(f"{self.cipher.log.GREEN}[SQLite] {self.cipher.log.CYAN}File permissions set to 666 for: {self.cipher.log.BLUE}{self.db_file}")
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Gagal mengatur izin file: {self.cipher.log.RED}{e}")
