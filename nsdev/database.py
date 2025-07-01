@@ -111,6 +111,13 @@ class DataBase:
         except Exception as e:
             self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal mengatur izin file: {self.log.RED}{e}")
 
+    def __del__(self):
+        if self.storage_type == "sqlite":
+            try:
+                self.conn.close()
+            except Exception as e:
+                self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal menutup koneksi: {self.log.RED}{e}")
+
     def _sqlite_get_vars(self, user_id):
         self.cursor.execute("SELECT data FROM vars WHERE user_id = ?", (user_id,))
         row = self.cursor.fetchone()
