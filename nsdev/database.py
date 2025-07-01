@@ -45,11 +45,7 @@ class DataBase:
         try:
             with open(self.data_file, "r") as f:
                 content = f.read()
-                return (
-                    self.json.loads(content)
-                    if content.strip()
-                    else {"vars": {}, "bots": []}
-                )
+                return self.json.loads(content) if content.strip() else {"vars": {}, "bots": []}
         except (self.json.JSONDecodeError, FileNotFoundError):
             return {"vars": {}, "bots": []}
 
@@ -110,9 +106,7 @@ class DataBase:
         self.conn.commit()
 
     def _sqlite_get_bots(self):
-        self.cursor.execute(
-            "SELECT user_id, api_id, api_hash, bot_token, session_string FROM bots"
-        )
+        self.cursor.execute("SELECT user_id, api_id, api_hash, bot_token, session_string FROM bots")
         return self.cursor.fetchall()
 
     def _sqlite_set_bot(self, user_id, encrypted_data):
@@ -192,17 +186,9 @@ class DataBase:
             encrypted_value = result.get(var_key, {}).get(query_name, None)
         elif self.storage_type == "sqlite":
             data = self._sqlite_get_vars(user_id)
-            encrypted_value = (
-                data.get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
-            )
+            encrypted_value = data.get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
         else:
-            encrypted_value = (
-                self._load_data()
-                .get("vars", {})
-                .get(str(user_id), {})
-                .get(var_key, {})
-                .get(query_name)
-            )
+            encrypted_value = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
         return self.cipher.decrypt(encrypted_value) if encrypted_value else None
 
     def removeVars(self, user_id, query_name, var_key="variabel"):
