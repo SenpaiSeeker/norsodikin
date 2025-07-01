@@ -7,6 +7,7 @@ class DataBase:
             - binary_keys (int): Kunci enkripsi untuk CipherHandler (default: 14151819154911914).
             - method_encrypt (str): Metode enkripsi untuk CipherHandler (default: 'bytes').
             - mongo_url (str): URL MongoDB (wajib jika storage_type='mongo').
+            - auto_backup (bool): Otomatis commit file database jika (storage_type='local')
         """
         self.os = __import__("os")
         self.json = __import__("json")
@@ -17,6 +18,7 @@ class DataBase:
         self.file_name = options.get("file_name", "database")
         self.binary_keys = options.get("binary_keys", 14151819154911914)
         self.method_encrypt = options.get("method_encrypt", "bytes")
+        self.auto_backup = options.get("auto_backup", False)
 
         if self.storage_type == "mongo":
             self.pymongo = __import__("pymongo")
@@ -34,9 +36,12 @@ class DataBase:
             self.data_file = f"{self.file_name}.json"
             self._initialize_files()
 
+        self.log = __import__("nsdev").LoggerHandler()
         self.cipher = __import__("nsdev").encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
 
-    # File-based methods
+    # ---------------------------
+    # === LOCAL JSON DATABASE ===
+    # ---------------------------
     def _initialize_files(self):
         if not self.os.path.exists(self.data_file):
             self._save_data({"vars": {}, "bots": []})
@@ -52,7 +57,8 @@ class DataBase:
     def _save_data(self, data):
         with open(self.data_file, "w") as f:
             self.json.dump(data, f, indent=4)
-        self._git_commit("Update database")
+        if self.auto_backup:
+            self._git_commit("Update database")
 
     def _git_commit(self, message="Update database"):
         try:
@@ -66,40 +72,52 @@ class DataBase:
         self.subprocess.run(["git", "commit", "-m", message], stderr=self.subprocess.DEVNULL)
         self.subprocess.run(["git", "push"])
 
-    # SQLite-specific methods
+    # -----------------------------
+    # === SQLITE DATABASE ===
+    # -----------------------------
     def _initialize_sqlite(self):
-        self.cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS vars (
-                user_id TEXT PRIMARY KEY,
-                data TEXT
+        try:
+            self.cursor.execute("PRAGMA journal_mode=WAL;")
+            self.cursor.execute("PRAGMA synchronous=NORMAL;")
+
+            self.cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS vars (
+                    user_id TEXT PRIMARY KEY,
+                    data TEXT
+                )
+                """
             )
-            """
-        )
-        self.cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS bots (
-                user_id TEXT PRIMARY KEY,
-                api_id TEXT,
-                api_hash TEXT,
-                bot_token TEXT,
-                session_string TEXT
+            self.cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS bots (
+                    user_id TEXT PRIMARY KEY,
+                    api_id TEXT,
+                    api_hash TEXT,
+                    bot_token TEXT,
+                    session_string TEXT
+                )
+                """
             )
-            """
-        )
-        self.conn.commit()
+            self.conn.commit()
+        except Exception as e:
+            self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal inisialisasi database: {self.log.RED}{e}")
+
 
     def _sqlite_get_vars(self, user_id):
         self.cursor.execute("SELECT data FROM vars WHERE user_id = ?", (user_id,))
         row = self.cursor.fetchone()
         return self.json.loads(row[0]) if row and row[0] else {"vars": {}}
-
+                                                                       
     def _sqlite_set_vars(self, user_id, data):
-        self.cursor.execute(
-            "INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)",
-            (user_id, self.json.dumps(data)),
-        )
-        self.conn.commit()
+        try:
+            self.cursor.execute(
+                "INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)",
+                (user_id, self.json.dumps(data)),
+            )
+            self.conn.commit()
+        except Exception as e:
+            self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal menyimpan vars: {self.log.RED}{e}")
 
     def _sqlite_remove_vars(self, user_id):
         self.cursor.execute("DELETE FROM vars WHERE user_id = ?", (user_id,))
@@ -110,26 +128,34 @@ class DataBase:
         return self.cursor.fetchall()
 
     def _sqlite_set_bot(self, user_id, encrypted_data):
-        self.cursor.execute(
-            """
-            INSERT OR REPLACE INTO bots (user_id, api_id, api_hash, bot_token, session_string)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (
-                user_id,
-                encrypted_data["api_id"],
-                encrypted_data["api_hash"],
-                encrypted_data.get("bot_token"),
-                encrypted_data.get("session_string"),
-            ),
-        )
-        self.conn.commit()
+        try:
+            self.cursor.execute(
+                """
+                INSERT OR REPLACE INTO bots (user_id, api_id, api_hash, bot_token, session_string)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    user_id,
+                    encrypted_data["api_id"],
+                    encrypted_data["api_hash"],
+                    encrypted_data.get("bot_token"),
+                    encrypted_data.get("session_string"),
+                ),
+            )
+            self.conn.commit()
+        except Exception as e:
+            self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal menyimpan bot: {self.log.RED}{e}")
 
     def _sqlite_remove_bot(self, user_id):
-        self.cursor.execute("DELETE FROM bots WHERE user_id = ?", (user_id,))
-        self.conn.commit()
+        try:
+            self.cursor.execute("DELETE FROM bots WHERE user_id = ?", (user_id,))
+            self.conn.commit()
+        except Exception as e:
+            self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal menghapus bot: {self.log.RED}{e}")
 
-    # MongoDB-specific methods
+    # -----------------------------
+    # === MONGODB DATABASE ===
+    # -----------------------------
     def _mongo_get_vars(self, user_id):
         result = self.data.vars.find_one({"_id": user_id})
         return result if result else {}
