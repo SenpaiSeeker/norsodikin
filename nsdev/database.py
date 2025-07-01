@@ -37,7 +37,6 @@ class DataBase:
             self.data_file = f"{self.file_name}.json"
             self._initialize_files()
 
-        self.log = __import__("nsdev").LoggerHandler()
         self.cipher = __import__("nsdev").encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
 
     # ---------------------------
@@ -103,21 +102,22 @@ class DataBase:
             self.conn.commit()
             self._set_permissions()
         except Exception as e:
-            self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal inisialisasi database: {self.log.RED}{e}")
+           self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Gagal inisialisasi database: {self.cipher.log.RED}{e}")
 
     def _set_permissions(self):
         try:
             self.os.chmod(self.db_path, self.stat.S_IRUSR | self.stat.S_IWUSR | self.stat.S_IRGRP | self.stat.S_IROTH | self.stat.S_IWGRP | self.stat.S_IWOTH)
-            self.log.print(f"{self.log.GREEN}[SQLite] {self.log.CYAN}File permissions set to 666 for: {self.log.BLUE}{self.db_file}")
+            self.cipher.log.print(f"{self.cipher.log.GREEN}[SQLite] {self.cipher.log.CYAN}File permissions set to 666 for: {self.cipher.log.BLUE}{self.db_file}")
         except Exception as e:
-            self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal mengatur izin file: {self.log.RED}{e}")
+            self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Gagal mengatur izin file: {self.cipher.log.RED}{e}")
 
     def __del__(self):
         if self.storage_type == "sqlite":
             try:
                 self.conn.close()
+                self.cipher.log.print(f"{self.cipher.log.GREEN}[SQLite] File berhasil ditutup")
             except Exception as e:
-                self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal menutup koneksi: {self.log.RED}{e}")
+                self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Gagal menutup koneksi: {self.cipher.log.RED}{e}")
 
     def _sqlite_get_vars(self, user_id):
         self.cursor.execute("SELECT data FROM vars WHERE user_id = ?", (user_id,))
