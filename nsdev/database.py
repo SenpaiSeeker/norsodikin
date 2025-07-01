@@ -114,7 +114,7 @@ class DataBase:
                 | self.stat.S_IRGRP
                 | self.stat.S_IROTH
                 | self.stat.S_IWGRP
-                | stat.S_IWOTH
+                | self.stat.S_IWOTH
             )
             self.log.print(f"{self.log.GREEN}[SQLite] {self.log.CYAN}File permissions set to 666 for: {self.log.BLUE}{self.db_file}")
         except Exception as e:
