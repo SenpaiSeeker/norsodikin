@@ -43,7 +43,7 @@ class Button:
                 cb_data = f"{inline_cmd} {is_id}_{cb_data}" if inline_cmd and is_id else cb_data
 
             if "user" in extra_params:
-            button = self.pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
+                button = self.pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
             elif self.get_urls(cb_data):
                 button = self.pyrogram.types.InlineKeyboardButton(label, url=cb_data)
             else:
