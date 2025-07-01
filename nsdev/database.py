@@ -79,8 +79,6 @@ class DataBase:
     # -----------------------------
     def _initialize_sqlite(self):
         try:
-            self.cursor.execute("PRAGMA journal_mode=WAL;")
-            self.cursor.execute("PRAGMA synchronous=NORMAL;")
             self.cursor.execute(
                 """
             CREATE TABLE IF NOT EXISTS vars (
