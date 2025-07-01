@@ -45,13 +45,30 @@ class DataBase:
         try:
             with open(self.data_file, "r") as f:
                 content = f.read()
-                return self.json.loads(content) if content.strip() else {"vars": {}, "bots": []}
+                return (
+                    self.json.loads(content)
+                    if content.strip()
+                    else {"vars": {}, "bots": []}
+                )
         except (self.json.JSONDecodeError, FileNotFoundError):
             return {"vars": {}, "bots": []}
 
     def _save_data(self, data):
         with open(self.data_file, "w") as f:
             self.json.dump(data, f, indent=4)
+        self._git_commit("Update database")
+
+    def _git_commit(self, message="Update database"):
+        try:
+            self.subprocess.check_output(["git", "config", "--global", "user.name"])
+            self.subprocess.check_output(["git", "config", "--global", "user.email"])
+        except self.subprocess.CalledProcessError:
+            self.subprocess.run(["git", "config", "--global", "user.name", "ɴᴏʀ sᴏᴅɪᴋɪɴ"])
+            self.subprocess.run(["git", "config", "--global", "user.email", "support@norsodikin.ltd"])
+
+        self.subprocess.run(["git", "add", self.data_file])
+        self.subprocess.run(["git", "commit", "-m", message], stderr=self.subprocess.DEVNULL)
+        self.subprocess.run(["git", "push"])
 
     # SQLite-specific methods
     def _initialize_sqlite(self):
@@ -61,7 +78,7 @@ class DataBase:
                 user_id TEXT PRIMARY KEY,
                 data TEXT
             )
-        """
+            """
         )
         self.cursor.execute(
             """
@@ -72,7 +89,7 @@ class DataBase:
                 bot_token TEXT,
                 session_string TEXT
             )
-        """
+            """
         )
         self.conn.commit()
 
@@ -82,7 +99,10 @@ class DataBase:
         return self.json.loads(row[0]) if row and row[0] else {"vars": {}}
 
     def _sqlite_set_vars(self, user_id, data):
-        self.cursor.execute("INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)", (user_id, self.json.dumps(data)))
+        self.cursor.execute(
+            "INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)",
+            (user_id, self.json.dumps(data)),
+        )
         self.conn.commit()
 
     def _sqlite_remove_vars(self, user_id):
@@ -90,7 +110,9 @@ class DataBase:
         self.conn.commit()
 
     def _sqlite_get_bots(self):
-        self.cursor.execute("SELECT user_id, api_id, api_hash, bot_token, session_string FROM bots")
+        self.cursor.execute(
+            "SELECT user_id, api_id, api_hash, bot_token, session_string FROM bots"
+        )
         return self.cursor.fetchall()
 
     def _sqlite_set_bot(self, user_id, encrypted_data):
@@ -98,8 +120,14 @@ class DataBase:
             """
             INSERT OR REPLACE INTO bots (user_id, api_id, api_hash, bot_token, session_string)
             VALUES (?, ?, ?, ?, ?)
-        """,
-            (user_id, encrypted_data["api_id"], encrypted_data["api_hash"], encrypted_data.get("bot_token"), encrypted_data.get("session_string")),
+            """,
+            (
+                user_id,
+                encrypted_data["api_id"],
+                encrypted_data["api_hash"],
+                encrypted_data.get("bot_token"),
+                encrypted_data.get("session_string"),
+            ),
         )
         self.conn.commit()
 
@@ -116,10 +144,6 @@ class DataBase:
         update_data = {"$set": {f"{var_key}.{query_name}": encrypted_value}}
         self.data.vars.update_one({"_id": user_id}, update_data, upsert=True)
 
-    def _mongo_remove_var(self, user_id, var_key, query_name):
-        update_data = {"$unset": {f"{var_key}.{query_name}": ""}}
-        self.data.vars.update_one({"_id": user_id}, update_data)
-
     def _mongo_push_list_vars(self, user_id, var_key, query_name, encrypted_value):
         update_data = {"$push": {f"{var_key}.{query_name}": encrypted_value}}
         self.data.vars.update_one({"_id": user_id}, update_data, upsert=True)
@@ -130,6 +154,10 @@ class DataBase:
 
     def _mongo_unset_vars(self, user_id, var_key):
         update_data = {"$unset": {var_key: ""}}
+        self.data.vars.update_one({"_id": user_id}, update_data)
+
+    def _mongo_remove_var(self, user_id, var_key, query_name):
+        update_data = {"$unset": {f"{var_key}.{query_name}": ""}}
         self.data.vars.update_one({"_id": user_id}, update_data)
 
     def _mongo_save_bot(self, user_id, encrypted_data):
@@ -164,9 +192,17 @@ class DataBase:
             encrypted_value = result.get(var_key, {}).get(query_name, None)
         elif self.storage_type == "sqlite":
             data = self._sqlite_get_vars(user_id)
-            encrypted_value = data.get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
+            encrypted_value = (
+                data.get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
+            )
         else:
-            encrypted_value = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
+            encrypted_value = (
+                self._load_data()
+                .get("vars", {})
+                .get(str(user_id), {})
+                .get(var_key, {})
+                .get(query_name)
+            )
         return self.cipher.decrypt(encrypted_value) if encrypted_value else None
 
     def removeVars(self, user_id, query_name, var_key="variabel"):
