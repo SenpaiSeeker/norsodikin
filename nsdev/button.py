@@ -3,11 +3,9 @@ class Button:
         self.re = __import__("re")
         self.math = __import__("math")
         self.pyrogram = __import__("pyrogram")
-
-        self.url_pattern = r"(?:https?://)?(?:www\.)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:[/?]\S+)?|tg://\S+$"
-
+        
     def get_urls(self, text):
-        return self.re.findall(self.url_pattern, text)
+        return self.re.findall(r"(?:https?://)?(?:www\.)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:[/?]\S+)?|tg://\S+$", text)
 
     def parse_buttons_and_text(self, text, mode="inline"):
         if mode == "inline":
@@ -84,28 +82,3 @@ class Button:
             grid.append([self.pyrogram.types.InlineKeyboardButton(**row_inline)])
 
         return self.pyrogram.types.InlineKeyboardMarkup(grid)
-
-    def module(self, page_n, module_dict, same=2, line=5, left_arrow="<<", right_arrow=">>"):
-        modules = [self.pyrogram.types.InlineKeyboardButton(x.__MODULE__.lower(), callback_data=f"help_module({x.__MODULE__})") for x in module_dict.keys()]
-
-        pairs = [modules[i : i + same] for i in range(0, len(modules), same)]
-
-        if len(modules) % 1 == 1:
-            pairs.append((modules[-1],))
-
-        max_num_pages = self.math.ceil(len(pairs) / line)
-        modulo_page = page_n % max_num_pages
-
-        pairs = (
-            pairs[modulo_page * line : line * (modulo_page + 1)]
-            + [
-                (
-                    self.pyrogram.types.InlineKeyboardButton(left_arrow, callback_data=f"help_prev({modulo_page})"),
-                    self.pyrogram.types.InlineKeyboardButton(right_arrow, callback_data=f"help_next({modulo_page})"),
-                )
-            ]
-            if len(pairs) > line
-            else pairs
-        )
-
-        return pairs
