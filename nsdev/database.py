@@ -79,6 +79,8 @@ class DataBase:
     # -----------------------------
     def _initialize_sqlite(self):
         try:
+            self.cursor.execute("PRAGMA journal_mode=WAL;")
+            self.cursor.execute("PRAGMA synchronous=NORMAL;")
             self.cursor.execute(
                 """
             CREATE TABLE IF NOT EXISTS vars (
@@ -99,7 +101,6 @@ class DataBase:
             """
             )
             self.conn.commit()
-            self._set_permissions()
         except Exception as e:
             self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal inisialisasi database: {self.log.RED}{e}")
 
