@@ -10,6 +10,7 @@ class DataBase:
             - auto_backup (bool): Otomatis commit file database jika (storage_type='local')
         """
         self.os = __import__("os")
+        self.stat = __import__("stat")
         self.json = __import__("json")
         self.datetime = __import__("datetime")
         self.zoneinfo = __import__("zoneinfo")
@@ -71,38 +72,54 @@ class DataBase:
         self.subprocess.run(["git", "add", self.data_file])
         self.subprocess.run(["git", "commit", "-m", message], stderr=self.subprocess.DEVNULL)
         self.subprocess.run(["git", "push"])
-
+        
     # -----------------------------
     # === SQLITE DATABASE ===
     # -----------------------------
+    # -----------------------------   
     def _initialize_sqlite(self):
         try:
             self.cursor.execute("PRAGMA journal_mode=WAL;")
             self.cursor.execute("PRAGMA synchronous=NORMAL;")
-
             self.cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS vars (
-                    user_id TEXT PRIMARY KEY,
-                    data TEXT
-                )
-                """
+            """
+            CREATE TABLE IF NOT EXISTS vars (
+                user_id TEXT PRIMARY KEY,
+                data TEXT
             )
+            """
+        )
             self.cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS bots (
-                    user_id TEXT PRIMARY KEY,
-                    api_id TEXT,
-                    api_hash TEXT,
-                    bot_token TEXT,
-                    session_string TEXT
-                )
-                """
+            """
+            CREATE TABLE IF NOT EXISTS bots (
+                user_id TEXT PRIMARY KEY,
+                api_id TEXT,
+                api_hash TEXT,
+                bot_token TEXT,
+                session_string TEXT
             )
+            """
+        )
             self.conn.commit()
+            self._set_permissions()
         except Exception as e:
             self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal inisialisasi database: {self.log.RED}{e}")
 
+    def _set_permissions(self):
+        try:
+            self.os.chmod(
+                self.db_path,
+                self.stat.S_IRUSR
+                | self.stat.S_IWUSR
+                | self.stat.S_IRGRP
+                | self.stat.S_IROTH
+                | self.stat.S_IWGRP
+                | stat.S_IWOTH
+            )
+            self.log.print(f"{self.log.GREEN}[SQLite] {self.log.CYAN}File permissions set to 666 for: {self.log.BLUE}{self.db_file}")
+        except Exception as e:
+            self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal mengatur izin file: {self.log.RED}{e}")
+        
     def _sqlite_get_vars(self, user_id):
         self.cursor.execute("SELECT data FROM vars WHERE user_id = ?", (user_id,))
         row = self.cursor.fetchone()
