@@ -116,6 +116,10 @@ class DataBase:
         update_data = {"$set": {f"{var_key}.{query_name}": encrypted_value}}
         self.data.vars.update_one({"_id": user_id}, update_data, upsert=True)
 
+    def _mongo_remove_var(self, user_id, var_key, query_name):
+        update_data = {"$unset": {f"{var_key}.{query_name}": ""}}
+        self.data.vars.update_one({"_id": user_id}, update_data)
+
     def _mongo_push_list_vars(self, user_id, var_key, query_name, encrypted_value):
         update_data = {"$push": {f"{var_key}.{query_name}": encrypted_value}}
         self.data.vars.update_one({"_id": user_id}, update_data, upsert=True)
@@ -164,6 +168,22 @@ class DataBase:
         else:
             encrypted_value = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
         return self.cipher.decrypt(encrypted_value) if encrypted_value else None
+
+    def removeVars(self, user_id, query_name, var_key="variabel"):
+        if self.storage_type == "mongo":
+            self._mongo_remove_var(user_id, var_key, query_name)
+        elif self.storage_type == "sqlite":
+            data = self._sqlite_get_vars(user_id)
+            user_data = data.get("vars", {}).get(str(user_id), {}).get(var_key, {})
+            if query_name in user_data:
+                del user_data[query_name]
+                self._sqlite_set_vars(user_id, data)
+        else:
+            data = self._load_data()
+            user_data = data.get("vars", {}).get(str(user_id), {}).get(var_key, {})
+            if query_name in user_data:
+                del user_data[query_name]
+                self._save_data(data)
 
     def setListVars(self, user_id, query_name, value, var_key="variabel"):
         encrypted_value = self.cipher.encrypt(value)
