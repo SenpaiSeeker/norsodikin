@@ -103,12 +103,11 @@ class DataBase:
         except Exception as e:
             self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal inisialisasi database: {self.log.RED}{e}")
 
-
     def _sqlite_get_vars(self, user_id):
         self.cursor.execute("SELECT data FROM vars WHERE user_id = ?", (user_id,))
         row = self.cursor.fetchone()
         return self.json.loads(row[0]) if row and row[0] else {"vars": {}}
-                                                                       
+
     def _sqlite_set_vars(self, user_id, data):
         try:
             self.cursor.execute(
