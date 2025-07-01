@@ -42,13 +42,12 @@ class Button:
             if not self.get_urls(cb_data):
                 cb_data = f"{inline_cmd} {is_id}_{cb_data}" if inline_cmd and is_id else cb_data
 
-            button = (
-                self.pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
-                if "user" in extra_params
-                else (
-                    self.pyrogram.types.InlineKeyboardButton(label, url=cb_data) if self.get_urls(cb_data) else self.pyrogram.types.InlineKeyboardButton(label, callback_data=cb_data)
-                )
-            )
+            if "user" in extra_params:
+            button = self.pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
+            elif self.get_urls(cb_data):
+                button = self.pyrogram.types.InlineKeyboardButton(label, url=cb_data)
+            else:
+                button = self.pyrogram.types.InlineKeyboardButton(label, callback_data=cb_data)
 
             if "same" in extra_params and layout:
                 layout[-1].append(button)
