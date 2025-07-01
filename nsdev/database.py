@@ -100,7 +100,8 @@ class DataBase:
             )
             """
             )
-            self.conn.commit()
+            self.conn.commit()            
+            self._set_permissions()
         except Exception as e:
             self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal inisialisasi database: {self.log.RED}{e}")
 
