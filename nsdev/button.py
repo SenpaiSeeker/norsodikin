@@ -11,10 +11,9 @@ class Button:
 
     def parse_buttons_and_text(self, text, mode="inline"):
         if mode == "inline":
-            pattern = r"\|\s*([^|]+?)\s*-\s*([^|]+?)\s*\|"
-            button_data = self.re.findall(pattern, text)
-            extracted_text = self.re.sub(pattern, "", text).strip()
-            return [(label.strip(), payload.strip()) for label, payload in button_data], extracted_text
+            button_data = self.re.findall(r"\| ([^|]+) - ([^|]+) \|", text)
+            extracted_text = self.re.split(r"\| [^|]+ - [^|]+ \|", text)[0].strip() if "|" in text else text.strip()
+            return button_data, extracted_text
 
         elif mode == "reply":
             pattern = r"\|\s*([^\|]+?)\s*\|"
