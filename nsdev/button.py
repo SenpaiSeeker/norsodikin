@@ -37,7 +37,7 @@ class Button:
     def create_keyboard(self, text, inline_cmd=None, is_id=None):
         layout = []
         buttons, remaining_text = self.parse_buttons_and_text(text, mode="inline")
- 
+
         for label, payload in buttons:
             cb_data, *extra_params = payload.split(";")
 
