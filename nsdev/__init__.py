@@ -12,4 +12,4 @@ from .payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
 from .storekey import KeyManager
 from .ymlreder import YamlHandler
 
-__version__ = "0.5.4"
+__version__ = "0.5.5"
