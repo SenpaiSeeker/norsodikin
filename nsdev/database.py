@@ -22,9 +22,7 @@ class DataBase:
         self.auto_backup = options.get("auto_backup", False)
         self._closed = False
 
-        self.cipher = __import__("nsdev").encrypt.CipherHandler(
-            key=self.binary_keys, method=self.method_encrypt
-        )
+        self.cipher = __import__("nsdev").encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
 
         if self.storage_type == "mongo":
             self.pymongo = __import__("pymongo")
@@ -77,13 +75,16 @@ class DataBase:
 
     def _initialize_sqlite(self):
         try:
-            self.cursor.execute("""
+            self.cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS vars (
                     user_id TEXT PRIMARY KEY,
                     data TEXT
                 )
-            """)
-            self.cursor.execute("""
+            """
+            )
+            self.cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS bots (
                     user_id TEXT PRIMARY KEY,
                     api_id TEXT,
@@ -91,17 +92,15 @@ class DataBase:
                     bot_token TEXT,
                     session_string TEXT
                 )
-            """)
+            """
+            )
             self.conn.commit()
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Inisialisasi DB gagal: {self.cipher.log.RED}{e}")
 
     def _set_permissions(self):
         try:
-            self.os.chmod(
-                self.db_file,
-                self.stat.S_IRUSR | self.stat.S_IWUSR | self.stat.S_IRGRP | self.stat.S_IROTH | self.stat.S_IWGRP | self.stat.S_IWOTH
-            )
+            self.os.chmod(self.db_file, self.stat.S_IRUSR | self.stat.S_IWUSR | self.stat.S_IRGRP | self.stat.S_IROTH | self.stat.S_IWGRP | self.stat.S_IWOTH)
             self.cipher.log.print(f"{self.cipher.log.GREEN}[SQLite] {self.cipher.log.CYAN}Permissions set: {self.cipher.log.BLUE}{self.db_file}")
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Set permissions gagal: {self.cipher.log.RED}{e}")
@@ -159,16 +158,19 @@ class DataBase:
     def _sqlite_set_bot(self, user_id, encrypted_data):
         self._check_closed()
         try:
-            self.cursor.execute("""
+            self.cursor.execute(
+                """
                 INSERT OR REPLACE INTO bots (user_id, api_id, api_hash, bot_token, session_string)
                 VALUES (?, ?, ?, ?, ?)
-            """, (
-                user_id,
-                encrypted_data["api_id"],
-                encrypted_data["api_hash"],
-                encrypted_data.get("bot_token"),
-                encrypted_data.get("session_string"),
-            ))
+            """,
+                (
+                    user_id,
+                    encrypted_data["api_id"],
+                    encrypted_data["api_hash"],
+                    encrypted_data.get("bot_token"),
+                    encrypted_data.get("session_string"),
+                ),
+            )
             self.conn.commit()
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Simpan bot gagal: {self.cipher.log.RED}{e}")
@@ -186,24 +188,13 @@ class DataBase:
         return result if result else {}
 
     def _mongo_set_vars(self, user_id, var_key, query_name, encrypted_value):
-        self.data.vars.update_one(
-            {"_id": user_id},
-            {"$set": {f"{var_key}.{query_name}": encrypted_value}},
-            upsert=True
-        )
+        self.data.vars.update_one({"_id": user_id}, {"$set": {f"{var_key}.{query_name}": encrypted_value}}, upsert=True)
 
     def _mongo_push_list_vars(self, user_id, var_key, query_name, encrypted_value):
-        self.data.vars.update_one(
-            {"_id": user_id},
-            {"$push": {f"{var_key}.{query_name}": encrypted_value}},
-            upsert=True
-        )
+        self.data.vars.update_one({"_id": user_id}, {"$push": {f"{var_key}.{query_name}": encrypted_value}}, upsert=True)
 
     def _mongo_pull_list_vars(self, user_id, var_key, query_name, encrypted_value):
-        self.data.vars.update_one(
-            {"_id": user_id},
-            {"$pull": {f"{var_key}.{query_name}": encrypted_value}}
-        )
+        self.data.vars.update_one({"_id": user_id}, {"$pull": {f"{var_key}.{query_name}": encrypted_value}})
 
     def _mongo_unset_vars(self, user_id, var_key):
         self.data.vars.update_one({"_id": user_id}, {"$unset": {var_key: ""}})
