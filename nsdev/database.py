@@ -20,8 +20,11 @@ class DataBase:
         self.binary_keys = options.get("binary_keys", 14151819154911914)
         self.method_encrypt = options.get("method_encrypt", "bytes")
         self.auto_backup = options.get("auto_backup", False)
+        self._closed = False
 
-        self.cipher = __import__("nsdev").encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
+        self.cipher = __import__("nsdev").encrypt.CipherHandler(
+            key=self.binary_keys, method=self.method_encrypt
+        )
 
         if self.storage_type == "mongo":
             self.pymongo = __import__("pymongo")
@@ -30,19 +33,18 @@ class DataBase:
                 raise ValueError("mongo_url is required for MongoDB storage")
             self.client = self.pymongo.MongoClient(self.mongo_url)
             self.data = self.client[self.file_name]
+
         elif self.storage_type == "sqlite":
             self.db_file = f"{self.file_name}.db"
-            self.conn = __import__("sqlite3").connect(self.db_file)
+            self.conn = __import__("sqlite3").connect(self.db_file, check_same_thread=False)
             self.cursor = self.conn.cursor()
             self._initialize_sqlite()
             self._set_permissions()
+
         else:
             self.data_file = f"{self.file_name}.json"
             self._initialize_files()
 
-    # ---------------------------
-    # === LOCAL JSON DATABASE ===
-    # ---------------------------
     def _initialize_files(self):
         if not self.os.path.exists(self.data_file):
             self._save_data({"vars": {}, "bots": []})
@@ -73,56 +75,68 @@ class DataBase:
         self.subprocess.run(["git", "commit", "-m", message], stderr=self.subprocess.DEVNULL)
         self.subprocess.run(["git", "push"])
 
-    # -----------------------------
-    # === SQLITE DATABASE ===
-    # -----------------------------
-    # -----------------------------
     def _initialize_sqlite(self):
         try:
-            self.cursor.execute(
-                """
-            CREATE TABLE IF NOT EXISTS vars (
-                user_id TEXT PRIMARY KEY,
-                data TEXT
-            )
-            """
-            )
-            self.cursor.execute(
-                """
-            CREATE TABLE IF NOT EXISTS bots (
-                user_id TEXT PRIMARY KEY,
-                api_id TEXT,
-                api_hash TEXT,
-                bot_token TEXT,
-                session_string TEXT
-            )
-            """
-            )
+            self.cursor.execute("""
+                CREATE TABLE IF NOT EXISTS vars (
+                    user_id TEXT PRIMARY KEY,
+                    data TEXT
+                )
+            """)
+            self.cursor.execute("""
+                CREATE TABLE IF NOT EXISTS bots (
+                    user_id TEXT PRIMARY KEY,
+                    api_id TEXT,
+                    api_hash TEXT,
+                    bot_token TEXT,
+                    session_string TEXT
+                )
+            """)
             self.conn.commit()
         except Exception as e:
-            self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Gagal inisialisasi database: {self.cipher.log.RED}{e}")
+            self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Inisialisasi DB gagal: {self.cipher.log.RED}{e}")
 
     def _set_permissions(self):
         try:
-            self.os.chmod(self.db_file, self.stat.S_IRUSR | self.stat.S_IWUSR | self.stat.S_IRGRP | self.stat.S_IROTH | self.stat.S_IWGRP | self.stat.S_IWOTH)
-            self.cipher.log.print(f"{self.cipher.log.GREEN}[SQLite] {self.cipher.log.CYAN}File permissions set to 666 for: {self.cipher.log.BLUE}{self.db_file}")
+            self.os.chmod(
+                self.db_file,
+                self.stat.S_IRUSR | self.stat.S_IWUSR | self.stat.S_IRGRP | self.stat.S_IROTH | self.stat.S_IWGRP | self.stat.S_IWOTH
+            )
+            self.cipher.log.print(f"{self.cipher.log.GREEN}[SQLite] {self.cipher.log.CYAN}Permissions set: {self.cipher.log.BLUE}{self.db_file}")
         except Exception as e:
-            self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Gagal mengatur izin file: {self.cipher.log.RED}{e}")
+            self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Set permissions gagal: {self.cipher.log.RED}{e}")
 
-    def __del__(self):
-        if self.storage_type == "sqlite":
+    def _check_closed(self):
+        if self._closed:
+            raise RuntimeError("SQLite connection already closed.")
+
+    def close(self):
+        if self.storage_type == "sqlite" and not self._closed:
             try:
+                self.conn.commit()
                 self.conn.close()
-                self.cipher.log.print(f"{self.cipher.log.GREEN}[SQLite] File berhasil ditutup")
+                self._closed = True
+                self.cipher.log.print(f"{self.cipher.log.GREEN}[SQLite] Koneksi ditutup")
             except Exception as e:
                 self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Gagal menutup koneksi: {self.cipher.log.RED}{e}")
 
+    def __del__(self):
+        self.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
     def _sqlite_get_vars(self, user_id):
+        self._check_closed()
         self.cursor.execute("SELECT data FROM vars WHERE user_id = ?", (user_id,))
         row = self.cursor.fetchone()
         return self.json.loads(row[0]) if row and row[0] else {"vars": {}}
 
     def _sqlite_set_vars(self, user_id, data):
+        self._check_closed()
         try:
             self.cursor.execute(
                 "INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)",
@@ -130,45 +144,79 @@ class DataBase:
             )
             self.conn.commit()
         except Exception as e:
-            self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal menyimpan vars: {self.log.RED}{e}")
+            self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Simpan vars gagal: {self.cipher.log.RED}{e}")
 
     def _sqlite_remove_vars(self, user_id):
+        self._check_closed()
         self.cursor.execute("DELETE FROM vars WHERE user_id = ?", (user_id,))
         self.conn.commit()
 
     def _sqlite_get_bots(self):
+        self._check_closed()
         self.cursor.execute("SELECT user_id, api_id, api_hash, bot_token, session_string FROM bots")
         return self.cursor.fetchall()
 
     def _sqlite_set_bot(self, user_id, encrypted_data):
+        self._check_closed()
         try:
-            self.cursor.execute(
-                """
+            self.cursor.execute("""
                 INSERT OR REPLACE INTO bots (user_id, api_id, api_hash, bot_token, session_string)
                 VALUES (?, ?, ?, ?, ?)
-                """,
-                (
-                    user_id,
-                    encrypted_data["api_id"],
-                    encrypted_data["api_hash"],
-                    encrypted_data.get("bot_token"),
-                    encrypted_data.get("session_string"),
-                ),
-            )
+            """, (
+                user_id,
+                encrypted_data["api_id"],
+                encrypted_data["api_hash"],
+                encrypted_data.get("bot_token"),
+                encrypted_data.get("session_string"),
+            ))
             self.conn.commit()
         except Exception as e:
-            self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal menyimpan bot: {self.log.RED}{e}")
+            self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Simpan bot gagal: {self.cipher.log.RED}{e}")
 
     def _sqlite_remove_bot(self, user_id):
+        self._check_closed()
         try:
             self.cursor.execute("DELETE FROM bots WHERE user_id = ?", (user_id,))
             self.conn.commit()
         except Exception as e:
-            self.log.print(f"{self.log.YELLOW}[SQLite] {self.log.CYAN}Gagal menghapus bot: {self.log.RED}{e}")
+            self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Hapus bot gagal: {self.cipher.log.RED}{e}")
 
-    # -----------------------------
-    # === MONGODB DATABASE ===
-    # -----------------------------
+    def _mongo_get_vars(self, user_id):
+        result = self.data.vars.find_one({"_id": user_id})
+        return result if result else {}
+
+    def _mongo_set_vars(self, user_id, var_key, query_name, encrypted_value):
+        self.data.vars.update_one(
+            {"_id": user_id},
+            {"$set": {f"{var_key}.{query_name}": encrypted_value}},
+            upsert=True
+        )
+
+    def _mongo_push_list_vars(self, user_id, var_key, query_name, encrypted_value):
+        self.data.vars.update_one(
+            {"_id": user_id},
+            {"$push": {f"{var_key}.{query_name}": encrypted_value}},
+            upsert=True
+        )
+
+    def _mongo_pull_list_vars(self, user_id, var_key, query_name, encrypted_value):
+        self.data.vars.update_one(
+            {"_id": user_id},
+            {"$pull": {f"{var_key}.{query_name}": encrypted_value}}
+        )
+
+    def _mongo_unset_vars(self, user_id, var_key):
+        self.data.vars.update_one({"_id": user_id}, {"$unset": {var_key: ""}})
+
+    def _mongo_remove_var(self, user_id, var_key, query_name):
+        self.data.vars.update_one({"_id": user_id}, {"$unset": {f"{var_key}.{query_name}": ""}})
+
+    def _mongo_save_bot(self, user_id, encrypted_data):
+        self.data.bot.update_one({"user_id": user_id}, {"$set": encrypted_data}, upsert=True)
+
+    def _mongo_remove_bot(self, user_id):
+        self.data.bot.delete_one({"user_id": user_id})
+
     def _mongo_get_vars(self, user_id):
         result = self.data.vars.find_one({"_id": user_id})
         return result if result else {}
@@ -201,7 +249,6 @@ class DataBase:
     def _mongo_remove_bot(self, user_id):
         self.data.bot.delete_one({"user_id": user_id})
 
-    # General methods
     def setVars(self, user_id, query_name, value, var_key="variabel"):
         encrypted_value = self.cipher.encrypt(value)
         if self.storage_type == "mongo":
@@ -415,3 +462,6 @@ class DataBase:
             data = self._load_data()
             data["bots"] = [bot for bot in data["bots"] if bot["user_id"] != user_id]
             self._save_data(data)
+
+
+semua fungsi sqlite tolong perbaiki supaya saat progrram di hentikan otomatis ke close semua fungsi 
