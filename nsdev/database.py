@@ -462,6 +462,3 @@ class DataBase:
             data = self._load_data()
             data["bots"] = [bot for bot in data["bots"] if bot["user_id"] != user_id]
             self._save_data(data)
-
-
-semua fungsi sqlite tolong perbaiki supaya saat progrram di hentikan otomatis ke close semua fungsi 
