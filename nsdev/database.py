@@ -104,10 +104,6 @@ class DataBase:
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Set permissions gagal: {self.cipher.log.RED}{e}")
 
-    def _check_closed(self):
-        if self._closed:
-            raise RuntimeError("SQLite connection already closed.")
-
     def close(self):
         if self.storage_type == "sqlite" and self.conn:
             try:
@@ -127,13 +123,11 @@ class DataBase:
         self.close()
 
     def _sqlite_get_vars(self, user_id):
-        self._check_closed()
         self.cursor.execute("SELECT data FROM vars WHERE user_id = ?", (user_id,))
         row = self.cursor.fetchone()
         return self.json.loads(row[0]) if row and row[0] else {"vars": {}}
 
     def _sqlite_set_vars(self, user_id, data):
-        self._check_closed()
         try:
             self.cursor.execute(
                 "INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)",
@@ -144,17 +138,14 @@ class DataBase:
             self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Simpan vars gagal: {self.cipher.log.RED}{e}")
 
     def _sqlite_remove_vars(self, user_id):
-        self._check_closed()
         self.cursor.execute("DELETE FROM vars WHERE user_id = ?", (user_id,))
         self.conn.commit()
 
     def _sqlite_get_bots(self):
-        self._check_closed()
         self.cursor.execute("SELECT user_id, api_id, api_hash, bot_token, session_string FROM bots")
         return self.cursor.fetchall()
 
     def _sqlite_set_bot(self, user_id, encrypted_data):
-        self._check_closed()
         try:
             self.cursor.execute(
                 """
@@ -174,7 +165,6 @@ class DataBase:
             self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Simpan bot gagal: {self.cipher.log.RED}{e}")
 
     def _sqlite_remove_bot(self, user_id):
-        self._check_closed()
         try:
             self.cursor.execute("DELETE FROM bots WHERE user_id = ?", (user_id,))
             self.conn.commit()
