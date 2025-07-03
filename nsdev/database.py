@@ -20,7 +20,6 @@ class DataBase:
         self.binary_keys = options.get("binary_keys", 14151819154911914)
         self.method_encrypt = options.get("method_encrypt", "bytes")
         self.auto_backup = options.get("auto_backup", False)
-        self._closed = False
 
         self.cipher = __import__("nsdev").encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
 
