@@ -4,6 +4,16 @@ class Argument:
         self.pyrogram = __import__("pyrogram")
         self.requests = __import__("requests")
 
+    
+    def getMention(self, me, logs=False, no_tag=False, tag_and_id=False):
+        name = f"{me.first_name} {me.last_name}" if me.last_name else me.first_name
+        link = f"tg://user?id={me.id}"
+        return (
+            f"{me.id}|{name}"
+            if logs
+            else name if no_tag else f"<a href='{link}'>{name}</a>{' | <code>' + str(me.id) + '</code>' if tag_and_id else ''}"
+        )
+
     def getNamebot(self, bot_token):
         url = f"https://api.telegram.org/bot{bot_token}/getMe"
         try:
