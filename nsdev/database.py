@@ -110,11 +110,10 @@ class DataBase:
             raise RuntimeError("SQLite connection already closed.")
 
     def close(self):
-        if self.storage_type == "sqlite" and not self._closed:
+        if self.storage_type == "sqlite" and self.conn:
             try:
                 self.conn.commit()
                 self.conn.close()
-                self._closed = True
                 self.cipher.log.print(f"{self.cipher.log.GREEN}[SQLite] Koneksi ditutup")
             except Exception as e:
                 self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Gagal menutup koneksi: {self.cipher.log.RED}{e}")
