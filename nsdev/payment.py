@@ -93,8 +93,8 @@ class VioletMediaPayClient:
         channel_payment: str = "QRIS",
         amount: str = "1500",
         produk: str = "payment_bot",
-        url_redirect: str = "https://domainanda.com/redirect",
-        url_callback: str = "https://domainanda.com/callback",
+        url_redirect: str = "https://domainanda.com/redirect ",
+        url_callback: str = "https://domainanda.com/callback ",
     ):
         url = f"{self.base_url}/create"
 
@@ -122,19 +122,27 @@ class VioletMediaPayClient:
             "signature": signature,
         }
 
-        async with self.httpx.AsyncClient(verify=False) as client:
-            response = await client.post(url, data=payload)
-            return self.convert._convertToNamespace(
-                {
-                    "api_response": response.json(),
-                    "ref_kode": ref_kode,
-                    "customer": {
-                        "nama": cus_nama,
-                        "email": cus_email,
-                        "phone": cus_phone,
-                    },
-                }
-            )
+        try:
+            async with self.httpx.AsyncClient(verify=True, timeout=30.0) as client:
+                response = await client.post(url, data=payload)
+                response.raise_for_status()
+                return self.convert._convertToNamespace(
+                    {
+                        "api_response": response.json(),
+                        "ref_kode": ref_kode,
+                        "customer": {
+                            "nama": cus_nama,
+                            "email": cus_email,
+                            "phone": cus_phone,
+                        },
+                    }
+                )
+        except self.httpx.ReadTimeout:
+            raise Exception("Request timeout: Server tidak merespons dalam waktu yang ditentukan.")
+        except self.httpx.HTTPStatusError as e:
+            raise Exception(f"HTTP Error: {e.response.status_code} - {e.response.text}")
+        except Exception as e:
+            raise Exception(f"Error creating payment: {str(e)}")
 
     async def check_transaction(self, ref: str, ref_id: str):
         url = f"{self.base_url}/transactions"
@@ -146,6 +154,14 @@ class VioletMediaPayClient:
             "ref_id": ref_id,
         }
 
-        async with self.httpx.AsyncClient(verify=False) as client:
-            response = await client.post(url, data=payload)
-            return self.convert._convertToNamespace(response.json())
+        try:
+            async with self.httpx.AsyncClient(verify=True, timeout=30.0) as client:
+                response = await client.post(url, data=payload)
+                response.raise_for_status()
+                return self.convert._convertToNamespace(response.json())
+        except self.httpx.ReadTimeout:
+            raise Exception("Request timeout: Server tidak merespons dalam waktu yang ditentukan.")
+        except self.httpx.HTTPStatusError as e:
+            raise Exception(f"HTTP Error: {e.response.status_code} - {e.response.text}")
+        except Exception as e:
+            raise Exception(f"Error checking transaction: {str(e)}")
