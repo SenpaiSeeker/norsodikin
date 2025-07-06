@@ -36,7 +36,6 @@ class DataBase:
             self.conn = __import__("sqlite3").connect(self.db_file, check_same_thread=False)
             self.cursor = self.conn.cursor()
             self._initialize_sqlite()
-            self._set_permissions()
 
         else:
             self.data_file = f"{self.file_name}.json"
@@ -72,6 +71,15 @@ class DataBase:
         self.subprocess.run(["git", "commit", "-m", message], stderr=self.subprocess.DEVNULL)
         self.subprocess.run(["git", "push"])
 
+    def __del__(self):
+        self.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+        
     def _initialize_sqlite(self):
         try:
             self.cursor.execute(
@@ -94,6 +102,7 @@ class DataBase:
             """
             )
             self.conn.commit()
+            self._set_permissions()
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Inisialisasi DB gagal: {self.cipher.log.RED}{e}")
 
@@ -112,15 +121,6 @@ class DataBase:
                 self.cipher.log.print(f"{self.cipher.log.GREEN}[SQLite] Koneksi ditutup")
             except Exception as e:
                 self.cipher.log.print(f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Gagal menutup koneksi: {self.cipher.log.RED}{e}")
-
-    def __del__(self):
-        self.close()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
 
     def _sqlite_get_vars(self, user_id):
         self.cursor.execute("SELECT data FROM vars WHERE user_id = ?", (user_id,))
