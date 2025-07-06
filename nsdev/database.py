@@ -79,7 +79,7 @@ class DataBase:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
-        
+
     def _initialize_sqlite(self):
         try:
             self.cursor.execute(
