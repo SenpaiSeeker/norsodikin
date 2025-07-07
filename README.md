@@ -1,402 +1,484 @@
-# norsodikin
+# Pustaka Python `norsodikin`
 
-![version](https://img.shields.io/badge/version-0.7.1-blue)
-![python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-green)
-![license](https://img.shields.io/badge/license-MIT-lightgrey)
+[![Versi PyPI](https://img.shields.io/pypi/v/norsodikin.svg)](https://pypi.org/project/norsodikin/)
+[![Lisensi: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Pustaka `norsodikin` adalah kumpulan alat dan utilitas serbaguna yang dirancang untuk berbagai keperluan, mulai dari manajemen sistem, enkripsi data, integrasi API, hingga pembuatan antarmuka baris perintah yang menarik.
+Selamat datang di `norsodikin`, sebuah koleksi modul Python serbaguna yang dirancang untuk mempermudah berbagai tugas, mulai dari manajemen server, enkripsi data, hingga pembuatan bot Telegram yang canggih. Setiap modul dibuat agar mudah digunakan dan dipahami, bahkan untuk kamu yang baru mulai belajar.
 
 ## Instalasi
 
-Anda dapat menginstal pustaka ini menggunakan `pip`:
+Untuk menginstal pustaka ini, cukup jalankan perintah berikut di terminal kamu:
 
 ```bash
 pip install norsodikin
 ```
 
-Pustaka ini akan otomatis menginstal semua dependensi yang diperlukan.
+Pastikan juga semua dependensi dari file `requirements.txt` sudah terpasang.
 
 ## Panduan Penggunaan Modul
 
-Berikut adalah penjelasan dan contoh penggunaan untuk setiap modul yang tersedia.
+Berikut adalah panduan lengkap untuk setiap modul yang tersedia di dalam `nsdev`.
 
-### 1. SSH User Manager (`addUser`)
+---
 
-Modul ini memudahkan manajemen pengguna SSH pada sistem Linux, seperti menambah dan menghapus pengguna, serta mengirimkan notifikasi kredensial melalui Telegram.
+### 1. `nsdev.addUser` - Manajemen Pengguna SSH
 
-**Penting:** Penggunaan modul ini memerlukan hak akses `sudo`.
+Modul ini sangat berguna jika kamu sering mengelola pengguna di server Linux. Dengan `SSHUserManager`, kamu bisa menambah dan menghapus pengguna SSH secara otomatis, lalu mengirimkan detail loginnya langsung ke Telegram.
 
-**Contoh Penggunaan:**
+**Cara Penggunaan:**
 
 ```python
-from nsdev import SSHUserManager
+from nsdev.addUser import SSHUserManager
 
-# Inisialisasi dengan token bot Telegram dan chat ID Anda
-# Nilai default akan digunakan jika tidak disediakan
-manager = SSHUserManager(bot_token="YOUR_TELEGRAM_BOT_TOKEN", chat_id="YOUR_TELEGRAM_CHAT_ID")
+# Inisialisasi dengan token bot Telegram dan chat ID tujuan
+# (Token & ID di bawah ini hanya contoh, ganti dengan milikmu)
+manager = SSHUserManager(bot_token="TOKEN_BOT_ANDA", chat_id=ID_CHAT_ANDA)
 
-# Menambah pengguna baru dengan nama dan kata sandi acak
+# 1. Menambahkan pengguna baru dengan username & password acak
+print("Menambahkan pengguna baru...")
 manager.add_user()
+# Info login akan otomatis dikirim ke Telegram
 
-# Menambah pengguna baru dengan nama dan kata sandi yang ditentukan
-manager.add_user(ssh_username="user_test", ssh_password="password123")
+# 2. Menambahkan pengguna baru dengan username & password spesifik
+print("Menambahkan pengguna 'budi'...")
+manager.add_user(ssh_username="budi", ssh_password="password123")
 
-# Menghapus pengguna
-manager.delete_user(ssh_username="user_test")
+# 3. Menghapus pengguna
+print("Menghapus pengguna 'budi'...")
+manager.delete_user(ssh_username="budi")
 ```
 
-### 2. Pyrogram Argument Helper (`argument`)
+**Catatan:** Skrip ini memerlukan hak akses `sudo` untuk menjalankan perintah `adduser` dan `deluser`.
 
-Kelas ini berisi fungsi-fungsi pembantu untuk mem-parsing argumen dari objek `message` di Pyrogram.
+---
 
-**Contoh Penggunaan:**
+### 2. `nsdev.argument` - Asisten Argumen Pyrogram
+
+Jika kamu membangun bot Telegram dengan `Pyrogram`, modul ini adalah teman terbaikmu. Isinya adalah kumpulan fungsi praktis untuk mem-parsing pesan, mendapatkan info pengguna, dan memeriksa status admin dengan lebih mudah.
+
+**Cara Penggunaan:**
 
 ```python
-from nsdev import Argument
+from nsdev.argument import Argument
 
-# Asumsikan 'message' adalah objek pesan dari Pyrogram
-# dan 'client' adalah objek klien Pyrogram.
-
+# Asumsikan kita punya objek 'message' dari Pyrogram
+# dan 'client' dari Pyrogram
 arg_handler = Argument()
 
-# Mengambil teks dari pesan (bisa dari balasan atau argumen)
-# text = arg_handler.getMessage(message, is_arg=True)
-# print(f"Teks yang didapat: {text}")
+# --- Contoh Penggunaan (harus dijalankan di dalam event handler Pyrogram) ---
 
-# Mendapatkan user ID dan alasan dari sebuah perintah (misal: /ban @user alasan)
+# Misal pesan yang diterima adalah: /kick @username alasannya
+# Atau membalas pesan seseorang dengan: /kick alasannya
+
+# Mendapatkan user ID dan alasan dari sebuah pesan
 # user_id, reason = await arg_handler.getReasonAndId(message)
 # print(f"User ID: {user_id}, Alasan: {reason}")
 
-# Memeriksa apakah pengguna adalah admin
+# Mendapatkan teks dari pesan (argumen setelah command)
+# query = arg_handler.getMessage(message, is_arg=True)
+# print(f"Query: {query}")
+
+# Membuat tag mention HTML untuk pengguna
+# me = await client.get_me()
+# mention = arg_handler.getMention(me) # -> <a href='tg://user?id=...'>Nama Depan</a>
+# print(mention)
+
+# Cek apakah pengguna adalah admin
 # is_admin = await arg_handler.getAdmin(message)
-# print(f"Apakah admin? {is_admin}")
+# print(f"Apakah user seorang admin? {is_admin}")
 ```
 
-### 3. Bing Image Generator (`bing`)
+---
 
-Membuat gambar berdasarkan prompt teks menggunakan layanan Bing Image Creator.
+### 3. `nsdev.bing` - Pembuat Gambar AI (Bing)
 
-**Catatan:** Anda perlu menyediakan cookie otentikasi (`_U` dan `SRCHHPGUSR`) dari akun Microsoft Anda yang telah login ke Bing.
+Ingin membuat gambar keren dari teks menggunakan AI? Modul ini terhubung dengan Bing Image Creator. Kamu hanya perlu memberikan *cookie* otentikasi dari akun Bing-mu.
 
-**Contoh Penggunaan:**
+**Cara Penggunaan:**
 
 ```python
 import asyncio
-from nsdev import ImageGenerator
+from nsdev.bing import ImageGenerator
 
-# Cookie bisa didapatkan dari browser Anda setelah login ke Bing.
-# Tekan F12 -> Application -> Cookies -> https://www.bing.com
-auth_cookie_u = "YOUR_AUTH_COOKIE_U"
-auth_cookie_srchhpgusr = "YOUR_SRCHHPGUSR_COOKIE"
+# Kamu harus login ke bing.com terlebih dahulu di browser,
+# lalu salin nilai cookie _U dan SRCHHPGUSR dari sana.
+BING_AUTH_COOKIE_U = "COOKIE_U_ANDA"
+BING_AUTH_COOKIE_SRCHHPGUSR = "COOKIE_SRCHHPGUSR_ANDA"
 
 async def main():
     try:
-        bing = ImageGenerator(auth_cookie_u, auth_cookie_srchhpgusr)
+        # Inisialisasi generator
+        bing_image_gen = ImageGenerator(
+            auth_cookie_u=BING_AUTH_COOKIE_U,
+            auth_cookie_srchhpgusr=BING_AUTH_COOKIE_SRCHHPGUSR
+        )
         
-        prompt = "Kucing astronot mengendarai roket di luar angkasa"
-        # Hasilkan 2 gambar
-        images = await bing.generate(prompt, num_images=2)
-        
-        print("Gambar berhasil dibuat:")
-        for img_url in images:
-            print(img_url)
-            
+        prompt = "seekor rubah cyberpunk mengendarai motor di kota neon"
+        print(f"Membuat gambar dengan prompt: '{prompt}'...")
+
+        # Hasilkan 4 gambar
+        image_urls = await bing_image_gen.generate(prompt=prompt, num_images=4)
+
+        if image_urls:
+            print("\nBerhasil! Berikut adalah URL gambar:")
+            for i, url in enumerate(image_urls):
+                print(f"{i+1}. {url}")
+        else:
+            print("Gagal membuat gambar.")
+
     except Exception as e:
         print(f"Terjadi kesalahan: {e}")
 
-if __name__ == "__main__":
-    asyncio.run(main())
+# Jalankan fungsi async
+asyncio.run(main())
 ```
 
-### 4. Telegram Button Builder (`button`)
+---
 
-Kelas untuk membuat keyboard Pyrogram (`InlineKeyboardMarkup` dan `ReplyKeyboardMarkup`) dengan mudah dari sintaks teks khusus.
+### 4. `nsdev.button` - Pembuat Tombol Keren untuk Telegram
 
-**Contoh Penggunaan:**
+Membuat tombol *inline* atau *reply* di bot Telegram bisa jadi merepotkan. Modul `Button` menyederhanakannya dengan sintaks berbasis teks yang unik.
+
+**Cara Penggunaan:**
 
 ```python
-from nsdev import Button
+from nsdev.button import Button
 
-btn_builder = Button()
+button_builder = Button()
 
-# 1. Membuat Inline Keyboard
-text_with_inline_buttons = """
-Ini adalah teks utama.
-| Tombol 1 - data_callback_1 |
-| Tombol URL - https://google.com |
-| Tombol Sebaris 1 - data1 | | Tombol Sebaris 2 - data2;same |
+# 1. Membuat Keyboard Inline
+# Sintaks: | Teks Tombol - data_callback_atau_url |
+# Modifiers:
+# - 'same': Menempatkan tombol di baris yang sama dengan tombol sebelumnya.
+
+text_with_buttons = """
+Ini adalah pesan dengan tombol inline.
+Pilih salah satu:
+| Tombol 1 - data1 |
+| Tombol 2 - data2 |
+| Google - https://google.com | | Bantuan - help;same |
 """
 
-# keyboard, remaining_text = btn_builder.create_keyboard(text_with_inline_buttons)
-# client.send_message(chat_id, remaining_text, reply_markup=keyboard)
+# Parsing teks untuk membuat keyboard dan mendapatkan teks sisanya
+inline_keyboard, remaining_text = button_builder.create_keyboard(text_with_buttons)
 
+print("Teks Pesan:", remaining_text)
+print("Markup Keyboard Inline:", inline_keyboard)
 
-# 2. Membuat Reply Keyboard
-text_with_reply_buttons = """
-Pilih salah satu menu di bawah ini.
-| Menu 1 - Menu 2 - Menu 3 |
+# 2. Membuat Keyboard Reply (tombol di bawah area ketik)
+# Sintaks: | tombol 1 - tombol 2 |
+
+text_with_reply = """
+Halo! Pilih menu di bawah.
+| Menu Utama - Tentang Kami - Kontak;same |
 """
-# keyboard, remaining_text = btn_builder.create_reply_keyboard(text_with_reply_buttons)
-# client.send_message(chat_id, remaining_text, reply_markup=keyboard)
+
+reply_keyboard, remaining_text_reply = button_builder.create_reply_keyboard(text_with_reply)
+
+print("\nTeks Pesan (Reply):", remaining_text_reply)
+print("Markup Keyboard Reply:", reply_keyboard)
 ```
 
-### 5. ANSI Colors (`colorize`)
+---
 
-Menyediakan koleksi konstanta warna ANSI untuk memformat output di terminal.
+### 5. `nsdev.colorize` - Pewarna Teks Terminal
 
-**Contoh Penggunaan:**
+Bosan dengan terminal yang monoton? Gunakan `AnsiColors` untuk memberikan sentuhan warna-warni pada output skrip kamu.
+
+**Cara Penggunaan:**
 
 ```python
-from nsdev import AnsiColors
+from nsdev.colorize import AnsiColors
 
 colors = AnsiColors()
 
-print(f"{colors.GREEN}Ini adalah teks hijau.{colors.RESET}")
-print(f"{colors.LIGHT_BLUE}Ini adalah teks biru muda.{colors.RESET}")
-print(f"{colors.RED}Pesan error!{colors.RESET}")
+print(f"{colors.GREEN}Pesan ini berwarna hijau!{colors.RESET}")
+print(f"{colors.RED}Peringatan: Ada kesalahan!{colors.RESET}")
+print(f"{colors.CYAN}Ini adalah informasi penting.{colors.RESET}")
 
-# Mencetak semua warna yang tersedia
+# Cetak semua warna yang tersedia
 colors.print_all_colors()
+
+# Dapatkan kode warna acak
+random_code, reset_code = colors.random_color()
+print(f"{random_code}Teks ini warnanya acak!{reset_code}")
 ```
 
-### 6. Universal Database (`database`)
+---
 
-Handler database yang fleksibel dengan dukungan untuk penyimpanan lokal (JSON), MongoDB, dan SQLite. Data dienkripsi secara otomatis.
+### 6. `nsdev.database` - Database Serbaguna dengan Enkripsi
 
-**Contoh Penggunaan:**
+`DataBase` adalah solusi penyimpanan data yang fleksibel dan aman. Kamu bisa memilih tiga jenis penyimpanan: file JSON lokal, MongoDB, atau SQLite. Semua data sensitif dienkripsi secara otomatis.
+
+**Cara Penggunaan:**
 
 ```python
-from nsdev import DataBase
+# --- 1. Menggunakan file JSON lokal (paling simpel) ---
+from nsdev.database import DataBase
 
-# 1. Penyimpanan Lokal (JSON)
-db_local = DataBase(storage_type="local", file_name="my_app_data")
+# Inisialisasi (file 'my_database.json' akan dibuat)
+db = DataBase(storage_type="local", file_name="my_database")
 
-# 2. Penyimpanan MongoDB
-# db_mongo = DataBase(storage_type="mongo", mongo_url="YOUR_MONGO_CONNECTION_STRING")
-
-# 3. Penyimpanan SQLite
-# db_sqlite = DataBase(storage_type="sqlite", file_name="my_sqlite_db")
-
-# ---- Operasi Umum ----
-db = db_local 
+# Simpan variabel untuk user_id tertentu
 user_id = 12345
-
-# Menyimpan variabel
-db.setVars(user_id, "NAMA_PENGGUNA", "Andi")
+db.setVars(user_id, "NAMA", "Budi")
 db.setVars(user_id, "LEVEL", 10)
 
-# Mendapatkan variabel
-nama = db.getVars(user_id, "NAMA_PENGGUNA")
-print(f"Nama pengguna: {nama}")
+# Ambil variabel
+nama = db.getVars(user_id, "NAMA")
+print(f"Nama Pengguna: {nama}") # Output: Budi
 
-# Menyimpan daftar (list)
+# Tambahkan item ke dalam list
 db.setListVars(user_id, "HOBI", "Membaca")
-db.setListVars(user_id, "HOBI", "Berenang")
+db.setListVars(user_id, "HOBI", "Memancing")
 
-# Mendapatkan daftar
+# Ambil list
 hobi = db.getListVars(user_id, "HOBI")
-print(f"Hobi: {hobi}")
+print(f"Hobi: {hobi}") # Output: ['Membaca', 'Memancing']
 
-# Mengelola masa aktif pengguna
-db.setExp(user_id, exp=30) # Atur kedaluwarsa dalam 30 hari
-sisa_hari = db.daysLeft(user_id)
-print(f"Masa aktif sisa: {sisa_hari} hari")
+# Atur tanggal kedaluwarsa (30 hari dari sekarang)
+db.setExp(user_id, exp=30)
+print(f"Tanggal kedaluwarsa: {db.getExp(user_id)}")
+print(f"Sisa hari: {db.daysLeft(user_id)}")
 
-# Menyimpan kredensial bot
-db.saveBot(user_id, api_id="123", api_hash="abc", value="YOUR_BOT_TOKEN", is_token=True)
-
-# Menutup koneksi (penting untuk SQLite)
 db.close()
+
+# --- 2. Menggunakan MongoDB ---
+# db_mongo = DataBase(storage_type="mongo", mongo_url="MONGO_URL_ANDA", file_name="nama_db")
+
+# --- 3. Menggunakan SQLite ---
+# db_sqlite = DataBase(storage_type="sqlite", file_name="data_sqlite")
 ```
 
-### 7. Data Enkripsi (`encrypt`)
+---
 
-Menyediakan kelas `CipherHandler` untuk enkripsi dan dekripsi data sederhana dengan beberapa metode.
+### 7. `nsdev.encrypt` - Enkripsi dan Dekripsi Sederhana
 
-**Contoh Penggunaan:**
+Butuh cara cepat untuk menyamarkan data? `CipherHandler` menyediakan beberapa metode enkripsi sederhana yang cocok untuk menyembunyikan konfigurasi atau teks biasa.
+
+**Cara Penggunaan:**
 
 ```python
-from nsdev import CipherHandler
+from nsdev.encrypt import CipherHandler
 
-# Metode 'bytes' (default key dan delimiter)
-cipher = CipherHandler(method="bytes", key=12345)
+# Inisialisasi dengan metode 'bytes' dan sebuah kunci (angka)
+cipher = CipherHandler(method="bytes", key=123456789)
 
-teks_asli = "Ini adalah data rahasia"
+# Teks asli
+pesan_rahasia = "Ini adalah pesan yang sangat rahasia."
 
 # Enkripsi
-teks_terenkripsi = cipher.encrypt(teks_asli)
-print(f"Terenkripsi: {teks_terenkripsi}")
+encrypted_text = cipher.encrypt(pesan_rahasia)
+print(f"Teks Terenkripsi:\n{encrypted_text}")
 
 # Dekripsi
-teks_dekripsi = cipher.decrypt(teks_terenkripsi)
-print(f"Terdekripsi: {teks_dekripsi}")
+decrypted_text = cipher.decrypt(encrypted_text)
+print(f"\nTeks Asli setelah Dekripsi:\n{decrypted_text}")
+
+# Kamu juga bisa menyimpan kode Python dalam bentuk terenkripsi
+# cipher.save("skrip_rahasia.py", "print('Halo dari skrip rahasia!')")
 ```
 
-### 8. Gemini Chatbot (`gemini`)
+---
 
-Antarmuka untuk berinteraksi dengan model AI Google Gemini, baik untuk chatbot umum maupun untuk tugas spesifik seperti "cek khodam".
+### 8. `nsdev.gemini` - Ngobrol dengan AI Google Gemini
 
-**Contoh Penggunaan:**
+Modul ini adalah jembatan untuk berinteraksi dengan model AI canggih dari Google, yaitu Gemini. Kamu bisa menggunakannya untuk chatbot umum atau mode "cek khodam" yang unik.
+
+**Cara Penggunaan:**
 
 ```python
-from nsdev import ChatbotGemini
+from nsdev.gemini import ChatbotGemini
 
-# Gunakan API key dari Google AI Studio
-gemini = ChatbotGemini(api_key="YOUR_GEMINI_API_KEY")
+# Ganti dengan API Key kamu dari Google AI Studio
+GEMINI_API_KEY = "API_KEY_ANDA"
+chatbot = ChatbotGemini(api_key=GEMINI_API_KEY)
+user_id = 12345 # ID unik untuk setiap pengguna agar riwayat chat tidak tercampur
 
-# 1. Chatbot Umum
-user_id = "user123"
-bot_name = "Bot Keren"
-pesan_pengguna = "Halo! Apa kabar?"
+# 1. Mode Chatbot Santai
+pertanyaan = "kasih aku jokes bapak-bapak dong"
+jawaban = chatbot.send_chat_message(pertanyaan, user_id=user_id, bot_name="BotKeren")
+print(f"Jawaban Bot:\n{jawaban}")
 
-jawaban_bot = gemini.send_chat_message(pesan_pengguna, user_id, bot_name)
-print(f"Jawaban Bot: {jawaban_bot}")
-
-# 2. Cek Khodam (mode khusus)
-nama = "Budi Santoso"
-khodam_desc = gemini.send_khodam_message(nama)
-print(f"\n--- Cek Khodam untuk {nama} ---")
-print(khodam_desc)
+# 2. Mode Cek Khodam (untuk hiburan)
+nama = "Nor Sodikin"
+deskripsi_khodam = chatbot.send_khodam_message(nama)
+print(f"\n--- Hasil Cek Khodam untuk {nama} ---")
+print(deskripsi_khodam)
 ```
 
-### 9. Gradient & Terminal UI (`gradient`)
+---
 
-Membuat teks gradien artistik dan elemen UI seperti countdown di terminal.
+### 9. `nsdev.gradient` - Efek Teks Keren di Terminal
 
-**Contoh Penggunaan:**
+Jadikan tampilan terminalmu lebih hidup! `Gradient` bisa membuat banner teks dengan warna gradien yang indah dan menampilkan *countdown timer* yang animatif.
+
+**Cara Penggunaan:**
 
 ```python
 import asyncio
-from nsdev import Gradient
+from nsdev.gradient import Gradient
 
-ui = Gradient()
+gradient_effect = Gradient()
 
-# 1. Menampilkan teks banner dengan gradien
-ui.render_text("NORSODIKIN")
+# 1. Render teks dengan efek gradien
+gradient_effect.render_text("Nor Sodikin")
 
-# 2. Menjalankan countdown asinkron
+# 2. Countdown timer animatif
 async def run_countdown():
-    print("\nMemulai proses dalam...")
-    await ui.countdown(10, text="Mohon tunggu {time}")
-    print("\nProses selesai!")
+    print("\nMemulai hitung mundur...")
+    await gradient_effect.countdown(10, text="Harap tunggu {time} lagi...")
+    print("\nWaktu habis!")
 
-if __name__ == "__main__":
-    asyncio.run(run_countdown())
+asyncio.run(run_countdown())
 ```
 
-### 10. Logger Handler (`logger`)
+---
 
-Kelas logger yang canggih dengan output berwarna dan terformat, mencakup informasi waktu, level, modul, dan baris.
+### 10. `nsdev.logger` - Pencatat Log yang Informatif dan Berwarna
 
-**Contoh Penggunaan:**
+`LoggerHandler` adalah versi canggih dari `print()`. Ini akan mencatat pesan ke konsol dengan format yang rapi, lengkap dengan waktu, nama file, fungsi, dan level log yang berwarna.
+
+**Cara Penggunaan:**
 
 ```python
-from nsdev import LoggerHandler
-import time
+from nsdev.logger import LoggerHandler
 
+# Inisialisasi logger
 log = LoggerHandler()
 
-def proses_data():
-    log.info("Memulai proses data...")
-    time.sleep(1)
-    log.warning("Ada data yang tidak valid, namun proses dilanjutkan.")
-    time.sleep(1)
+def fungsi_penting():
+    log.info("Memulai proses penting.")
     try:
-        hasil = 10 / 0
+        a = 10 / 0
     except Exception as e:
-        log.error(f"Terjadi kesalahan fatal: {e}")
-    
-    log.debug("Proses data selesai.")
+        log.error(f"Terjadi kesalahan: {e}")
+    log.warning("Proses mungkin tidak berjalan sempurna.")
+    log.debug("Nilai variabel saat ini: ...")
 
-proses_data()
+fungsi_penting()
+# Output di konsol akan terlihat sangat rapi dan berwarna!
 ```
 
-### 11. Payment Gateways (`payment`)
+---
 
-Menyediakan klien untuk berinteraksi dengan beberapa gateway pembayaran populer di Indonesia.
+### 11. `nsdev.payment` - Integrasi Payment Gateway
 
-**Contoh Penggunaan:**
+Butuh sistem pembayaran di aplikasimu? Modul ini menyediakan klien untuk tiga *payment gateway* populer di Indonesia: Midtrans, Tripay, dan VioletMediaPay.
+
+**Cara Penggunaan (Contoh dengan `VioletMediaPayClient`):**
 
 ```python
 import asyncio
-from nsdev.payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
+from nsdev.payment import VioletMediaPayClient
 
-# 1. Midtrans
-# midtrans = PaymentMidtrans(server_key="YOUR_SERVER_KEY", client_key="YOUR_CLIENT_KEY")
-# response = midtrans.createPayment(order_id="ORDER-123", gross_amount=50000)
-# print(f"Midtrans redirect URL: {response.get('redirect_url')}")
+VIOLET_API_KEY = "API_KEY_ANDA"
+VIOLET_SECRET_KEY = "SECRET_KEY_ANDA"
 
-# 2. Tripay
-# tripay = PaymentTripay(api_key="YOUR_TRIPAY_API_KEY")
-# response = tripay.createPayment(method="QRIS", amount=50000, order_id="ORDER-123", customer_name="Pelanggan")
-# print(f"Tripay checkout URL: {response.data.checkout_url}")
-
-# 3. VioletMediaPay (Async)
-async def create_violet_payment():
-    violet = VioletMediaPayClient(api_key="YOUR_VIOLET_API_KEY", secret_key="YOUR_VIOLET_SECRET_KEY")
+async def buat_pembayaran():
+    # Inisialisasi klien (live=False untuk mode sandbox/testing)
+    client = VioletMediaPayClient(api_key=VIOLET_API_KEY, secret_key=VIOLET_SECRET_KEY, live=False)
+    
     try:
-        response = await violet.create_payment(amount="50000", produk="Pembelian Item")
-        print("VioletMediaPay Response:")
-        print(f"  - QR Image: {response.api_response['data']['qr_image']}")
-        print(f"  - Ref Kode: {response.ref_kode}")
-    except Exception as e:
-        print(f"Error: {e}")
+        print("Membuat link pembayaran QRIS sebesar Rp 5.000...")
+        payment = await client.create_payment(
+            channel_payment="QRIS",
+            amount="5000",
+            produk="Donasi Kopi"
+        )
 
-# asyncio.run(create_violet_payment())
+        if payment.api_response.success:
+            print("\nBerhasil! Detail Pembayaran:")
+            print(f"  - QR Code Link: {payment.api_response.data.qrcode_url}")
+            print(f"  - Bayar Sebelum: {payment.api_response.data.expired_time_format}")
+            print(f"  - Kode Referensi: {payment.ref_kode}")
+        else:
+            print(f"Gagal: {payment.api_response.message}")
+            
+    except Exception as e:
+        print(f"Terjadi error: {e}")
+
+asyncio.run(buat_pembayaran())
 ```
 
-### 12. Key Manager (`storekey`)
+*Untuk `PaymentMidtrans` dan `PaymentTripay`, cara penggunaannya serupa. Cukup inisialisasi dengan kunci API masing-masing dan panggil metode yang relevan.*
 
-Menyimpan dan membaca kunci (misalnya, kunci API) secara aman di file sementara. Jika kunci tidak ada, ia akan meminta input dari pengguna.
+---
 
-**Contoh Penggunaan (dalam sebuah skrip):**
+### 12. `nsdev.storekey` - Penyimpanan Kunci yang Aman
+
+Modul ini berfungsi seperti "brankas kecil" untuk menyimpan data sensitif (seperti kunci API) di file sementara. Data tersebut akan dienkripsi sebelum disimpan, jadi lebih aman daripada menyimpannya sebagai teks biasa.
+
+**Cara Penggunaan:**
+
+`KeyManager` biasanya digunakan dalam skrip yang dijalankan dari terminal.
 
 ```python
-from nsdev import KeyManager
+# Di dalam skrip Python kamu
+from nsdev.storekey import KeyManager
 
-# Inisialisasi manajer
-key_manager = KeyManager()
+key_manager = KeyManager(filename="kunci_aplikasi.json")
 
-# Membaca key dan env.
-# Jika file tidak ada, akan meminta input pengguna.
-# Jika dijalankan dengan argumen --key dan --env, akan menyimpan nilai tersebut.
-# Contoh: python script.py --key 12345 --env MY_APP
-key, env_name = key_manager.handle_arguments()
+# Panggil fungsi ini di awal skrip
+# Jika file kunci belum ada, pengguna akan diminta untuk memasukkannya.
+# Jika sudah ada, fungsi ini akan membacanya dari file.
+kunci, nama_env = key_manager.handle_arguments()
 
-print(f"Key yang digunakan: {key}")
-print(f"Nama environment: {env_name}")
-
-# Logika aplikasi Anda selanjutnya menggunakan key dan env_name
+print(f"Kunci yang digunakan: {kunci}")
+print(f"Nama Environment: {nama_env}")
 ```
 
-### 13. YAML Reader (`ymlreder`)
+Kamu juga bisa mengatur kuncinya langsung dari *command line*:
+`python skrip_kamu.py --key 12345 --env .env_development`
 
-Memuat file YAML dan mengubahnya menjadi objek `SimpleNamespace` agar mudah diakses menggunakan notasi titik (`.`).
+---
 
-**Contoh Penggunaan:**
+### 13. `nsdev.ymlreder` - Pembaca File YAML yang Praktis
 
-Misalkan Anda memiliki file `config.yml`:
+`YamlHandler` (ya, ada typo di nama filenya, tapi fungsionalitasnya tetap keren!) membuat pekerjaan dengan file konfigurasi `.yml` menjadi sangat mudah. Ia akan mengubah file YAML menjadi objek Python, sehingga kamu bisa mengakses nilainya dengan notasi titik (`.`).
 
-```yaml
+**Cara Penggunaan:**
+
+Anggap kamu punya file `config.yml` seperti ini:
+```yml
 database:
-  host: localhost
+  host: "localhost"
   port: 5432
-  user: admin
+  user: "admin"
 
 api_keys:
-  telegram: "xyz-abc"
+  - name: "google"
+    key: "xyz-123"
+  - name: "telegram"
+    key: "abc-456"
 ```
 
-Kemudian di Python:
-
+Lalu di Python:
 ```python
-from nsdev import YamlHandler
+from nsdev.ymlreder import YamlHandler
 
-yaml_reader = YamlHandler()
-config = yaml_reader.loadAndConvert("config.yml")
+reader = YamlHandler()
+
+# Muat file dan ubah menjadi objek
+config = reader.loadAndConvert("config.yml")
 
 if config:
-    print(f"Host Database: {config.database.host}")
-    print(f"Port Database: {config.database.port}")
-    print(f"Kunci API Telegram: {config.api_keys.telegram}")
+    # Akses data dengan mudah
+    db_host = config.database.host
+    db_port = config.database.port
+    
+    print(f"Host Database: {db_host}")
+    print(f"Port Database: {db_port}")
+    
+    # Akses list
+    for api in config.api_keys:
+        print(f"API {api.name} memiliki kunci: {api.key}")
 ```
+
+## Lisensi
+
+Pustaka ini dirilis di bawah [Lisensi MIT](https://opensource.org/licenses/MIT). Kamu bebas menggunakan, memodifikasi, dan mendistribusikannya.
+
+---
+
+Semoga dokumentasi ini membantumu! Selamat mencoba dan berkreasi dengan `norsodikin`.
