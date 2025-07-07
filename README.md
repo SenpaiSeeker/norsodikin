@@ -481,4 +481,4 @@ Pustaka ini dirilis di bawah [Lisensi MIT](https://opensource.org/licenses/MIT).
 
 ---
 
-Semoga dokumentasi ini membantumu! Selamat mencoba dan berkreasi dengan `norsodikin`.
+Semoga dokumentasi ini membantumu! Selamat mencoba dan berkreasi dengan [norsodikin](https://t.me/NorSodikin).
