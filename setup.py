@@ -8,12 +8,15 @@ with open("nsdev/__init__.py", encoding="utf-8") as f:
 with open("requirements.txt", encoding="utf-8") as r:
     requires = [i.strip() for i in r]
 
+with open("README.md", encoding="utf-8") as f:
+    readme = f.read()
+
 
 setup(
     name="norsodikin",
     version=version,
     description="Library of special mission and encrypted code",
-    long_description="A collection of useful tools and utilities.",
+    long_description=readme,
     long_description_content_type="text/markdown",
     author="NorSodikin",
     author_email="admin@NorSodikin.com",
