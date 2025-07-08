@@ -28,8 +28,8 @@ jobs:
       - name: Check syntax
         run: python -m compileall .
 
-      - name: Run Ruff auto-fix
-        run: ruff check . --fix
+      - name: Run Ruff fix
+        run: ruff format .
 
       - name: AutoPEP8 formatting
         run: autopep8 --in-place --recursive --aggressive --aggressive .
