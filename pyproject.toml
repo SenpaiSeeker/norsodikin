@@ -1,0 +1,23 @@
+# File: pyproject.toml
+
+[tool.ruff]
+# Samakan dengan versi Black
+line-length = 88
+
+# Aturan yang ingin diaktifkan. 'ALL' mengaktifkan semuanya, 
+# lalu kita nonaktifkan beberapa yang mungkin terlalu rewel.
+select = ["ALL"]
+ignore = [
+    "D",      # Mengabaikan aturan docstring (bisa diaktifkan jika perlu)
+    "ANN",    # Mengabaikan aturan type annotation (bisa diaktifkan jika perlu)
+    "S101",   # Mengabaikan 'assert' (berguna untuk testing)
+]
+
+[tool.ruff.lint]
+# Aturan-aturan ini dapat diperbaiki otomatis
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.format]
+# Gunakan kutip ganda daripada kutip tunggal jika memungkinkan
+quote-style = "double"
