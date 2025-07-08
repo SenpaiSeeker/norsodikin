@@ -3,7 +3,7 @@
 [![Versi PyPI](https://img.shields.io/pypi/v/norsodikin.svg)](https://pypi.org/project/norsodikin/)
 [![Lisensi: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Selamat datang di `norsodikin`, sebuah koleksi modul Python serbaguna yang dirancang untuk mempermudah berbagai tugas, mulai dari manajemen server, enkripsi data, hingga pembuatan bot Telegram yang canggih. Setiap modul dibuat agar mudah digunakan dan dipahami, bahkan untuk kamu yang baru mulai belajar.
+Selamat datang di `norsodikin`, sebuah koleksi module Python serbaguna yang dirancang untuk mempermudah berbagai tugas, mulai dari manajemen server, enkripsi data, hingga pembuatan bot Telegram yang canggih. Setiap module dibuat agar mudah digunakan dan dipahami, bahkan untuk kamu yang baru mulai belajar.
 
 ## Instalasi
 
@@ -15,15 +15,15 @@ pip install norsodikin
 
 Pastikan juga semua dependensi dari file `requirements.txt` sudah terpasang.
 
-## Panduan Penggunaan Modul
+## Panduan Penggunaan Module
 
-Berikut adalah panduan lengkap untuk setiap modul yang tersedia di dalam `nsdev`.
+Berikut adalah panduan lengkap untuk setiap module yang tersedia di dalam `nsdev`.
 
 ---
 
 ### 1. `nsdev.addUser` - Manajemen Pengguna SSH
 
-Modul ini sangat berguna jika kamu sering mengelola pengguna di server Linux. Dengan `SSHUserManager`, kamu bisa menambah dan menghapus pengguna SSH secara otomatis, lalu mengirimkan detail loginnya langsung ke Telegram.
+Module ini sangat berguna jika kamu sering mengelola pengguna di server Linux. Dengan `SSHUserManager`, kamu bisa menambah dan menghapus pengguna SSH secara otomatis, lalu mengirimkan detail loginnya langsung ke Telegram.
 
 **Cara Penggunaan:**
 
@@ -52,9 +52,9 @@ manager.delete_user(ssh_username="budi")
 
 ---
 
-### 2. `nsdev.argument` - Asisten Argumen Pyrogram
+### 2. `nsdev.argument` - Asisten Argument Pyrogram
 
-Jika kamu membangun bot Telegram dengan `Pyrogram`, modul ini adalah teman terbaikmu. Isinya adalah kumpulan fungsi praktis untuk mem-parsing pesan, mendapatkan info pengguna, dan memeriksa status admin dengan lebih mudah.
+Jika kamu membangun bot Telegram dengan `Pyrogram`, module ini adalah teman terbaikmu. Isinya adalah kumpulan fungsi praktis untuk mem-parsing pesan, mendapatkan info pengguna, dan memeriksa status admin dengan lebih mudah.
 
 **Cara Penggunaan:**
 
@@ -74,7 +74,7 @@ arg_handler = Argument()
 # user_id, reason = await arg_handler.getReasonAndId(message)
 # print(f"User ID: {user_id}, Alasan: {reason}")
 
-# Mendapatkan teks dari pesan (argumen setelah command)
+# Mendapatkan teks dari pesan (argument setelah command)
 # query = arg_handler.getMessage(message, is_arg=True)
 # print(f"Query: {query}")
 
@@ -92,7 +92,7 @@ arg_handler = Argument()
 
 ### 3. `nsdev.bing` - Pembuat Gambar AI (Bing)
 
-Ingin membuat gambar keren dari teks menggunakan AI? Modul ini terhubung dengan Bing Image Creator. Kamu hanya perlu memberikan *cookie* otentikasi dari akun Bing-mu.
+Ingin membuat gambar keren dari teks menggunakan AI? Module ini terhubung dengan Bing Image Creator. Kamu hanya perlu memberikan *cookie* otentikasi dari akun Bing-mu.
 
 **Cara Penggunaan:**
 
@@ -137,7 +137,7 @@ asyncio.run(main())
 
 ### 4. `nsdev.button` - Pembuat Tombol Keren untuk Telegram
 
-Membuat tombol *inline* atau *reply* di bot Telegram bisa jadi merepotkan. Modul `Button` menyederhanakannya dengan sintaks berbasis teks yang unik.
+Membuat tombol *inline* atau *reply* di bot Telegram bisa jadi merepotkan. Module `Button` menyederhanakannya dengan syntax berbasis teks yang unik.
 
 **Cara Penggunaan:**
 
@@ -147,7 +147,7 @@ from nsdev.button import Button
 button_builder = Button()
 
 # 1. Membuat Keyboard Inline
-# Sintaks: | Teks Tombol - data_callback_atau_url |
+# Syntax: | Teks Tombol - data_callback_atau_url |
 # Modifiers:
 # - 'same': Menempatkan tombol di baris yang sama dengan tombol sebelumnya.
 
@@ -166,7 +166,7 @@ print("Teks Pesan:", remaining_text)
 print("Markup Keyboard Inline:", inline_keyboard)
 
 # 2. Membuat Keyboard Reply (tombol di bawah area ketik)
-# Sintaks: | tombol 1 - tombol 2 |
+# Syntax: | tombol 1 - tombol 2 |
 
 text_with_reply = """
 Halo! Pilih menu di bawah.
@@ -208,23 +208,23 @@ print(f"{random_code}Teks ini warnanya acak!{reset_code}")
 
 ### 6. `nsdev.database` - Database Serbaguna dengan Enkripsi
 
-`DataBase` adalah solusi penyimpanan data yang fleksibel dan aman. Kamu bisa memilih tiga jenis penyimpanan: file JSON lokal, MongoDB, atau SQLite. Semua data sensitif dienkripsi secara otomatis.
+`DataBase` adalah solusi penyimpanan data yang fleksibel dan aman. Kamu bisa memilih tiga jenis penyimpanan: file JSON local, MongoDB, atau SQLite. Semua data sensitif dienkripsi secara otomatis.
 
 **Cara Penggunaan:**
 
 ```python
-# --- 1. Menggunakan file JSON lokal (paling simpel) ---
+# --- 1. Menggunakan file JSON local (paling simpel) ---
 from nsdev.database import DataBase
 
 # Inisialisasi (file 'my_database.json' akan dibuat)
 db = DataBase(storage_type="local", file_name="my_database")
 
-# Simpan variabel untuk user_id tertentu
+# Simpan variable untuk user_id tertentu
 user_id = 12345
 db.setVars(user_id, "NAMA", "Budi")
 db.setVars(user_id, "LEVEL", 10)
 
-# Ambil variabel
+# Ambil variable
 nama = db.getVars(user_id, "NAMA")
 print(f"Nama Pengguna: {nama}") # Output: Budi
 
@@ -283,7 +283,7 @@ print(f"\nTeks Asli setelah Dekripsi:\n{decrypted_text}")
 
 ### 8. `nsdev.gemini` - Ngobrol dengan AI Google Gemini
 
-Modul ini adalah jembatan untuk berinteraksi dengan model AI canggih dari Google, yaitu Gemini. Kamu bisa menggunakannya untuk chatbot umum atau mode "cek khodam" yang unik.
+Module ini adalah jembatan untuk berinteraksi dengan model AI canggih dari Google, yaitu Gemini. Kamu bisa menggunakannya untuk chatbot umum atau mode "cek khodam" yang unik.
 
 **Cara Penggunaan:**
 
@@ -354,7 +354,7 @@ def fungsi_penting():
     except Exception as e:
         log.error(f"Terjadi kesalahan: {e}")
     log.warning("Proses mungkin tidak berjalan sempurna.")
-    log.debug("Nilai variabel saat ini: ...")
+    log.debug("Nilai variable saat ini: ...")
 
 fungsi_penting()
 # Output di konsol akan terlihat sangat rapi dan berwarna!
@@ -364,7 +364,7 @@ fungsi_penting()
 
 ### 11. `nsdev.payment` - Integrasi Payment Gateway
 
-Butuh sistem pembayaran di aplikasimu? Modul ini menyediakan klien untuk tiga *payment gateway* populer di Indonesia: Midtrans, Tripay, dan VioletMediaPay.
+Butuh system pembayaran di aplikasimu? Module ini menyediakan klien untuk tiga *payment gateway* popular di Indonesia: Midtrans, Tripay, dan VioletMediaPay.
 
 **Cara Penggunaan (Contoh dengan `VioletMediaPayClient`):**
 
@@ -407,7 +407,7 @@ asyncio.run(buat_pembayaran())
 
 ### 12. `nsdev.storekey` - Penyimpanan Kunci yang Aman
 
-Modul ini berfungsi seperti "brankas kecil" untuk menyimpan data sensitif (seperti kunci API) di file sementara. Data tersebut akan dienkripsi sebelum disimpan, jadi lebih aman daripada menyimpannya sebagai teks biasa.
+Module ini berfungsi seperti "brankas kecil" untuk menyimpan data sensitif (seperti kunci API) di file sementara. Data tersebut akan dienkripsi sebelum disimpan, jadi lebih aman daripada menyimpannya sebagai teks biasa.
 
 **Cara Penggunaan:**
 

@@ -7,7 +7,15 @@ class Argument:
     def getMention(self, me, logs=False, no_tag=False, tag_and_id=False):
         name = f"{me.first_name} {me.last_name}" if me.last_name else me.first_name
         link = f"tg://user?id={me.id}"
-        return f"{me.id}|{name}" if logs else name if no_tag else f"<a href='{link}'>{name}</a>{' | <code>' + str(me.id) + '</code>' if tag_and_id else ''}"
+        return (
+            f"{me.id}|{name}"
+            if logs
+            else (
+                name
+                if no_tag
+                else f"<a href='{link}'>{name}</a>{' | <code>' + str(me.id) + '</code>' if tag_and_id else ''}"
+            )
+        )
 
     def getNamebot(self, bot_token):
         url = f"https://api.telegram.org/bot{bot_token}/getMe"
@@ -73,7 +81,9 @@ class Argument:
             return (None, None)
 
     async def getAdmin(self, message):
-        member = await message._client.get_chat_member(message.chat.id, message.from_user.id)
+        member = await message._client.get_chat_member(
+            message.chat.id, message.from_user.id
+        )
         return member.status in (
             self.pyrogram.enums.ChatMemberStatus.ADMINISTRATOR,
             self.pyrogram.enums.ChatMemberStatus.OWNER,
