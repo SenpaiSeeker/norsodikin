@@ -52,7 +52,9 @@ class Button:
                 cb_data = (
                     f"{inline_cmd} {is_id}_{cb_data}"
                     if inline_cmd and is_id
-                    else f"{inline_cmd} {cb_data}" if inline_cmd else cb_data
+                    else f"{inline_cmd} {cb_data}"
+                    if inline_cmd
+                    else cb_data
                 )
 
             if "user" in extra_params:

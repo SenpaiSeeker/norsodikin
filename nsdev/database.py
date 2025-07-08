@@ -422,7 +422,9 @@ class DataBase:
             key: (
                 [self.cipher.decrypt(v) for v in value]
                 if isinstance(value, list)
-                else self.cipher.decrypt(value) if isinstance(value, str) else value
+                else self.cipher.decrypt(value)
+                if isinstance(value, str)
+                else value
             )
             for key, value in encrypted_data.items()
         }
