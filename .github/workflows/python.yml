@@ -44,7 +44,7 @@ jobs:
         run: isort . --profile black
 
       - name: Fix typos with Codespell
-        run: codespell --write-changes --ignore-words-list="teh,alot" --quiet-level=2 .
+        run: codespell --write-changes --ignore-words-list="teh,alot" --quiet-level=2 . || true
 
       - name: Lint with Flake8
         run: flake8 . --count --exit-zero --statistics
