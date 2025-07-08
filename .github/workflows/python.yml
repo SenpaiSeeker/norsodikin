@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
@@ -29,7 +29,7 @@ jobs:
         run: python -m compileall .
 
       - name: Run Ruff auto-fix
-        run: ruff check . --fix
+        run: ruff . --fix
 
       - name: AutoPEP8 formatting
         run: autopep8 --in-place --recursive --aggressive --aggressive .
