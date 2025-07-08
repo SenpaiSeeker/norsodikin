@@ -1,37 +1,57 @@
 name: Code Improvements
 
-on: [push, pull_request]
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
 
 jobs:
   code_improvement:
-    name: Code Improvement
+    name: Automatic Code Improvement
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - name: Install Dependencies
-        run: python -m pip install --upgrade pip && pip install autopep8 autoflake black flake8 isort
+      - name: Install tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install autopep8 autoflake black flake8 isort ruff codespell
 
-      - name: Run Flake8 for Linting
-        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+      - name: Check syntax
+        run: python -m compileall .
 
-      - name: Fix Syntax with Autopep8
-        run: autopep8 --verbose --in-place --recursive --aggressive --aggressive --ignore=W605 . --exclude __init__.py
+      - name: Run Ruff auto-fix
+        run: ruff check . --fix
 
-      - name: Remove Unused Imports and Variables
-        run: autoflake --in-place --recursive --remove-all-unused-imports --remove-unused-variables --ignore-init-module-imports .
+      - name: AutoPEP8 formatting
+        run: autopep8 --in-place --recursive --aggressive --aggressive .
 
-      - name: Format Python Code with Black
-        run: black . --line-length 183
+      - name: Remove unused code except __init__.py
+        run: autoflake --in-place --recursive --remove-all-unused-imports --remove-unused-variables --exclude=__init__.py .
 
-      - name: Sort Python Imports with Isort
+      - name: Format with Black
+        run: black .
+
+      - name: Sort imports with isort
         run: isort . --profile black
 
-      - name: Commit Changes
+      - name: Fix typos with Codespell
+        run: codespell --write-changes .
+
+      - name: Lint with Flake8
+        run: flake8 . --count --exit-zero --statistics
+
+      - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "chore: auto code improvements"
+          commit_user_name: github-actions[bot]
+          commit_user_email: github-actions[bot]@users.noreply.github.com
