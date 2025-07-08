@@ -21,9 +21,7 @@ class DataBase:
         self.method_encrypt = options.get("method_encrypt", "bytes")
         self.auto_backup = options.get("auto_backup", False)
 
-        self.cipher = __import__("nsdev").encrypt.CipherHandler(
-            key=self.binary_keys, method=self.method_encrypt
-        )
+        self.cipher = __import__("nsdev").encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
 
         if self.storage_type == "mongo":
             self.pymongo = __import__("pymongo")
@@ -35,9 +33,7 @@ class DataBase:
 
         elif self.storage_type == "sqlite":
             self.db_file = f"{self.file_name}.db"
-            self.conn = __import__("sqlite3").connect(
-                self.db_file, check_same_thread=False
-            )
+            self.conn = __import__("sqlite3").connect(self.db_file, check_same_thread=False)
             self.cursor = self.conn.cursor()
             self._initialize_sqlite()
 
@@ -53,11 +49,7 @@ class DataBase:
         try:
             with open(self.data_file, "r") as f:
                 content = f.read()
-                return (
-                    self.json.loads(content)
-                    if content.strip()
-                    else {"vars": {}, "bots": []}
-                )
+                return self.json.loads(content) if content.strip() else {"vars": {}, "bots": []}
         except (self.json.JSONDecodeError, FileNotFoundError):
             return {"vars": {}, "bots": []}
 
@@ -72,17 +64,11 @@ class DataBase:
             self.subprocess.check_output(["git", "config", "--global", "user.name"])
             self.subprocess.check_output(["git", "config", "--global", "user.email"])
         except self.subprocess.CalledProcessError:
-            self.subprocess.run(
-                ["git", "config", "--global", "user.name", "ɴᴏʀ sᴏᴅɪᴋɪɴ"]
-            )
-            self.subprocess.run(
-                ["git", "config", "--global", "user.email", "support@norsodikin.ltd"]
-            )
+            self.subprocess.run(["git", "config", "--global", "user.name", "ɴᴏʀ sᴏᴅɪᴋɪɴ"])
+            self.subprocess.run(["git", "config", "--global", "user.email", "support@norsodikin.ltd"])
 
         self.subprocess.run(["git", "add", self.data_file])
-        self.subprocess.run(
-            ["git", "commit", "-m", message], stderr=self.subprocess.DEVNULL
-        )
+        self.subprocess.run(["git", "commit", "-m", message], stderr=self.subprocess.DEVNULL)
         self.subprocess.run(["git", "push"])
 
     def __del__(self):
@@ -146,9 +132,7 @@ class DataBase:
             try:
                 self.conn.commit()
                 self.conn.close()
-                self.cipher.log.print(
-                    f"{self.cipher.log.GREEN}[SQLite] Koneksi ditutup"
-                )
+                self.cipher.log.print(f"{self.cipher.log.GREEN}[SQLite] Koneksi ditutup")
             except Exception as e:
                 self.cipher.log.print(
                     f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Gagal menutup koneksi: {self.cipher.log.RED}{e}"
@@ -176,9 +160,7 @@ class DataBase:
         self.conn.commit()
 
     def _sqlite_get_bots(self):
-        self.cursor.execute(
-            "SELECT user_id, api_id, api_hash, bot_token, session_string FROM bots"
-        )
+        self.cursor.execute("SELECT user_id, api_id, api_hash, bot_token, session_string FROM bots")
         return self.cursor.fetchall()
 
     def _sqlite_set_bot(self, user_id, encrypted_data):
@@ -230,22 +212,16 @@ class DataBase:
         )
 
     def _mongo_pull_list_vars(self, user_id, var_key, query_name, encrypted_value):
-        self.data.vars.update_one(
-            {"_id": user_id}, {"$pull": {f"{var_key}.{query_name}": encrypted_value}}
-        )
+        self.data.vars.update_one({"_id": user_id}, {"$pull": {f"{var_key}.{query_name}": encrypted_value}})
 
     def _mongo_unset_vars(self, user_id, var_key):
         self.data.vars.update_one({"_id": user_id}, {"$unset": {var_key: ""}})
 
     def _mongo_remove_var(self, user_id, var_key, query_name):
-        self.data.vars.update_one(
-            {"_id": user_id}, {"$unset": {f"{var_key}.{query_name}": ""}}
-        )
+        self.data.vars.update_one({"_id": user_id}, {"$unset": {f"{var_key}.{query_name}": ""}})
 
     def _mongo_save_bot(self, user_id, encrypted_data):
-        self.data.bot.update_one(
-            {"user_id": user_id}, {"$set": encrypted_data}, upsert=True
-        )
+        self.data.bot.update_one({"user_id": user_id}, {"$set": encrypted_data}, upsert=True)
 
     def _mongo_remove_bot(self, user_id):
         self.data.bot.delete_one({"user_id": user_id})
@@ -305,20 +281,9 @@ class DataBase:
             encrypted_value = result.get(var_key, {}).get(query_name, None)
         elif self.storage_type == "sqlite":
             data = self._sqlite_get_vars(user_id)
-            encrypted_value = (
-                data.get("vars", {})
-                .get(str(user_id), {})
-                .get(var_key, {})
-                .get(query_name)
-            )
+            encrypted_value = data.get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
         else:
-            encrypted_value = (
-                self._load_data()
-                .get("vars", {})
-                .get(str(user_id), {})
-                .get(var_key, {})
-                .get(query_name)
-            )
+            encrypted_value = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
         return self.cipher.decrypt(encrypted_value) if encrypted_value else None
 
     def removeVars(self, user_id, query_name, var_key="variabel"):
@@ -364,19 +329,10 @@ class DataBase:
             encrypted_values = result.get(var_key, {}).get(query_name, [])
         elif self.storage_type == "sqlite":
             data = self._sqlite_get_vars(user_id)
-            encrypted_values = (
-                data.get("vars", {})
-                .get(str(user_id), {})
-                .get(var_key, {})
-                .get(query_name, [])
-            )
+            encrypted_values = data.get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name, [])
         else:
             encrypted_values = (
-                self._load_data()
-                .get("vars", {})
-                .get(str(user_id), {})
-                .get(var_key, {})
-                .get(query_name, [])
+                self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name, [])
             )
         return [self.cipher.decrypt(value) for value in encrypted_values]
 
@@ -415,16 +371,12 @@ class DataBase:
             data = self._sqlite_get_vars(user_id)
             encrypted_data = data.get("vars", {}).get(str(user_id), {}).get(var_key, {})
         else:
-            encrypted_data = (
-                self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {})
-            )
+            encrypted_data = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {})
         decrypted = {
             key: (
                 [self.cipher.decrypt(v) for v in value]
                 if isinstance(value, list)
-                else self.cipher.decrypt(value)
-                if isinstance(value, str)
-                else value
+                else self.cipher.decrypt(value) if isinstance(value, str) else value
             )
             for key, value in encrypted_data.items()
         }
@@ -435,18 +387,18 @@ class DataBase:
         if not have_exp:
             now = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
         else:
-            now = self.datetime.datetime.strptime(
-                have_exp, "%Y-%m-%d %H:%M:%S"
-            ).astimezone(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
+            now = self.datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S").astimezone(
+                self.zoneinfo.ZoneInfo("Asia/Jakarta")
+            )
         expire_date = now + self.datetime.timedelta(days=exp)
         self.setVars(user_id, "EXPIRED_DATE", expire_date.strftime("%Y-%m-%d %H:%M:%S"))
 
     def getExp(self, user_id):
         expired_date = self.getVars(user_id, "EXPIRED_DATE")
         if expired_date:
-            exp_datetime = self.datetime.datetime.strptime(
-                expired_date, "%Y-%m-%d %H:%M:%S"
-            ).astimezone(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
+            exp_datetime = self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(
+                self.zoneinfo.ZoneInfo("Asia/Jakarta")
+            )
             return exp_datetime.strftime("%d-%m-%Y")
         else:
             return None
@@ -455,17 +407,15 @@ class DataBase:
         user_exp = self.getExp(user_id)
         today = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
         if user_exp:
-            exp_datetime = self.datetime.datetime.strptime(
-                user_exp, "%d-%m-%Y"
-            ).astimezone(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
+            exp_datetime = self.datetime.datetime.strptime(user_exp, "%d-%m-%Y").astimezone(
+                self.zoneinfo.ZoneInfo("Asia/Jakarta")
+            )
             return (exp_datetime - today).days
         return None
 
     def checkAndDeleteIfExpired(self, user_id):
         user_exp = self.getExp(user_id)
-        today = self.datetime.datetime.now(
-            self.zoneinfo.ZoneInfo("Asia/Jakarta")
-        ).strftime("%d-%m-%Y")
+        today = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta")).strftime("%d-%m-%Y")
         if not user_exp or user_exp == today:
             self.removeAllVars(user_id)
             self.removeBot(user_id)

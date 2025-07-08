@@ -10,9 +10,11 @@ class Argument:
         return (
             f"{me.id}|{name}"
             if logs
-            else name
-            if no_tag
-            else f"<a href='{link}'>{name}</a>{' | <code>' + str(me.id) + '</code>' if tag_and_id else ''}"
+            else (
+                name
+                if no_tag
+                else f"<a href='{link}'>{name}</a>{' | <code>' + str(me.id) + '</code>' if tag_and_id else ''}"
+            )
         )
 
     def getNamebot(self, bot_token):
@@ -79,9 +81,7 @@ class Argument:
             return (None, None)
 
     async def getAdmin(self, message):
-        member = await message._client.get_chat_member(
-            message.chat.id, message.from_user.id
-        )
+        member = await message._client.get_chat_member(message.chat.id, message.from_user.id)
         return member.status in (
             self.pyrogram.enums.ChatMemberStatus.ADMINISTRATOR,
             self.pyrogram.enums.ChatMemberStatus.OWNER,

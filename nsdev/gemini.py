@@ -52,17 +52,11 @@ class ChatbotGemini:
         history = self.chat_history.setdefault(user_id, [])
         history.append({"role": "user", "parts": message})
 
-        response = (
-            self.configure_model("chatbot", bot_name)
-            .start_chat(history=history)
-            .send_message(message)
-        )
+        response = self.configure_model("chatbot", bot_name).start_chat(history=history).send_message(message)
         history.append({"role": "assistant", "parts": response.text})
 
         return response.text
 
     def send_khodam_message(self, name):
-        response = (
-            self.configure_model("khodam").start_chat(history=[]).send_message(name)
-        )
+        response = self.configure_model("khodam").start_chat(history=[]).send_message(name)
         return response.text

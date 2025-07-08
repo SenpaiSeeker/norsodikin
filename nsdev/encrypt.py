@@ -36,9 +36,7 @@ class CipherHandler:
         if isinstance(data, str):
             data = data.encode("utf-8")
 
-        return bytes(
-            [data[i] ^ key_bytes[i % len(key_bytes)] for i in range(len(data))]
-        )
+        return bytes([data[i] ^ key_bytes[i % len(key_bytes)] for i in range(len(data))])
 
     def decrypt(self, encrypted_data: str) -> str:
         if self.method == "bytes":
@@ -54,8 +52,7 @@ class CipherHandler:
         if len(encrypted_bits) % 8 != 0:
             raise ValueError("Data biner yang dienkripsi tidak valid.")
         decrypted_chars = [
-            chr(int(encrypted_bits[i : i + 8], 2) ^ (self.key % 256))
-            for i in range(0, len(encrypted_bits), 8)
+            chr(int(encrypted_bits[i : i + 8], 2) ^ (self.key % 256)) for i in range(0, len(encrypted_bits), 8)
         ]
         return "".join(decrypted_chars)
 
@@ -68,9 +65,7 @@ class CipherHandler:
 
     def decrypt_shift(self, encoded_text: str) -> str:
         try:
-            decoded = "".join(
-                chr(int(code) - self.key) for code in encoded_text.split(self.delimiter)
-            )
+            decoded = "".join(chr(int(code) - self.key) for code in encoded_text.split(self.delimiter))
             return decoded
         except ValueError as error:
             raise ValueError(f"Error during shift decryption: {error}")
@@ -86,16 +81,12 @@ class CipherHandler:
             raise ValueError(f"Metode enkripsi '{self.method}' tidak dikenali.")
 
     def encrypt_binary(self, plaintext: str) -> str:
-        encrypted_bits = "".join(
-            format(ord(char) ^ (self.key % 256), "08b") for char in plaintext
-        )
+        encrypted_bits = "".join(format(ord(char) ^ (self.key % 256), "08b") for char in plaintext)
         return encrypted_bits
 
     def encrypt_bytes(self, message: str) -> str:
         try:
-            encrypted_values = [
-                str(ord(char) + self._offset(i)) for i, char in enumerate(message)
-            ]
+            encrypted_values = [str(ord(char) + self._offset(i)) for i, char in enumerate(message)]
             return self.delimiter.join(encrypted_values)
         except Exception as e:
             raise Exception(f"Encryption failed: {e}")
@@ -151,9 +142,7 @@ class AsciiManager(__import__("nsdev").AnsiColors):
 
     def decrypt(self, encrypted):
         try:
-            return "".join(
-                chr(int(code) - self._offset(i)) for i, code in enumerate(encrypted)
-            )
+            return "".join(chr(int(code) - self._offset(i)) for i, code in enumerate(encrypted))
         except Exception as e:
             raise Exception(f"Decryption failed: {e}")
 

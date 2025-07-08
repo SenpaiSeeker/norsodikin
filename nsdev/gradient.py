@@ -22,30 +22,21 @@ class Gradient:
             0,
             min(
                 255,
-                int(
-                    self.start_color[0]
-                    + (self.end_color[0] - self.start_color[0]) * factor
-                ),
+                int(self.start_color[0] + (self.end_color[0] - self.start_color[0]) * factor),
             ),
         )
         g = max(
             0,
             min(
                 255,
-                int(
-                    self.start_color[1]
-                    + (self.end_color[1] - self.start_color[1]) * factor
-                ),
+                int(self.start_color[1] + (self.end_color[1] - self.start_color[1]) * factor),
             ),
         )
         b = max(
             0,
             min(
                 255,
-                int(
-                    self.start_color[2]
-                    + (self.end_color[2] - self.start_color[2]) * factor
-                ),
+                int(self.start_color[2] + (self.end_color[2] - self.start_color[2]) * factor),
             ),
         )
         return r, g, b
@@ -72,22 +63,16 @@ class Gradient:
 
         return ":".join(result[::-1]) if result else "0s"
 
-    async def countdown(
-        self, seconds, text="Tunggu {time} untuk melanjutkan", bar_length=30
-    ):
+    async def countdown(self, seconds, text="Tunggu {time} untuk melanjutkan", bar_length=30):
         animation_wave = "▁▂▃▄▅▆▇█▇▆▅▄▃▂▁"
 
         for remaining in range(seconds, -1, -1):
             time_display = self.gettime(remaining)
 
-            progress_color = [
-                self.rgb_to_ansi(*self.interpolate_color(i / bar_length))
-                for i in range(bar_length)
-            ]
+            progress_color = [self.rgb_to_ansi(*self.interpolate_color(i / bar_length)) for i in range(bar_length)]
             shift = remaining % len(animation_wave)
             bar = "".join(
-                f"{progress_color[i]}{animation_wave[(i + shift) % len(animation_wave)]}"
-                for i in range(bar_length)
+                f"{progress_color[i]}{animation_wave[(i + shift) % len(animation_wave)]}" for i in range(bar_length)
             )
 
             random_text_color = self.rgb_to_ansi(*self.random_color())

@@ -14,18 +14,10 @@ class SSHUserManager:
         self.requests = __import__("requests")
 
     def generate_random_string(self, length):
-        return "".join(
-            self.random.choices(
-                self.string.ascii_letters + self.string.digits, k=length
-            )
-        )
+        return "".join(self.random.choices(self.string.ascii_letters + self.string.digits, k=length))
 
     def send_telegram_message(self, message):
-        inline_keyboard = {
-            "inline_keyboard": [
-                [{"text": "Powered By", "url": "https://t.me/NorSodikin"}]
-            ]
-        }
+        inline_keyboard = {"inline_keyboard": [[{"text": "Powered By", "url": "https://t.me/NorSodikin"}]]}
         url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
         data = {
             "chat_id": self.chat_id,
@@ -43,9 +35,7 @@ class SSHUserManager:
             ssh_password = self.generate_random_string(12)
 
         try:
-            result = self.subprocess.run(
-                ["id", ssh_username], capture_output=True, text=True
-            )
+            result = self.subprocess.run(["id", ssh_username], capture_output=True, text=True)
             if result.returncode == 0:
                 message = f"Pengguna {ssh_username} sudah ada. Silakan pilih nama pengguna yang berbeda."
             else:
@@ -67,9 +57,7 @@ class SSHUserManager:
                     text=True,
                     check=True,
                 )
-                self.subprocess.run(
-                    ["sudo", "usermod", "-aG", "sudo", ssh_username], check=True
-                )
+                self.subprocess.run(["sudo", "usermod", "-aG", "sudo", ssh_username], check=True)
 
                 hostname = self.os.popen("hostname -I").read().split()[0]
 
@@ -87,18 +75,12 @@ class SSHUserManager:
 
     def delete_user(self, ssh_username):
         try:
-            result = self.subprocess.run(
-                ["id", ssh_username], capture_output=True, text=True
-            )
+            result = self.subprocess.run(["id", ssh_username], capture_output=True, text=True)
             if result.returncode != 0:
                 message = f"Pengguna {ssh_username} tidak ada."
             else:
-                self.subprocess.run(
-                    ["sudo", "usermod", "--expiredate", "1", ssh_username], check=True
-                )
-                self.subprocess.run(
-                    ["sudo", "deluser", "--remove-home", ssh_username], check=True
-                )
+                self.subprocess.run(["sudo", "usermod", "--expiredate", "1", ssh_username], check=True)
+                self.subprocess.run(["sudo", "deluser", "--remove-home", ssh_username], check=True)
                 message = f"Pengguna {ssh_username} telah dihapus dari sistem dan tidak dapat lagi masuk."
         except Exception as e:
             message = f"Terjadi kesalahan: {str(e)}"

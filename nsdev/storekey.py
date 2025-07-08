@@ -24,9 +24,7 @@ class KeyManager:
 
     def read_key(self):
         if not self.os.path.exists(self.temp_file):
-            key = input(
-                f"{self.gradient.rgb_to_ansi(*self.gradient.random_color())}Masukkan kunci (angka):\033[0m "
-            )
+            key = input(f"{self.gradient.rgb_to_ansi(*self.gradient.random_color())}Masukkan kunci (angka):\033[0m ")
             env = input(
                 f"{self.gradient.rgb_to_ansi(*self.gradient.random_color())}Masukkan nama env yang sudah dibuat:\033[0m "
             )
@@ -45,9 +43,7 @@ class KeyManager:
 
     def handle_arguments(self):
         parser = self.argparse.ArgumentParser()
-        parser.add_argument(
-            "--key", type=str, help="Key yang ingin disimpan atau digunakan."
-        )
+        parser.add_argument("--key", type=str, help="Key yang ingin disimpan atau digunakan.")
         parser.add_argument("--env", type=str, help="Nama file environment.")
         args = parser.parse_args()
 

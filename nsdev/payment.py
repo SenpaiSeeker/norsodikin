@@ -92,17 +92,11 @@ class VioletMediaPayClient:
 
         self.api_key = api_key
         self.secret_key = secret_key
-        self.base_url = (
-            "https://violetmediapay.com/api/live"
-            if live
-            else "https://violetmediapay.com/api/sanbox"
-        )
+        self.base_url = "https://violetmediapay.com/api/live" if live else "https://violetmediapay.com/api/sanbox"
 
     def _generate_signature(self, ref_kode: str, amount: str) -> str:
         message = f"{ref_kode}{self.api_key}{amount}"
-        signature = self.hmac.new(
-            self.secret_key.encode(), message.encode(), self.hashlib.sha256
-        ).hexdigest()
+        signature = self.hmac.new(self.secret_key.encode(), message.encode(), self.hashlib.sha256).hexdigest()
         return signature
 
     async def create_payment(
@@ -155,9 +149,7 @@ class VioletMediaPayClient:
                     }
                 )
         except self.httpx.ReadTimeout:
-            raise Exception(
-                "Request timeout: Server tidak merespons dalam waktu yang ditentukan."
-            )
+            raise Exception("Request timeout: Server tidak merespons dalam waktu yang ditentukan.")
         except self.httpx.HTTPStatusError as e:
             raise Exception(f"HTTP Error: {e.response.status_code} - {e.response.text}")
         except Exception as e:
@@ -179,9 +171,7 @@ class VioletMediaPayClient:
                 response.raise_for_status()
                 return self.convert._convertToNamespace(response.json())
         except self.httpx.ReadTimeout:
-            raise Exception(
-                "Request timeout: Server tidak merespons dalam waktu yang ditentukan."
-            )
+            raise Exception("Request timeout: Server tidak merespons dalam waktu yang ditentukan.")
         except self.httpx.HTTPStatusError as e:
             raise Exception(f"HTTP Error: {e.response.status_code} - {e.response.text}")
         except Exception as e:

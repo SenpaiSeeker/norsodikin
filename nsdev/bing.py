@@ -42,9 +42,7 @@ class ImageGenerator:
             cycle += 1
             self.__log(f"{self.log.GREEN}Memulai siklus {cycle}...")
 
-            translator = __import__("deep_translator").GoogleTranslator(
-                source="auto", target="en"
-            )
+            translator = __import__("deep_translator").GoogleTranslator(source="auto", target="en")
             translated_prompt = translator.translate(prompt)
             cleaned_translated_prompt = self.__clean_text(translated_prompt)
 
@@ -56,13 +54,9 @@ class ImageGenerator:
             )
 
             if response.status_code != 302:
-                self.__log(
-                    f"{self.log.RED}Status code tidak valid: {response.status_code}"
-                )
+                self.__log(f"{self.log.RED}Status code tidak valid: {response.status_code}")
                 self.__log(f"{self.log.RED}Response: {response.text[:200]}...")
-                raise Exception(
-                    "Permintaan gagal! Pastikan URL benar dan ada redirect."
-                )
+                raise Exception("Permintaan gagal! Pastikan URL benar dan ada redirect.")
 
             self.__log(f"{self.log.GREEN}Permintaan berhasil dikirim!")
 
@@ -72,10 +66,10 @@ class ImageGenerator:
                 raise Exception("Bahasa yang digunakan tidak didukung oleh Bing!")
 
             try:
-                result_id = (
-                    response.headers["Location"].replace("&nfy=1", "").split("id=")[-1]
+                result_id = response.headers["Location"].replace("&nfy=1", "").split("id=")[-1]
+                results_url = (
+                    f"https://www.bing.com/images/create/async/results/{result_id}?q={cleaned_translated_prompt}"
                 )
-                results_url = f"https://www.bing.com/images/create/async/results/{result_id}?q={cleaned_translated_prompt}"
             except KeyError:
                 raise Exception("Gagal menemukan result_id dalam respons!")
 
@@ -98,9 +92,7 @@ class ImageGenerator:
                         set(
                             [
                                 "https://tse" + link.split("?w=")[0]
-                                for link in self.re.findall(
-                                    r'src="https://tse([^"]+)"', response.text
-                                )
+                                for link in self.re.findall(r'src="https://tse([^"]+)"', response.text)
                             ]
                         )
                     )
@@ -118,7 +110,5 @@ class ImageGenerator:
                 f"{self.log.GREEN}Siklus {cycle} selesai dalam {round(self.time.time() - start_cycle_time, 2)} detik."
             )
 
-        self.__log(
-            f"{self.log.GREEN}Pembuatan gambar selesai dalam {round(self.time.time() - start_time, 2)} detik."
-        )
+        self.__log(f"{self.log.GREEN}Pembuatan gambar selesai dalam {round(self.time.time() - start_time, 2)} detik.")
         return images[:num_images]
