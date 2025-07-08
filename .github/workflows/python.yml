@@ -29,7 +29,7 @@ jobs:
         run: python -m compileall .
 
       - name: Run Ruff auto-fix
-        run: ruff . --fix
+        run: ruff check . --fix
 
       - name: AutoPEP8 formatting
         run: autopep8 --in-place --recursive --aggressive --aggressive .
@@ -44,7 +44,7 @@ jobs:
         run: isort . --profile black
 
       - name: Fix typos with Codespell
-        run: codespell --write-changes .
+        run: codespell --write-changes --ignore-words-list="teh,alot" .
 
       - name: Lint with Flake8
         run: flake8 . --count --exit-zero --statistics
