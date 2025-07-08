@@ -5,12 +5,19 @@ class Button:
         self.pyrogram = __import__("pyrogram")
 
     def get_urls(self, text):
-        return self.re.findall(r"(?:https?://)?(?:www\.)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:[/?]\S+)?|tg://\S+$", text)
+        return self.re.findall(
+            r"(?:https?://)?(?:www\.)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:[/?]\S+)?|tg://\S+$",
+            text,
+        )
 
     def parse_buttons_and_text(self, text, mode="inline"):
         if mode == "inline":
             button_data = self.re.findall(r"\| ([^|]+) - ([^|]+) \|", text)
-            extracted_text = self.re.split(r"\| [^|]+ - [^|]+ \|", text)[0].strip() if "|" in text else text.strip()
+            extracted_text = (
+                self.re.split(r"\| [^|]+ - [^|]+ \|", text)[0].strip()
+                if "|" in text
+                else text.strip()
+            )
             return button_data, extracted_text
 
         elif mode == "reply":
@@ -24,7 +31,9 @@ class Button:
                 for part in parts:
                     if ";" in part:
                         label, *params = part.split(";")
-                        buttons.append((label.strip().strip("]"), [p.strip() for p in params]))
+                        buttons.append(
+                            (label.strip().strip("]"), [p.strip() for p in params])
+                        )
                     else:
                         buttons.append((part.strip().strip("]"), []))
             return buttons, extracted_text
@@ -40,14 +49,24 @@ class Button:
             cb_data, *extra_params = payload.split(";")
 
             if not self.get_urls(cb_data):
-                cb_data = f"{inline_cmd} {is_id}_{cb_data}" if inline_cmd and is_id else f"{inline_cmd} {cb_data}" if inline_cmd else cb_data
+                cb_data = (
+                    f"{inline_cmd} {is_id}_{cb_data}"
+                    if inline_cmd and is_id
+                    else f"{inline_cmd} {cb_data}"
+                    if inline_cmd
+                    else cb_data
+                )
 
             if "user" in extra_params:
-                button = self.pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
+                button = self.pyrogram.types.InlineKeyboardButton(
+                    label, user_id=cb_data
+                )
             elif self.get_urls(cb_data):
                 button = self.pyrogram.types.InlineKeyboardButton(label, url=cb_data)
             else:
-                button = self.pyrogram.types.InlineKeyboardButton(label, callback_data=cb_data)
+                button = self.pyrogram.types.InlineKeyboardButton(
+                    label, callback_data=cb_data
+                )
 
             if "same" in extra_params and layout:
                 layout[-1].append(button)
@@ -67,7 +86,9 @@ class Button:
             else:
                 layout.append([button])
 
-        return self.pyrogram.types.ReplyKeyboardMarkup(layout, resize_keyboard=True), remaining_text
+        return self.pyrogram.types.ReplyKeyboardMarkup(
+            layout, resize_keyboard=True
+        ), remaining_text
 
     def remove_reply_keyboard(self, selective=False):
         return self.pyrogram.types.ReplyKeyboardRemove(selective=selective)
@@ -75,7 +96,13 @@ class Button:
     def build_button_grid(self, buttons, row_inline=None, row_width=2):
         row_inline = row_inline or {}
 
-        grid = [[self.pyrogram.types.InlineKeyboardButton(**data) for data in buttons[i : i + row_width]] for i in range(0, len(buttons), row_width)]
+        grid = [
+            [
+                self.pyrogram.types.InlineKeyboardButton(**data)
+                for data in buttons[i : i + row_width]
+            ]
+            for i in range(0, len(buttons), row_width)
+        ]
 
         if row_inline:
             grid.append([self.pyrogram.types.InlineKeyboardButton(**row_inline)])

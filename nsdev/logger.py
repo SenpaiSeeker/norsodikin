@@ -15,7 +15,9 @@ class LoggerHandler(__import__("nsdev").AnsiColors):
         self.os = __import__("os")
 
         self.tz = self.zoneinfo.ZoneInfo(options.get("tz", "Asia/Jakarta"))
-        self.fmt = options.get("fmt", "{asctime} {levelname} {module}:{funcName}:{lineno} {message}")
+        self.fmt = options.get(
+            "fmt", "{asctime} {levelname} {module}:{funcName}:{lineno} {message}"
+        )
         self.datefmt = options.get("datefmt", "%Y-%m-%d %H:%M:%S %Z")
 
     def get_colors(self):
@@ -32,7 +34,9 @@ class LoggerHandler(__import__("nsdev").AnsiColors):
         }
 
     def formatTime(self):
-        utc_time = self.datetime.datetime.utcfromtimestamp(self.datetime.datetime.now().timestamp())
+        utc_time = self.datetime.datetime.utcfromtimestamp(
+            self.datetime.datetime.now().timestamp()
+        )
         local_time = utc_time.astimezone(self.tz)
         return local_time.strftime(self.datefmt)
 
@@ -41,7 +45,9 @@ class LoggerHandler(__import__("nsdev").AnsiColors):
         pipe_color = self.get_colors()["PIPE"]
 
         record["levelname"] = f"{pipe_color}| {level_color}{record['levelname']:<8}"
-        record["message"] = f"{pipe_color}| {level_color}{record['message']}{self.RESET}"
+        record["message"] = (
+            f"{pipe_color}| {level_color}{record['message']}{self.RESET}"
+        )
 
         return self.fmt.format(
             asctime=f"{self.get_colors()['TIME']}[ {self.formatTime()} ]",

@@ -67,4 +67,6 @@ class AnsiColors:
                 print(f"{code}{name}{self.RESET}")
 
     def random_color(self):
-        return __import__("random").choice([code for name, code in vars(self).items() if name != "RESET"]), self.RESET
+        return __import__("random").choice(
+            [code for name, code in vars(self).items() if name != "RESET"]
+        ), self.RESET

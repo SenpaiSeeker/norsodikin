@@ -42,17 +42,27 @@ class ChatbotGemini:
                 "Jadi, apapun pertanyaan atau obrolan kamu, santai aja ya! Kita ngobrol kayak temen biasa, cuma bedanya saya gak bakal ngambil jatah mie instan kamu. 🍜"
             )
 
-        return self.genai.GenerativeModel(model_name="gemini-2.0-flash-exp", generation_config=self.generation_config, system_instruction=instruction)
+        return self.genai.GenerativeModel(
+            model_name="gemini-2.0-flash-exp",
+            generation_config=self.generation_config,
+            system_instruction=instruction,
+        )
 
     def send_chat_message(self, message, user_id, bot_name):
         history = self.chat_history.setdefault(user_id, [])
         history.append({"role": "user", "parts": message})
 
-        response = self.configure_model("chatbot", bot_name).start_chat(history=history).send_message(message)
+        response = (
+            self.configure_model("chatbot", bot_name)
+            .start_chat(history=history)
+            .send_message(message)
+        )
         history.append({"role": "assistant", "parts": response.text})
 
         return response.text
 
     def send_khodam_message(self, name):
-        response = self.configure_model("khodam").start_chat(history=[]).send_message(name)
+        response = (
+            self.configure_model("khodam").start_chat(history=[]).send_message(name)
+        )
         return response.text
