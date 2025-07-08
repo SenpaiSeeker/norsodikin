@@ -1,57 +1,30 @@
 name: Code Improvements
 
-on:
-  push:
-    branches: ["main", "master"]
-  pull_request:
-    branches: ["main", "master"]
+on: [push, pull_request]
 
 jobs:
   code_improvement:
-    name: Automatic Code Improvement
+    name: Auto Format & Lint
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      - name: Install tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install autopep8 autoflake black flake8 isort ruff codespell
+      - name: Install Ruff
+        run: pip install ruff
 
-      - name: Check syntax
-        run: python -m compileall .
-
-      - name: Run Ruff fix
+      - name: Run Ruff Linter and Auto-Fixer
+        run: ruff check . --fix --exit-zero
+      
+      - name: Run Ruff Formatter
         run: ruff format .
 
-      - name: AutoPEP8 formatting
-        run: autopep8 --in-place --recursive --aggressive --aggressive .
-
-      - name: Remove unused code except __init__.py
-        run: autoflake --in-place --recursive --remove-all-unused-imports --remove-unused-variables --exclude=__init__.py .
-
-      - name: Format with Black
-        run: black .
-
-      - name: Sort imports with isort
-        run: isort . --profile black
-
-      - name: Fix typos with Codespell
-        run: codespell --write-changes --ignore-words-list="teh,alot" --quiet-level=2 . || true
-
-      - name: Lint with Flake8
-        run: flake8 . --count --exit-zero --statistics
-
-      - name: Commit changes
-        uses: stefanzweifel/git-auto-commit-action@v4
+      - name: Commit Changes
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore: auto code improvements"
-          commit_user_name: github-actions[bot]
-          commit_user_email: github-actions[bot]@users.noreply.github.com
+          commit_message: "chore(bot): auto-format and lint code"
