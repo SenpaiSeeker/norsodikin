@@ -18,8 +18,8 @@ jobs:
       - name: Install Ruff
         run: pip install ruff
 
-      - name: Run Ruff Linter and Auto-Fixer
-        run: ruff check . --fix --exit-zero
+      - name: Run Ruff to Format and FIX
+        run: ruff format . && ruff check . --fix --exit-zero
       
       - name: Run Ruff Formatter
         run: ruff format .
