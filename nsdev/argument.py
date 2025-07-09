@@ -1,6 +1,5 @@
-class Argument(__import__("pyrogram").Client):
+class Argument:
     def __init__(self):
-        super().__init__()
         self.asyncio = __import__("asyncio")
         self.pyrogram = __import__("pyrogram")
         self.requests = __import__("requests")
@@ -82,7 +81,7 @@ class Argument(__import__("pyrogram").Client):
             return (None, None)
 
     async def getAdmin(self, message):
-        member = await self.get_chat_member(message.chat.id, message.from_user.id)
+        member = await message._client.get_chat_member(message.chat.id, message.from_user.id)
         return member.status in (
             self.pyrogram.enums.ChatMemberStatus.ADMINISTRATOR,
             self.pyrogram.enums.ChatMemberStatus.OWNER,
@@ -92,7 +91,7 @@ class Argument(__import__("pyrogram").Client):
         user_id, _ = await self.getReasonAndId(message, sender_chat=True)
         return user_id
 
-    async def copyMessage(self, chatId, msgId, chatTarget):
-        get_msg = await self.get_messages(chatId, msgId)
+    async def copyMessage(self, client, chatId, msgId, chatTarget):
+        get_msg = await client.get_messages(chatId, msgId)
         await get_msg.copy(chatTarget, protect_content=True)
         await self.asyncio.sleep(1)
