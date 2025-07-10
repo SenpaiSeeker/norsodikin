@@ -1,5 +1,6 @@
-import pyrogram
 from types import SimpleNamespace
+
+import pyrogram
 
 from .addUser import SSHUserManager
 from .argument import Argument
@@ -57,16 +58,12 @@ class NsDev:
         # mis: cipher = client.ns.encrypt.CipherHandler(key=123)
         # mis: payment_handler = client.ns.payment.Midtrans(...)
         # --------------------------------------------------------------------------
-        self.encrypt = SimpleNamespace(
-            CipherHandler=CipherHandler,
-            AsciiManager=AsciiManager
-        )
-        
+        self.encrypt = SimpleNamespace(CipherHandler=CipherHandler, AsciiManager=AsciiManager)
+
         self.payment = SimpleNamespace(
-            Midtrans=PaymentMidtrans,
-            Tripay=PaymentTripay,
-            VioletMediaPay=VioletMediaPayClient
+            Midtrans=PaymentMidtrans, Tripay=PaymentTripay, VioletMediaPay=VioletMediaPayClient
         )
+
 
 # ----------------------------------------------------------------------------------
 # D. "Monkey Patching" ke dalam Pyrogram Client
@@ -83,6 +80,7 @@ def ns(self: "pyrogram.Client") -> NsDev:
     if not hasattr(self, "_nsdev_instance"):
         self._nsdev_instance = NsDev(self)
     return self._nsdev_instance
+
 
 pyrogram.Client.ns = ns
 __all__ = ["NsDev"]
