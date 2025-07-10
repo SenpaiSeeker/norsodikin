@@ -1,71 +1,88 @@
-import functools
-
 import pyrogram
-from pyrogram import Client
+from types import SimpleNamespace
 
-if not hasattr(Client, "_norsodikin_patched"):
+from .addUser import SSHUserManager
+from .argument import Argument
+from .bing import ImageGenerator
+from .button import Button
+from .colorize import AnsiColors
+from .database import DataBase
+from .encrypt import AsciiManager, CipherHandler
+from .gemini import ChatbotGemini
+from .gradient import Gradient
+from .logger import LoggerHandler
+from .payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
+from .storekey import KeyManager
+from .ymlreder import YamlHandler
 
-    from .addUser import SSHUserManager
-    from .argument import Argument
-    from .bing import ImageGenerator
-    from .button import Button
-    from .colorize import AnsiColors
-    from .database import DataBase
-    from .encrypt import CipherHandler
-    from .gemini import ChatbotGemini
-    from .gradient import Gradient
-    from .logger import LoggerHandler
-    from .payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
-    from .storekey import KeyManager
-    from .yaml_reader import YAMLReader
+__version__ = "0.8.0"
+__author__ = "@NorSodikin"
 
-    __version__ = "1.0.0"
 
-    class NsDevAccessor:
-        def __init__(self, client: Client):
-            self._client = client
-            self.addUser: SSHUserManager = SSHUserManager(client)
-            self.argument: Argument = Argument(client)
+class NsDev:
+    """
+    Kelas 'jembatan' yang akan diinjeksikan ke dalam objek client Pyrogram.
+    Ini bertindak sebagai namespace utama (client.ns) yang menyediakan akses
+    ke semua fungsionalitas pustaka norsodikin.
+    """
 
-            self.bing = ImageGenerator
-            self.button = Button()
-            self.colorize = AnsiColors()
-            self.database = DataBase
-            self.encrypt = CipherHandler
-            self.gemini = ChatbotGemini
-            self.gradient = Gradient()
-            self.logger = LoggerHandler()
-            self.payment_midtrans = PaymentMidtrans
-            self.payment_tripay = PaymentTripay
-            self.payment_violet = VioletMediaPayClient
-            self.storekey = KeyManager()
-            self.yaml_reader = YAMLReader()
+    def __init__(self, client: "pyrogram.Client"):
+        self._client = client
 
-    _old_init = Client.__init__
+        # --------------------------------------------------------------------------
+        # A. Helper/Utilitas yang Stateless (Bisa langsung diinisialisasi)
+        # Aksesnya lebih singkat dan praktis, mis: client.ns.log.info(...)
+        # --------------------------------------------------------------------------
+        self.arg = Argument()
+        self.button = Button()
+        self.color = AnsiColors()
+        self.grad = Gradient()
+        self.log = LoggerHandler()
+        self.yaml = YamlHandler()
 
-    @functools.wraps(_old_init)
-    def _new_init(self, *args, **kwargs):
-        _old_init(self, *args, **kwargs)
-        self.ns = NsDevAccessor(self)
+        # --------------------------------------------------------------------------
+        # B. Kelas Stateful/Perlu Konfigurasi (Mengekspos kelasnya langsung)
+        # Pengguna perlu membuat instance sendiri dengan konfigurasinya.
+        # mis: db = client.ns.db(storage_type="local", file_name="my_db")
+        # --------------------------------------------------------------------------
+        self.db = DataBase
+        self.user = SSHUserManager
+        self.bing = ImageGenerator
+        self.gemini = ChatbotGemini
+        self.key = KeyManager
 
-    Client.__init__ = _new_init
+        # --------------------------------------------------------------------------
+        # C. Pengelompokan Kelas menggunakan SimpleNamespace
+        # Sesuai permintaan, untuk file dengan lebih dari satu kelas.
+        # mis: cipher = client.ns.encrypt.CipherHandler(key=123)
+        # mis: payment_handler = client.ns.payment.Midtrans(...)
+        # --------------------------------------------------------------------------
+        self.encrypt = SimpleNamespace(
+            CipherHandler=CipherHandler,
+            AsciiManager=AsciiManager
+        )
+        
+        self.payment = SimpleNamespace(
+            Midtrans=PaymentMidtrans,
+            Tripay=PaymentTripay,
+            VioletMediaPay=VioletMediaPayClient
+        )
 
-    Client._norsodikin_patched = True
+# ----------------------------------------------------------------------------------
+# D. "Monkey Patching" ke dalam Pyrogram Client
+# Ini adalah bagian inti yang membuat `client.ns` bisa digunakan.
+# Kita membuat sebuah property 'ns' di kelas pyrogram.Client.
+# ----------------------------------------------------------------------------------
+@property
+def ns(self: "pyrogram.Client") -> NsDev:
+    """
+    Property untuk mengakses fungsionalitas NsDev dari instance client.
+    Instance NsDev akan dibuat sekali dan di-cache dalam `_nsdev_instance`
+    untuk efisiensi.
+    """
+    if not hasattr(self, "_nsdev_instance"):
+        self._nsdev_instance = NsDev(self)
+    return self._nsdev_instance
 
-    __all__ = [
-        "SSHUserManager",
-        "Argument",
-        "ImageGenerator",
-        "Button",
-        "AnsiColors",
-        "DataBase",
-        "CipherHandler",
-        "ChatbotGemini",
-        "Gradient",
-        "LoggerHandler",
-        "PaymentMidtrans",
-        "PaymentTripay",
-        "VioletMediaPayClient",
-        "KeyManager",
-        "YAMLReader",
-    ]
+pyrogram.Client.ns = ns
+__all__ = ["NsDev"]
