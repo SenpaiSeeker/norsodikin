@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from pyrogram import Client 
+from pyrogram import Client
 
 from .addUser import SSHUserManager
 from .argument import Argument
@@ -39,6 +39,7 @@ class NsDev:
 
         self.code = SimpleNamespace(Cipher=CipherHandler, Ascii=AsciiManager)
         self.payment = SimpleNamespace(Midtrans=PaymentMidtrans, Tripay=PaymentTripay, Violet=VioletMediaPayClient)
+
 
 @property
 def ns(self: "Client") -> NsDev:
