@@ -21,7 +21,7 @@ __author__ = "@NorSodikin"
 
 
 class NsDev:
-    def __init__(self, client: "pyrogram.Client"):
+    def __init__(self, client: "Client"):
         self._client = client
 
         self.arg = Argument()
@@ -41,7 +41,7 @@ class NsDev:
         self.payment = SimpleNamespace(Midtrans=PaymentMidtrans, Tripay=PaymentTripay, Violet=VioletMediaPayClient)
 
 @property
-def ns(self: "pyrogram.Client") -> NsDev:
+def ns(self: "Client") -> NsDev:
     if not hasattr(self, "_nsdev_instance"):
         self._nsdev_instance = NsDev(self)
     return self._nsdev_instance
