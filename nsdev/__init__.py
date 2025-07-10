@@ -49,6 +49,7 @@ def ns(self) -> NsDev:
 def install():
     try:
         from pyrogram import Client
+
         Client.ns = ns
     except Exception:
         pass
