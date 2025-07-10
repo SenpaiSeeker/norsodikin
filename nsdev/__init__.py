@@ -46,7 +46,9 @@ def ns(self) -> NsDev:
     return self._nsdev_instance
 
 
-def init():
-    from pyrogram import Client
-
-    Client.ns = ns
+def install():
+    try:
+        from pyrogram import Client
+        Client.ns = ns
+    except Exception:
+        pass
