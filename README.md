@@ -25,7 +25,7 @@ Cukup dengan mengimpor `norsodikin` atau `pyrogram`, semua fungsionalitas akan o
 
 ```python
 import pyrogram
-import norsodikin  # Mengaktifkan integrasi .ns
+import nsdev  # Mengaktifkan integrasi .ns
 
 # Asumsikan 'client' adalah instance dari pyrogram.Client
 # client = pyrogram.Client(...)
