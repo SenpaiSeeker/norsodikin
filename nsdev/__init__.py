@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from pyrogram import Client
+
 
 from .addUser import SSHUserManager
 from .argument import Argument
@@ -21,7 +21,7 @@ __author__ = "@NorSodikin"
 
 
 class NsDev:
-    def __init__(self, client: "Client"):
+    def __init__(self, client):
         self._client = client
 
         self.arg = Argument()
@@ -42,11 +42,11 @@ class NsDev:
 
 
 @property
-def ns(self: "Client") -> NsDev:
+def ns(self) -> NsDev:
     if not hasattr(self, "_nsdev_instance"):
         self._nsdev_instance = NsDev(self)
     return self._nsdev_instance
 
-
-Client.ns = ns
-__all__ = ["NsDev"]
+def init():
+    from pyrogram import Client
+    Client.ns = ns
