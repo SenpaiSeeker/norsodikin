@@ -28,12 +28,12 @@ class NsDev:
         self.grad = Gradient()
         self.yaml = YamlHandler()
 
-        self.db = DataBase
-        self.user = SSHUserManager
         self.bing = ImageGenerator
-        self.log = LoggerHandler
+        self.db = DataBase
         self.gemini = ChatbotGemini
+        self.log = LoggerHandler
         self.key = KeyManager
+        self.user = SSHUserManager
 
         self.code = SimpleNamespace(Cipher=CipherHandler, Ascii=AsciiManager)
         self.payment = SimpleNamespace(Midtrans=PaymentMidtrans, Tripay=PaymentTripay, Violet=VioletMediaPayClient)
