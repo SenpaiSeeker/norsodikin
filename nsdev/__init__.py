@@ -1,7 +1,5 @@
 from types import SimpleNamespace
 
-
-
 from .addUser import SSHUserManager
 from .argument import Argument
 from .bing import ImageGenerator
@@ -47,6 +45,8 @@ def ns(self) -> NsDev:
         self._nsdev_instance = NsDev(self)
     return self._nsdev_instance
 
+
 def init():
     from pyrogram import Client
+
     Client.ns = ns
