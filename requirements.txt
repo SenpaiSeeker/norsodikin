@@ -5,4 +5,4 @@ faker
 fake-useragent
 pyyaml
 deep-translator==1.11.4
-git+https://github.com/TelegramPlayground/pyrogram.git
+git@github.com:TelegramPlayground/pyrogram.git
