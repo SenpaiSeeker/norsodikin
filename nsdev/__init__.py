@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-
+from pyrogram import Client
 from .addUser import SSHUserManager
 from .argument import Argument
 from .bing import ImageGenerator
@@ -40,16 +40,9 @@ class NsDev:
 
 
 @property
-def ns(self) -> NsDev:
+def ns(self: "Client") -> NsDev:
     if not hasattr(self, "_nsdev_instance"):
         self._nsdev_instance = NsDev(self)
     return self._nsdev_instance
 
-
-def install():
-    try:
-        from pyrogram import Client
-
-        Client.ns = ns
-    except Exception:
-        pass
+Client.ns = ns
