@@ -44,12 +44,10 @@ def ns(self) -> NsDev:
     if not hasattr(self, "_nsdev_instance"):
         self._nsdev_instance = NsDev(self)
     return self._nsdev_instance
+    
 
-
-def install():
-    try:
-        from pyrogram import Client
-
-        Client.ns = ns
-    except Exception:
-        pass
+try:
+    from pyrogram import Client
+    Client.ns = ns
+except Exception:
+    pass
