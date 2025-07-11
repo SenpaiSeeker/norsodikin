@@ -46,7 +46,6 @@ def ns(self) -> NsDev:
     return self._nsdev_instance
 
 
-@property
 def install():
     try:
         from pyrogram import Client
