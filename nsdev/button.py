@@ -62,19 +62,24 @@ class Button:
                 layout.append([button])
 
         return self.pyrogram.types.InlineKeyboardMarkup(layout), remaining_text
-
+        
     def create_reply_keyboard(self, text):
         layout = []
         buttons, remaining_text = self.parse_buttons_and_text(text, mode="reply")
 
         for label, params in buttons:
-            button = self.pyrogram.types.KeyboardButton(label)
+            if "is_contact" in params:
+                button = self.pyrogram.types.KeyboardButton(label, request_contact=True)
+            else:
+                button = self.pyrogram.types.KeyboardButton(label)
+
             if "same" in params and layout:
                 layout[-1].append(button)
             else:
                 layout.append([button])
 
         return self.pyrogram.types.ReplyKeyboardMarkup(layout, resize_keyboard=True), remaining_text
+
 
     def remove_reply_keyboard(self, selective=False):
         return self.pyrogram.types.ReplyKeyboardRemove(selective=selective)
