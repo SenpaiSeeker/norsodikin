@@ -45,11 +45,12 @@ def ns(self) -> NsDev:
         self._nsdev_instance = NsDev(self)
     return self._nsdev_instance
 
+
 @property
 def install():
     try:
         from pyrogram import Client
-        
+
         Client.ns = ns
     except Exception:
         pass
