@@ -5,10 +5,7 @@ class Button:
         self.pyrogram = __import__("pyrogram")
 
     def get_urls(self, text):
-        return self.re.findall(
-            r"(?:https?://)?(?:www\.)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:[/?]\S+)?|tg://\S+$",
-            text
-        )
+        return self.re.findall(r"(?:https?://)?(?:www\.)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:[/?]\S+)?|tg://\S+$", text)
 
     def parse_buttons_and_text(self, text, mode="inline"):
         if mode == "inline":
