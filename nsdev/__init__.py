@@ -1,6 +1,5 @@
 from types import SimpleNamespace
 
-from pyrogram import Client
 
 from .addUser import SSHUserManager
 from .argument import Argument
@@ -42,10 +41,14 @@ class NsDev:
 
 
 @property
-def ns(self: "Client") -> NsDev:
+def ns(self) -> NsDev:
     if not hasattr(self, "_nsdev_instance"):
         self._nsdev_instance = NsDev(self)
     return self._nsdev_instance
 
 
-Client.ns = ns
+try:
+    from pyrogram import Client
+    Client.ns = ns
+except Exception:
+    pass
