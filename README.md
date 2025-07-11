@@ -396,8 +396,8 @@ if config:
 Jika Anda ingin menggunakan modul ini di luar proyek bot Pyrogram, Anda tetap bisa mengimpornya secara langsung seperti pustaka Python biasa.
 
 ```python
-from norsodikin.nsdev.database import DataBase
-from norsodikin.nsdev.colorize import AnsiColors
+from nsdev import DataBase
+from nsdev import AnsiColors
 
 # ...dan seterusnya
 ```
