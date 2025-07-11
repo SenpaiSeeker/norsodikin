@@ -12,14 +12,14 @@ Selamat datang di `norsodikin`, sebuah koleksi modul Python serbaguna yang diran
 Untuk menginstal pustaka ini, cukup jalankan perintah berikut di terminal Anda:
 
 ```bash
-pip install norsodikin
+pip install norsodikin pyrogram 
 ```
 
 Pastikan juga semua dependensi dari file `requirements.txt` sudah terpasang jika Anda menginstal dari source code.
 
 ## Cara Penggunaan Terintegrasi dengan Pyrogram
 
-Cukup dengan mengimpor `norsodikin` atau `pyrogram`, semua fungsionalitas akan otomatis "melekat" pada objek `client` Pyrogram Anda melalui namespace `ns`.
+Cukup dengan mengimpor `nsdev`, semua fungsionalitas akan otomatis "melekat" pada objek `client` Pyrogram Anda melalui namespace `ns`.
 
 **Struktur Dasar**:
 
