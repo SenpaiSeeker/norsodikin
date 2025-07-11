@@ -7,7 +7,7 @@ class Button:
     def get_urls(self, text):
         return self.re.findall(
             r"(?:https?://)?(?:www\.)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:[/?]\S+)?|tg://\S+$",
-            text,
+            text
         )
 
     def parse_buttons_and_text(self, text, mode="inline"):
@@ -51,6 +51,8 @@ class Button:
 
             if "user" in extra_params:
                 button = self.pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
+            elif "copy" in extra_params:
+                button = self.pyrogram.types.InlineKeyboardButton(label, copy_text=cb_data)
             elif self.get_urls(cb_data):
                 button = self.pyrogram.types.InlineKeyboardButton(label, url=cb_data)
             else:
