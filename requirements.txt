@@ -3,6 +3,6 @@ pymongo
 httpx
 faker
 fake-useragent
-pyyml
+pyyaml
 deep-translator==1.11.4
-git+https://github.com/TelegramPlayground/pyrogram
+git+https://github.com/TelegramPlayground/pyrogram.git
