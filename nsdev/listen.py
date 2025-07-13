@@ -1,48 +1,68 @@
 import asyncio
 from typing import Optional
-
 import pyrogram
-from pyrogram.client import Client
-from pyrogram.filters import Filter
-from pyrogram.handlers import MessageHandler
-from pyrogram.types import Message
-
 
 class ListenerTimeout(Exception):
     pass
 
+class Listener:
+    def __init__(self, client: pyrogram.Client):
+        self.client = client
+        self.handlers = {}
 
-class ListenerCanceled(Exception):
-    pass
+    async def listen(
+        self,
+        chat_id: int,
+        user_id: int = None,
+        filters: "pyrogram.filters.Filter" = None,
+        timeout: int = None
+    ) -> "pyrogram.types.Message":
+        
+        if user_id is None:
+            user_id = chat_id
+            
+        queue = asyncio.Queue(1)
+        
+        combined_filters = pyrogram.filters.chat(chat_id) & pyrogram.filters.user(user_id)
+        if filters:
+            combined_filters &= filters
 
+        async def callback(_, message: pyrogram.types.Message):
+            await queue.put(message)
 
-async def ask(self: Client, chat_id: int, text: str, filters: Optional[Filter] = None, timeout: int = 30) -> Message:
-    future = asyncio.get_running_loop().create_future()
+        handler = pyrogram.handlers.MessageHandler(callback, filters=combined_filters)
+        
+        group = -1
+        self.client.add_handler(handler, group)
+        
+        try:
+            return await asyncio.wait_for(queue.get(), timeout=timeout)
+        except asyncio.TimeoutError:
+            raise ListenerTimeout(f"Batas waktu {timeout} detik terlampaui.")
+        finally:
+            self.client.remove_handler(handler, group)
 
-    async def a_callback(_, message: Message):
-        if not future.done():
-            future.set_result(message)
+    async def ask(
+        self,
+        chat_id: int,
+        text: str,
+        user_id: int = None,
+        filters: "pyrogram.filters.Filter" = None,
+        timeout: int = 30,
+        **kwargs
+    ) -> "pyrogram.types.Message":
 
-    internal_filters = pyrogram.filters.chat(chat_id) & pyrogram.filters.user(chat_id)
-
-    combined_filters = internal_filters
-    if filters:
-        combined_filters = internal_filters & filters
-
-    handler = MessageHandler(a_callback, filters=combined_filters)
-    self.add_handler(handler, group=-1)
-
-    try:
-        request_message = await self.send_message(chat_id, text)
-
-        response_message = await asyncio.wait_for(future, timeout=timeout)
-
+        if user_id is None:
+            user_id = chat_id
+            
+        request_message = await self.client.send_message(chat_id, text, **kwargs)
+        
+        response_message = await self.listen(
+            chat_id=chat_id,
+            user_id=user_id,
+            filters=filters,
+            timeout=timeout
+        )
+        
         setattr(response_message, "request", request_message)
-
-    except asyncio.TimeoutError:
-        raise ListenerTimeout(f"Batas waktu {timeout} detik terlampaui.")
-    finally:
-        self.remove_handler(handler, group=-1)
-
-
-Client.ask = ask
+        return response_message
