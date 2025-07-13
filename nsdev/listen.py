@@ -1,98 +1,84 @@
 import asyncio
-
+from typing import Callable, Optional, Union, Dict, List
 import pyrogram
+from pyrogram.client import Client
+from pyrogram.filters import Filter
+from pyrogram.handlers import MessageHandler
+from pyrogram.types import Message, Chat, User
 
-loop = asyncio.get_event_loop()
 
-
-class UserCancelled(Exception):
+class ListenerTimeout(Exception):
     pass
 
+class ListenerCanceled(Exception):
+    pass
 
-pyrogram.errors.UserCancelled = UserCancelled
+class Conversation:
+    def __init__(
+        self,
+        client: Client,
+        chat_id: int,
+        user_id: int,
+        filters: Optional[Filter],
+        timeout: Optional[int]
+    ):
+        self.client = client
+        self.chat_id = chat_id
+        self.user_id = user_id
+        self.filters = filters
+        self.timeout = timeout
+        self.queue = asyncio.Queue(1)
+        self.handler = None
+        self.task = None
 
-
-def patch(obj):
-    def is_patchable(item):
-        return getattr(item[1], "patchable", False)
-
-    def wrapper(container):
-        for name, func in filter(is_patchable, container.__dict__.items()):
-            old = getattr(obj, name, None)
-            setattr(obj, "old" + name, old)
-            setattr(obj, name, func)
-        return container
-
-    return wrapper
-
-
-def patchable(func):
-    func.patchable = True
-    return func
-
-
-@patch(pyrogram.client.Client)
-class Client:
-    @patchable
-    def __init__(self, *args, **kwargs):
-        self._conversation_cache = {}
-        self.old__init__(*args, **kwargs)
-
-    @patchable
-    async def _listen(self, chat_id, timeout=None):
-        future = loop.create_future()
-        self._conversation_cache[chat_id] = future
-
+    async def start(self):
+        self.handler = MessageHandler(self._on_message, self.filters)
+        self.client.add_handler(self.handler, group=-1)
+        
         try:
-            return await asyncio.wait_for(future, timeout)
+            return await asyncio.wait_for(self.queue.get(), timeout=self.timeout)
         except asyncio.TimeoutError:
-            raise
+            raise ListenerTimeout(f"Batas waktu {self.timeout} detik terlampaui.")
         finally:
-            self._conversation_cache.pop(chat_id, None)
+            self.stop()
 
-    @patchable
-    async def _ask(self, chat_id, text, timeout=None, *args, **kwargs):
-        await self.send_message(chat_id, text, *args, **kwargs)
-        return await self._listen(chat_id, timeout)
-
-    @patchable
-    async def _resolve(self, client, message):
-        chat_id = message.chat.id
-        future = self._conversation_cache.get(chat_id)
-
-        if future and not future.done():
-            future.set_result(message)
-
-    @patchable
-    async def on_message(self, _, message):
-        await self._resolve(self, message)
+    def stop(self):
+        if self.handler:
+            self.client.remove_handler(self.handler, group=-1)
+            self.handler = None
+    
+    async def _on_message(self, _, message: Message):
+        if message.chat.id == self.chat_id and message.from_user.id == self.user_id:
+            await self.queue.put(message)
 
 
-@patch(pyrogram.handlers.MessageHandler)
-class MessageHandler:
-    @patchable
-    def __init__(self, callback, filters=None):
-        self.old__init__(callback, filters)
+async def ask(
+    self: Client,
+    chat_id: int,
+    text: str,
+    filters: Optional[Filter] = None,
+    timeout: int = 30,
+    user_id: Optional[int] = None,
+    *args,
+    **kwargs
+) -> Message:
+    if user_id is None:
+        user_id = chat_id
 
-    @patchable
-    async def check(self, client, update):
-        chat_id = update.chat.id
-        future = client._conversation_cache.get(chat_id)
+    conversation = Conversation(
+        client=self,
+        chat_id=chat_id,
+        user_id=user_id,
+        filters=filters,
+        timeout=timeout
+    )
+    
+    request_message = await self.send_message(chat_id, text, *args, **kwargs)
+    response_message = await conversation.start()
+    
+    # Menambahkan pesan pertanyaan ke dalam pesan jawaban.
+    setattr(response_message, "request", request_message)
+    
+    return response_message
 
-        if future and not future.done():
-            return True
-        return await self.filters(client, update) if callable(self.filters) else True
-
-
-@patch(pyrogram.types.Chat)
-class Chat:
-    @patchable
-    def ask(self, *args, **kwargs):
-        return self._client._ask(self.id, *args, **kwargs)
-
-
-@patch(pyrogram.types.User)
-class User:
-    @patchable
-    def ask(self, *args, **kwargs):
-        return self._client._ask(self.id, *args, **kwargs)
+Client.ask = ask
