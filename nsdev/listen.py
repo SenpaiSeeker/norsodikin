@@ -1,29 +1,35 @@
 import asyncio
-import functools
+
 import pyrogram
+
 
 class UserCancelled(Exception):
     pass
+
 
 pyrogram.errors.UserCancelled = UserCancelled
 
 loop = asyncio.get_event_loop()
 
+
 def patch(obj):
     def is_patchable(item):
-        return getattr(item[1], 'patchable', False)
+        return getattr(item[1], "patchable", False)
 
     def wrapper(container):
         for name, func in filter(is_patchable, container.__dict__.items()):
             old = getattr(obj, name, None)
-            setattr(obj, 'old_' + name, old)
+            setattr(obj, "old_" + name, old)
             setattr(obj, name, func)
         return container
+
     return wrapper
+
 
 def patchable(func):
     func.patchable = True
     return func
+
 
 @patch(pyrogram.Client)
 class Client:
@@ -57,6 +63,7 @@ class Client:
             future.set_exception(UserCancelled())
             self._conversations.pop(chat_id, None)
 
+
 @patch(pyrogram.handlers.MessageHandler)
 class MessageHandler:
     @patchable
@@ -71,6 +78,7 @@ class MessageHandler:
             future.set_result(message)
         else:
             await self._user_callback(client, message, *args)
+
 
 @patch(pyrogram.types.Chat)
 class Chat:
