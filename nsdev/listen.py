@@ -1,5 +1,6 @@
 import asyncio
 import functools
+
 import pyrogram
 
 loop = asyncio.get_event_loop()
@@ -15,6 +16,7 @@ def patch(obj):
             setattr(obj, "old" + name, old)
             setattr(obj, name, func)
         return container
+
     return wrapper
 
 
