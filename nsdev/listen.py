@@ -1,26 +1,30 @@
 import asyncio
-import functools
+
 import pyrogram
 
-
 loop = asyncio.get_event_loop()
+
 
 class UserCancelled(Exception):
     pass
 
+
 pyrogram.errors.UserCancelled = UserCancelled
+
 
 def patch(obj):
     def is_patchable(item):
-        return getattr(item[1], 'patchable', False)
+        return getattr(item[1], "patchable", False)
 
     def wrapper(container):
         for name, func in filter(is_patchable, container.__dict__.items()):
             old = getattr(obj, name, None)
-            setattr(obj, 'old'+name, old)
+            setattr(obj, "old" + name, old)
             setattr(obj, name, func)
         return container
+
     return wrapper
+
 
 def patchable(func):
     func.patchable = True
@@ -28,7 +32,7 @@ def patchable(func):
 
 
 @patch(pyrogram.client.Client)
-class Client():
+class Client:
     @patchable
     def __init__(self, *args, **kwargs):
         self._conversation_cache = {}
@@ -63,8 +67,9 @@ class Client():
     async def on_message(self, _, message):
         await self._resolve(self, message)
 
+
 @patch(pyrogram.handlers.MessageHandler)
-class MessageHandler():
+class MessageHandler:
     @patchable
     def __init__(self, callback, filters=None):
         self.old__init__(callback, filters)
@@ -78,14 +83,16 @@ class MessageHandler():
             return True
         return await self.filters(client, update) if callable(self.filters) else True
 
+
 @patch(pyrogram.types.Chat)
-class Chat():
+class Chat:
     @patchable
     def ask(self, *args, **kwargs):
         return self._client._ask(self.id, *args, **kwargs)
 
+
 @patch(pyrogram.types.User)
-class User():
+class User:
     @patchable
     def ask(self, *args, **kwargs):
         return self._client._ask(self.id, *args, **kwargs)
