@@ -38,7 +38,11 @@ class Client:
     def __init__(self, *args, **kwargs):
         self._conversations = {}
         self.old__init__(*args, **kwargs)
-        self.add_handler(pyrogram.handlers.MessageHandler(lambda c, m: None), group=-1)
+
+        async def _nsdev(client, message):
+            pass
+
+        self.add_handler(pyrogram.handlers.MessageHandler(_nsdev), group=-1)
 
     @patchable
     async def listen(self, chat_id, timeout=None):
