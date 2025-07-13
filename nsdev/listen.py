@@ -1,6 +1,5 @@
 import asyncio
 import functools
-
 import pyrogram
 
 loop = asyncio.get_event_loop()
@@ -8,12 +7,12 @@ loop = asyncio.get_event_loop()
 
 def patch(obj):
     def is_patchable(item):
-        return getattr(item[1], "patchable", False)
+        return getattr(item[1], 'patchable', False)
 
     def wrapper(container):
         for name, func in filter(is_patchable, container.__dict__.items()):
             old = getattr(obj, name, None)
-            setattr(obj, "old" + name, old)
+            setattr(obj, 'old' + name, old)
             setattr(obj, name, func)
         return container
 
@@ -40,7 +39,7 @@ class Client:
         self.old__init__(*args, **kwargs)
 
     @patchable
-    async def listen(self, chat_id, timeout=None):
+    async def listen(self, chat_id, timeout=60):
         if not isinstance(chat_id, int):
             chat = await self.get_chat(chat_id)
             chat_id = chat.id
@@ -54,6 +53,13 @@ class Client:
         except asyncio.TimeoutError:
             self.cancel(chat_id)
             raise asyncio.TimeoutError()
+
+    @patchable
+    async def ask(self, chat_id, text, timeout=None, **kwargs):
+        request = await self.send_message(chat_id, text, **kwargs)
+        response = await self.listen(chat_id, timeout)
+        response.request = request
+        return response
 
     @patchable
     def _clear(self, chat_id, fut):
@@ -95,8 +101,11 @@ class Chat:
         return self._client.cancel(self.id)
 
     @patchable
-    def ask(self, *args, **kwargs):
-        return self.listen(*args, **kwargs)
+    async def ask(self, text, timeout=None, **kwargs):
+        request = await self._client.send_message(self.id, text, **kwargs)
+        response = await self.listen(timeout=timeout)
+        response.request = request
+        return response
 
 
 @patch(pyrogram.types.User)
@@ -110,5 +119,8 @@ class User:
         return self._client.cancel(self.id)
 
     @patchable
-    def ask(self, *args, **kwargs):
-        return self.listen(*args, **kwargs)
+    async def ask(self, text, timeout=None, **kwargs):
+        request = await self._client.send_message(self.id, text, **kwargs)
+        response = await self.listen(timeout=timeout)
+        response.request = request
+        return response
