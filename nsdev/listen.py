@@ -1,61 +1,87 @@
 import asyncio
-
+import functools
 import pyrogram
 
-
-class ListenerTimeout(Exception):
+class UserCancelled(Exception):
     pass
 
+pyrogram.errors.UserCancelled = UserCancelled
 
-class Listener:
-    def __init__(self, client: pyrogram.Client):
-        self.client = client
-        self.handlers = {}
+loop = asyncio.get_event_loop()
 
-    async def listen(
-        self, chat_id: int, user_id: int = None, filters: "pyrogram.filters.Filter" = None, timeout: int = None
-    ) -> "pyrogram.types.Message":
+def patch(obj):
+    def is_patchable(item):
+        return getattr(item[1], 'patchable', False)
 
-        if user_id is None:
-            user_id = chat_id
+    def wrapper(container):
+        for name, func in filter(is_patchable, container.__dict__.items()):
+            old = getattr(obj, name, None)
+            setattr(obj, 'old_' + name, old)
+            setattr(obj, name, func)
+        return container
+    return wrapper
 
-        queue = asyncio.Queue(1)
+def patchable(func):
+    func.patchable = True
+    return func
 
-        combined_filters = pyrogram.filters.chat(chat_id) & pyrogram.filters.user(user_id)
-        if filters:
-            combined_filters &= filters
+@patch(pyrogram.Client)
+class Client:
+    @patchable
+    def __init__(self, *args, **kwargs):
+        self._conversations = {}
+        self.old___init__(*args, **kwargs)
 
-        async def callback(_, message: pyrogram.types.Message):
-            await queue.put(message)
-
-        handler = pyrogram.handlers.MessageHandler(callback, filters=combined_filters)
-
-        group = -1
-        self.client.add_handler(handler, group)
-
+    @patchable
+    async def listen(self, chat_id: int, timeout: int = 600):
+        future = loop.create_future()
+        self._conversations[chat_id] = future
         try:
-            return await asyncio.wait_for(queue.get(), timeout=timeout)
+            return await asyncio.wait_for(future, timeout)
         except asyncio.TimeoutError:
-            raise ListenerTimeout(f"Batas waktu {timeout} detik terlampaui.")
+            raise
         finally:
-            self.client.remove_handler(handler, group)
+            self._conversations.pop(chat_id, None)
 
-    async def ask(
-        self,
-        chat_id: int,
-        text: str,
-        user_id: int = None,
-        filters: "pyrogram.filters.Filter" = None,
-        timeout: int = 30,
-        **kwargs,
-    ) -> "pyrogram.types.Message":
+    @patchable
+    async def ask(self, chat_id: int, text: str, timeout: int = 600, *args, **kwargs):
+        request = await self.send_message(chat_id, text, *args, **kwargs)
+        response = await self.listen(chat_id, timeout)
+        response.request = request
+        return response
 
-        if user_id is None:
-            user_id = chat_id
+    @patchable
+    def cancel_listener(self, chat_id: int):
+        future = self._conversations.get(chat_id)
+        if future and not future.done():
+            future.set_exception(UserCancelled())
+            self._conversations.pop(chat_id, None)
 
-        request_message = await self.client.send_message(chat_id, text, **kwargs)
+@patch(pyrogram.handlers.MessageHandler)
+class MessageHandler:
+    @patchable
+    def __init__(self, callback, filters=None):
+        self._user_callback = callback
+        self.old___init__(self._resolve_conversation, filters)
 
-        response_message = await self.listen(chat_id=chat_id, user_id=user_id, filters=filters, timeout=timeout)
+    @patchable
+    async def _resolve_conversation(self, client, message, *args):
+        future = getattr(client, "_conversations", {}).get(message.chat.id)
+        if future and not future.done():
+            future.set_result(message)
+        else:
+            await self._user_callback(client, message, *args)
 
-        setattr(response_message, "request", request_message)
-        return response_message
+@patch(pyrogram.types.Chat)
+class Chat:
+    @patchable
+    def ask(self, *args, **kwargs):
+        return self._client.ask(self.id, *args, **kwargs)
+
+    @patchable
+    def listen(self, *args, **kwargs):
+        return self._client.listen(self.id, *args, **kwargs)
+
+    @patchable
+    def cancel_listener(self):
+        return self._client.cancel_listener(self.id)
