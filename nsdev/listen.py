@@ -1,95 +1,91 @@
 import asyncio
-
+import functools
 import pyrogram
 
 
-class ListenerCanceled(Exception):
-    pass
-
-
-pyrogram.errors.ListenerCanceled = ListenerCanceled
-
 loop = asyncio.get_event_loop()
 
+class UserCancelled(Exception):
+    pass
+
+pyrogram.errors.UserCancelled = UserCancelled
+
+def patch(obj):
+    def is_patchable(item):
+        return getattr(item[1], 'patchable', False)
+
+    def wrapper(container):
+        for name, func in filter(is_patchable, container.__dict__.items()):
+            old = getattr(obj, name, None)
+            setattr(obj, 'old'+name, old)
+            setattr(obj, name, func)
+        return container
+    return wrapper
 
 def patchable(func):
-    func._patchable = True
+    func.patchable = True
     return func
 
 
-def patch(target):
-    def wrapper(container):
-        for name, func in container.__dict__.items():
-            if getattr(func, "_patchable", False):
-                setattr(target, name, func)
-        return container
-
-    return wrapper
-
-
 @patch(pyrogram.client.Client)
-class ClientPatch:
+class Client():
     @patchable
-    async def listen(self, chat_id: int, filters=None, timeout: float = None):
-        if not isinstance(chat_id, int):
-            chat = await self.get_chat(chat_id)
-            chat_id = chat.id
+    def __init__(self, *args, **kwargs):
+        self._conversation_cache = {}
+        self.old__init__(*args, **kwargs)
 
+    @patchable
+    async def _listen(self, chat_id, timeout=None):
         future = loop.create_future()
-        future.add_done_callback(lambda f: self._clear_listener(chat_id))
-        self._listeners.setdefault(chat_id, []).append((future, filters))
+        self._conversation_cache[chat_id] = future
 
         try:
             return await asyncio.wait_for(future, timeout)
         except asyncio.TimeoutError:
-            future.cancel()
-            raise ListenerCanceled()
+            raise
+        finally:
+            self._conversation_cache.pop(chat_id, None)
 
     @patchable
-    async def ask(self, chat_id: int, text: str, filters=None, timeout: float = None, **kwargs):
-        request = await self.send_message(chat_id, text, **kwargs)
-        response = await self.listen(chat_id, filters, timeout)
-        response.request = request
-        return response
+    async def _ask(self, chat_id, text, timeout=None, *args, **kwargs):
+        await self.send_message(chat_id, text, *args, **kwargs)
+        return await self._listen(chat_id, timeout)
 
     @patchable
-    def _clear_listener(self, chat_id: int):
-        self._listeners.pop(chat_id, None)
-
-    @patchable
-    def _dispatch_update(self, update):
-        message = update
+    async def _resolve(self, client, message):
         chat_id = message.chat.id
-        listeners = self._listeners.get(chat_id, [])
-        for future, filters in list(listeners):
-            if future.done():
-                continue
-            try:
-                ok = filters(self, message) if callable(filters) else True
-            except Exception:
-                ok = True
-            if ok:
-                future.set_result(message)
-                return
-        return self.old__dispatch_update(update)
+        future = self._conversation_cache.get(chat_id)
 
+        if future and not future.done():
+            future.set_result(message)
 
-@patch(pyrogram.client.Client)
-class InitPatch:
     @patchable
-    def __init__(self, *args, **kwargs):
-        self._listeners = {}
-        self.old__init__(*args, **kwargs)
+    async def on_message(self, _, message):
+        await self._resolve(self, message)
 
+@patch(pyrogram.handlers.MessageHandler)
+class MessageHandler():
+    @patchable
+    def __init__(self, callback, filters=None):
+        self.old__init__(callback, filters)
 
-for _cls in (pyrogram.types.Chat, pyrogram.types.User):
+    @patchable
+    async def check(self, client, update):
+        chat_id = update.chat.id
+        future = client._conversation_cache.get(chat_id)
 
-    def _make(method_name):
-        async def method(self, *args, **kwargs):
-            return await getattr(self._client, method_name)(self.id, *args, **kwargs)
+        if future and not future.done():
+            return True
+        return await self.filters(client, update) if callable(self.filters) else True
 
-        return method
+@patch(pyrogram.types.Chat)
+class Chat():
+    @patchable
+    def ask(self, *args, **kwargs):
+        return self._client._ask(self.id, *args, **kwargs)
 
-    setattr(_cls, "tanya", _make("ask"))
-    setattr(_cls, "listen", _make("listen"))
-    setattr(_cls, "cancel_listener", lambda self: self._client._clear_listener(self.id))
+@patch(pyrogram.types.User)
+class User():
+    @patchable
+    def ask(self, *args, **kwargs):
+        return self._client._ask(self.id, *args, **kwargs)
