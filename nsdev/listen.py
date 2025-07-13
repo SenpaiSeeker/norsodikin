@@ -1,6 +1,5 @@
 import asyncio
 import functools
-
 import pyrogram
 
 loop = asyncio.get_event_loop()
@@ -16,7 +15,6 @@ def patch(obj):
             setattr(obj, "old" + name, old)
             setattr(obj, name, func)
         return container
-
     return wrapper
 
 
@@ -39,11 +37,6 @@ class Client:
         self._conversations = {}
         self.old__init__(*args, **kwargs)
 
-        async def _nsdev(client, message):
-            pass
-
-        self.add_handler(pyrogram.handlers.MessageHandler(_nsdev), group=-1)
-
     @patchable
     async def listen(self, chat_id, timeout=None):
         if not isinstance(chat_id, int):
@@ -58,7 +51,7 @@ class Client:
             return await asyncio.wait_for(future, timeout)
         except asyncio.TimeoutError:
             self.cancel(chat_id)
-            raise asyncio.TimeoutError()
+            raise
 
     @patchable
     async def ask(self, chat_id, text, timeout=None, **kwargs):
@@ -68,8 +61,8 @@ class Client:
         return response
 
     @patchable
-    def _clear(self, chat_id, fut):
-        if chat_id in self._conversations and self._conversations[chat_id] == fut:
+    def _clear(self, chat_id, future):
+        if chat_id in self._conversations and self._conversations[chat_id] is future:
             del self._conversations[chat_id]
 
     @patchable
@@ -94,6 +87,13 @@ class MessageHandler:
             future.set_result(message)
         else:
             await self._user_callback(client, message, *args)
+
+    @patchable
+    async def check(self, client, update):
+        future = client._conversations.get(update.chat.id)
+        if future and not future.done():
+            return True
+        return await self.filters(client, update) if callable(self.filters) else True
 
 
 @patch(pyrogram.types.Chat)
