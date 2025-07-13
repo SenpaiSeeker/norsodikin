@@ -1,5 +1,5 @@
 import asyncio
-import functools
+
 import pyrogram
 
 
@@ -13,6 +13,7 @@ def patch(cls):
                     setattr(subcls, f"old_{name}", old)
                 setattr(cls, name, method)
         return subcls
+
     return wrapper
 
 
@@ -23,8 +24,10 @@ def patchable(func):
 
 loop = asyncio.get_event_loop()
 
+
 class AskCancelled(Exception):
     pass
+
 
 @patch(pyrogram.client.Client)
 class Client:
@@ -61,7 +64,7 @@ class Client:
         listener = self._listeners.get(chat_id)
         if not listener:
             return
-        future = listener['future']
+        future = listener["future"]
         if not future.done():
             future.set_exception(AskCancelled("Listener cancelled"))
         self._listeners.pop(chat_id, None)
