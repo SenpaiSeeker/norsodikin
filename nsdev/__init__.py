@@ -14,7 +14,7 @@ from .payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
 from .storekey import KeyManager
 from .ymlreder import YamlHandler
 
-__version__ = "0.8.9.3"
+__version__ = "0.8.9.4"
 __author__ = "@NorSodikin"
 
 
