@@ -3,17 +3,24 @@ class CipherHandler:
         try:
             self.log = __import__("nsdev").logger.LoggerHandler()
         except (ImportError, AttributeError):
+
             class DummyLogger:
-                def info(self, msg): pass
-                def warning(self, msg): pass
-                def error(self, msg): pass
+                def info(self, msg):
+                    pass
+
+                def warning(self, msg):
+                    pass
+
+                def error(self, msg):
+                    pass
+
             self.log = DummyLogger()
-            
+
         self.method = options.get("method", "shift")
         self.key = self._normalize_key(options.get("key", "my_s3cr3t_k3y_@2024!"))
         self.numeric_key = self._get_numeric_key()
         self.delimiter = options.get("delimiter", "|")
-        
+
         if not self.key:
             raise ValueError("Key cannot be empty.")
 
@@ -60,16 +67,14 @@ class CipherHandler:
         if not encrypted_bits or len(encrypted_bits) % 8 != 0:
             raise ValueError("Data biner yang dienkripsi tidak valid atau kosong.")
         xor_key = self.numeric_key % 256
-        decrypted_chars = [
-            chr(int(encrypted_bits[i : i + 8], 2) ^ xor_key) for i in range(0, len(encrypted_bits), 8)
-        ]
+        decrypted_chars = [chr(int(encrypted_bits[i : i + 8], 2) ^ xor_key) for i in range(0, len(encrypted_bits), 8)]
         return "".join(decrypted_chars)
 
     def decrypt_bytes(self, encrypted_data: str) -> str:
         try:
             padding_needed = (4 - len(encrypted_data) % 4) % 4
-            padded_data = encrypted_data + '=' * padding_needed
-            
+            padded_data = encrypted_data + "=" * padding_needed
+
             decoded_b64 = __import__("base64").b64decode(padded_data).decode("utf-8")
             codes = list(map(int, decoded_b64.split(self.delimiter)))
             return "".join(chr(code - self._offset(i)) for i, code in enumerate(codes))
@@ -103,7 +108,7 @@ class CipherHandler:
             encrypted_values = [str(ord(char) + self._offset(i)) for i, char in enumerate(message)]
             joined_string = self.delimiter.join(encrypted_values)
             encoded_b64 = __import__("base64").b64encode(joined_string.encode("utf-8")).decode("utf-8")
-            return encoded_b64.rstrip('=')
+            return encoded_b64.rstrip("=")
         except Exception as e:
             raise Exception(f"Encryption failed for 'bytes' method: {e}")
 
@@ -122,6 +127,7 @@ class CipherHandler:
             self.log.info(f"Kode berhasil disimpan ke file {filename}")
         except Exception as e:
             raise IOError(f"Saving file failed: {e}")
+
 
 class AsciiManager(__import__("nsdev").AnsiColors):
     def __init__(self, key):
