@@ -224,7 +224,7 @@ Butuh cara cepat untuk menyamarkan data? Gunakan `client.ns.encrypt` yang menyed
 ```python
 # Inisialisasi dengan metode 'bytes' dan sebuah kunci (angka)
 # Akses kelas CipherHandler melalui namespace `encrypt`
-cipher = client.ns.encrypt.CipherHandler(method="bytes", key=123456789)
+cipher = client.ns.code.Cipher(method="bytes", key=123456789)
 
 # Teks asli
 pesan_rahasia = "Ini adalah pesan yang sangat rahasia."
