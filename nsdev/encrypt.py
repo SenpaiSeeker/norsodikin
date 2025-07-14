@@ -1,20 +1,6 @@
 class CipherHandler:
     def __init__(self, **options):
-        try:
-            self.log = __import__("nsdev").logger.LoggerHandler()
-        except (ImportError, AttributeError):
-
-            class DummyLogger:
-                def info(self, msg):
-                    pass
-
-                def warning(self, msg):
-                    pass
-
-                def error(self, msg):
-                    pass
-
-            self.log = DummyLogger()
+        self.log = __import__("nsdev").logger.LoggerHandler()
 
         self.method = options.get("method", "shift")
         self.key = self._normalize_key(options.get("key", "my_s3cr3t_k3y_@2024!"))
