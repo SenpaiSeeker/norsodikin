@@ -52,7 +52,7 @@ class DataBase:
         if self.auto_backup and self.storage_type in ["local", "sqlite"]:
             if not self.backup_bot_token or not self.backup_chat_id:
                 self.cipher.log.print(
-                    f"{self.cipher.log.YELLOW}[Backup] {self.cipher.log.CYAN}Auto backup diaktifkan tapi 'backup_bot_token' atau 'backup_chat_id' tidak disetel. Backup dinonaktifkan."
+                    f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.YELLOW}Auto backup diaktifkan tapi 'backup_bot_token' atau 'backup_chat_id' tidak disetel. Backup dinonaktifkan."
                 )
             else:
                 self._start_backup_thread()
@@ -63,25 +63,25 @@ class DataBase:
             backup_thread = self.threading.Thread(target=self._backup_looper, daemon=True)
             backup_thread.start()
             self.cipher.log.print(
-                f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}otomatis ke Telegram telah dimulai."
+                f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.CYAN}otomatis ke Telegram telah dimulai."
             )
         except Exception as e:
-            self.cipher.log.print(f"{self.cipher.log.RED}[Backup] Gagal memulai thread backup: {e}")
+            self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.RED}Gagal memulai thread backup: {e}")
 
     def _backup_looper(self):
         self.time = __import__("time")
         interval_seconds = self.backup_interval_hours * 3600
         self.cipher.log.print(
-            f"{self.cipher.log.BLUE}[Backup] {self.cipher.log.CYAN}akan dijalankan dalam {self.backup_interval_hours} jam."
+            f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.CYAN}akan dijalankan dalam {self.backup_interval_hours} jam."
         )
 
         while True:
             self.time.sleep(interval_seconds)
             try:
-                self.cipher.log.print(f"{self.cipher.log.BLUE}[Backup] {self.cipher.log.CYAN}Memulai proses backup...")
+                self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.CYAN}Memulai proses backup...")
                 self._perform_backup()
             except Exception as e:
-                self.cipher.log.print(f"{self.cipher.log.RED}[Backup] Terjadi error pada loop backup: {e}")
+                self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.RED}Terjadi error pada loop backup: {e}")
 
     def _perform_backup(self):
         source_path = None
@@ -92,7 +92,7 @@ class DataBase:
 
         if not source_path or not self.os.path.exists(source_path):
             self.cipher.log.print(
-                f"{self.cipher.log.YELLOW}[Backup] {self.cipher.log.CYAN}File database '{source_path}' tidak ditemukan. Backup dilewati."
+                f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.YELLOW}File database '{source_path}' tidak ditemukan. Backup dilewati."
             )
             return
 
@@ -108,7 +108,7 @@ class DataBase:
                 zf.write(source_path, self.os.path.basename(source_path))
 
             self.cipher.log.print(
-                f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}File '{zip_path}' berhasil dibuat."
+                f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.CYAN}File '{zip_path}' berhasil dibuat."
             )
 
             caption = (
@@ -120,12 +120,12 @@ class DataBase:
             self._send_zip_to_telegram(zip_path, caption)
 
         except Exception as e:
-            self.cipher.log.print(f"{self.cipher.log.RED}[Backup] Proses backup gagal: {e}")
+            self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.RED}Proses backup gagal: {e}")
         finally:
             if zip_path and self.os.path.exists(zip_path):
                 self.os.remove(zip_path)
                 self.cipher.log.print(
-                    f"{self.cipher.log.BLUE}[Backup] {self.cipher.log.CYAN}File zip sementara '{zip_path}' telah dihapus."
+                    f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.CYAN}File '{zip_path}' telah dihapus."
                 )
 
     def _send_zip_to_telegram(self, file_path, caption):
@@ -141,14 +141,14 @@ class DataBase:
             response_data = response.json()
             if response.status_code == 200 and response_data.get("ok"):
                 self.cipher.log.print(
-                    f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}berhasil dikirim ke Telegram."
+                    f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.CYAN}berhasil dikirim ke Telegram."
                 )
             else:
                 error_desc = response_data.get("description", "Unknown error")
-                self.cipher.log.print(f"{self.cipher.log.RED}[Backup] Gagal mengirim ke Telegram: {error_desc}")
+                self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.RED}Gagal mengirim ke Telegram: {error_desc}")
 
         except Exception as e:
-            self.cipher.log.print(f"{self.cipher.log.RED}[Backup] Gagal mengirim file ke Telegram: {e}")
+            self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] Gagal mengirim file ke Telegram: {e}")
 
     def _initialize_files(self):
         if not self.os.path.exists(self.data_file):
