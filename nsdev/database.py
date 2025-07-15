@@ -48,7 +48,7 @@ class DataBase:
         else:
             self.data_file = f"{self.file_name}.json"
             self._initialize_files()
-        
+
         if self.auto_backup and self.storage_type in ["local", "sqlite"]:
             if not self.backup_bot_token or not self.backup_chat_id:
                 self.cipher.log.print(
@@ -56,21 +56,25 @@ class DataBase:
                 )
             else:
                 self._start_backup_thread()
-    
+
     def _start_backup_thread(self):
         try:
             self.threading = __import__("threading")
             backup_thread = self.threading.Thread(target=self._backup_looper, daemon=True)
             backup_thread.start()
-            self.cipher.log.print(f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}Layanan backup otomatis ke Telegram telah dimulai.")
+            self.cipher.log.print(
+                f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}Layanan backup otomatis ke Telegram telah dimulai."
+            )
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.RED}[Backup] Gagal memulai thread backup: {e}")
 
     def _backup_looper(self):
         self.time = __import__("time")
         interval_seconds = self.backup_interval_hours * 3600
-        self.cipher.log.print(f"{self.cipher.log.BLUE}[Backup] {self.cipher.log.CYAN}Backup pertama akan dijalankan dalam {self.backup_interval_hours} jam.")
-        
+        self.cipher.log.print(
+            f"{self.cipher.log.BLUE}[Backup] {self.cipher.log.CYAN}Backup pertama akan dijalankan dalam {self.backup_interval_hours} jam."
+        )
+
         while True:
             self.time.sleep(interval_seconds)
             try:
@@ -85,52 +89,62 @@ class DataBase:
             source_path = self.data_file
         elif self.storage_type == "sqlite":
             source_path = self.db_file
-        
+
         if not source_path or not self.os.path.exists(source_path):
-            self.cipher.log.print(f"{self.cipher.log.YELLOW}[Backup] {self.cipher.log.CYAN}File database '{source_path}' tidak ditemukan. Backup dilewati.")
+            self.cipher.log.print(
+                f"{self.cipher.log.YELLOW}[Backup] {self.cipher.log.CYAN}File database '{source_path}' tidak ditemukan. Backup dilewati."
+            )
             return
 
         zip_path = None
         try:
             self.zipfile = __import__("zipfile")
-            
+
             timestamp = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d_%H-%M-%S")
             zip_filename = f"{self.file_name}_backup_{timestamp}.zip"
             zip_path = zip_filename
-            
-            with self.zipfile.ZipFile(zip_path, 'w', self.zipfile.ZIP_DEFLATED) as zf:
+
+            with self.zipfile.ZipFile(zip_path, "w", self.zipfile.ZIP_DEFLATED) as zf:
                 zf.write(source_path, self.os.path.basename(source_path))
-            
-            self.cipher.log.print(f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}File '{zip_path}' berhasil dibuat.")
-            
-            caption = f"Backup otomatis untuk `{self.file_name}`\n" \
-                      f"Tipe: `{self.storage_type}`\n" \
-                      f"Waktu: `{timestamp} WIB`"
-                      
+
+            self.cipher.log.print(
+                f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}File '{zip_path}' berhasil dibuat."
+            )
+
+            caption = (
+                f"Backup otomatis untuk `{self.file_name}`\n"
+                f"Tipe: `{self.storage_type}`\n"
+                f"Waktu: `{timestamp} WIB`"
+            )
+
             self._send_zip_to_telegram(zip_path, caption)
-            
+
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.RED}[Backup] Proses backup gagal: {e}")
         finally:
             if zip_path and self.os.path.exists(zip_path):
                 self.os.remove(zip_path)
-                self.cipher.log.print(f"{self.cipher.log.BLUE}[Backup] {self.cipher.log.CYAN}File zip sementara '{zip_path}' telah dihapus.")
-                
+                self.cipher.log.print(
+                    f"{self.cipher.log.BLUE}[Backup] {self.cipher.log.CYAN}File zip sementara '{zip_path}' telah dihapus."
+                )
+
     def _send_zip_to_telegram(self, file_path, caption):
         try:
             self.requests = __import__("requests")
             url = f"https://api.telegram.org/bot{self.backup_bot_token}/sendDocument"
-            
-            with open(file_path, 'rb') as doc:
-                files = {'document': doc}
-                params = {'chat_id': self.backup_chat_id, 'caption': caption, 'parse_mode': 'Markdown'}
+
+            with open(file_path, "rb") as doc:
+                files = {"document": doc}
+                params = {"chat_id": self.backup_chat_id, "caption": caption, "parse_mode": "Markdown"}
                 response = self.requests.post(url, params=params, files=files, timeout=60)
-            
+
             response_data = response.json()
             if response.status_code == 200 and response_data.get("ok"):
-                self.cipher.log.print(f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}Backup berhasil dikirim ke Telegram.")
+                self.cipher.log.print(
+                    f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}Backup berhasil dikirim ke Telegram."
+                )
             else:
-                error_desc = response_data.get('description', 'Unknown error')
+                error_desc = response_data.get("description", "Unknown error")
                 self.cipher.log.print(f"{self.cipher.log.RED}[Backup] Gagal mengirim ke Telegram: {error_desc}")
 
         except Exception as e:
@@ -209,7 +223,7 @@ class DataBase:
             )
 
     def close(self):
-        if self.storage_type == "sqlite" and hasattr(self, 'conn') and self.conn:
+        if self.storage_type == "sqlite" and hasattr(self, "conn") and self.conn:
             try:
                 self.conn.commit()
                 self.conn.close()
@@ -226,7 +240,6 @@ class DataBase:
         if row and row[0]:
             return self.json.loads(row[0])
         return {"vars": {str(user_id): {}}}
-
 
     def _sqlite_set_vars(self, user_id, data):
         try:
@@ -338,7 +351,7 @@ class DataBase:
             encrypted_value = data.get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name)
         else:
             encrypted_value = self._load_data().get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name)
-        
+
         return self.cipher.decrypt(encrypted_value) if encrypted_value else None
 
     def removeVars(self, user_id, query_name, var_key="variabel"):
@@ -357,7 +370,7 @@ class DataBase:
             if user_vars and query_name in user_vars:
                 del user_vars[query_name]
                 self._save_data(data)
-    
+
     def setListVars(self, user_id, query_name, value, var_key="variabel"):
         user_id_str = str(user_id)
         encrypted_value = self.cipher.encrypt(str(value))
@@ -388,8 +401,10 @@ class DataBase:
             data = self._sqlite_get_vars(user_id_str)
             encrypted_values = data.get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name, [])
         else:
-            encrypted_values = self._load_data().get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name, [])
-        
+            encrypted_values = (
+                self._load_data().get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name, [])
+            )
+
         return [self.cipher.decrypt(value) for value in encrypted_values]
 
     def removeListVars(self, user_id, query_name, value, var_key="variabel"):
@@ -422,7 +437,7 @@ class DataBase:
         else:
             data = self._load_data()
             if data.get("vars") and data["vars"].get(user_id_str):
-                 data["vars"].pop(user_id_str, None)
+                data["vars"].pop(user_id_str, None)
             self._save_data(data)
 
     def allVars(self, user_id, var_key="variabel"):
@@ -436,7 +451,7 @@ class DataBase:
             encrypted_data = data.get("vars", {}).get(user_id_str, {}).get(var_key, {})
         else:
             encrypted_data = self._load_data().get("vars", {}).get(user_id_str, {}).get(var_key, {})
-        
+
         decrypted = {}
         for key, value in encrypted_data.items():
             if isinstance(value, list):
@@ -445,7 +460,7 @@ class DataBase:
                 decrypted[key] = self.cipher.decrypt(value)
             else:
                 decrypted[key] = value
-        
+
         return self.json.dumps(decrypted, indent=4)
 
     def setExp(self, user_id, exp=30):
@@ -498,7 +513,7 @@ class DataBase:
             "api_hash": self.cipher.encrypt(api_hash),
         }
         if value:
-             encrypted_data[field] = self.cipher.encrypt(value)
+            encrypted_data[field] = self.cipher.encrypt(value)
 
         if self.storage_type == "mongo":
             self._mongo_save_bot(user_id_str, encrypted_data)
@@ -520,18 +535,19 @@ class DataBase:
     def getBots(self, is_token=False):
         field = "bot_token" if is_token else "session_string"
         bots_data = []
-        
+
         if self.storage_type == "mongo":
             raw_bots = self.data.bot.find({field: {"$exists": True}})
         elif self.storage_type == "sqlite":
             rows = self._sqlite_get_bots()
-            raw_bots = [{
-                "user_id": row[0], "api_id": row[1], "api_hash": row[2],
-                "bot_token": row[3], "session_string": row[4]
-            } for row in rows if (row[3] if is_token else row[4])]
+            raw_bots = [
+                {"user_id": row[0], "api_id": row[1], "api_hash": row[2], "bot_token": row[3], "session_string": row[4]}
+                for row in rows
+                if (row[3] if is_token else row[4])
+            ]
         else:
             raw_bots = [bot for bot in self._load_data().get("bots", []) if field in bot]
-        
+
         for bot_data in raw_bots:
             try:
                 decrypted_bot = {
@@ -543,7 +559,7 @@ class DataBase:
                 bots_data.append(decrypted_bot)
             except (ValueError, TypeError):
                 continue
-                
+
         return bots_data
 
     def removeBot(self, user_id):
