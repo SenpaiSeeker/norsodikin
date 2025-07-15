@@ -63,7 +63,7 @@ class DataBase:
             backup_thread = self.threading.Thread(target=self._backup_looper, daemon=True)
             backup_thread.start()
             self.cipher.log.print(
-                f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}Layanan backup otomatis ke Telegram telah dimulai."
+                f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}otomatis ke Telegram telah dimulai."
             )
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.RED}[Backup] Gagal memulai thread backup: {e}")
@@ -72,7 +72,7 @@ class DataBase:
         self.time = __import__("time")
         interval_seconds = self.backup_interval_hours * 3600
         self.cipher.log.print(
-            f"{self.cipher.log.BLUE}[Backup] {self.cipher.log.CYAN}Backup pertama akan dijalankan dalam {self.backup_interval_hours} jam."
+            f"{self.cipher.log.BLUE}[Backup] {self.cipher.log.CYAN}akan dijalankan dalam {self.backup_interval_hours} jam."
         )
 
         while True:
@@ -141,7 +141,7 @@ class DataBase:
             response_data = response.json()
             if response.status_code == 200 and response_data.get("ok"):
                 self.cipher.log.print(
-                    f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}Backup berhasil dikirim ke Telegram."
+                    f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}berhasil dikirim ke Telegram."
                 )
             else:
                 error_desc = response_data.get("description", "Unknown error")
