@@ -463,7 +463,7 @@ class DataBase:
                     decrypted[key] = self.cipher.decrypt(value)
                 else:
                     decrypted[key] = value
-                    
+
             return self.json.dumps(decrypted, indent=4)
 
     def setExp(self, user_id, exp=30):
