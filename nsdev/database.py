@@ -19,7 +19,6 @@ class DataBase:
         self.file_name = options.get("file_name", "database")
         self.binary_keys = options.get("binary_keys", 14151819154911914)
         self.method_encrypt = options.get("method_encrypt", "bytes")
-        self.auto_backup = options.get("auto_backup", False)
 
         self.cipher = __import__("nsdev").encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
 
@@ -56,20 +55,6 @@ class DataBase:
     def _save_data(self, data):
         with open(self.data_file, "w") as f:
             self.json.dump(data, f, indent=4)
-        if self.auto_backup:
-            self._git_commit("Update database")
-
-    def _git_commit(self, message="Update database"):
-        try:
-            self.subprocess.check_output(["git", "config", "--global", "user.name"])
-            self.subprocess.check_output(["git", "config", "--global", "user.email"])
-        except self.subprocess.CalledProcessError:
-            self.subprocess.run(["git", "config", "--global", "user.name", "ɴᴏʀ sᴏᴅɪᴋɪɴ"])
-            self.subprocess.run(["git", "config", "--global", "user.email", "support@norsodikin.ltd"])
-
-        self.subprocess.run(["git", "add", self.data_file])
-        self.subprocess.run(["git", "commit", "-m", message], stderr=self.subprocess.DEVNULL)
-        self.subprocess.run(["git", "push"])
 
     def __del__(self):
         self.close()
