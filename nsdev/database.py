@@ -440,7 +440,7 @@ class DataBase:
                 data["vars"].pop(user_id_str, None)
             self._save_data(data)
 
-    def allVars(self, user_id, var_key="variabel"):
+    def allVars(self, user_id, var_key="variabel", no_decrypt=False):
         user_id_str = str(user_id)
         encrypted_data = {}
         if self.storage_type == "mongo":
@@ -452,16 +452,19 @@ class DataBase:
         else:
             encrypted_data = self._load_data().get("vars", {}).get(user_id_str, {}).get(var_key, {})
 
-        decrypted = {}
-        for key, value in encrypted_data.items():
-            if isinstance(value, list):
-                decrypted[key] = [self.cipher.decrypt(v) for v in value]
-            elif isinstance(value, str):
-                decrypted[key] = self.cipher.decrypt(value)
-            else:
-                decrypted[key] = value
-
-        return self.json.dumps(decrypted, indent=4)
+        if no_decrypt:
+            return self.json.dumps(encrypted_data, indent=4)
+        else:
+            decrypted = {}
+            for key, value in encrypted_data.items():
+                if isinstance(value, list):
+                    decrypted[key] = [self.cipher.decrypt(v) for v in value]
+                elif isinstance(value, str):
+                    decrypted[key] = self.cipher.decrypt(value)
+                else:
+                    decrypted[key] = value
+                    
+            return self.json.dumps(decrypted, indent=4)
 
     def setExp(self, user_id, exp=30):
         user_id_str = str(user_id)
