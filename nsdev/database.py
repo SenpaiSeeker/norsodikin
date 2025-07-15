@@ -4,10 +4,13 @@ class DataBase:
         :param options:
             - storage_type (str): 'local' (default), 'mongo', atau 'sqlite'.
             - file_name (str): Nama file untuk database lokal/SQLite (default: 'database').
-            - binary_keys (int): Kunci enkripsi untuk CipherHandler (default: 14151819154911914).
+            - binary_keys (str | int): Kunci enkripsi untuk CipherHandler.
             - method_encrypt (str): Metode enkripsi untuk CipherHandler (default: 'bytes').
             - mongo_url (str): URL MongoDB (wajib jika storage_type='mongo').
-            - auto_backup (bool): Otomatis commit file database jika (storage_type='local')
+            - auto_backup (bool): Mengaktifkan backup otomatis ke Telegram (default: False).
+            - backup_bot_token (str): Token Bot Telegram untuk mengirim backup.
+            - backup_chat_id (str|int): Chat ID tujuan untuk backup Telegram.
+            - backup_interval_hours (int): Interval backup dalam jam (default: 24).
         """
         self.os = __import__("os")
         self.stat = __import__("stat")
@@ -15,12 +18,18 @@ class DataBase:
         self.datetime = __import__("datetime")
         self.zoneinfo = __import__("zoneinfo")
         self.subprocess = __import__("subprocess")
+
         self.storage_type = options.get("storage_type", "local")
         self.file_name = options.get("file_name", "database")
-        self.binary_keys = options.get("binary_keys", 14151819154911914)
+        self.binary_keys = options.get("binary_keys", "default_db_key_12345")
         self.method_encrypt = options.get("method_encrypt", "bytes")
 
         self.cipher = __import__("nsdev").encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
+
+        self.auto_backup = options.get("auto_backup", False)
+        self.backup_bot_token = options.get("backup_bot_token")
+        self.backup_chat_id = options.get("backup_chat_id")
+        self.backup_interval_hours = options.get("backup_interval_hours", 24)
 
         if self.storage_type == "mongo":
             self.pymongo = __import__("pymongo")
@@ -39,6 +48,93 @@ class DataBase:
         else:
             self.data_file = f"{self.file_name}.json"
             self._initialize_files()
+        
+        if self.auto_backup and self.storage_type in ["local", "sqlite"]:
+            if not self.backup_bot_token or not self.backup_chat_id:
+                self.cipher.log.print(
+                    f"{self.cipher.log.YELLOW}[Backup] {self.cipher.log.CYAN}Auto backup diaktifkan tapi 'backup_bot_token' atau 'backup_chat_id' tidak disetel. Backup dinonaktifkan."
+                )
+            else:
+                self._start_backup_thread()
+    
+    def _start_backup_thread(self):
+        try:
+            self.threading = __import__("threading")
+            backup_thread = self.threading.Thread(target=self._backup_looper, daemon=True)
+            backup_thread.start()
+            self.cipher.log.print(f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}Layanan backup otomatis ke Telegram telah dimulai.")
+        except Exception as e:
+            self.cipher.log.print(f"{self.cipher.log.RED}[Backup] Gagal memulai thread backup: {e}")
+
+    def _backup_looper(self):
+        self.time = __import__("time")
+        interval_seconds = self.backup_interval_hours * 3600
+        self.cipher.log.print(f"{self.cipher.log.BLUE}[Backup] {self.cipher.log.CYAN}Backup pertama akan dijalankan dalam {self.backup_interval_hours} jam.")
+        
+        while True:
+            self.time.sleep(interval_seconds)
+            try:
+                self.cipher.log.print(f"{self.cipher.log.BLUE}[Backup] {self.cipher.log.CYAN}Memulai proses backup...")
+                self._perform_backup()
+            except Exception as e:
+                self.cipher.log.print(f"{self.cipher.log.RED}[Backup] Terjadi error pada loop backup: {e}")
+
+    def _perform_backup(self):
+        source_path = None
+        if self.storage_type == "local":
+            source_path = self.data_file
+        elif self.storage_type == "sqlite":
+            source_path = self.db_file
+        
+        if not source_path or not self.os.path.exists(source_path):
+            self.cipher.log.print(f"{self.cipher.log.YELLOW}[Backup] {self.cipher.log.CYAN}File database '{source_path}' tidak ditemukan. Backup dilewati.")
+            return
+
+        zip_path = None
+        try:
+            self.zipfile = __import__("zipfile")
+            
+            timestamp = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d_%H-%M-%S")
+            zip_filename = f"{self.file_name}_backup_{timestamp}.zip"
+            zip_path = zip_filename
+            
+            with self.zipfile.ZipFile(zip_path, 'w', self.zipfile.ZIP_DEFLATED) as zf:
+                zf.write(source_path, self.os.path.basename(source_path))
+            
+            self.cipher.log.print(f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}File '{zip_path}' berhasil dibuat.")
+            
+            caption = f"Backup otomatis untuk `{self.file_name}`\n" \
+                      f"Tipe: `{self.storage_type}`\n" \
+                      f"Waktu: `{timestamp} WIB`"
+                      
+            self._send_zip_to_telegram(zip_path, caption)
+            
+        except Exception as e:
+            self.cipher.log.print(f"{self.cipher.log.RED}[Backup] Proses backup gagal: {e}")
+        finally:
+            if zip_path and self.os.path.exists(zip_path):
+                self.os.remove(zip_path)
+                self.cipher.log.print(f"{self.cipher.log.BLUE}[Backup] {self.cipher.log.CYAN}File zip sementara '{zip_path}' telah dihapus.")
+                
+    def _send_zip_to_telegram(self, file_path, caption):
+        try:
+            self.requests = __import__("requests")
+            url = f"https://api.telegram.org/bot{self.backup_bot_token}/sendDocument"
+            
+            with open(file_path, 'rb') as doc:
+                files = {'document': doc}
+                params = {'chat_id': self.backup_chat_id, 'caption': caption, 'parse_mode': 'Markdown'}
+                response = self.requests.post(url, params=params, files=files, timeout=60)
+            
+            response_data = response.json()
+            if response.status_code == 200 and response_data.get("ok"):
+                self.cipher.log.print(f"{self.cipher.log.GREEN}[Backup] {self.cipher.log.CYAN}Backup berhasil dikirim ke Telegram.")
+            else:
+                error_desc = response_data.get('description', 'Unknown error')
+                self.cipher.log.print(f"{self.cipher.log.RED}[Backup] Gagal mengirim ke Telegram: {error_desc}")
+
+        except Exception as e:
+            self.cipher.log.print(f"{self.cipher.log.RED}[Backup] Gagal mengirim file ke Telegram: {e}")
 
     def _initialize_files(self):
         if not self.os.path.exists(self.data_file):
@@ -113,26 +209,30 @@ class DataBase:
             )
 
     def close(self):
-        if self.storage_type == "sqlite" and self.conn:
+        if self.storage_type == "sqlite" and hasattr(self, 'conn') and self.conn:
             try:
                 self.conn.commit()
                 self.conn.close()
                 self.cipher.log.print(f"{self.cipher.log.GREEN}[SQLite] Koneksi ditutup")
+                self.conn = None
             except Exception as e:
                 self.cipher.log.print(
                     f"{self.cipher.log.YELLOW}[SQLite] {self.cipher.log.CYAN}Gagal menutup koneksi: {self.cipher.log.RED}{e}"
                 )
 
     def _sqlite_get_vars(self, user_id):
-        self.cursor.execute("SELECT data FROM vars WHERE user_id = ?", (user_id,))
+        self.cursor.execute("SELECT data FROM vars WHERE user_id = ?", (str(user_id),))
         row = self.cursor.fetchone()
-        return self.json.loads(row[0]) if row and row[0] else {"vars": {}}
+        if row and row[0]:
+            return self.json.loads(row[0])
+        return {"vars": {str(user_id): {}}}
+
 
     def _sqlite_set_vars(self, user_id, data):
         try:
             self.cursor.execute(
                 "INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)",
-                (user_id, self.json.dumps(data)),
+                (str(user_id), self.json.dumps(data)),
             )
             self.conn.commit()
         except Exception as e:
@@ -141,7 +241,7 @@ class DataBase:
             )
 
     def _sqlite_remove_vars(self, user_id):
-        self.cursor.execute("DELETE FROM vars WHERE user_id = ?", (user_id,))
+        self.cursor.execute("DELETE FROM vars WHERE user_id = ?", (str(user_id),))
         self.conn.commit()
 
     def _sqlite_get_bots(self):
@@ -156,7 +256,7 @@ class DataBase:
                 VALUES (?, ?, ?, ?, ?)
             """,
                 (
-                    user_id,
+                    str(user_id),
                     encrypted_data["api_id"],
                     encrypted_data["api_hash"],
                     encrypted_data.get("bot_token"),
@@ -171,7 +271,7 @@ class DataBase:
 
     def _sqlite_remove_bot(self, user_id):
         try:
-            self.cursor.execute("DELETE FROM bots WHERE user_id = ?", (user_id,))
+            self.cursor.execute("DELETE FROM bots WHERE user_id = ?", (str(user_id),))
             self.conn.commit()
         except Exception as e:
             self.cipher.log.print(
@@ -179,196 +279,178 @@ class DataBase:
             )
 
     def _mongo_get_vars(self, user_id):
-        result = self.data.vars.find_one({"_id": user_id})
+        result = self.data.vars.find_one({"_id": str(user_id)})
         return result if result else {}
 
     def _mongo_set_vars(self, user_id, var_key, query_name, encrypted_value):
         self.data.vars.update_one(
-            {"_id": user_id},
+            {"_id": str(user_id)},
             {"$set": {f"{var_key}.{query_name}": encrypted_value}},
             upsert=True,
         )
 
     def _mongo_push_list_vars(self, user_id, var_key, query_name, encrypted_value):
         self.data.vars.update_one(
-            {"_id": user_id},
+            {"_id": str(user_id)},
             {"$push": {f"{var_key}.{query_name}": encrypted_value}},
             upsert=True,
         )
 
     def _mongo_pull_list_vars(self, user_id, var_key, query_name, encrypted_value):
-        self.data.vars.update_one({"_id": user_id}, {"$pull": {f"{var_key}.{query_name}": encrypted_value}})
+        self.data.vars.update_one({"_id": str(user_id)}, {"$pull": {f"{var_key}.{query_name}": encrypted_value}})
 
     def _mongo_unset_vars(self, user_id, var_key):
-        self.data.vars.update_one({"_id": user_id}, {"$unset": {var_key: ""}})
+        self.data.vars.update_one({"_id": str(user_id)}, {"$unset": {var_key: ""}})
 
     def _mongo_remove_var(self, user_id, var_key, query_name):
-        self.data.vars.update_one({"_id": user_id}, {"$unset": {f"{var_key}.{query_name}": ""}})
+        self.data.vars.update_one({"_id": str(user_id)}, {"$unset": {f"{var_key}.{query_name}": ""}})
 
     def _mongo_save_bot(self, user_id, encrypted_data):
-        self.data.bot.update_one({"user_id": user_id}, {"$set": encrypted_data}, upsert=True)
+        self.data.bot.update_one({"user_id": str(user_id)}, {"$set": encrypted_data}, upsert=True)
 
     def _mongo_remove_bot(self, user_id):
-        self.data.bot.delete_one({"user_id": user_id})
-
-    def _mongo_get_vars(self, user_id):
-        result = self.data.vars.find_one({"_id": user_id})
-        return result if result else {}
-
-    def _mongo_set_vars(self, user_id, var_key, query_name, encrypted_value):
-        update_data = {"$set": {f"{var_key}.{query_name}": encrypted_value}}
-        self.data.vars.update_one({"_id": user_id}, update_data, upsert=True)
-
-    def _mongo_push_list_vars(self, user_id, var_key, query_name, encrypted_value):
-        update_data = {"$push": {f"{var_key}.{query_name}": encrypted_value}}
-        self.data.vars.update_one({"_id": user_id}, update_data, upsert=True)
-
-    def _mongo_pull_list_vars(self, user_id, var_key, query_name, encrypted_value):
-        update_data = {"$pull": {f"{var_key}.{query_name}": encrypted_value}}
-        self.data.vars.update_one({"_id": user_id}, update_data)
-
-    def _mongo_unset_vars(self, user_id, var_key):
-        update_data = {"$unset": {var_key: ""}}
-        self.data.vars.update_one({"_id": user_id}, update_data)
-
-    def _mongo_remove_var(self, user_id, var_key, query_name):
-        update_data = {"$unset": {f"{var_key}.{query_name}": ""}}
-        self.data.vars.update_one({"_id": user_id}, update_data)
-
-    def _mongo_save_bot(self, user_id, encrypted_data):
-        filter_query = {"user_id": user_id}
-        update_data = {"$set": encrypted_data}
-        self.data.bot.update_one(filter_query, update_data, upsert=True)
-
-    def _mongo_remove_bot(self, user_id):
-        self.data.bot.delete_one({"user_id": user_id})
+        self.data.bot.delete_one({"user_id": str(user_id)})
 
     def setVars(self, user_id, query_name, value, var_key="variabel"):
-        encrypted_value = self.cipher.encrypt(value)
+        user_id_str = str(user_id)
+        encrypted_value = self.cipher.encrypt(str(value))
         if self.storage_type == "mongo":
-            self._mongo_set_vars(user_id, var_key, query_name, encrypted_value)
+            self._mongo_set_vars(user_id_str, var_key, query_name, encrypted_value)
         elif self.storage_type == "sqlite":
-            data = self._sqlite_get_vars(user_id)
-            user_data = data["vars"].setdefault(str(user_id), {})
-            user_data[var_key] = user_data.get(var_key, {})
-            user_data[var_key][query_name] = encrypted_value
-            self._sqlite_set_vars(user_id, data)
+            data = self._sqlite_get_vars(user_id_str)
+            user_data = data["vars"].setdefault(user_id_str, {})
+            user_data.setdefault(var_key, {})[query_name] = encrypted_value
+            self._sqlite_set_vars(user_id_str, data)
         else:
             data = self._load_data()
-            user_data = data["vars"].setdefault(str(user_id), {})
-            user_data[var_key] = user_data.get(var_key, {})
-            user_data[var_key][query_name] = encrypted_value
+            user_data = data["vars"].setdefault(user_id_str, {})
+            user_data.setdefault(var_key, {})[query_name] = encrypted_value
             self._save_data(data)
 
     def getVars(self, user_id, query_name, var_key="variabel"):
+        user_id_str = str(user_id)
+        encrypted_value = None
         if self.storage_type == "mongo":
-            result = self._mongo_get_vars(user_id)
-            encrypted_value = result.get(var_key, {}).get(query_name, None)
+            result = self._mongo_get_vars(user_id_str)
+            encrypted_value = result.get(var_key, {}).get(query_name)
         elif self.storage_type == "sqlite":
-            data = self._sqlite_get_vars(user_id)
-            encrypted_value = data.get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
+            data = self._sqlite_get_vars(user_id_str)
+            encrypted_value = data.get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name)
         else:
-            encrypted_value = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name)
+            encrypted_value = self._load_data().get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name)
+        
         return self.cipher.decrypt(encrypted_value) if encrypted_value else None
 
     def removeVars(self, user_id, query_name, var_key="variabel"):
+        user_id_str = str(user_id)
         if self.storage_type == "mongo":
-            self._mongo_remove_var(user_id, var_key, query_name)
+            self._mongo_remove_var(user_id_str, var_key, query_name)
         elif self.storage_type == "sqlite":
-            data = self._sqlite_get_vars(user_id)
-            user_data = data.get("vars", {}).get(str(user_id), {}).get(var_key, {})
-            if query_name in user_data:
-                del user_data[query_name]
-                self._sqlite_set_vars(user_id, data)
+            data = self._sqlite_get_vars(user_id_str)
+            user_vars = data.get("vars", {}).get(user_id_str, {}).get(var_key)
+            if user_vars and query_name in user_vars:
+                del user_vars[query_name]
+                self._sqlite_set_vars(user_id_str, data)
         else:
             data = self._load_data()
-            user_data = data.get("vars", {}).get(str(user_id), {}).get(var_key, {})
-            if query_name in user_data:
-                del user_data[query_name]
+            user_vars = data.get("vars", {}).get(user_id_str, {}).get(var_key)
+            if user_vars and query_name in user_vars:
+                del user_vars[query_name]
                 self._save_data(data)
-
+    
     def setListVars(self, user_id, query_name, value, var_key="variabel"):
-        encrypted_value = self.cipher.encrypt(value)
+        user_id_str = str(user_id)
+        encrypted_value = self.cipher.encrypt(str(value))
         if self.storage_type == "mongo":
-            self._mongo_push_list_vars(user_id, var_key, query_name, encrypted_value)
+            self._mongo_push_list_vars(user_id_str, var_key, query_name, encrypted_value)
         elif self.storage_type == "sqlite":
-            data = self._sqlite_get_vars(user_id)
-            user_data = data["vars"].setdefault(str(user_id), {})
-            user_data[var_key] = user_data.get(var_key, {})
-            user_list = user_data[var_key].setdefault(query_name, [])
+            data = self._sqlite_get_vars(user_id_str)
+            user_data = data["vars"].setdefault(user_id_str, {}).setdefault(var_key, {})
+            user_list = user_data.setdefault(query_name, [])
             if encrypted_value not in user_list:
                 user_list.append(encrypted_value)
-                self._sqlite_set_vars(user_id, data)
+                self._sqlite_set_vars(user_id_str, data)
         else:
             data = self._load_data()
-            user_data = data["vars"].setdefault(str(user_id), {})
-            user_data[var_key] = user_data.get(var_key, {})
-            user_list = user_data[var_key].setdefault(query_name, [])
+            user_data = data["vars"].setdefault(user_id_str, {}).setdefault(var_key, {})
+            user_list = user_data.setdefault(query_name, [])
             if encrypted_value not in user_list:
                 user_list.append(encrypted_value)
                 self._save_data(data)
 
     def getListVars(self, user_id, query_name, var_key="variabel"):
+        user_id_str = str(user_id)
+        encrypted_values = []
         if self.storage_type == "mongo":
-            result = self._mongo_get_vars(user_id)
+            result = self._mongo_get_vars(user_id_str)
             encrypted_values = result.get(var_key, {}).get(query_name, [])
         elif self.storage_type == "sqlite":
-            data = self._sqlite_get_vars(user_id)
-            encrypted_values = data.get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name, [])
+            data = self._sqlite_get_vars(user_id_str)
+            encrypted_values = data.get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name, [])
         else:
-            encrypted_values = (
-                self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {}).get(query_name, [])
-            )
+            encrypted_values = self._load_data().get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name, [])
+        
         return [self.cipher.decrypt(value) for value in encrypted_values]
 
     def removeListVars(self, user_id, query_name, value, var_key="variabel"):
-        encrypted_value = self.cipher.encrypt(value)
+        user_id_str = str(user_id)
+        encrypted_value = self.cipher.encrypt(str(value))
         if self.storage_type == "mongo":
-            self._mongo_pull_list_vars(user_id, var_key, query_name, encrypted_value)
+            self._mongo_pull_list_vars(user_id_str, var_key, query_name, encrypted_value)
         elif self.storage_type == "sqlite":
-            data = self._sqlite_get_vars(user_id)
-            user_data = data.get("vars", {}).get(str(user_id), {}).get(var_key, {})
-            if query_name in user_data and encrypted_value in user_data[query_name]:
-                user_data[query_name].remove(encrypted_value)
-                self._sqlite_set_vars(user_id, data)
+            data = self._sqlite_get_vars(user_id_str)
+            user_list = data.get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name)
+            if user_list and encrypted_value in user_list:
+                user_list.remove(encrypted_value)
+                self._sqlite_set_vars(user_id_str, data)
         else:
             data = self._load_data()
-            user_data = data.get("vars", {}).get(str(user_id), {}).get(var_key, {})
-            if query_name in user_data and encrypted_value in user_data[query_name]:
-                user_data[query_name].remove(encrypted_value)
+            user_list = data.get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name)
+            if user_list and encrypted_value in user_list:
+                user_list.remove(encrypted_value)
                 self._save_data(data)
 
     def removeAllVars(self, user_id, var_key="variabel"):
+        user_id_str = str(user_id)
         if self.storage_type == "mongo":
-            self._mongo_unset_vars(user_id, var_key)
+            self._mongo_unset_vars(user_id_str, var_key)
         elif self.storage_type == "sqlite":
-            self._sqlite_remove_vars(user_id)
+            data = self._sqlite_get_vars(user_id_str)
+            if data.get("vars", {}).get(user_id_str):
+                del data["vars"][user_id_str]
+            self._sqlite_set_vars(user_id_str, data)
         else:
             data = self._load_data()
-            data["vars"].pop(str(user_id), None)
+            if data.get("vars") and data["vars"].get(user_id_str):
+                 data["vars"].pop(user_id_str, None)
             self._save_data(data)
 
     def allVars(self, user_id, var_key="variabel"):
+        user_id_str = str(user_id)
+        encrypted_data = {}
         if self.storage_type == "mongo":
-            result = self._mongo_get_vars(user_id)
-            encrypted_data = result.get(var_key, {}) if result else {}
+            result = self._mongo_get_vars(user_id_str)
+            encrypted_data = result.get(var_key, {})
         elif self.storage_type == "sqlite":
-            data = self._sqlite_get_vars(user_id)
-            encrypted_data = data.get("vars", {}).get(str(user_id), {}).get(var_key, {})
+            data = self._sqlite_get_vars(user_id_str)
+            encrypted_data = data.get("vars", {}).get(user_id_str, {}).get(var_key, {})
         else:
-            encrypted_data = self._load_data().get("vars", {}).get(str(user_id), {}).get(var_key, {})
-        decrypted = {
-            key: (
-                [self.cipher.decrypt(v) for v in value]
-                if isinstance(value, list)
-                else self.cipher.decrypt(value) if isinstance(value, str) else value
-            )
-            for key, value in encrypted_data.items()
-        }
+            encrypted_data = self._load_data().get("vars", {}).get(user_id_str, {}).get(var_key, {})
+        
+        decrypted = {}
+        for key, value in encrypted_data.items():
+            if isinstance(value, list):
+                decrypted[key] = [self.cipher.decrypt(v) for v in value]
+            elif isinstance(value, str):
+                decrypted[key] = self.cipher.decrypt(value)
+            else:
+                decrypted[key] = value
+        
         return self.json.dumps(decrypted, indent=4)
 
     def setExp(self, user_id, exp=30):
-        have_exp = self.getVars(user_id, "EXPIRED_DATE")
+        user_id_str = str(user_id)
+        have_exp = self.getVars(user_id_str, "EXPIRED_DATE")
         if not have_exp:
             now = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
         else:
@@ -376,20 +458,21 @@ class DataBase:
                 self.zoneinfo.ZoneInfo("Asia/Jakarta")
             )
         expire_date = now + self.datetime.timedelta(days=exp)
-        self.setVars(user_id, "EXPIRED_DATE", expire_date.strftime("%Y-%m-%d %H:%M:%S"))
+        self.setVars(user_id_str, "EXPIRED_DATE", expire_date.strftime("%Y-%m-%d %H:%M:%S"))
 
     def getExp(self, user_id):
-        expired_date = self.getVars(user_id, "EXPIRED_DATE")
+        user_id_str = str(user_id)
+        expired_date = self.getVars(user_id_str, "EXPIRED_DATE")
         if expired_date:
             exp_datetime = self.datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(
                 self.zoneinfo.ZoneInfo("Asia/Jakarta")
             )
             return exp_datetime.strftime("%d-%m-%Y")
-        else:
-            return None
+        return None
 
     def daysLeft(self, user_id):
-        user_exp = self.getExp(user_id)
+        user_id_str = str(user_id)
+        user_exp = self.getExp(user_id_str)
         today = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta"))
         if user_exp:
             exp_datetime = self.datetime.datetime.strptime(user_exp, "%d-%m-%Y").astimezone(
@@ -399,72 +482,77 @@ class DataBase:
         return None
 
     def checkAndDeleteIfExpired(self, user_id):
-        user_exp = self.getExp(user_id)
-        today = self.datetime.datetime.now(self.zoneinfo.ZoneInfo("Asia/Jakarta")).strftime("%d-%m-%Y")
-        if not user_exp or user_exp == today:
-            self.removeAllVars(user_id)
-            self.removeBot(user_id)
+        user_id_str = str(user_id)
+        days_left = self.daysLeft(user_id_str)
+        if days_left is not None and days_left < 0:
+            self.removeAllVars(user_id_str)
+            self.removeBot(user_id_str)
             return True
         return False
 
     def saveBot(self, user_id, api_id, api_hash, value, is_token=False):
+        user_id_str = str(user_id)
         field = "bot_token" if is_token else "session_string"
         encrypted_data = {
             "api_id": self.cipher.encrypt(str(api_id)),
             "api_hash": self.cipher.encrypt(api_hash),
-            field: self.cipher.encrypt(value),
         }
+        if value:
+             encrypted_data[field] = self.cipher.encrypt(value)
+
         if self.storage_type == "mongo":
-            self._mongo_save_bot(user_id, encrypted_data)
+            self._mongo_save_bot(user_id_str, encrypted_data)
         elif self.storage_type == "sqlite":
-            self._sqlite_set_bot(user_id, encrypted_data)
+            self._sqlite_set_bot(user_id_str, encrypted_data)
         else:
             data = self._load_data()
-            entry = {"user_id": user_id, **encrypted_data}
-            data["bots"].append(entry)
+            bot_exists = False
+            for bot in data["bots"]:
+                if bot["user_id"] == user_id_str:
+                    bot.update(encrypted_data)
+                    bot_exists = True
+                    break
+            if not bot_exists:
+                entry = {"user_id": user_id_str, **encrypted_data}
+                data["bots"].append(entry)
             self._save_data(data)
 
     def getBots(self, is_token=False):
         field = "bot_token" if is_token else "session_string"
+        bots_data = []
+        
         if self.storage_type == "mongo":
-            bots = [
-                {
-                    "name": str(bot_data["user_id"]),
-                    "api_id": int(self.cipher.decrypt(str(bot_data["api_id"]))),
-                    "api_hash": self.cipher.decrypt(bot_data["api_hash"]),
-                    field: self.cipher.decrypt(bot_data.get(field)),
-                }
-                for bot_data in self.data.bot.find({"user_id": {"$exists": 1}})
-            ]
+            raw_bots = self.data.bot.find({field: {"$exists": True}})
         elif self.storage_type == "sqlite":
             rows = self._sqlite_get_bots()
-            bots = [
-                {
-                    "name": str(row[0]),
-                    "api_id": int(self.cipher.decrypt(str(row[1]))),
-                    "api_hash": self.cipher.decrypt(row[2]),
-                    field: self.cipher.decrypt(row[3] if is_token else row[4]),
-                }
-                for row in rows
-            ]
+            raw_bots = [{
+                "user_id": row[0], "api_id": row[1], "api_hash": row[2],
+                "bot_token": row[3], "session_string": row[4]
+            } for row in rows if (row[3] if is_token else row[4])]
         else:
-            bots = [
-                {
+            raw_bots = [bot for bot in self._load_data().get("bots", []) if field in bot]
+        
+        for bot_data in raw_bots:
+            try:
+                decrypted_bot = {
                     "name": str(bot_data["user_id"]),
                     "api_id": int(self.cipher.decrypt(str(bot_data["api_id"]))),
                     "api_hash": self.cipher.decrypt(bot_data["api_hash"]),
                     field: self.cipher.decrypt(bot_data.get(field)),
                 }
-                for bot_data in self._load_data()["bots"]
-            ]
-        return bots
+                bots_data.append(decrypted_bot)
+            except (ValueError, TypeError):
+                continue
+                
+        return bots_data
 
     def removeBot(self, user_id):
+        user_id_str = str(user_id)
         if self.storage_type == "mongo":
-            self._mongo_remove_bot(user_id)
+            self._mongo_remove_bot(user_id_str)
         elif self.storage_type == "sqlite":
-            self._sqlite_remove_bot(user_id)
+            self._sqlite_remove_bot(user_id_str)
         else:
             data = self._load_data()
-            data["bots"] = [bot for bot in data["bots"] if bot["user_id"] != user_id]
+            data["bots"] = [bot for bot in data["bots"] if bot.get("user_id") != user_id_str]
             self._save_data(data)
