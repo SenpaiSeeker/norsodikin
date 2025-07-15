@@ -66,7 +66,9 @@ class DataBase:
                 f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.CYAN}otomatis ke Telegram telah dimulai."
             )
         except Exception as e:
-            self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.RED}Gagal memulai thread backup: {e}")
+            self.cipher.log.print(
+                f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.RED}Gagal memulai thread backup: {e}"
+            )
 
     def _backup_looper(self):
         self.time = __import__("time")
@@ -81,7 +83,9 @@ class DataBase:
                 self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.CYAN}Memulai proses backup...")
                 self._perform_backup()
             except Exception as e:
-                self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.RED}Terjadi error pada loop backup: {e}")
+                self.cipher.log.print(
+                    f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.RED}Terjadi error pada loop backup: {e}"
+                )
 
     def _perform_backup(self):
         source_path = None
@@ -145,7 +149,9 @@ class DataBase:
                 )
             else:
                 error_desc = response_data.get("description", "Unknown error")
-                self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.RED}Gagal mengirim ke Telegram: {error_desc}")
+                self.cipher.log.print(
+                    f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.RED}Gagal mengirim ke Telegram: {error_desc}"
+                )
 
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] Gagal mengirim file ke Telegram: {e}")
