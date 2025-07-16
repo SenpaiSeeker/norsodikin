@@ -333,10 +333,10 @@ async def buat_pembayaran():
         channel_payment="QRIS", amount="5000", produk="Donasi Kopi"
     )
 
-    if payment.api_response.success:
-        print(f"QR Code Link: {payment.api_response.data.qrcode_url}")
+    if payment.api_response.status:
+        print(f"QR Code Link: {payment.api_response.data.target}")
     else:
-        print(f"Gagal: {payment.api_response.message}")
+        print(f"Gagal: {payment.api_response.data.status}")
             
 # asyncio.run(buat_pembayaran())
 ```
