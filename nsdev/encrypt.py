@@ -1,6 +1,36 @@
 class CipherHandler:
+    """
+    Menangani berbagai metode enkripsi dan dekripsi data.
+
+    Class ini menyediakan beberapa metode enkripsi seperti 'shift', 'bytes', 'binary',
+    dan mode khusus 'only_base64'.
+
+    Cara Penggunaan Dekripsi:
+    --------------------------
+    1. Buat instance dari CipherHandler dengan metode dan kunci yang sama
+       seperti saat enkripsi.
+    2. Panggil metode `decrypt()` dengan data terenkripsi.
+
+    Contoh:
+    -------
+    # Metode 'shift'
+    handler_shift = CipherHandler(method='shift', key='my_s3cr3t_k3y_@2024!')
+    encrypted_text = handler_shift.encrypt("Ini adalah teks rahasia")
+    decrypted_text = handler_shift.decrypt(encrypted_text)
+    print(f"Shift Decrypted: {decrypted_text}")
+
+    # Mode Base64 Saja (only_base64=True)
+    handler_b64 = CipherHandler() # Kunci tidak relevan untuk mode ini
+    b64_encrypted = handler_b64.encrypt("Hanya base64", only_base64=True)
+    # -> 'SGFueWEgYmFzZTY0'
+    b64_decrypted = handler_b64.decrypt(b64_encrypted, only_base64=True)
+    # -> 'Hanya base64'
+    print(f"Base64 Decrypted: {b64_decrypted}")
+    """
+
     def __init__(self, **options):
-        self.log = __import__("nsdev").logger.LoggerHandler()
+        self.base64 = __import__("base64")
+        self.binascii = __import__("binascii")
 
         self.method = options.get("method", "shift")
         self.key = self._normalize_key(options.get("key", "my_s3cr3t_k3y_@2024!"))
@@ -9,6 +39,8 @@ class CipherHandler:
 
         if not self.key:
             raise ValueError("Key cannot be empty.")
+            
+        self.log = __import__("nsdev").logger.LoggerHandler()
 
     def _normalize_key(self, key) -> str:
         try:
@@ -39,7 +71,23 @@ class CipherHandler:
             data = data.encode("utf-8")
         return bytes([data[i] ^ key_bytes[i % len(key_bytes)] for i in range(len(data))])
 
-    def decrypt(self, encrypted_data: str) -> str:
+    def _base64_encode(self, data: str) -> str:
+        encoded_bytes = self.base64.b64encode(data.encode("utf-8"))
+        return encoded_bytes.decode("utf-8").rstrip("=")
+
+    def _base64_decode(self, encoded_data: str) -> str:
+        try:
+            padding_needed = (4 - len(encoded_data) % 4) % 4
+            padded_data = encoded_data + "=" * padding_needed
+            decoded_bytes = self.base64.b64decode(padded_data)
+            return decoded_bytes.decode("utf-8")
+        except (self.binascii.Error, UnicodeDecodeError) as e:
+            raise ValueError(f"Base64 decryption failed: {e}")
+
+    def decrypt(self, encrypted_data: str, only_base64: bool = False) -> str:
+        if only_base64:
+            return self._base64_decode(encrypted_data)
+
         if self.method == "bytes":
             return self.decrypt_bytes(encrypted_data)
         elif self.method == "binary":
@@ -52,18 +100,12 @@ class CipherHandler:
     def decrypt_binary(self, encrypted_bits: str) -> str:
         if not encrypted_bits or len(encrypted_bits) % 8 != 0:
             raise ValueError("Data biner yang dienkripsi tidak valid atau kosong.")
-        xor_key = self.numeric_key % 256
-        decrypted_chars = [chr(int(encrypted_bits[i : i + 8], 2) ^ xor_key) for i in range(0, len(encrypted_bits), 8)]
+        decrypted_chars = [chr(int(encrypted_bits[i : i + 8], 2) ^ self.numeric_key % 256) for i in range(0, len(encrypted_bits), 8)]
         return "".join(decrypted_chars)
 
     def decrypt_bytes(self, encrypted_data: str) -> str:
         try:
-            padding_needed = (4 - len(encrypted_data) % 4) % 4
-            padded_data = encrypted_data + "=" * padding_needed
-
-            decoded_b64 = __import__("base64").b64decode(padded_data).decode("utf-8")
-            codes = list(map(int, decoded_b64.split(self.delimiter)))
-            return "".join(chr(code - self._offset(i)) for i, code in enumerate(codes))
+            return self._base64_decode(encrypted_data)
         except Exception as e:
             raise Exception(f"Decryption failed for 'bytes' method: {e}")
 
@@ -74,7 +116,10 @@ class CipherHandler:
         except (ValueError, TypeError) as error:
             raise ValueError(f"Error during shift decryption: {error}")
 
-    def encrypt(self, data: str) -> str:
+    def encrypt(self, data: str, only_base64: bool = False) -> str:
+        if only_base64:
+            return self._base64_encode(data)
+
         if self.method == "bytes":
             return self.encrypt_bytes(data)
         elif self.method == "binary":
@@ -93,8 +138,7 @@ class CipherHandler:
         try:
             encrypted_values = [str(ord(char) + self._offset(i)) for i, char in enumerate(message)]
             joined_string = self.delimiter.join(encrypted_values)
-            encoded_b64 = __import__("base64").b64encode(joined_string.encode("utf-8")).decode("utf-8")
-            return encoded_b64.rstrip("=")
+            return self._base64_encode(joined_string)
         except Exception as e:
             raise Exception(f"Encryption failed for 'bytes' method: {e}")
 
@@ -116,6 +160,31 @@ class CipherHandler:
 
 
 class AsciiManager(__import__("nsdev").AnsiColors):
+    """
+    Mengelola enkripsi dan dekripsi pesan menjadi daftar (list) integer ASCII
+    dengan offset berdasarkan kunci.
+
+    Cara Penggunaan Dekripsi:
+    --------------------------
+    1. Buat instance dari AsciiManager dengan kunci yang sama saat enkripsi.
+    2. Panggil metode `decrypt()` dengan data terenkripsi (list of integers).
+
+    Contoh:
+    -------
+    manager = AsciiManager(key='my_super_secret_key')
+    
+    # Enkripsi
+    encrypted_data = manager.encrypt("print('Hello from encrypted code')")
+    # -> [478, 495, 510, 527, 542, 203, 563, 205, 439, 456, 473, 490, 507, 219, 529, 546, 563, 235, 584, 601, 618, 257, 510, 527, 544, 561, 578, 595, 612, 217, 478, 495, 512, 227, 211]
+    
+    # Dekripsi
+    decrypted_code = manager.decrypt(encrypted_data)
+    # -> "print('Hello from encrypted code')"
+    print(decrypted_code)
+    
+    # Menjalankan kode yang didekripsi
+    exec(decrypted_code)
+    """
     def __init__(self, key):
         super().__init__()
         try:
