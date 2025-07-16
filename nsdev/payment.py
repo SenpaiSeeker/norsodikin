@@ -14,7 +14,7 @@ class PaymentMidtrans:
         )
         self.callback_url = callback_url
 
-    def createPayment(self, order_id, gross_amount):
+    def create_payment(self, order_id, gross_amount):
         try:
             param = {
                 "transaction_details": {
@@ -30,7 +30,7 @@ class PaymentMidtrans:
         except Exception as e:
             return f"Error saat membuat transaksi: {e}"
 
-    def checkTansactionStatus(self, order_id):
+    def check_transaction(self, order_id):
         try:
             return self.snap.transactions.status(order_id)
         except Exception as e:
@@ -45,7 +45,7 @@ class PaymentTripay:
         self.requests = __import__("requests")
         self.convert = __import__("nsdev").YamlHandler()
 
-    def createPayment(self, method, amount, order_id, customer_name):
+    def create_payment(self, method, amount, order_id, customer_name):
         url = f"{self.base_url}/transaction/create"
         headers = {"Authorization": f"Bearer {self.api_key}"}
         payload = {
@@ -62,7 +62,7 @@ class PaymentTripay:
 
         return self.convert._convertToNamespace(response.json())
 
-    def checkPayment(self, reference):
+    def check_transaction(self, reference):
         url = f"{self.base_url}/transaction/detail"
         headers = {"Authorization": f"Bearer {self.api_key}"}
         params = {"reference": reference}
