@@ -325,7 +325,7 @@ VIOLET_SECRET_KEY = "SECRET_KEY_ANDA"
 async def buat_pembayaran():
     # Akses kelas melalui namespace 'payment'
     # 'live=False' untuk mode sandbox/testing
-    payment_client = client.ns.payment.VioletMediaPay(
+    payment_client = client.ns.payment.Violet(
         api_key=VIOLET_API_KEY, secret_key=VIOLET_SECRET_KEY, live=False
     )
     
