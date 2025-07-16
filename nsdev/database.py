@@ -51,7 +51,9 @@ class DataBase:
 
         if self.auto_backup and self.storage_type in ["local", "sqlite"]:
             if not self.backup_bot_token or not self.backup_chat_id:
-                self.cipher.log.print(f"{self.cipher.log.YELLOW}[BACKUP] Auto backup diaktifkan tapi 'backup_bot_token' atau 'backup_chat_id' tidak disetel. Backup dinonaktifkan.")
+                self.cipher.log.print(
+                    f"{self.cipher.log.YELLOW}[BACKUP] Auto backup diaktifkan tapi 'backup_bot_token' atau 'backup_chat_id' tidak disetel. Backup dinonaktifkan."
+                )
             else:
                 self._start_backup_thread()
 
@@ -66,7 +68,9 @@ class DataBase:
     def _backup_looper(self):
         self.time = __import__("time")
         interval_seconds = self.backup_interval_hours * 3600
-        self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] akan dijalankan dalam {self.backup_interval_hours} jam sekali.")
+        self.cipher.log.print(
+            f"{self.cipher.log.GREEN}[BACKUP] akan dijalankan dalam {self.backup_interval_hours} jam sekali."
+        )
 
         while True:
             self.time.sleep(interval_seconds)
@@ -84,7 +88,9 @@ class DataBase:
             source_path = self.db_file
 
         if not source_path or not self.os.path.exists(source_path):
-            self.cipher.log.print(f"{self.cipher.log.YELLOW}[BACKUP] File database '{source_path}' tidak ditemukan. Backup dilewati.")
+            self.cipher.log.print(
+                f"{self.cipher.log.YELLOW}[BACKUP] File database '{source_path}' tidak ditemukan. Backup dilewati."
+            )
             return
 
         zip_path = None
@@ -127,8 +133,7 @@ class DataBase:
 
             response_data = response.json()
             if response.status_code == 200 and response_data.get("ok"):
-                self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] berhasil dikirim ke Telegram."
-                )
+                self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] berhasil dikirim ke Telegram.")
             else:
                 error_desc = response_data.get("description", "Unknown error")
                 self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] Gagal mengirim ke Telegram: {error_desc}")
@@ -531,8 +536,8 @@ class DataBase:
             rows = self._sqlite_get_bots()
             raw_bots = [
                 {
-                    "user_id": row[0], 
-                    "api_id": row[1], 
+                    "user_id": row[0],
+                    "api_id": row[1],
                     "api_hash": row[2],
                     "bot_token": row[3],
                     "session_string": row[4],
@@ -550,9 +555,11 @@ class DataBase:
                 decrypted_session = self.cipher.decrypt(bot_data.get(field))
 
                 if not all([decrypted_api_id_str, decrypted_api_hash, decrypted_session]):
-                    self.cipher.log.print(f"{self.cipher.log.YELLOW}[getBots] Melewati bot {bot_data.get('user_id')} karena data tidak lengkap atau gagal didekripsi.")
+                    self.cipher.log.print(
+                        f"{self.cipher.log.YELLOW}[getBots] Melewati bot {bot_data.get('user_id')} karena data tidak lengkap atau gagal didekripsi."
+                    )
                     continue
-                
+
                 decrypted_bot = {
                     "name": str(bot_data.get("user_id")),
                     "api_id": int(decrypted_api_id_str),
@@ -561,7 +568,9 @@ class DataBase:
                 }
                 bots_data.append(decrypted_bot)
             except (ValueError, TypeError) as e:
-                self.cipher.log.print(f"{self.cipher.log.RED}[getBots] Gagal memproses bot {bot_data.get('user_id')}: {e}")
+                self.cipher.log.print(
+                    f"{self.cipher.log.RED}[getBots] Gagal memproses bot {bot_data.get('user_id')}: {e}"
+                )
                 continue
 
         return bots_data
