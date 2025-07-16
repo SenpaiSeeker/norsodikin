@@ -131,7 +131,7 @@ class DataBase:
                 )
             else:
                 error_desc = response_data.get("description", "Unknown error")
-                self.cipher.log.print(f"{Self.cipher.log.RED}[BACKUP] Gagal mengirim ke Telegram: {error_desc}")
+                self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] Gagal mengirim ke Telegram: {error_desc}")
 
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] Gagal mengirim file ke Telegram: {e}")
