@@ -51,9 +51,7 @@ class DataBase:
 
         if self.auto_backup and self.storage_type in ["local", "sqlite"]:
             if not self.backup_bot_token or not self.backup_chat_id:
-                self.cipher.log.print(
-                    f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.YELLOW}Auto backup diaktifkan tapi 'backup_bot_token' atau 'backup_chat_id' tidak disetel. Backup dinonaktifkan."
-                )
+                self.cipher.log.print(f"{self.cipher.log.YELLOW}[BACKUP] Auto backup diaktifkan tapi 'backup_bot_token' atau 'backup_chat_id' tidak disetel. Backup dinonaktifkan.")
             else:
                 self._start_backup_thread()
 
@@ -62,30 +60,21 @@ class DataBase:
             self.threading = __import__("threading")
             backup_thread = self.threading.Thread(target=self._backup_looper, daemon=True)
             backup_thread.start()
-            self.cipher.log.print(
-                f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.CYAN}otomatis ke Telegram telah dimulai."
-            )
         except Exception as e:
-            self.cipher.log.print(
-                f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.RED}Gagal memulai thread backup: {e}"
-            )
+            self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] Gagal memulai thread backup: {e}")
 
     def _backup_looper(self):
         self.time = __import__("time")
         interval_seconds = self.backup_interval_hours * 3600
-        self.cipher.log.print(
-            f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.CYAN}akan dijalankan dalam {self.backup_interval_hours} jam."
-        )
+        self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] akan dijalankan dalam {self.backup_interval_hours} jam sekali.")
 
         while True:
             self.time.sleep(interval_seconds)
             try:
-                self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.CYAN}Memulai proses backup...")
+                self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] Memulai proses backup...")
                 self._perform_backup()
             except Exception as e:
-                self.cipher.log.print(
-                    f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.RED}Terjadi error pada loop backup: {e}"
-                )
+                self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] Terjadi error pada loop backup: {e}")
 
     def _perform_backup(self):
         source_path = None
@@ -95,9 +84,7 @@ class DataBase:
             source_path = self.db_file
 
         if not source_path or not self.os.path.exists(source_path):
-            self.cipher.log.print(
-                f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.YELLOW}File database '{source_path}' tidak ditemukan. Backup dilewati."
-            )
+            self.cipher.log.print(f"{self.cipher.log.YELLOW}[BACKUP] File database '{source_path}' tidak ditemukan. Backup dilewati.")
             return
 
         zip_path = None
@@ -111,9 +98,7 @@ class DataBase:
             with self.zipfile.ZipFile(zip_path, "w", self.zipfile.ZIP_DEFLATED) as zf:
                 zf.write(source_path, self.os.path.basename(source_path))
 
-            self.cipher.log.print(
-                f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.CYAN}File '{zip_path}' berhasil dibuat."
-            )
+            self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] File '{zip_path}' berhasil dibuat.")
 
             caption = (
                 f"Backup otomatis untuk `{self.file_name}`\n"
@@ -124,13 +109,11 @@ class DataBase:
             self._send_zip_to_telegram(zip_path, caption)
 
         except Exception as e:
-            self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.RED}Proses backup gagal: {e}")
+            self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] Proses backup gagal: {e}")
         finally:
             if zip_path and self.os.path.exists(zip_path):
                 self.os.remove(zip_path)
-                self.cipher.log.print(
-                    f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.CYAN}File '{zip_path}' telah dihapus."
-                )
+                self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] File '{zip_path}' telah dihapus.")
 
     def _send_zip_to_telegram(self, file_path, caption):
         try:
@@ -144,14 +127,11 @@ class DataBase:
 
             response_data = response.json()
             if response.status_code == 200 and response_data.get("ok"):
-                self.cipher.log.print(
-                    f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.CYAN}berhasil dikirim ke Telegram."
+                self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] berhasil dikirim ke Telegram."
                 )
             else:
                 error_desc = response_data.get("description", "Unknown error")
-                self.cipher.log.print(
-                    f"{self.cipher.log.GREEN}[BACKUP] {self.cipher.log.RED}Gagal mengirim ke Telegram: {error_desc}"
-                )
+                self.cipher.log.print(f"{Self.cipher.log.RED}[BACKUP] Gagal mengirim ke Telegram: {error_desc}")
 
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] Gagal mengirim file ke Telegram: {e}")
@@ -550,7 +530,13 @@ class DataBase:
         elif self.storage_type == "sqlite":
             rows = self._sqlite_get_bots()
             raw_bots = [
-                {"user_id": row[0], "api_id": row[1], "api_hash": row[2], "bot_token": row[3], "session_string": row[4]}
+                {
+                    "user_id": row[0], 
+                    "api_id": row[1], 
+                    "api_hash": row[2],
+                    "bot_token": row[3],
+                    "session_string": row[4],
+                }
                 for row in rows
                 if (row[3] if is_token else row[4])
             ]
@@ -559,14 +545,23 @@ class DataBase:
 
         for bot_data in raw_bots:
             try:
+                decrypted_api_id_str = self.cipher.decrypt(bot_data.get("api_id"))
+                decrypted_api_hash = self.cipher.decrypt(bot_data.get("api_hash"))
+                decrypted_session = self.cipher.decrypt(bot_data.get(field))
+
+                if not all([decrypted_api_id_str, decrypted_api_hash, decrypted_session]):
+                    self.cipher.log.print(f"{self.cipher.log.YELLOW}[getBots] Melewati bot {bot_data.get('user_id')} karena data tidak lengkap atau gagal didekripsi.")
+                    continue
+                
                 decrypted_bot = {
-                    "name": str(bot_data["user_id"]),
-                    "api_id": int(self.cipher.decrypt(str(bot_data["api_id"]))),
-                    "api_hash": self.cipher.decrypt(bot_data["api_hash"]),
-                    field: self.cipher.decrypt(bot_data.get(field)),
+                    "name": str(bot_data.get("user_id")),
+                    "api_id": int(decrypted_api_id_str),
+                    "api_hash": decrypted_api_hash,
+                    field: decrypted_session,
                 }
                 bots_data.append(decrypted_bot)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError) as e:
+                self.cipher.log.print(f"{self.cipher.log.RED}[getBots] Gagal memproses bot {bot_data.get('user_id')}: {e}")
                 continue
 
         return bots_data
