@@ -39,7 +39,7 @@ class CipherHandler:
 
         if not self.key:
             raise ValueError("Key cannot be empty.")
-            
+
         self.log = __import__("nsdev").logger.LoggerHandler()
 
     def _normalize_key(self, key) -> str:
@@ -100,7 +100,9 @@ class CipherHandler:
     def decrypt_binary(self, encrypted_bits: str) -> str:
         if not encrypted_bits or len(encrypted_bits) % 8 != 0:
             raise ValueError("Data biner yang dienkripsi tidak valid atau kosong.")
-        decrypted_chars = [chr(int(encrypted_bits[i : i + 8], 2) ^ self.numeric_key % 256) for i in range(0, len(encrypted_bits), 8)]
+        decrypted_chars = [
+            chr(int(encrypted_bits[i : i + 8], 2) ^ self.numeric_key % 256) for i in range(0, len(encrypted_bits), 8)
+        ]
         return "".join(decrypted_chars)
 
     def decrypt_bytes(self, encrypted_data: str) -> str:
@@ -172,19 +174,20 @@ class AsciiManager(__import__("nsdev").AnsiColors):
     Contoh:
     -------
     manager = AsciiManager(key='my_super_secret_key')
-    
+
     # Enkripsi
     encrypted_data = manager.encrypt("print('Hello from encrypted code')")
     # -> [478, 495, 510, 527, 542, 203, 563, 205, 439, 456, 473, 490, 507, 219, 529, 546, 563, 235, 584, 601, 618, 257, 510, 527, 544, 561, 578, 595, 612, 217, 478, 495, 512, 227, 211]
-    
+
     # Dekripsi
     decrypted_code = manager.decrypt(encrypted_data)
     # -> "print('Hello from encrypted code')"
     print(decrypted_code)
-    
+
     # Menjalankan kode yang didekripsi
     exec(decrypted_code)
     """
+
     def __init__(self, key):
         super().__init__()
         try:
