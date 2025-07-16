@@ -107,7 +107,11 @@ class CipherHandler:
 
     def decrypt_bytes(self, encrypted_data: str) -> str:
         try:
-            return self._base64_decode(encrypted_data)
+            decoded_b64 = self._base64_decode(encrypted_data)            
+            codes_as_strings = decoded_b64.split(self.delimiter)
+
+            codes = list(map(int, codes_as_strings))            
+            return "".join(chr(code - self._offset(i)) for i, code in enumerate(codes))
         except Exception as e:
             raise Exception(f"Decryption failed for 'bytes' method: {e}")
 
