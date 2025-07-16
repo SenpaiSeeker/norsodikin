@@ -535,13 +535,7 @@ class DataBase:
         elif self.storage_type == "sqlite":
             rows = self._sqlite_get_bots()
             raw_bots = [
-                {
-                    "user_id": row[0],
-                    "api_id": row[1],
-                    "api_hash": row[2],
-                    "bot_token": row[3],
-                    "session_string": row[4],
-                }
+                {"user_id": row[0], "api_id": row[1], "api_hash": row[2], "bot_token": row[3], "session_string": row[4]}
                 for row in rows
                 if (row[3] if is_token else row[4])
             ]
@@ -550,27 +544,14 @@ class DataBase:
 
         for bot_data in raw_bots:
             try:
-                decrypted_api_id_str = self.cipher.decrypt(bot_data.get("api_id"))
-                decrypted_api_hash = self.cipher.decrypt(bot_data.get("api_hash"))
-                decrypted_session = self.cipher.decrypt(bot_data.get(field))
-
-                if not all([decrypted_api_id_str, decrypted_api_hash, decrypted_session]):
-                    self.cipher.log.print(
-                        f"{self.cipher.log.YELLOW}[getBots] Melewati bot {bot_data.get('user_id')} karena data tidak lengkap atau gagal didekripsi."
-                    )
-                    continue
-
                 decrypted_bot = {
-                    "name": str(bot_data.get("user_id")),
-                    "api_id": int(decrypted_api_id_str),
-                    "api_hash": decrypted_api_hash,
-                    field: decrypted_session,
+                    "name": str(bot_data["user_id"]),
+                    "api_id": int(self.cipher.decrypt(str(bot_data["api_id"]))),
+                    "api_hash": self.cipher.decrypt(bot_data["api_hash"]),
+                    field: self.cipher.decrypt(bot_data.get(field)),
                 }
                 bots_data.append(decrypted_bot)
-            except (ValueError, TypeError) as e:
-                self.cipher.log.print(
-                    f"{self.cipher.log.RED}[getBots] Gagal memproses bot {bot_data.get('user_id')}: {e}"
-                )
+            except (ValueError, TypeError):
                 continue
 
         return bots_data
