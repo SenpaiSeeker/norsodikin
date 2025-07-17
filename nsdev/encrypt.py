@@ -1,12 +1,13 @@
 class CipherHandler:
     """
-        Handler untuk enkripsi dan dekripsi menggunakan berbagai metode.
+    Handler untuk enkripsi dan dekripsi menggunakan berbagai metode.
 
-        :param options:
-            - method (str): Metode enkripsi/dekripsi. Pilihan: 'shift', 'bytes', 'binary', Default: shift.
-            - key (str | list | int | float): Kunci untuk proses enkripsi/dekripsi. Default: 'my_s3cr3t_k3y_@2024!'.
-            - delimiter (str): Delimiter yang digunakan dalam pemisahan data terenkripsi. Default: '|'.
-        """
+    :param options:
+        - method (str): Metode enkripsi/dekripsi. Pilihan: 'shift', 'bytes', 'binary', Default: shift.
+        - key (str | list | int | float): Kunci untuk proses enkripsi/dekripsi. Default: 'my_s3cr3t_k3y_@2024!'.
+        - delimiter (str): Delimiter yang digunakan dalam pemisahan data terenkripsi. Default: '|'.
+    """
+
     def __init__(self, **options):
         self.base64 = __import__("base64")
         self.binascii = __import__("binascii")
@@ -146,12 +147,13 @@ class CipherHandler:
 
 class AsciiManager(__import__("nsdev").AnsiColors):
     """
-        Manager untuk enkripsi dan dekripsi berbasis ASCII offset.
+    Manager untuk enkripsi dan dekripsi berbasis ASCII offset.
 
-        :param key: Kunci untuk proses enkripsi/dekripsi.
-                    Tipe yang diperbolehkan: str, list, int, float.
-                    Digunakan untuk menghasilkan offset berdasarkan posisi karakter.
-        """
+    :param key: Kunci untuk proses enkripsi/dekripsi.
+                Tipe yang diperbolehkan: str, list, int, float.
+                Digunakan untuk menghasilkan offset berdasarkan posisi karakter.
+    """
+
     def __init__(self, key):
         super().__init__()
         try:
