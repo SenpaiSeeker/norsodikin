@@ -1,33 +1,12 @@
 class CipherHandler:
     """
-    Menangani berbagai metode enkripsi dan dekripsi data.
+        Handler untuk enkripsi dan dekripsi menggunakan berbagai metode.
 
-    Class ini menyediakan beberapa metode enkripsi seperti 'shift', 'bytes', 'binary',
-    dan mode khusus 'only_base64'.
-
-    Cara Penggunaan Dekripsi:
-    --------------------------
-    1. Buat instance dari CipherHandler dengan metode dan kunci yang sama
-       seperti saat enkripsi.
-    2. Panggil metode `decrypt()` dengan data terenkripsi.
-
-    Contoh:
-    -------
-    # Metode 'shift'
-    handler_shift = CipherHandler(method='shift', key='my_s3cr3t_k3y_@2024!')
-    encrypted_text = handler_shift.encrypt("Ini adalah teks rahasia")
-    decrypted_text = handler_shift.decrypt(encrypted_text)
-    print(f"Shift Decrypted: {decrypted_text}")
-
-    # Mode Base64 Saja (only_base64=True)
-    handler_b64 = CipherHandler() # Kunci tidak relevan untuk mode ini
-    b64_encrypted = handler_b64.encrypt("Hanya base64", only_base64=True)
-    # -> 'SGFueWEgYmFzZTY0'
-    b64_decrypted = handler_b64.decrypt(b64_encrypted, only_base64=True)
-    # -> 'Hanya base64'
-    print(f"Base64 Decrypted: {b64_decrypted}")
-    """
-
+        :param options:
+            - method (str): Metode enkripsi/dekripsi. Pilihan: 'shift', 'bytes', 'binary', Default: shift.
+            - key (str | list | int | float): Kunci untuk proses enkripsi/dekripsi. Default: 'my_s3cr3t_k3y_@2024!'.
+            - delimiter (str): Delimiter yang digunakan dalam pemisahan data terenkripsi. Default: '|'.
+        """
     def __init__(self, **options):
         self.base64 = __import__("base64")
         self.binascii = __import__("binascii")
@@ -167,31 +146,12 @@ class CipherHandler:
 
 class AsciiManager(__import__("nsdev").AnsiColors):
     """
-    Mengelola enkripsi dan dekripsi pesan menjadi daftar (list) integer ASCII
-    dengan offset berdasarkan kunci.
+        Manager untuk enkripsi dan dekripsi berbasis ASCII offset.
 
-    Cara Penggunaan Dekripsi:
-    --------------------------
-    1. Buat instance dari AsciiManager dengan kunci yang sama saat enkripsi.
-    2. Panggil metode `decrypt()` dengan data terenkripsi (list of integers).
-
-    Contoh:
-    -------
-    manager = AsciiManager(key='my_super_secret_key')
-
-    # Enkripsi
-    encrypted_data = manager.encrypt("print('Hello from encrypted code')")
-    # -> [478, 495, 510, 527, 542, 203, 563, 205, 439, 456, 473, 490, 507, 219, 529, 546, 563, 235, 584, 601, 618, 257, 510, 527, 544, 561, 578, 595, 612, 217, 478, 495, 512, 227, 211]
-
-    # Dekripsi
-    decrypted_code = manager.decrypt(encrypted_data)
-    # -> "print('Hello from encrypted code')"
-    print(decrypted_code)
-
-    # Menjalankan kode yang didekripsi
-    exec(decrypted_code)
-    """
-
+        :param key: Kunci untuk proses enkripsi/dekripsi.
+                    Tipe yang diperbolehkan: str, list, int, float.
+                    Digunakan untuk menghasilkan offset berdasarkan posisi karakter.
+        """
     def __init__(self, key):
         super().__init__()
         try:
