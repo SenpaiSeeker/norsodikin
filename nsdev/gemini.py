@@ -11,6 +11,7 @@ class ChatbotGemini:
             "response_mime_type": "text/plain",
         }
         self.chat_history = {}
+        self.khodam_history = {}
 
     def configure_model(self, model_name, bot_name=None):
         if model_name == "khodam":
@@ -57,6 +58,11 @@ class ChatbotGemini:
 
         return response.text
 
-    def send_khodam_message(self, name):
+    def send_khodam_message(self, name, user_id):
+        history = self.khodam_history.setdefault(user_id, [])
+        history.append({"role": "user", "parts": name})
+        
         response = self.configure_model("khodam").start_chat(history=[]).send_message(name)
+        history.append({"role": "assistant", "parts": response.text})
+        
         return response.text
