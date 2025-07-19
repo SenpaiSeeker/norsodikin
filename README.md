@@ -259,7 +259,8 @@ print(f"Jawaban Bot: {jawaban}")
 
 # 2. Mode Cek Khodam (untuk hiburan)
 nama = "Nor Sodikin"
-deskripsi_khodam = chatbot.send_khodam_message(nama)
+user_id = 12345
+deskripsi_khodam = chatbot.send_khodam_message(nama, user_id=user_id)
 print(f"\n--- Hasil Cek Khodam untuk {nama} ---\n{deskripsi_khodam}")
 ```
 
