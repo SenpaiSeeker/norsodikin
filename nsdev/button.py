@@ -52,6 +52,8 @@ class Button:
                 button = self.pyrogram.types.InlineKeyboardButton(
                     label, copy_text=self.pyrogram.types.CopyTextButton(text=cb_data)
                 )
+            elif "pay" in extra_params:
+                button = self.pyrogram.types.InlineKeyboardButton(label, pay=bool(cb_data))
             elif self.get_urls(cb_data):
                 button = self.pyrogram.types.InlineKeyboardButton(label, url=cb_data)
             else:
