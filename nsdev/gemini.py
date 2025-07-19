@@ -61,8 +61,8 @@ class ChatbotGemini:
     def send_khodam_message(self, name, user_id):
         history = self.khodam_history.setdefault(user_id, [])
         history.append({"role": "user", "parts": name})
-        
+
         response = self.configure_model("khodam").start_chat(history=[]).send_message(name)
         history.append({"role": "assistant", "parts": response.text})
-        
+
         return response.text
