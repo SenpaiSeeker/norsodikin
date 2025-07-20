@@ -48,7 +48,7 @@ class Client:
 
         loop = asyncio.get_running_loop()
         future = loop.create_future()
-        
+
         future.add_done_callback(functools.partial(self._clear, chat_id))
         self._conversations[chat_id] = future
 
