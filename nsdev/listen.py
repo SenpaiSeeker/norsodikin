@@ -3,8 +3,6 @@ import functools
 
 import pyrogram
 
-loop = asyncio.get_event_loop()
-
 
 def patch(obj):
     def is_patchable(item):
@@ -42,17 +40,22 @@ class Client:
     @patchable
     async def listen(self, chat_id, timeout=None):
         if not isinstance(chat_id, int):
-            chat = await self.get_chat(chat_id)
-            chat_id = chat.id
+            try:
+                chat = await self.get_chat(chat_id)
+                chat_id = chat.id
+            except Exception as e:
+                raise ValueError(f"Could not get chat_id for {chat_id}: {e}")
 
+        loop = asyncio.get_running_loop()
         future = loop.create_future()
+        
         future.add_done_callback(functools.partial(self._clear, chat_id))
         self._conversations[chat_id] = future
 
         try:
             return await asyncio.wait_for(future, timeout)
         except asyncio.TimeoutError:
-            self.cancel(chat_id)
+            self.cancel(chat_id, future)
             raise
 
     @patchable
@@ -68,9 +71,9 @@ class Client:
             del self._conversations[chat_id]
 
     @patchable
-    def cancel(self, chat_id):
+    def cancel(self, chat_id, future_to_cancel=None):
         future = self._conversations.get(chat_id)
-        if future and not future.done():
+        if future and not future.done() and (not future_to_cancel or future is future_to_cancel):
             future.set_exception(UserCancelled())
             self._clear(chat_id, future)
 
@@ -92,8 +95,7 @@ class MessageHandler:
 
     @patchable
     async def check(self, client, update):
-        future = client._conversations.get(update.chat.id)
-        if future and not future.done():
+        if update.chat and client._conversations.get(update.chat.id):
             return True
         return await self.filters(client, update) if callable(self.filters) else True
 
