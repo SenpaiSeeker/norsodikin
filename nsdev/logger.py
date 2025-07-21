@@ -40,13 +40,13 @@ class LoggerHandler(__import__("nsdev").AnsiColors):
         level_color = self.get_colors().get(record["levelname"], self.RESET)
         pipe_color = self.get_colors()["PIPE"]
 
-        record["levelname"] = f"{pipe_color}| {level_color}{record['levelname']:<8}"
-        record["message"] = f"{pipe_color}| {level_color}{record['message']}{self.RESET}"
+        record["levelname"] = f"{pipe_color}│ {level_color}{record['levelname']:<8}"
+        record["message"] = f"{pipe_color}│ {level_color}{record['message']}{self.RESET}"
 
         return self.fmt.format(
             asctime=f"{self.get_colors()['TIME']}[ {self.formatTime()} ]",
             levelname=record["levelname"],
-            module=f"{pipe_color}| {self.get_colors()['MODULE']}{self.os.path.basename(record.get('module', '<unknown>'))}",
+            module=f"{pipe_color}│ {self.get_colors()['MODULE']}{self.os.path.basename(record.get('module', '<unknown>'))}",
             funcName=record.get("funcName", "<unknown>"),
             lineno=record.get("lineno", 0),
             message=record["message"],
