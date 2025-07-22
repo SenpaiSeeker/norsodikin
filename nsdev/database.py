@@ -364,7 +364,9 @@ class DataBase:
 
     def setListVars(self, user_id, query_name, value, var_key="variabel"):
         user_id_str = str(user_id)
-        encrypted_value = self.cipher.encrypt(str(value))
+        value_to_encrypt = self.json.dumps(value) if isinstance(value, (dict, list)) else str(value)
+        encrypted_value = self.cipher.encrypt(value_to_encrypt)
+        
         if self.storage_type == "mongo":
             self._mongo_push_list_vars(user_id_str, var_key, query_name, encrypted_value)
         elif self.storage_type == "sqlite":
@@ -395,12 +397,21 @@ class DataBase:
             encrypted_values = (
                 self._load_data().get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name, [])
             )
-
-        return [self.cipher.decrypt(value) for value in encrypted_values]
-
+        
+        decrypted_list = []
+        for value in encrypted_values:
+            decrypted_str = self.cipher.decrypt(value)
+            try:
+                decrypted_list.append(self.json.loads(decrypted_str))
+            except (self.json.JSONDecodeError, TypeError):
+                decrypted_list.append(decrypted_str)
+        return decrypted_list
+        
     def removeListVars(self, user_id, query_name, value, var_key="variabel"):
         user_id_str = str(user_id)
-        encrypted_value = self.cipher.encrypt(str(value))
+        value_to_encrypt = self.json.dumps(value) if isinstance(value, (dict, list)) else str(value)
+        encrypted_value = self.cipher.encrypt(value_to_encrypt)
+        
         if self.storage_type == "mongo":
             self._mongo_pull_list_vars(user_id_str, var_key, query_name, encrypted_value)
         elif self.storage_type == "sqlite":
@@ -449,7 +460,14 @@ class DataBase:
             decrypted = {}
             for key, value in encrypted_data.items():
                 if isinstance(value, list):
-                    decrypted[key] = [self.cipher.decrypt(v) for v in value]
+                    temp_list = []
+                    for v in value:
+                        decrypted_v_str = self.cipher.decrypt(v)
+                        try:
+                            temp_list.append(self.json.loads(decrypted_v_str))
+                        except (self.json.JSONDecodeError, TypeError):
+                            temp_list.append(decrypted_v_str)
+                    decrypted[key] = temp_list
                 elif isinstance(value, str):
                     decrypted[key] = self.cipher.decrypt(value)
                 else:
