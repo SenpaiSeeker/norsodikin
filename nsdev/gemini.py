@@ -67,7 +67,7 @@ class ChatbotGemini:
         model = self.configure_model("chatbot", bot_name)
         chat = model.start_chat(history=history)
         response = chat.send_message(message)
-        
+
         history.append(response.candidates[0].content)
 
         return response.text
