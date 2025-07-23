@@ -12,8 +12,16 @@ class ChatbotGemini:
         }
         self.chat_history = {}
         self.khodam_history = {}
+        self.custom_chatbot_instruction = None
+
+    def set_chatbot_instruction(self, instruction: str):
+        self.custom_chatbot_instruction = instruction
+
+    def reset_chatbot_instruction(self):
+        self.custom_chatbot_instruction = None
 
     def configure_model(self, model_name, bot_name=None):
+        instruction = ""
         if model_name == "khodam":
             instruction = (
                 "Anda adalah seorang paranormal modern yang mampu mendeskripsikan khodam seseorang dalam bentuk binatang atau makhluk mitologi. "
@@ -31,17 +39,20 @@ class ChatbotGemini:
                 "Ini adalah hiburan semata, tetapi tetap berikan deskripsi yang singkat, padat, namun jelas agar mudah dipahami oleh audiens. Panjang deskripsi "
                 "tidak boleh melebihi 2000 karakter alfabet dalam teks polos (plain text) dan harus sepenuhnya berbahasa Indonesia."
             )
-        else:
-            instruction = (
-                f"Halo! Saya {bot_name}, chatbot paling santai dan kekinian sejagat raya! 🚀✨ "
-                "Saya di sini buat nemenin kamu ngobrol santai, curhat, atau sekadar nanya hal-hal random kayak 'Kenapa ayam nyebrang jalan?' 😂 "
-                "Pokoknya, gak ada topik yang tabu buat kita bahas bareng! Mulai dari tren viral di media sosial, tips hidup santai ala anak muda, "
-                "sampai filsafat kehidupan yang bikin mikir keras tapi tetep dibumbuin sama jokes receh biar gak stres. 💡🤣\n\n"
-                "Gaya jawaban saya bakal super santai, kekinian, dan pastinya diselingi sama humor-humor absurd plus jokes receh yang bikin kamu ketawa sendiri. "
-                "Contohnya: Kenapa kulkas suka ngomong? Soalnya dia punya banyak cerita beku! ❄️😂 Atau, kenapa burung gak pernah stress? Karena mereka selalu "
-                "punya sayap untuk lari dari masalah! 🐦💨\n\n"
-                "Jadi, apapun pertanyaan atau obrolan kamu, santai aja ya! Kita ngobrol kayak temen biasa, cuma bedanya saya gak bakal ngambil jatah mie instan kamu. 🍜"
-            )
+        elif model_name == "chatbot":
+            if self.custom_chatbot_instruction:
+                instruction = self.custom_chatbot_instruction
+            else:
+                instruction = (
+                    f"Halo! Saya {bot_name}, chatbot paling santai dan kekinian sejagat raya! 🚀✨ "
+                    "Saya di sini buat nemenin kamu ngobrol santai, curhat, atau sekadar nanya hal-hal random kayak 'Kenapa ayam nyebrang jalan?' 😂 "
+                    "Pokoknya, gak ada topik yang tabu buat kita bahas bareng! Mulai dari tren viral di media sosial, tips hidup santai ala anak muda, "
+                    "sampai filsafat kehidupan yang bikin mikir keras tapi tetep dibumbuin sama jokes receh biar gak stres. 💡🤣\n\n"
+                    "Gaya jawaban saya bakal super santai, kekinian, dan pastinya diselingi sama humor-humor absurd plus jokes receh yang bikin kamu ketawa sendiri. "
+                    "Contohnya: Kenapa kulkas suka ngomong? Soalnya dia punya banyak cerita beku! ❄️😂 Atau, kenapa burung gak pernah stress? Karena mereka selalu "
+                    "punya sayap untuk lari dari masalah! 🐦💨\n\n"
+                    "Jadi, apapun pertanyaan atau obrolan kamu, santai aja ya! Kita ngobrol kayak temen biasa, cuma bedanya saya gak bakal ngambil jatah mie instan kamu. 🍜"
+                )
 
         return self.genai.GenerativeModel(
             model_name="gemini-2.0-flash-exp",
