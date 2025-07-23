@@ -317,7 +317,8 @@ class DataBase:
 
     def setVars(self, user_id, query_name, value, var_key="variabel"):
         user_id_str = str(user_id)
-        encrypted_value = self.cipher.encrypt(str(value))
+        value_to_encrypt = self.json.dumps(value) if isinstance(value, (dict, list)) else str(value)
+        encrypted_value = self.cipher.encrypt(value_to_encrypt)
         if self.storage_type == "mongo":
             self._mongo_set_vars(user_id_str, var_key, query_name, encrypted_value)
         elif self.storage_type == "sqlite":
@@ -343,7 +344,14 @@ class DataBase:
         else:
             encrypted_value = self._load_data().get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name)
 
-        return self.cipher.decrypt(encrypted_value) if encrypted_value else None
+        if not encrypted_value:
+            return None
+        
+        decrypted_str = self.cipher.decrypt(encrypted_value)
+        try:
+            return self.json.loads(decrypted_str)
+        except (self.json.JSONDecodeError, TypeError):
+            return decrypted_str
 
     def removeVars(self, user_id, query_name, var_key="variabel"):
         user_id_str = str(user_id)
@@ -366,7 +374,7 @@ class DataBase:
         user_id_str = str(user_id)
         value_to_encrypt = self.json.dumps(value) if isinstance(value, (dict, list)) else str(value)
         encrypted_value = self.cipher.encrypt(value_to_encrypt)
-
+        
         if self.storage_type == "mongo":
             self._mongo_push_list_vars(user_id_str, var_key, query_name, encrypted_value)
         elif self.storage_type == "sqlite":
@@ -397,7 +405,7 @@ class DataBase:
             encrypted_values = (
                 self._load_data().get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name, [])
             )
-
+        
         decrypted_list = []
         for value in encrypted_values:
             decrypted_str = self.cipher.decrypt(value)
@@ -406,12 +414,12 @@ class DataBase:
             except (self.json.JSONDecodeError, TypeError):
                 decrypted_list.append(decrypted_str)
         return decrypted_list
-
+        
     def removeListVars(self, user_id, query_name, value, var_key="variabel"):
         user_id_str = str(user_id)
         value_to_encrypt = self.json.dumps(value) if isinstance(value, (dict, list)) else str(value)
         encrypted_value = self.cipher.encrypt(value_to_encrypt)
-
+        
         if self.storage_type == "mongo":
             self._mongo_pull_list_vars(user_id_str, var_key, query_name, encrypted_value)
         elif self.storage_type == "sqlite":
@@ -469,10 +477,13 @@ class DataBase:
                             temp_list.append(decrypted_v_str)
                     decrypted[key] = temp_list
                 elif isinstance(value, str):
-                    decrypted[key] = self.cipher.decrypt(value)
+                    decrypted_v_str = self.cipher.decrypt(value)
+                    try:
+                        decrypted[key] = self.json.loads(decrypted_v_str)
+                    except (self.json.JSONDecodeError, TypeError):
+                        decrypted[key] = decrypted_v_str
                 else:
                     decrypted[key] = value
-
             return self.json.dumps(decrypted, indent=4)
 
     def setExp(self, user_id, exp=30):
