@@ -17,7 +17,8 @@ class YamlHandler(__import__("nsdev").AnsiColors):
 
     def _convertToNamespace(self, data):
         if isinstance(data, dict):
-            return self.SimpleNamespace(**{k: self._convertToNamespace(v) for k, v in data.items()})
+            string_keyed_dict = {str(k): self._convertToNamespace(v) for k, v in data.items()}
+            return self.SimpleNamespace(**string_keyed_dict)
         elif isinstance(data, list):
             return [self._convertToNamespace(item) for item in data]
         else:
