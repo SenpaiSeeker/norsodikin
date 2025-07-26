@@ -87,11 +87,9 @@ class CipherHandler:
 
     def decrypt_bytes(self, encrypted_data: str) -> str:
         try:
-            decoded_b64 = self._base64_decode(encrypted_data)
-            codes_as_strings = decoded_b64.split(self.delimiter)
-
-            codes = list(map(int, codes_as_strings))
-            return "".join(chr(code - self._offset(i)) for i, code in enumerate(codes))
+            encrypted_bytes = bytes.fromhex(encrypted_data)
+            decrypted_bytes = self._xor_encrypt_decrypt(encrypted_bytes)
+            return decrypted_bytes.decode("utf-8")
         except Exception as e:
             raise Exception(f"Decryption failed for 'bytes' method: {e}")
 
@@ -122,9 +120,8 @@ class CipherHandler:
 
     def encrypt_bytes(self, message: str) -> str:
         try:
-            encrypted_values = [str(ord(char) + self._offset(i)) for i, char in enumerate(message)]
-            joined_string = self.delimiter.join(encrypted_values)
-            return self._base64_encode(joined_string)
+            encrypted_bytes = self._xor_encrypt_decrypt(message.encode("utf-8"))
+            return encrypted_bytes.hex()
         except Exception as e:
             raise Exception(f"Encryption failed for 'bytes' method: {e}")
 
@@ -146,14 +143,6 @@ class CipherHandler:
 
 
 class AsciiManager(__import__("nsdev").AnsiColors):
-    """
-    Manager untuk enkripsi dan dekripsi berbasis ASCII offset.
-
-    :param key: Kunci untuk proses enkripsi/dekripsi.
-                Tipe yang diperbolehkan: str, list, int, float.
-                Digunakan untuk menghasilkan offset berdasarkan posisi karakter.
-    """
-
     def __init__(self, key):
         super().__init__()
         try:
