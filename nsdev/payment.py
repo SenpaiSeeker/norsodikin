@@ -102,7 +102,7 @@ class VioletMediaPayClient:
     async def create_payment(
         self,
         channel_payment: str = "QRIS",
-        amount: str = "1500",
+        amount: str = "1000",
         produk: str = "payment_bot",
         url_redirect: str = "https://domainanda.com/redirect ",
         url_callback: str = "https://domainanda.com/callback ",
@@ -137,17 +137,7 @@ class VioletMediaPayClient:
             async with self.httpx.AsyncClient(verify=True, timeout=30.0) as client:
                 response = await client.post(url, data=payload)
                 response.raise_for_status()
-                return self.convert._convertToNamespace(
-                    {
-                        "api_response": response.json(),
-                        "ref_kode": ref_kode,
-                        "customer": {
-                            "nama": cus_nama,
-                            "email": cus_email,
-                            "phone": cus_phone,
-                        },
-                    }
-                )
+                return self.convert._convertToNamespace(response.json())
         except self.httpx.ReadTimeout:
             raise Exception("Request timeout: Server tidak merespons dalam waktu yang ditentukan.")
         except self.httpx.HTTPStatusError as e:
