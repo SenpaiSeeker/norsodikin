@@ -11,6 +11,7 @@ class CipherHandler:
     def __init__(self, **options):
         self.base64 = __import__("base64")
         self.binascii = __import__("binascii")
+        self.json = __import__("json")
 
         self.method = options.get("method", "shift")
         self.key = self._normalize_key(options.get("key", "my_s3cr3t_k3y_@2024!"))
@@ -64,18 +65,24 @@ class CipherHandler:
         except (self.binascii.Error, UnicodeDecodeError) as e:
             raise ValueError(f"Base64 decryption failed: {e}")
 
-    def decrypt(self, encrypted_data: str, only_base64: bool = False) -> str:
+    def decrypt(self, encrypted_data: str, only_base64: bool = False):
         if only_base64:
             return self._base64_decode(encrypted_data)
 
+        decrypted_string = ""
         if self.method == "bytes":
-            return self.decrypt_bytes(encrypted_data)
+            decrypted_string = self.decrypt_bytes(encrypted_data)
         elif self.method == "binary":
-            return self.decrypt_binary(encrypted_data)
+            decrypted_string = self.decrypt_binary(encrypted_data)
         elif self.method == "shift":
-            return self.decrypt_shift(encrypted_data)
+            decrypted_string = self.decrypt_shift(encrypted_data)
         else:
             raise ValueError(f"Metode dekripsi '{self.method}' tidak dikenali.")
+        
+        try:
+            return self.json.loads(decrypted_string)
+        except (self.json.JSONDecodeError, TypeError):
+            return decrypted_string
 
     def decrypt_binary(self, encrypted_bits: str) -> str:
         if not encrypted_bits or len(encrypted_bits) % 8 != 0:
@@ -100,16 +107,21 @@ class CipherHandler:
         except (ValueError, TypeError) as error:
             raise ValueError(f"Error during shift decryption: {error}")
 
-    def encrypt(self, data: str, only_base64: bool = False) -> str:
+    def encrypt(self, data, only_base64: bool = False) -> str:
         if only_base64:
             return self._base64_encode(data)
+        
+        if not isinstance(data, str):
+            message_to_encrypt = self.json.dumps(data, separators=(",", ":"))
+        else:
+            message_to_encrypt = data
 
         if self.method == "bytes":
-            return self.encrypt_bytes(data)
+            return self.encrypt_bytes(message_to_encrypt)
         elif self.method == "binary":
-            return self.encrypt_binary(data)
+            return self.encrypt_binary(message_to_encrypt)
         elif self.method == "shift":
-            return self.encrypt_shift(data)
+            return self.encrypt_shift(message_to_encrypt)
         else:
             raise ValueError(f"Metode enkripsi '{self.method}' tidak dikenali.")
 
@@ -145,6 +157,7 @@ class CipherHandler:
 class AsciiManager(__import__("nsdev").AnsiColors):
     def __init__(self, key):
         super().__init__()
+        self.json = __import__("json")
         try:
             self.no_format_key = key
             self.key = self._normalize_key(key)
@@ -168,15 +181,23 @@ class AsciiManager(__import__("nsdev").AnsiColors):
         except Exception as e:
             raise Exception(f"Offset calculation failed at index {index}: {e}")
 
-    def encrypt(self, message: str) -> list[int]:
+    def encrypt(self, data) -> list[int]:
         try:
+            if not isinstance(data, str):
+                message = self.json.dumps(data, separators=(",", ":"))
+            else:
+                message = data
             return [int(ord(char) + self._offset(i)) for i, char in enumerate(message)]
         except Exception as e:
             raise Exception(f"Encryption failed: {e}")
 
-    def decrypt(self, encrypted: list[int]) -> str:
+    def decrypt(self, encrypted: list[int]):
         try:
-            return "".join(chr(int(code) - self._offset(i)) for i, code in enumerate(encrypted))
+            decrypted_string = "".join(chr(int(code) - self._offset(i)) for i, code in enumerate(encrypted))
+            try:
+                return self.json.loads(decrypted_string)
+            except (self.json.JSONDecodeError, TypeError):
+                return decrypted_string
         except Exception as e:
             raise Exception(f"Decryption failed: {e}")
 
