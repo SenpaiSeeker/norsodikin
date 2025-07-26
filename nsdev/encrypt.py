@@ -78,7 +78,7 @@ class CipherHandler:
             decrypted_string = self.decrypt_shift(encrypted_data)
         else:
             raise ValueError(f"Metode dekripsi '{self.method}' tidak dikenali.")
-        
+
         try:
             return self.json.loads(decrypted_string)
         except (self.json.JSONDecodeError, TypeError):
@@ -110,7 +110,7 @@ class CipherHandler:
     def encrypt(self, data, only_base64: bool = False) -> str:
         if only_base64:
             return self._base64_encode(data)
-        
+
         if not isinstance(data, str):
             message_to_encrypt = self.json.dumps(data, separators=(",", ":"))
         else:
