@@ -21,10 +21,10 @@ class DataBase:
 
         self.storage_type = options.get("storage_type", "local")
         self.file_name = options.get("file_name", "database")
-        self.binary_keys = options.get("binary_keys", "default_db_key_12345")
+        self.keys_encrypt = options.get("keys_encrypt", "default_db_key_12345")
         self.method_encrypt = options.get("method_encrypt", "bytes")
 
-        self.cipher = __import__("nsdev").encrypt.CipherHandler(key=self.binary_keys, method=self.method_encrypt)
+        self.cipher = __import__("nsdev").encrypt.CipherHandler(key=self.keys_encrypt, method=self.method_encrypt)
 
         self.auto_backup = options.get("auto_backup", False)
         self.backup_bot_token = options.get("backup_bot_token")
