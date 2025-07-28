@@ -17,7 +17,6 @@ class Button:
             pattern = r"\|\s*([^\|]+?)\s*\|"
             raw_data = self.re.findall(pattern, text)
             extracted_text = self.re.sub(pattern, "", text).strip()
-
             buttons = []
             for chunk in raw_data:
                 parts = chunk.split("-")
@@ -28,7 +27,6 @@ class Button:
                     else:
                         buttons.append((part.strip().strip("]"), []))
             return buttons, extracted_text
-
         else:
             raise ValueError("Invalid parse mode. Use 'inline' or 'reply'.")
 
@@ -38,20 +36,13 @@ class Button:
 
         for label, payload in buttons:
             cb_data, *extra_params = payload.split(";")
-
             if not self.get_urls(cb_data):
-                cb_data = (
-                    f"{inline_cmd} {is_id}_{cb_data}"
-                    if inline_cmd and is_id
-                    else f"{inline_cmd} {cb_data}" if inline_cmd else cb_data
-                )
-
+                cb_data = (f"{inline_cmd} {is_id}_{cb_data}" if inline_cmd and is_id else f"{inline_cmd} {cb_data}" if inline_cmd else cb_data)
+            
             if "user" in extra_params:
                 button = self.pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
             elif "copy" in extra_params:
-                button = self.pyrogram.types.InlineKeyboardButton(
-                    label, copy_text=self.pyrogram.types.CopyTextButton(text=cb_data)
-                )
+                button = self.pyrogram.types.InlineKeyboardButton(label, copy_text=self.pyrogram.types.CopyTextButton(text=cb_data))
             elif "pay" in extra_params:
                 button = self.pyrogram.types.InlineKeyboardButton(label, pay=bool(cb_data))
             elif self.get_urls(cb_data):
@@ -59,10 +50,8 @@ class Button:
             else:
                 button = self.pyrogram.types.InlineKeyboardButton(label, callback_data=cb_data)
 
-            if "same" in extra_params and layout:
-                layout[-1].append(button)
-            else:
-                layout.append([button])
+            if "same" in extra_params and layout: layout[-1].append(button)
+            else: layout.append([button])
 
         return self.pyrogram.types.InlineKeyboardMarkup(layout), remaining_text
 
@@ -71,15 +60,10 @@ class Button:
         buttons, remaining_text = self.parse_buttons_and_text(text, mode="reply")
 
         for label, params in buttons:
-            if "is_contact" in params:
-                button = self.pyrogram.types.KeyboardButton(label, request_contact=True)
-            else:
-                button = self.pyrogram.types.KeyboardButton(label)
-
-            if "same" in params and layout:
-                layout[-1].append(button)
-            else:
-                layout.append([button])
+            if "is_contact" in params: button = self.pyrogram.types.KeyboardButton(label, request_contact=True)
+            else: button = self.pyrogram.types.KeyboardButton(label)
+            if "same" in params and layout: layout[-1].append(button)
+            else: layout.append([button])
 
         return self.pyrogram.types.ReplyKeyboardMarkup(layout, resize_keyboard=True), remaining_text
 
@@ -87,7 +71,7 @@ class Button:
         return self.pyrogram.types.ReplyKeyboardRemove(selective=selective)
 
     def build_button_grid(self, buttons, row_inline=None, row_width=2):
-        row_inline = row_inline or {}
+        row_inline = row_inline or []
 
         grid = [
             [self.pyrogram.types.InlineKeyboardButton(**data) for data in buttons[i : i + row_width]]
@@ -95,6 +79,6 @@ class Button:
         ]
 
         if row_inline:
-            grid.append([self.pyrogram.types.InlineKeyboardButton(**row_inline)])
+            grid.extend([[self.pyrogram.types.InlineKeyboardButton(**data)] for data in row_inline])
 
         return self.pyrogram.types.InlineKeyboardMarkup(grid)
