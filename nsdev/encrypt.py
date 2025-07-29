@@ -145,9 +145,9 @@ class CipherHandler:
         encrypted_code = self.encrypt(code)
         if encrypted_code is None:
             raise ValueError("Encryption failed, cannot save.")
-        
+
         handler_params = f"{{'method': '{self.method}', 'key': {repr(self.key)}}}"
-        
+
         result = (
             "(lambda creator, params, data, runner: "
             "runner(creator(**params).decrypt(data)))("
@@ -158,7 +158,7 @@ class CipherHandler:
             "(lambda f, c: f(c))(getattr(__import__('builtins'), 'compile'), code_to_run).__class__.__base__.__subclasses__()[-1](''.__class__.__name__, (), {{}}).__init__.__globals__['__builtins__']['eval'](code_to_run)))"
             ")"
         )
-        
+
         try:
             with open(filename, "w") as file:
                 file.write(result)
@@ -218,7 +218,7 @@ class AsciiManager(__import__("nsdev").AnsiColors):
         try:
             encrypted_code = self.encrypt(code)
             handler_params = f"{{'key': {repr(self.no_format_key)}}}"
-            
+
             result = (
                 "(lambda creator, params, data, runner: "
                 "runner(creator(**params).decrypt(data)))("
