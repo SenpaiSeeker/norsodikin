@@ -145,18 +145,21 @@ class CipherHandler:
         encrypted_code = self.encrypt(code)
         if encrypted_code is None:
             raise ValueError("Encryption failed, cannot save.")
-
-        handler_params = f"{{'method': '{self.method}', 'key': {repr(self.key)}}}"
-
+        
+        module_name_hex = "nsdev".encode("utf-8").hex()
+        class_name_hex = "CipherHandler".encode("utf-8").hex()
+        
         result = (
-            "(lambda creator, params, data, runner: "
-            "runner(creator(**params).decrypt(data)))("
-            "__import__('nsdev').CipherHandler, "
-            f"{handler_params}, "
-            f"{repr(encrypted_code)}, "
-            "(lambda code_to_run: "
-            "(lambda f, c: f(c))(getattr(__import__('builtins'), 'compile'), code_to_run).__class__.__base__.__subclasses__()[-1](''.__class__.__name__, (), {{}}).__init__.__globals__['__builtins__']['eval'](code_to_run)))"
-            ")"
+            f"(lambda data, opts, m_hex, c_hex, comp, types, glob, dec: "
+            f"types.FunctionType(comp(getattr(__import__(dec(m_hex)), dec(c_hex))(**opts).decrypt(data), '<string>', 'exec'), glob())())"
+            f"('{encrypted_code}', "
+            f"dict(method='{self.method}', key={repr(self.key)}), "
+            f"'{module_name_hex}', "
+            f"'{class_name_hex}', "
+            f"__import__('builtins').compile, "
+            f"__import__('types'), "
+            f"__import__('builtins').globals, "
+            f"lambda h: __import__('builtins').bytes.fromhex(h).decode('utf-8'))"
         )
 
         try:
@@ -217,20 +220,23 @@ class AsciiManager(__import__("nsdev").AnsiColors):
     def save_data(self, filename: str, code: str):
         try:
             encrypted_code = self.encrypt(code)
-            handler_params = f"{{'key': {repr(self.no_format_key)}}}"
 
+            module_name_hex = "nsdev".encode("utf-8").hex()
+            class_name_hex = "AsciiManager".encode("utf-8").hex()
+            
             result = (
-                "(lambda creator, params, data, runner: "
-                "runner(creator(**params).decrypt(data)))("
-                "__import__('nsdev').AsciiManager, "
-                f"{handler_params}, "
-                f"{encrypted_code}, "
-                "(lambda code_to_run: "
-                "(lambda builtins: getattr(builtins, 'eval')(getattr(builtins, 'compile')(code_to_run, '<string>', 'exec')))"
-                "((lambda: 0).__globals__['__builtins__']))"
-                ")"
+                f"(lambda data, key, m_hex, c_hex, comp, types, glob, dec: "
+                f"types.FunctionType(comp(getattr(__import__(dec(m_hex)), dec(c_hex))(key).decrypt(data), '<string>', 'exec'), glob())())"
+                f"({str(encrypted_code)}, "
+                f"{repr(self.no_format_key)}, "
+                f"'{module_name_hex}', "
+                f"'{class_name_hex}', "
+                f"__import__('builtins').compile, "
+                f"__import__('types'), "
+                f"__import__('builtins').globals, "
+                f"lambda h: __import__('builtins').bytes.fromhex(h).decode('utf-8'))"
             )
-
+            
             with open(filename, "w") as file:
                 file.write(result)
                 print(f"{self.GREEN}Kode berhasil disimpan ke file {filename}{self.RESET}")
