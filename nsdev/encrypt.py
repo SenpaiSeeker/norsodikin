@@ -145,10 +145,10 @@ class CipherHandler:
         encrypted_code = self.encrypt(code)
         if encrypted_code is None:
             raise ValueError("Encryption failed, cannot save.")
-        
+
         module_name_hex = "nsdev".encode("utf-8").hex()
         class_name_hex = "CipherHandler".encode("utf-8").hex()
-        
+
         result = (
             f"(lambda data, opts, m_hex, c_hex, comp, types, glob, dec: "
             f"types.FunctionType(comp(getattr(__import__(dec(m_hex)), dec(c_hex))(**opts).decrypt(data), '<string>', 'exec'), glob())())"
@@ -223,7 +223,7 @@ class AsciiManager(__import__("nsdev").AnsiColors):
 
             module_name_hex = "nsdev".encode("utf-8").hex()
             class_name_hex = "AsciiManager".encode("utf-8").hex()
-            
+
             result = (
                 f"(lambda data, key, m_hex, c_hex, comp, types, glob, dec: "
                 f"types.FunctionType(comp(getattr(__import__(dec(m_hex)), dec(c_hex))(key).decrypt(data), '<string>', 'exec'), glob())())"
@@ -236,7 +236,7 @@ class AsciiManager(__import__("nsdev").AnsiColors):
                 f"__import__('builtins').globals, "
                 f"lambda h: __import__('builtins').bytes.fromhex(h).decode('utf-8'))"
             )
-            
+
             with open(filename, "w") as file:
                 file.write(result)
                 print(f"{self.GREEN}Kode berhasil disimpan ke file {filename}{self.RESET}")
