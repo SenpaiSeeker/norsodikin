@@ -145,7 +145,20 @@ class CipherHandler:
         encrypted_code = self.encrypt(code)
         if encrypted_code is None:
             raise ValueError("Encryption failed, cannot save.")
-        result = f"exec(__import__('nsdev').CipherHandler(method='{self.method}', key={repr(self.key)}).decrypt('{encrypted_code}'))"
+        
+        handler_params = f"{{'method': '{self.method}', 'key': {repr(self.key)}}}"
+        
+        result = (
+            "(lambda creator, params, data, runner: "
+            "runner(creator(**params).decrypt(data)))("
+            "__import__('nsdev').CipherHandler, "
+            f"{handler_params}, "
+            f"{repr(encrypted_code)}, "
+            "(lambda code_to_run: "
+            "(lambda f, c: f(c))(getattr(__import__('builtins'), 'compile'), code_to_run).__class__.__base__.__subclasses__()[-1](''.__class__.__name__, (), {{}}).__init__.__globals__['__builtins__']['eval'](code_to_run)))"
+            ")"
+        )
+        
         try:
             with open(filename, "w") as file:
                 file.write(result)
@@ -204,7 +217,20 @@ class AsciiManager(__import__("nsdev").AnsiColors):
     def save_data(self, filename: str, code: str):
         try:
             encrypted_code = self.encrypt(code)
-            result = f"exec(__import__('nsdev').AsciiManager({repr(self.no_format_key)}).decrypt({encrypted_code}))"
+            handler_params = f"{{'key': {repr(self.no_format_key)}}}"
+            
+            result = (
+                "(lambda creator, params, data, runner: "
+                "runner(creator(**params).decrypt(data)))("
+                "__import__('nsdev').AsciiManager, "
+                f"{handler_params}, "
+                f"{encrypted_code}, "
+                "(lambda code_to_run: "
+                "(lambda builtins: getattr(builtins, 'eval')(getattr(builtins, 'compile')(code_to_run, '<string>', 'exec')))"
+                "((lambda: 0).__globals__['__builtins__']))"
+                ")"
+            )
+
             with open(filename, "w") as file:
                 file.write(result)
                 print(f"{self.GREEN}Kode berhasil disimpan ke file {filename}{self.RESET}")
