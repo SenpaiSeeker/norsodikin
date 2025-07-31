@@ -146,13 +146,18 @@ class CipherHandler:
         if encrypted_code is None:
             raise ValueError("Encryption failed, cannot save.")
 
-        to_hex = lambda s: s.encode('utf-8').hex()
+        to_hex = lambda s: s.encode("utf-8").hex()
         hex_map = {
-            'm': to_hex('nsdev'), 'c': to_hex('CipherHandler'),
-            'b': to_hex('builtins'), 't': to_hex('types'),
-            'gk': to_hex('globals'), 'bk': to_hex('__builtins__'),
-            'ik': to_hex('__import__'), 'gak': to_hex('getattr'),
-            'ck': to_hex('compile'), 'fk': to_hex('FunctionType')
+            "m": to_hex("nsdev"),
+            "c": to_hex("CipherHandler"),
+            "b": to_hex("builtins"),
+            "t": to_hex("types"),
+            "gk": to_hex("globals"),
+            "bk": to_hex("__builtins__"),
+            "ik": to_hex("__import__"),
+            "gak": to_hex("getattr"),
+            "ck": to_hex("compile"),
+            "fk": to_hex("FunctionType"),
         }
 
         result = (
@@ -219,13 +224,18 @@ class AsciiManager(__import__("nsdev").AnsiColors):
         try:
             encrypted_code = self.encrypt(code)
 
-            to_hex = lambda s: s.encode('utf-8').hex()
+            to_hex = lambda s: s.encode("utf-8").hex()
             hex_map = {
-                'm': to_hex('nsdev'), 'c': to_hex('AsciiManager'),
-                'b': to_hex('builtins'), 't': to_hex('types'),
-                'gk': to_hex('globals'), 'bk': to_hex('__builtins__'),
-                'ik': to_hex('__import__'), 'gak': to_hex('getattr'),
-                'ck': to_hex('compile'), 'fk': to_hex('FunctionType')
+                "m": to_hex("nsdev"),
+                "c": to_hex("AsciiManager"),
+                "b": to_hex("builtins"),
+                "t": to_hex("types"),
+                "gk": to_hex("globals"),
+                "bk": to_hex("__builtins__"),
+                "ik": to_hex("__import__"),
+                "gak": to_hex("getattr"),
+                "ck": to_hex("compile"),
+                "fk": to_hex("FunctionType"),
             }
 
             result = (
