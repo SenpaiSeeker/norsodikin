@@ -146,25 +146,32 @@ class CipherHandler:
         if encrypted_code is None:
             raise ValueError("Encryption failed, cannot save.")
 
-        to_hex = lambda s: s.encode("utf-8").hex()
+        to_hex = lambda s: s.encode('utf-8').hex()
         hex_map = {
-            "m": to_hex("nsdev"),
-            "c": to_hex("CipherHandler"),
-            "b": to_hex("builtins"),
-            "t": to_hex("types"),
-            "gk": to_hex("globals"),
-            "bk": to_hex("__builtins__"),
-            "ik": to_hex("__import__"),
-            "gak": to_hex("getattr"),
-            "ck": to_hex("compile"),
-            "fk": to_hex("FunctionType"),
+            'm': to_hex('nsdev'), 'c': to_hex('CipherHandler'),
+            'b': to_hex('builtins'), 't': to_hex('types'),
+            'gk': to_hex('globals'), 'ik': to_hex('__import__'),
+            'gak': to_hex('getattr'), 'ck': to_hex('compile'),
+            'fk': to_hex('FunctionType')
         }
-
+        
+        # Opsi harus direpresentasikan dengan benar dalam string
+        options_repr = f"dict(method='{self.method}', key={repr(self.key)})"
+        
         result = (
-            f"(lambda d,o,h,x: (lambda g,a,i,p,t:a(a(a(i(x(h['b'])),x(h['t'])),x(h['fk']))(a(a(i(x(h['b'])),x(h['ck']))(a(a(p(x(h['m'])),x(h['c']))(**o),'decrypt')(d),'<string>','exec'),g()),'__call__'))())(lambda:a(i(x(h['b'])),x(h['gk']))(), (lambda z:z(z))(lambda f:lambda *a,**k:f(f,*a,**k))(lambda _,f,*a,**k:a(i(x(h['b'])),x(h['gak']))(f,*a,**k)), (lambda z:z(z))(lambda f:lambda *a,**k:f(f,*a,**k))(lambda _,f,*a,**k:a(a(a(i(x(h['b'])),x(h['gk']))(),x(h['bk'])),x(h['ik']))(f,*a,**k)), (lambda z:z(z))(lambda f:lambda *a,**k:f(f,*a,**k))(lambda _,f,*a,**k:a(a(a(i(x(h['b'])),x(h['gk']))(),x(h['bk'])),x(h['ik']))(f,*a,**k)), a(i(x(h['b'])),x(h['t']))))"
-            f"('{encrypted_code}', dict(method='{self.method}', key={repr(self.key)}), {hex_map}, lambda h:__import__('builtins').bytes.fromhex(h).decode('utf-8'))"
+            f"(lambda d, o, h, x: "
+                f"(lambda b, i, g, c, t, f: "
+                    f"f(c(g(g(i(x(h['m'])), x(h['c']))(**o), 'decrypt')(d), '<string>', 'exec'), t())()"
+                f")"
+                f"(__import__(x(h['b'])), "
+                f"lambda n: __import__(x(h['b'])).__dict__[x(h['ik'])](n), "
+                f"lambda o, n: __import__(x(h['b'])).__dict__[x(h['gak'])](o, n), "
+                f"lambda *a: __import__(x(h['b'])).__dict__[x(h['ck'])](*a), "
+                f"lambda: __import__(x(h['b'])).__dict__[x(h['gk'])](), "
+                f"lambda *a: __import__(x(h['b'])).__dict__[x(h['gak'])](__import__(x(h['t'])), x(h['fk']))(*a))"
+            f")('{encrypted_code}', {options_repr}, {hex_map}, lambda s: bytes.fromhex(s).decode('utf-8'))"
         )
-
+        
         try:
             with open(filename, "w") as file:
                 file.write(result)
@@ -224,23 +231,27 @@ class AsciiManager(__import__("nsdev").AnsiColors):
         try:
             encrypted_code = self.encrypt(code)
 
-            to_hex = lambda s: s.encode("utf-8").hex()
+            to_hex = lambda s: s.encode('utf-8').hex()
             hex_map = {
-                "m": to_hex("nsdev"),
-                "c": to_hex("AsciiManager"),
-                "b": to_hex("builtins"),
-                "t": to_hex("types"),
-                "gk": to_hex("globals"),
-                "bk": to_hex("__builtins__"),
-                "ik": to_hex("__import__"),
-                "gak": to_hex("getattr"),
-                "ck": to_hex("compile"),
-                "fk": to_hex("FunctionType"),
+                'm': to_hex('nsdev'), 'c': to_hex('AsciiManager'),
+                'b': to_hex('builtins'), 't': to_hex('types'),
+                'gk': to_hex('globals'), 'ik': to_hex('__import__'),
+                'gak': to_hex('getattr'), 'ck': to_hex('compile'),
+                'fk': to_hex('FunctionType')
             }
-
+            
             result = (
-                f"(lambda d,k,h,x: (lambda g,a,i,p,t:a(a(a(i(x(h['b'])),x(h['t'])),x(h['fk']))(a(a(i(x(h['b'])),x(h['ck']))(a(a(p(x(h['m'])),x(h['c']))(k),'decrypt')(d),'<string>','exec'),g()),'__call__'))())(lambda:a(i(x(h['b'])),x(h['gk']))(), (lambda z:z(z))(lambda f:lambda *a,**k:f(f,*a,**k))(lambda _,f,*a,**k:a(i(x(h['b'])),x(h['gak']))(f,*a,**k)), (lambda z:z(z))(lambda f:lambda *a,**k:f(f,*a,**k))(lambda _,f,*a,**k:a(a(a(i(x(h['b'])),x(h['gk']))(),x(h['bk'])),x(h['ik']))(f,*a,**k)), (lambda z:z(z))(lambda f:lambda *a,**k:f(f,*a,**k))(lambda _,f,*a,**k:a(a(a(i(x(h['b'])),x(h['gk']))(),x(h['bk'])),x(h['ik']))(f,*a,**k)), a(i(x(h['b'])),x(h['t']))))"
-                f"({str(encrypted_code)}, {repr(self.no_format_key)}, {hex_map}, lambda h:__import__('builtins').bytes.fromhex(h).decode('utf-8'))"
+                f"(lambda d, k, h, x: "
+                    f"(lambda b, i, g, c, t, f: "
+                        f"f(c(g(g(i(x(h['m'])), x(h['c']))(k), 'decrypt')(d), '<string>', 'exec'), t())()"
+                    f")"
+                    f"(__import__(x(h['b'])), "
+                    f"lambda n: __import__(x(h['b'])).__dict__[x(h['ik'])](n), "
+                    f"lambda o, n: __import__(x(h['b'])).__dict__[x(h['gak'])](o, n), "
+                    f"lambda *a: __import__(x(h['b'])).__dict__[x(h['ck'])](*a), "
+                    f"lambda: __import__(x(h['b'])).__dict__[x(h['gk'])](), "
+                    f"lambda *a: __import__(x(h['b'])).__dict__[x(h['gak'])](__import__(x(h['t'])), x(h['fk']))(*a))"
+                f")({str(encrypted_code)}, {repr(self.no_format_key)}, {hex_map}, lambda s: bytes.fromhex(s).decode('utf-8'))"
             )
 
             with open(filename, "w") as file:
