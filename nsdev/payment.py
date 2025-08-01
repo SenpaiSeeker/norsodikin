@@ -104,6 +104,7 @@ class VioletMediaPayClient:
         channel_payment: str = "QRIS",
         amount: str = "1000",
         produk: str = "payment_bot",
+        expired: int = 900,
         url_redirect: str = "https://domainanda.com/redirect ",
         url_callback: str = "https://domainanda.com/callback ",
     ):
