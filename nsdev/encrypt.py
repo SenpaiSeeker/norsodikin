@@ -159,7 +159,6 @@ class CipherHandler:
             "fk": to_hex("FunctionType"),
         }
 
-        # Opsi harus direpresentasikan dengan benar dalam string
         options_repr = f"dict(method='{self.method}', key={repr(self.key)})"
 
         result = (
