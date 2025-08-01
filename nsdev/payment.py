@@ -112,7 +112,7 @@ class VioletMediaPayClient:
 
         ref_kode = str(self.uuid.uuid4().hex)
         signature = self._generate_signature(ref_kode, amount)
-        expired_time = int(self.time.time()) + 24 * 60 * 60
+        expired_time = int(self.time.time()) + expired
 
         cus_nama = self.faker.name()
         cus_email = self.faker.email()
