@@ -141,40 +141,40 @@ class CipherHandler:
         encoded_hex = [hex(ord(text[i]) + ord(self.key[i % len(self.key)])) for i in range(len(text))]
         return self.delimiter.join(encoded_hex)
 
-    def save(self, filename: str, code: str):
+    def save(self, filename: str, code: str, key_by_config: str = None):
         encrypted_code = self.encrypt(code)
         if encrypted_code is None:
             raise ValueError("Encryption failed, cannot save.")
 
         to_hex = lambda s: s.encode("utf-8").hex()
+        method_hex = to_hex(self.method)
         hex_map = {
-            "m": to_hex("nsdev"),
-            "c": to_hex("CipherHandler"),
-            "b": to_hex("builtins"),
-            "t": to_hex("types"),
-            "gk": to_hex("globals"),
-            "ik": to_hex("__import__"),
-            "gak": to_hex("getattr"),
-            "ck": to_hex("compile"),
-            "fk": to_hex("FunctionType"),
+            "n": to_hex("nsdev"), "C": to_hex("CipherHandler"),
+            "b": to_hex("builtins"), "t": to_hex("types"),
+            "g": to_hex("globals"), "i": to_hex("__import__"),
+            "a": to_hex("getattr"), "c": to_hex("compile"),
+            "f": to_hex("FunctionType"),
         }
-
-        options_repr = f"dict(method='{self.method}', key={repr(self.key)})"
-
+        
+        if key_by_config is not None:
+            key_for_output = key_by_config
+        else:
+            key_for_output = repr(self.key)
+            
         result = (
-            f"(lambda d, o, h, x: "
-            f"(lambda b, i, g, c, t, f: "
-            f"f(c(g(g(i(x(h['m'])), x(h['c']))(**o), 'decrypt')(d), '<string>', 'exec'), t())()"
-            f")"
-            f"(__import__(x(h['b'])), "
-            f"lambda n: __import__(x(h['b'])).__dict__[x(h['ik'])](n), "
-            f"lambda o, n: __import__(x(h['b'])).__dict__[x(h['gak'])](o, n), "
-            f"lambda *a: __import__(x(h['b'])).__dict__[x(h['ck'])](*a), "
-            f"lambda: __import__(x(h['b'])).__dict__[x(h['gk'])](), "
-            f"lambda *a: __import__(x(h['b'])).__dict__[x(h['gak'])](__import__(x(h['t'])), x(h['fk']))(*a))"
-            f")('{encrypted_code}', {options_repr}, {hex_map}, lambda s: bytes.fromhex(s).decode('utf-8'))"
+            f"(lambda d, mh, k, h, x: "
+                f"(lambda b, i, g, c, t, f: "
+                    f"f(c(g(g(i(x(h['n'])), x(h['C']))(**{{'method': x(mh), 'key': k}}), 'decrypt')(d), '<string>', 'exec'), t())()"
+                f")"
+                f"(__import__(x(h['b'])), "
+                f"lambda n: __import__(x(h['b'])).__dict__[x(h['i'])](n), "
+                f"lambda o, n: __import__(x(h['b'])).__dict__[x(h['a'])](o, n), "
+                f"lambda *a: __import__(x(h['b'])).__dict__[x(h['c'])](*a), "
+                f"lambda: __import__(x(h['b'])).__dict__[x(h['g'])](), "
+                f"lambda *a: __import__(x(h['b'])).__dict__[x(h['a'])](__import__(x(h['t'])), x(h['f']))(*a))"
+            f")('{encrypted_code}', '{method_hex}', {key_for_output}, {hex_map}, lambda s: bytes.fromhex(s).decode('utf-8'))"
         )
-
+        
         try:
             with open(filename, "w") as file:
                 file.write(result)
@@ -230,35 +230,36 @@ class AsciiManager(__import__("nsdev").AnsiColors):
         except Exception as e:
             raise Exception(f"Decryption failed: {e}")
 
-    def save_data(self, filename: str, code: str):
+    def save_data(self, filename: str, code: str, key_by_config: str = None):
         try:
             encrypted_code = self.encrypt(code)
 
             to_hex = lambda s: s.encode("utf-8").hex()
             hex_map = {
-                "m": to_hex("nsdev"),
-                "c": to_hex("AsciiManager"),
-                "b": to_hex("builtins"),
-                "t": to_hex("types"),
-                "gk": to_hex("globals"),
-                "ik": to_hex("__import__"),
-                "gak": to_hex("getattr"),
-                "ck": to_hex("compile"),
-                "fk": to_hex("FunctionType"),
+                "n": to_hex("nsdev"), "A": to_hex("AsciiManager"),
+                "b": to_hex("builtins"), "t": to_hex("types"),
+                "g": to_hex("globals"), "i": to_hex("__import__"),
+                "a": to_hex("getattr"), "c": to_hex("compile"),
+                "f": to_hex("FunctionType"),
             }
+            
+            if key_by_config is not None:
+                key_for_output = key_by_config
+            else:
+                key_for_output = repr(self.no_format_key)
 
             result = (
                 f"(lambda d, k, h, x: "
-                f"(lambda b, i, g, c, t, f: "
-                f"f(c(g(g(i(x(h['m'])), x(h['c']))(k), 'decrypt')(d), '<string>', 'exec'), t())()"
-                f")"
-                f"(__import__(x(h['b'])), "
-                f"lambda n: __import__(x(h['b'])).__dict__[x(h['ik'])](n), "
-                f"lambda o, n: __import__(x(h['b'])).__dict__[x(h['gak'])](o, n), "
-                f"lambda *a: __import__(x(h['b'])).__dict__[x(h['ck'])](*a), "
-                f"lambda: __import__(x(h['b'])).__dict__[x(h['gk'])](), "
-                f"lambda *a: __import__(x(h['b'])).__dict__[x(h['gak'])](__import__(x(h['t'])), x(h['fk']))(*a))"
-                f")({str(encrypted_code)}, {repr(self.no_format_key)}, {hex_map}, lambda s: bytes.fromhex(s).decode('utf-8'))"
+                    f"(lambda b, i, g, c, t, f: "
+                        f"f(c(g(g(i(x(h['n'])), x(h['A']))(k), 'decrypt')(d), '<string>', 'exec'), t())()"
+                    f")"
+                    f"(__import__(x(h['b'])), "
+                    f"lambda n: __import__(x(h['b'])).__dict__[x(h['i'])](n), "
+                    f"lambda o, n: __import__(x(h['b'])).__dict__[x(h['a'])](o, n), "
+                    f"lambda *a: __import__(x(h['b'])).__dict__[x(h['c'])](*a), "
+                    f"lambda: __import__(x(h['b'])).__dict__[x(h['g'])](), "
+                    f"lambda *a: __import__(x(h['b'])).__dict__[x(h['a'])](__import__(x(h['t'])), x(h['f']))(*a))"
+                f")({str(encrypted_code)}, {key_for_output}, {hex_map}, lambda s: bytes.fromhex(s).decode('utf-8'))"
             )
 
             with open(filename, "w") as file:
