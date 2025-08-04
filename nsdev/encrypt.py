@@ -147,40 +147,24 @@ class CipherHandler:
             raise ValueError("Encryption failed, cannot save.")
 
         to_hex = lambda s: s.encode("utf-8").hex()
-        hex_map = {
-            "n": to_hex("nsdev"),
-            "C": to_hex("CipherHandler"),
-            "b": to_hex("builtins"),
-            "t": to_hex("types"),
-            "g": to_hex("globals"),
-            "i": to_hex("__import__"),
-            "a": to_hex("getattr"),
-            "c": to_hex("compile"),
-            "f": to_hex("FunctionType"),
-            "e": to_hex("eval"),
-            "M": to_hex(self.method),
-        }
-
+        
         if key_by_config is not None:
             key_expression = key_by_config
         else:
             key_expression = repr(self.key)
 
-        key_hex = to_hex(key_expression)
-
-        result = (
-            f"(lambda d, kh, h, x: "
-            f"(lambda b, i, g, c, t, f, e: f(c(g(g(i(x(h['n'])), x(h['C']))(**{{'method': x(h['M']), 'key': e(x(kh))}}), 'decrypt')(d), '<string>', 'exec'), t())())"
-            f"(__import__(x(h['b'])),"
-            f"lambda n: __import__(x(h['b'])).__dict__[x(h['i'])](n),"
-            f"lambda o, n: __import__(x(h['b'])).__dict__[x(h['a'])](o, n),"
-            f"lambda *a: __import__(x(h['b'])).__dict__[x(h['c'])](*a),"
-            f"lambda: __import__(x(h['b'])).__dict__[x(h['g'])](),"
-            f"lambda *a: __import__(x(h['b'])).__dict__[x(h['a'])](__import__(x(h['t'])), x(h['f']))(*a),"
-            f"lambda s: __import__(x(h['b'])).__dict__[x(h['e'])](s))"
-            f")('{encrypted_code}', '{key_hex}', {hex_map}, lambda s: bytes.fromhex(s).decode('utf-8'))"
-        )
-
+        hex_map = {
+            "n": to_hex("nsdev"), "C": to_hex("CipherHandler"),
+            "b": to_hex("builtins"), "t": to_hex("types"),
+            "g": to_hex("globals"), "i": to_hex("__import__"),
+            "a": to_hex("getattr"), "c": to_hex("compile"),
+            "f": to_hex("FunctionType"), "e": to_hex("eval"),
+            "M": to_hex(self.method),
+            "K": to_hex(key_expression),
+        }
+            
+        result = f"(lambda d, h, x: (lambda b, i, g, c, t, f, e: f(c(g(g(i(x(h['n'])), x(h['C']))(**{{'method': x(h['M']), 'key': e(x(h['K']))}}), 'decrypt')(d), '<string>', 'exec'), t())())(__import__(x(h['b'])),lambda n: __import__(x(h['b'])).__dict__[x(h['i'])](n),lambda o, n: __import__(x(h['b'])).__dict__[x(h['a'])](o, n),lambda *a: __import__(x(h['b'])).__dict__[x(h['c'])](*a),lambda: __import__(x(h['b'])).__dict__[x(h['g'])](),lambda *a: __import__(x(h['b'])).__dict__[x(h['a'])](__import__(x(h['t'])), x(h['f']))(*a),lambda s: __import__(x(h['b'])).__dict__[x(h['e'])](s)))('{encrypted_code}', {hex_map}, lambda s: bytes.fromhex(s).decode('utf-8'))"
+        
         try:
             with open(filename, "w") as file:
                 file.write(result)
@@ -241,38 +225,22 @@ class AsciiManager(__import__("nsdev").AnsiColors):
             encrypted_code = self.encrypt(code)
 
             to_hex = lambda s: s.encode("utf-8").hex()
-            hex_map = {
-                "n": to_hex("nsdev"),
-                "A": to_hex("AsciiManager"),
-                "b": to_hex("builtins"),
-                "t": to_hex("types"),
-                "g": to_hex("globals"),
-                "i": to_hex("__import__"),
-                "a": to_hex("getattr"),
-                "c": to_hex("compile"),
-                "f": to_hex("FunctionType"),
-                "e": to_hex("eval"),
-            }
-
+            
             if key_by_config is not None:
                 key_expression = key_by_config
             else:
                 key_expression = repr(self.no_format_key)
 
-            key_hex = to_hex(key_expression)
-
-            result = (
-                f"(lambda d, kh, h, x: "
-                f"(lambda b, i, g, c, t, f, e: f(c(g(g(i(x(h['n'])), x(h['A']))(e(x(kh))), 'decrypt')(d), '<string>', 'exec'), t())())"
-                f"(__import__(x(h['b'])),"
-                f"lambda n: __import__(x(h['b'])).__dict__[x(h['i'])](n),"
-                f"lambda o, n: __import__(x(h['b'])).__dict__[x(h['a'])](o, n),"
-                f"lambda *a: __import__(x(h['b'])).__dict__[x(h['c'])](*a),"
-                f"lambda: __import__(x(h['b'])).__dict__[x(h['g'])](),"
-                f"lambda *a: __import__(x(h['b'])).__dict__[x(h['a'])](__import__(x(h['t'])), x(h['f']))(*a),"
-                f"lambda s: __import__(x(h['b'])).__dict__[x(h['e'])](s))"
-                f")({str(encrypted_code)}, '{key_hex}', {hex_map}, lambda s: bytes.fromhex(s).decode('utf-8'))"
-            )
+            hex_map = {
+                "n": to_hex("nsdev"), "A": to_hex("AsciiManager"),
+                "b": to_hex("builtins"), "t": to_hex("types"),
+                "g": to_hex("globals"), "i": to_hex("__import__"),
+                "a": to_hex("getattr"), "c": to_hex("compile"),
+                "f": to_hex("FunctionType"), "e": to_hex("eval"),
+                "K": to_hex(key_expression),
+            }
+            
+            result = f"(lambda d, h, x: (lambda b, i, g, c, t, f, e: f(c(g(g(i(x(h['n'])), x(h['A']))(e(x(h['K']))), 'decrypt')(d), '<string>', 'exec'), t())())(__import__(x(h['b'])),lambda n: __import__(x(h['b'])).__dict__[x(h['i'])](n),lambda o, n: __import__(x(h['b'])).__dict__[x(h['a'])](o, n),lambda *a: __import__(x(h['b'])).__dict__[x(h['c'])](*a),lambda: __import__(x(h['b'])).__dict__[x(h['g'])](),lambda *a: __import__(x(h['b'])).__dict__[x(h['a'])](__import__(x(h['t'])), x(h['f']))(*a),lambda s: __import__(x(h['b'])).__dict__[x(h['e'])](s)))({str(encrypted_code)}, {hex_map}, lambda s: bytes.fromhex(s).decode('utf-8'))"
 
             with open(filename, "w") as file:
                 file.write(result)
