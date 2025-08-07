@@ -30,7 +30,7 @@ class Button:
         else:
             raise ValueError("Invalid parse mode. Use 'inline' or 'reply'.")
 
-    def create_keyboard(self, text, inline_cmd=None, is_id=None):
+    def create_inline_keyboard(self, text, inline_cmd=None, is_id=None):
         layout = []
         buttons, remaining_text = self.parse_buttons_and_text(text, mode="inline")
 
@@ -61,7 +61,7 @@ class Button:
 
         return self.pyrogram.types.InlineKeyboardMarkup(layout), remaining_text
 
-    def create_reply_keyboard(self, text):
+    def create_button_keyboard(self, text):
         layout = []
         buttons, remaining_text = self.parse_buttons_and_text(text, mode="reply")
 
