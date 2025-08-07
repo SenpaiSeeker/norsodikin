@@ -147,7 +147,7 @@ Ini adalah pesan dengan tombol. Pilih salah satu:
 """
 
 # Parsing teks untuk membuat keyboard dan mendapatkan teks sisanya
-inline_keyboard, remaining_text = client.ns.button.create_keyboard(text_with_buttons)
+inline_keyboard, remaining_text = client.ns.button.create_inline_keyboard(text_with_buttons)
 await message.reply(remaining_text, reply_markup=inline_keyboard)
 
 # 2. Membuat Keyboard Reply (tombol di bawah area ketik)
@@ -156,7 +156,7 @@ Halo! Pilih menu di bawah.
 | Menu Utama - Tentang Kami - Kontak;same |
 """
 
-reply_keyboard, remaining_text_reply = client.ns.button.create_reply_keyboard(text_with_reply)
+reply_keyboard, remaining_text_reply = client.ns.button.create_button_keyboard(text_with_reply)
 await message.reply(remaining_text_reply, reply_markup=reply_keyboard)
 ```
 
