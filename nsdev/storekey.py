@@ -13,22 +13,19 @@ class KeyManager:
 
         self.temp_file = self.os.path.join(self.tempfile.gettempdir(), filename)
 
-    def save_key(self, key: str, env: str):
-        try:
-            data = {"key": self.cipher.encrypt(key), "env": self.cipher.encrypt(env)}
-            with open(self.temp_file, "w") as file:
-                self.json.dump(data, file, indent=4)
-        except OSError as e:
-            self.logger.error(f"Kesalahan saat menyimpan key: {e}")
-            self.sys.exit(1)
-
     def read_key(self):
         if not self.os.path.exists(self.temp_file):
-            key = input(f"{self.gradient.rgb_to_ansi(*self.gradient.random_color())}Masukkan kunci (angka):\033[0m ")
+            key = input(f"{self.gradient.rgb_to_ansi(*self.gradient.random_color())}Masukkan kunci Anda (bebas teks, simbol, angka):\033[0m ")
             env = input(
-                f"{self.gradient.rgb_to_ansi(*self.gradient.random_color())}Masukkan nama env yang sudah dibuat:\033[0m "
+                f"{self.gradient.rgb_to_ansi(*self.gradient.random_color())}Masukkan nama file .env Anda:\033[0m "
             )
-            self.save_key(key, env)
+            try:
+                data = {"key": self.cipher.encrypt(key), "env": self.cipher.encrypt(env)}
+                with open(self.temp_file, "w") as file:
+                    self.json.dump(data, file, indent=4)
+            except OSError as e:
+                self.logger.error(f"Kesalahan saat menyimpan key: {e}")
+                self.sys.exit(1)
 
         try:
             with open(self.temp_file, "r") as file:
@@ -37,8 +34,8 @@ class KeyManager:
         except OSError as e:
             self.logger.error(f"Kesalahan saat membaca key: {e}")
             self.sys.exit(1)
-        except self.json.JSONDecodeError as e:
-            self.logger.error(f"Kesalahan format file JSON: {e}")
+        except self.json.JSONDecodeError:
+            self.logger.error(f"File kunci '{self.temp_file}' rusak. Harap hapus file ini dan jalankan ulang skrip.")
             self.sys.exit(1)
 
     def handle_arguments(self):
@@ -48,6 +45,13 @@ class KeyManager:
         args = parser.parse_args()
 
         if args.key and args.env:
-            self.save_key(args.key, args.env)
+            try:
+                data = {"key": self.cipher.encrypt(args.key), "env": self.cipher.encrypt(args.env)}
+                with open(self.temp_file, "w") as file:
+                    self.json.dump(data, file, indent=4)
+                self.logger.info(f"Kunci baru telah disimpan ke {self.temp_file}")
+            except OSError as e:
+                self.logger.error(f"Kesalahan saat menyimpan key: {e}")
+                self.sys.exit(1)
 
         return self.read_key()
