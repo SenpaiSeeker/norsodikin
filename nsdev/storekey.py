@@ -15,7 +15,9 @@ class KeyManager:
 
     def read_key(self):
         if not self.os.path.exists(self.temp_file):
-            key = input(f"{self.gradient.rgb_to_ansi(*self.gradient.random_color())}Masukkan kunci Anda (bebas teks, simbol, angka):\033[0m ")
+            key = input(
+                f"{self.gradient.rgb_to_ansi(*self.gradient.random_color())}Masukkan kunci Anda (bebas teks, simbol, angka):\033[0m "
+            )
             env = input(
                 f"{self.gradient.rgb_to_ansi(*self.gradient.random_color())}Masukkan nama file .env Anda:\033[0m "
             )
