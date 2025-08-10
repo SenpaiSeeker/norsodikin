@@ -139,12 +139,16 @@ class VioletMediaPayClient:
                 response = await client.post(url, data=payload)
                 response.raise_for_status()
                 return self.convert._convertToNamespace(response.json())
-        except self.httpx.ReadTimeout:
-            raise Exception("Request timeout: Server tidak merespons dalam waktu yang ditentukan.")
+        except self.httpx.ConnectTimeout as e:
+            raise Exception(f"Connection timeout: Gagal terhubung ke server. Periksa koneksi internet Anda. Error: {e}")
+        except self.httpx.ReadTimeout as e:
+            raise Exception(f"Read timeout: Server tidak merespons dalam waktu yang ditentukan. Error: {e}")
         except self.httpx.HTTPStatusError as e:
-            raise Exception(f"HTTP Error: {e.response.status_code} - {e.response.text}")
+            raise Exception(f"HTTP Error: {e.response.status_code} - Server merespons dengan error: {e.response.text}")
+        except self.httpx.RequestError as e:
+            raise Exception(f"Network error: Terjadi kesalahan jaringan yang tidak terduga. Error: {e}")
         except Exception as e:
-            raise Exception(f"Error creating payment: {str(e)}")
+            raise Exception(f"Error creating payment: Terjadi kesalahan tidak terduga: {str(e)}")
 
     async def check_transaction(self, ref: str, ref_id: str):
         url = f"{self.base_url}/transactions"
@@ -161,9 +165,13 @@ class VioletMediaPayClient:
                 response = await client.post(url, data=payload)
                 response.raise_for_status()
                 return self.convert._convertToNamespace(response.json())
-        except self.httpx.ReadTimeout:
-            raise Exception("Request timeout: Server tidak merespons dalam waktu yang ditentukan.")
+        except self.httpx.ConnectTimeout as e:
+            raise Exception(f"Connection timeout: Gagal terhubung ke server. Periksa koneksi internet Anda. Error: {e}")
+        except self.httpx.ReadTimeout as e:
+            raise Exception(f"Read timeout: Server tidak merespons dalam waktu yang ditentukan. Error: {e}")
         except self.httpx.HTTPStatusError as e:
-            raise Exception(f"HTTP Error: {e.response.status_code} - {e.response.text}")
+            raise Exception(f"HTTP Error: {e.response.status_code} - Server merespons dengan error: {e.response.text}")
+        except self.httpx.RequestError as e:
+            raise Exception(f"Network error: Terjadi kesalahan jaringan yang tidak terduga. Error: {e}")
         except Exception as e:
-            raise Exception(f"Error checking transaction: {str(e)}")
+            raise Exception(f"Error checking transaction: Terjadi kesalahan tidak terduga: {str(e)}")
