@@ -14,7 +14,7 @@ from .payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
 from .storekey import KeyManager
 from .ymlreder import YamlHandler
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 __author__ = "@NorSodikin"
 
 
@@ -22,21 +22,42 @@ class NsDev:
     def __init__(self, client):
         self._client = client
 
-        self.arg = Argument()
-        self.button = Button()
-        self.color = AnsiColors()
-        self.grad = Gradient()
-        self.yaml = YamlHandler()
+        self.ai = SimpleNamespace(
+            bing=ImageGenerator,
+            gemini=ChatbotGemini,
+        )
 
-        self.bing = ImageGenerator
-        self.db = DataBase
-        self.gemini = ChatbotGemini
-        self.log = LoggerHandler
-        self.key = KeyManager
-        self.user = SSHUserManager
+        self.telegram = SimpleNamespace(
+            arg=Argument(),
+            button=Button(),
+        )
 
-        self.code = SimpleNamespace(Cipher=CipherHandler, Ascii=AsciiManager)
-        self.payment = SimpleNamespace(Midtrans=PaymentMidtrans, Tripay=PaymentTripay, Violet=VioletMediaPayClient)
+        self.data = SimpleNamespace(
+            db=DataBase,
+            key=KeyManager,
+            yaml=YamlHandler(),
+        )
+        
+        self.utils = SimpleNamespace(
+            color=AnsiColors(),
+            grad=Gradient(),
+            log=LoggerHandler(),
+        )
+
+        self.server = SimpleNamespace(
+            user=SSHUserManager,
+        )
+
+        self.code = SimpleNamespace(
+            Cipher=CipherHandler, 
+            Ascii=AsciiManager,
+        )
+
+        self.payment = SimpleNamespace(
+            Midtrans=PaymentMidtrans, 
+            Tripay=PaymentTripay, 
+            Violet=VioletMediaPayClient,
+        )
 
 
 @property
