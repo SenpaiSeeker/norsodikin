@@ -37,7 +37,7 @@ class NsDev:
             key=KeyManager,
             yaml=YamlHandler(),
         )
-        
+
         self.utils = SimpleNamespace(
             color=AnsiColors(),
             grad=Gradient(),
@@ -49,13 +49,13 @@ class NsDev:
         )
 
         self.code = SimpleNamespace(
-            Cipher=CipherHandler, 
+            Cipher=CipherHandler,
             Ascii=AsciiManager,
         )
 
         self.payment = SimpleNamespace(
-            Midtrans=PaymentMidtrans, 
-            Tripay=PaymentTripay, 
+            Midtrans=PaymentMidtrans,
+            Tripay=PaymentTripay,
             Violet=VioletMediaPayClient,
         )
 
