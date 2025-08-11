@@ -19,7 +19,7 @@ Kalau kamu install dari *source code*, jangan lupa install semua dependensi dari
 
 ## Integrasi Ajaib dengan Pyrogram
 
-Cukup `import nsdev`, dan semua keajaiban `norsodikin` akan otomatis menempel di objek `client` Pyrogram kamu lewat namespace `ns`. Simpel banget!
+Cukup `import nsdev`, dan semua keajaiban `norsodikin` akan otomatis menempel di objek `client` Pyrogram kamu lewat namespace `ns`. Semua modul kini dikelompokkan ke dalam namespace yang logis seperti `ai`, `telegram`, `data`, `utils`, dan `server` untuk membuat kode lebih terstruktur.
 
 **Struktur Dasar**:
 
@@ -30,9 +30,9 @@ import nsdev  # Voila! Integrasi .ns langsung aktif
 # Asumsikan 'client' adalah instance dari pyrogram.Client
 # client = pyrogram.Client(...)
 
-# Sekarang, semua modul siap pakai:
-client.ns.log.info("Logger keren siap mencatat!")
-# config = client.ns.yaml.loadAndConvert("config.yml")
+# Sekarang, semua modul siap pakai dalam namespace masing-masing:
+client.ns.utils.log.info("Logger keren siap mencatat!")
+# config = client.ns.data.yaml.loadAndConvert("config.yml")
 # ...dan banyak lagi!
 ```
 
@@ -40,7 +40,7 @@ Mari kita bedah satu per satu semua modul keren yang ada di `client.ns`, diurutk
 
 ---
 
-### 1. `addUser` -> `client.ns.user`
+### 1. `addUser` -> `client.ns.server.user`
 
 Sangat praktis untuk mengelola user di server Linux. Kamu bisa nambah & hapus user SSH, lalu kirim detail loginnya langsung ke Telegram.
 
@@ -48,7 +48,7 @@ Sangat praktis untuk mengelola user di server Linux. Kamu bisa nambah & hapus us
 
 ```python
 # Inisialisasi dengan token bot & chat ID tujuan kamu
-manager = client.ns.user(bot_token="TOKEN_BOT_ANDA", chat_id=ID_CHAT_ANDA)
+manager = client.ns.server.user(bot_token="TOKEN_BOT_ANDA", chat_id=ID_CHAT_ANDA)
 
 # --- Nambah user baru (username & pass acak) ---
 print("Nambahin user baru...")
@@ -67,7 +67,7 @@ manager.delete_user(ssh_username="budi")
 
 ---
 
-### 2. `argument` -> `client.ns.arg`
+### 2. `argument` -> `client.ns.telegram.arg`
 
 Kumpulan fungsi praktis untuk membedah pesan, ngambil info user, dan cek status admin. Semua jadi lebih singkat dan jelas.
 
@@ -78,17 +78,17 @@ Kumpulan fungsi praktis untuk membedah pesan, ngambil info user, dan cek status 
 # Atau balas pesan orang dengan: /kick
 
 # Ambil user ID dan alasan dari pesan
-user_id, reason = await client.ns.arg.getReasonAndId(message)
+user_id, reason = await client.ns.telegram.arg.getReasonAndId(message)
 print(f"User ID: {user_id}, Alasan: {reason}")
 
 # Ambil semua teks setelah command
-query = client.ns.arg.getMessage(message, is_arg=True)
+query = client.ns.telegram.arg.getMessage(message, is_arg=True)
 print(f"Query: {query}")
 ```
 
 ---
 
-### 3. `bing` -> `client.ns.bing`
+### 3. `bing` -> `client.ns.ai.bing`
 
 Ubah imajinasimu jadi gambar keren pake Bing Image Creator. Kamu cuma butuh *cookie* otentikasi dari akun Bing-mu.
 
@@ -101,7 +101,7 @@ import asyncio
 BING_AUTH_COOKIE_U = "COOKIE_U_KAMU"
 BING_AUTH_COOKIE_SRCHHPGUSR = "COOKIE_SRCHHPGUSR_KAMU"
 
-bing_gen = client.ns.bing(
+bing_gen = client.ns.ai.bing(
     auth_cookie_u=BING_AUTH_COOKIE_U,
     auth_cookie_srchhpgusr=BING_AUTH_COOKIE_SRCHHPGUSR
 )
@@ -113,9 +113,9 @@ print(f"URL Gambar berhasil dibuat: {list_url_gambar}")
 
 ---
 
-### 4. `button` -> `client.ns.button`
+### 4. `button` -> `client.ns.telegram.button`
 
-Lupakan pusingnya bikin keyboard Telegram. Dengan `client.ns.button`, kamu bisa bikin tombol inline atau reply pake sintaks berbasis teks yang gampang dibaca.
+Lupakan pusingnya bikin keyboard Telegram. Dengan `client.ns.telegram.button`, kamu bisa bikin tombol inline atau reply pake sintaks berbasis teks yang gampang dibaca.
 
 **Cara Pakai:**
 
@@ -124,39 +124,39 @@ Lupakan pusingnya bikin keyboard Telegram. Dengan `client.ns.button`, kamu bisa 
 text_dengan_tombol = """
 Pilih dong: | Tombol 1 - data1 | | Buka Google - https://google.com |
 """
-inline_keyboard, sisa_teks = client.ns.button.create_inline_keyboard(text_dengan_tombol)
+inline_keyboard, sisa_teks = client.ns.telegram.button.create_inline_keyboard(text_dengan_tombol)
 await message.reply(sisa_teks, reply_markup=inline_keyboard)
 
 # --- 2. Keyboard Reply (Tombol di area ketik) ---
 text_dengan_reply = "Halo! | Menu Utama - Kontak;same |"
-reply_keyboard, sisa_teks_reply = client.ns.button.create_button_keyboard(text_dengan_reply)
+reply_keyboard, sisa_teks_reply = client.ns.telegram.button.create_button_keyboard(text_dengan_reply)
 await message.reply(sisa_teks_reply, reply_markup=reply_keyboard)
 ```
 
 ---
 
-### 5. `colorize` -> `client.ns.color`
+### 5. `colorize` -> `client.ns.utils.color`
 
 Berikan sentuhan warna-warni ke output terminal skrip kamu agar tidak membosankan.
 
 **Cara Pakai:**
 ```python
-colors = client.ns.color
+colors = client.ns.utils.color
 print(f"{colors.GREEN}Pesan ini ijo!{colors.RESET}")
 print(f"{colors.RED}Peringatan: Bahaya!{colors.RESET}")
 ```
 
 ---
 
-### 6. `database` -> `client.ns.db`
+### 6. `database` -> `client.ns.data.db`
 
-Butuh tempat nyimpen data user? `client.ns.db` adalah solusinya! Fleksibel, mendukung penyimpanan JSON lokal, SQLite, hingga MongoDB, dan sudah dilengkapi enkripsi otomatis.
+Butuh tempat nyimpen data user? `client.ns.data.db` adalah solusinya! Fleksibel, mendukung penyimpanan JSON lokal, SQLite, hingga MongoDB, dan sudah dilengkapi enkripsi otomatis.
 
 **Cara Pakai (Pake file JSON, paling simpel):**
 
 ```python
 # Inisialisasi database (otomatis bikin file 'data_bot.json')
-db = client.ns.db(storage_type="local", file_name="data_bot")
+db = client.ns.data.db(storage_type="local", file_name="data_bot")
 
 # Simpan dan ambil data buat user tertentu
 user_id = 12345
@@ -208,7 +208,7 @@ print(f"Teks Asli: {teks_asli_ascii}")
 
 ---
 
-### 8. `gemini` -> `client.ns.gemini`
+### 8. `gemini` -> `client.ns.ai.gemini`
 
 Integrasikan AI canggih dari Google ke bot kamu. Bisa buat chatbot santai atau hiburan "cek khodam" yang lagi viral.
 
@@ -216,7 +216,7 @@ Integrasikan AI canggih dari Google ke bot kamu. Bisa buat chatbot santai atau h
 ```python
 # Dapetin API Key kamu dari Google AI Studio
 GEMINI_API_KEY = "API_KEY_KAMU"
-chatbot = client.ns.gemini(api_key=GEMINI_API_KEY)
+chatbot = client.ns.ai.gemini(api_key=GEMINI_API_KEY)
 user_id = 12345 # ID unik buat tiap user
 
 # --- Mode Chatbot Santai ---
@@ -227,7 +227,7 @@ print(f"Jawaban Bot: {jawaban}")
 
 ---
 
-### 9. `gradient` -> `client.ns.grad`
+### 9. `gradient` -> `client.ns.utils.grad`
 
 Hidupkan tampilan terminal dengan banner teks bergradien dan *countdown timer* animatif.
 
@@ -236,46 +236,64 @@ Hidupkan tampilan terminal dengan banner teks bergradien dan *countdown timer* a
 import asyncio
 
 # Tampilkan banner dengan efek gradien
-client.ns.grad.render_text("Nor Sodikin")
+client.ns.utils.grad.render_text("Nor Sodikin")
 
 # Bikin timer countdown dengan animasi
-await client.ns.grad.countdown(10, text="Tunggu {time} lagi...")
+await client.ns.utils.grad.countdown(10, text="Tunggu {time} lagi...")
 ```
 
 ---
 
 ### 10. `listen` -> `client.listen()` & `chat.ask()`
 
-Fitur spesial yang "memperkuat" Pyrogram untuk membuat alur percakapan jadi gampang.
+Fitur spesial ini 'memperkuat' Pyrogram dengan menambahkan metode `.listen()` dan `.ask()` untuk membuat alur percakapan jadi sangat mudah. Untuk mengaktifkannya, Anda cukup mengimpor modul `listen` dari `nsdev` di awal skrip Anda. Proses *patching* akan terjadi secara otomatis.
 
-**Cara Pakai (`ask`):**
+**Cara Pakai:**
 ```python
 import asyncio 
-from pyrogram import filters
+from pyrogram import Client, filters
 
-@client.on_message(filters.command("tanya_nama"))
+# Cukup impor 'listen' untuk mengaktifkan .ask() dan .listen() pada Client
+from nsdev import listen 
+
+# Inisialisasi client Pyrogram Anda
+app = Client("my_account")
+
+@app.on_message(filters.command("tanya_nama") & filters.private)
 async def tanya_nama(client, message):
     try:
-        jawaban = await message.chat.ask("Hai! Siapa namamu?", timeout=30)
-        await message.reply(f"Oh, halo {jawaban.text}!")
+        # Gunakan message.chat.ask() untuk mengirim pertanyaan dan menunggu jawaban
+        jawaban = await message.chat.ask(
+            "Hai! Siapa namamu?", 
+            timeout=30
+        )
+        
+        # 'jawaban' adalah objek Message dari balasan user
+        await message.reply(f"Oh, halo {jawaban.text}! Senang bertemu denganmu.")
+
     except asyncio.TimeoutError:
-        await message.reply("Waktu habis!")
+        await message.reply("Waduh, kelamaan. Waktu habis!")
+    except listen.UserCancelled: # Jika ada perintah lain yang membatalkan percakapan
+        await message.reply("Oke, percakapan dibatalkan.")
+
+print("Bot sedang berjalan...")
+app.run()
 ```
 
 ---
 
-### 11. `logger` -> `client.ns.log`
+### 11. `logger` -> `client.ns.utils.log`
 
 Logger canggih pengganti `print()` yang mencatat pesan ke konsol dengan format rapi, penuh warna, lengkap dengan info waktu, file, dan fungsi.
 
 **Cara Pakai:**
 ```python
 def fungsi_penting():
-    client.ns.log.info("Memulai proses.")
+    client.ns.utils.log.info("Memulai proses.")
     try:
         a = 10 / 0
     except Exception as e:
-        client.ns.log.error(f"Waduh, ada error: {e}")
+        client.ns.utils.log.error(f"Waduh, ada error: {e}")
 ```
 
 ---
@@ -317,15 +335,15 @@ if payment.success:
 
 ---
 
-### 13. `storekey` -> `client.ns.key`
+### 13. `storekey` -> `client.ns.data.key`
 
-`client.ns.key` ini kayak "brankas kecil" buat nyimpen data sensitif (misal kunci API) secara terenkripsi di file sementara, agar tidak *hardcode* di skrip.
+`client.ns.data.key` ini kayak "brankas kecil" buat nyimpen data sensitif (misal kunci API) secara terenkripsi di file sementara, agar tidak *hardcode* di skrip.
 
 **Cara Pakai (di awal skrip kamu):**
 
 ```python
 # Inisialisasi KeyManager
-key_manager = client.ns.key(filename="kunci_rahasia_app.json")
+key_manager = client.ns.data.key(filename="kunci_rahasia_app.json")
 
 # Panggil fungsi ini di awal. Jika file belum ada, akan minta input.
 kunci, nama_env = key_manager.handle_arguments()
@@ -334,7 +352,7 @@ print(f"Kunci yang dipakai: {kunci}")
 
 ---
 
-### 14. `ymlreder` -> `client.ns.yaml`
+### 14. `ymlreder` -> `client.ns.data.yaml`
 
 Mengubah file konfigurasi `.yml` menjadi objek Python yang bisa diakses pake notasi titik. Sangat praktis!
 
@@ -343,7 +361,7 @@ Mengubah file konfigurasi `.yml` menjadi objek Python yang bisa diakses pake not
 Misal punya `config.yml`: `{ database: { host: localhost, port: 5432 }}`
 
 ```python
-config = client.ns.yaml.loadAndConvert("config.yml")
+config = client.ns.data.yaml.loadAndConvert("config.yml")
 if config:
     # Akses datanya jadi gampang!
     print(f"Host: {config.database.host}")
