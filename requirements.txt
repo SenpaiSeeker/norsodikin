@@ -1,3 +1,4 @@
+aiohttp
 pyfiglet
 pymongo
 httpx
