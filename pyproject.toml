@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "norsodikin"
+dynamic = ["version"]
+description = "Library of special mission and encrypted code"
+readme = "README.md"
+authors = [
+    { name = "NorSodikin", email = "admin@NorSodikin.com" },
+]
+license = { text = "MIT" }
+requires-python = ">=3.9, <3.13"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pyfiglet",
+    "pyyaml",
+    "httpx",
+    "requests",
+]
+
+[project.urls]
+Homepage = "https://t.me/NorSodikin"
+
+[project.optional-dependencies]
+pyrogram = [
+    "pyrotgfork[fast]",
+]
+ai = [
+    "google-generativeai",
+    "fake-useragent",
+    "deep-translator==1.11.4",
+]
+db-mongo = [
+    "pymongo",
+]
+payment = [
+    "midtransclient",
+    "faker",
+]
+all = [
+    "norsodikin[pyrogram]",
+    "norsodikin[ai]",
+    "norsodikin[db-mongo]",
+    "norsodikin[payment]",
+]
+
+[tool.setuptools]
+packages = ["nsdev"]
+
+[tool.setuptools.dynamic]
+version = { attr = "nsdev.__version__" }
