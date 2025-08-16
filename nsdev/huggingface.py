@@ -1,9 +1,6 @@
 class HuggingFaceGenerator:
     def __init__(
-        self,
-        api_key: str,
-        model_id: str = "stabilityai/stable-diffusion-xl-base-1.0",
-        logging_enabled: bool = True
+        self, api_key: str, model_id: str = "stabilityai/stable-diffusion-xl-base-1.0", logging_enabled: bool = True
     ):
         self.asyncio = __import__("asyncio")
         self.time = __import__("time")
@@ -29,7 +26,9 @@ class HuggingFaceGenerator:
                 if response.status_code == 503:
                     response_json = response.json()
                     estimated_time = response_json.get("estimated_time", retry_delay)
-                    self.__log(f"{self.log.YELLOW}Model sedang loading, menunggu {estimated_time:.1f} detik... (Percobaan {attempt + 1}/{max_retries})")
+                    self.__log(
+                        f"{self.log.YELLOW}Model sedang loading, menunggu {estimated_time:.1f} detik... (Percobaan {attempt + 1}/{max_retries})"
+                    )
                     await self.asyncio.sleep(estimated_time)
                     continue
 
@@ -37,7 +36,7 @@ class HuggingFaceGenerator:
                 return response.content
 
             except self.httpx.HTTPStatusError as e:
-                error_details = e.response.json().get('error', str(e.response.text))
+                error_details = e.response.json().get("error", str(e.response.text))
                 raise Exception(f"Gagal menghasilkan gambar: {e.response.status_code} - {error_details}")
             except Exception as e:
                 raise Exception(f"Terjadi kesalahan saat menghubungi Hugging Face API: {e}")
@@ -57,9 +56,11 @@ class HuggingFaceGenerator:
                 successful_images.append(res)
             else:
                 self.__log(f"{self.log.RED}Satu tugas pembuatan gambar gagal: {res}")
-        
+
         if not successful_images:
             raise Exception("Semua tugas pembuatan gambar gagal.")
 
-        self.__log(f"{self.log.GREEN}Berhasil membuat {len(successful_images)} gambar dalam {self.time.time() - start_time:.2f} detik.")
+        self.__log(
+            f"{self.log.GREEN}Berhasil membuat {len(successful_images)} gambar dalam {self.time.time() - start_time:.2f} detik."
+        )
         return successful_images
