@@ -1,3 +1,14 @@
+Tentu. Berdasarkan semua perubahan kode dan struktur dependensi (`pyproject.toml`), saya akan memperbarui file `README.md` agar akurat dan mudah dipahami oleh pengguna baru.
+
+Perubahan utama akan ada di bagian **Instalasi** (untuk mencerminkan dependensi opsional) dan pada contoh penggunaan modul **bing** (karena API-nya berubah).
+
+---
+**FILE YANG DIUBAH**
+---
+
+### `norsodikin-main/README.md`
+
+```markdown
 # Pustaka Python `norsodikin`
 
 [![Versi PyPI](https://img.shields.io/pypi/v/norsodikin.svg)](https://pypi.org/project/norsodikin/)
@@ -9,13 +20,32 @@ Selamat datang di `norsodikin`! Ini bukan sekadar pustaka Python biasa, melainka
 
 ## Instalasi
 
-Install `norsodikin` dan `pyrogram` itu gampang banget. Cukup jalankan perintah ini di terminal kamu:
+Instalasi `norsodikin` dirancang agar fleksibel. Anda bisa menginstal versi dasar, atau menambahkan fitur-fitur spesifik sesuai kebutuhan Anda.
+
+**1. Instalasi Dasar (Wajib)**
+Perintah ini akan menginstal pustaka inti beserta dependensi untuk fitur umum seperti payment, utilitas, dan data.
 
 ```bash
-pip install norsodikin pyrogram
+pip install norsodikin
 ```
 
-Kalau kamu install dari *source code*, jangan lupa install semua dependensi dari file `requirements.txt` juga ya.
+**2. Instalasi dengan Fitur Tambahan (Opsional)**
+Gunakan "extras" untuk menginstal dependensi untuk fitur tertentu. Disarankan menggunakan tanda kutip agar kompatibel di semua terminal.
+
+*   **Untuk integrasi Pyrogram:**
+    ```bash
+    pip install "norsodikin[pyrogram]"
+    ```
+
+*   **Untuk fitur AI (Google Gemini & Bing Image Creator):**
+    ```bash
+    pip install "norsodikin[ai]"
+    ```
+
+*   **Untuk menginstal semua fitur sekaligus:**
+    ```bash
+    pip install "norsodikin[all]"
+    ```
 
 ## Integrasi Ajaib dengan Pyrogram
 
@@ -90,15 +120,16 @@ print(f"Query: {query}")
 
 ### 3. `bing` -> `client.ns.ai.bing`
 
-Ubah imajinasimu jadi gambar keren pake Bing Image Creator. Kamu cuma butuh *cookie* otentikasi dari akun Bing-mu.
+Ubah imajinasimu jadi gambar keren pake Bing Image Creator. Kamu cuma butuh satu *cookie* otentikasi (`_U`) dari akun Bing-mu.
 
 **Cara Pakai:**
 
 ```python
 import asyncio
 
-# Login ke bing.com/create, lalu dari Developer Tools -> Application -> Cookies,
-# copy value dari cookie bernama "_U".
+# Login ke bing.com/create di browser. Buka Developer Tools (F12),
+# pergi ke tab Application -> Cookies -> https://www.bing.com,
+# cari cookie dengan nama '_U' dan copy value-nya.
 BING_AUTH_COOKIE_U = "COOKIE_U_KAMU"
 
 bing_gen = client.ns.ai.bing(
@@ -321,7 +352,7 @@ midtrans_pay = client.ns.payment.Midtrans(
     server_key="SERVER_KEY_MIDTRANS", client_key="CLIENT_KEY_MIDTRANS", is_production=False
 )
 payment_info = midtrans_pay.create_payment(order_id="order-123", gross_amount=10000)
-print(f"Link Pembayaran: {payment_info['redirect_url']}")
+print(f"Link Pembayaran: {payment_info.redirect_url}")
 ```
 
 #### **Contoh dengan `Tripay`**
@@ -385,3 +416,4 @@ Pustaka ini dirilis di bawah [Lisensi MIT](https://opensource.org/licenses/MIT).
 ---
 
 Semoga dokumentasi ini bikin kamu makin semangat ngoding! Selamat mencoba dan berkreasi dengan `norsodikin`. Jika ada pertanyaan, jangan ragu untuk kontak di [Telegram](https://t.me/NorSodikin).
+```
