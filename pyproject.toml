@@ -26,6 +26,7 @@ dependencies = [
     "pyyaml",
     "httpx",
     "requests",
+    "faker",
 ]
 
 [project.urls]
@@ -34,24 +35,15 @@ Homepage = "https://t.me/NorSodikin"
 [project.optional-dependencies]
 pyrogram = [
     "pyrotgfork[fast]",
+    "pymongo",
 ]
 ai = [
     "google-generativeai",
     "fake-useragent",
-    "deep-translator==1.11.4",
-]
-db-mongo = [
-    "pymongo",
-]
-payment = [
-    "midtransclient",
-    "faker",
 ]
 all = [
     "norsodikin[pyrogram]",
     "norsodikin[ai]",
-    "norsodikin[db-mongo]",
-    "norsodikin[payment]",
 ]
 
 [tool.setuptools]
