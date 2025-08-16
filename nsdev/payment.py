@@ -6,35 +6,60 @@ class PaymentMidtrans:
         callback_url="https://SenpaiSeeker.github.io/payment",
         is_production=True,
     ):
-        self.midtransclient = __import__("midtransclient")
-        self.snap = self.midtransclient.Snap(
-            is_production=is_production,
-            server_key=server_key,
-            client_key=client_key,
-        )
+        self.requests = __import__("requests")
+        self.base64 = __import__("base64")
+        self.convert = __import__("nsdev").YamlHandler()
+
+        self.server_key = server_key
         self.callback_url = callback_url
 
+        if is_production:
+            self.snap_base_url = "https://app.midtrans.com/snap/v1"
+            self.core_api_base_url = "https://api.midtrans.com/v2"
+        else:
+            self.snap_base_url = "https://app.sandbox.midtrans.com/snap/v1"
+            self.core_api_base_url = "https://api.sandbox.midtrans.com/v2"
+
+        auth_string = f"{self.server_key}:".encode("utf-8")
+        encoded_auth = self.base64.b64encode(auth_string).decode("utf-8")
+
+        self.headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Basic {encoded_auth}",
+        }
+
     def create_payment(self, order_id, gross_amount):
+        url = f"{self.snap_base_url}/transactions"
+        payload = {
+            "transaction_details": {
+                "order_id": order_id,
+                "gross_amount": gross_amount,
+            },
+            "enabled_payments": ["other_qris"],
+            "callbacks": {
+                "finish": self.callback_url,
+            },
+        }
         try:
-            param = {
-                "transaction_details": {
-                    "order_id": order_id,
-                    "gross_amount": gross_amount,
-                },
-                "enabled_payments": ["other_qris"],
-                "callbacks": {
-                    "finish": self.callback_url,
-                },
-            }
-            return self.snap.create_transaction(param)
+            response = self.requests.post(url, headers=self.headers, json=payload, timeout=30)
+            response.raise_for_status()
+            return self.convert._convertToNamespace(response.json())
+        except self.requests.exceptions.RequestException as e:
+            raise Exception(f"Error communicating with Midtrans API: {e}")
         except Exception as e:
-            return f"Error saat membuat transaksi: {e}"
+            raise Exception(f"Error creating Midtrans transaction: {e}")
 
     def check_transaction(self, order_id):
+        url = f"{self.core_api_base_url}/{order_id}/status"
         try:
-            return self.snap.transactions.status(order_id)
+            response = self.requests.get(url, headers=self.headers, timeout=30)
+            response.raise_for_status()
+            return self.convert._convertToNamespace(response.json())
+        except self.requests.exceptions.RequestException as e:
+            raise Exception(f"Error communicating with Midtrans API: {e}")
         except Exception as e:
-            return f"Error saat mengecek status transaksi: {e}"
+            raise Exception(f"Error checking Midtrans transaction status: {e}")
 
 
 class PaymentTripay:
