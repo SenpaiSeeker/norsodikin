@@ -1,16 +1,16 @@
 class HuggingFaceGenerator:
     def __init__(
-        self, api_key: str, model_id: str = "stabilityai/stable-diffusion-xl-base-1.0", logging_enabled: bool = True
+        self, api_key: str, model_id: str = "stabilityai/stable-diffusion-xl-base-1.0", logging_enabled: bool = True, 
     ):
         self.asyncio = __import__("asyncio")
         self.time = __import__("time")
         self.httpx = __import__("httpx")
-        self.api_key = api_key
-        self.model_id = model_id
-        self.api_url = f"https://api-inference.huggingface.co/models/{self.model_id}"
-        self.headers = {"Authorization": f"Bearer {self.api_key}"}
+        
+        self.api_url = f"https://api-inference.huggingface.co/models/{model_id}"
+        self.headers = {"Authorization": f"Bearer {api_key}"}
         self.client = self.httpx.AsyncClient(headers=self.headers, timeout=300)
         self.logging_enabled = logging_enabled
+        
         self.log = __import__("nsdev").logger.LoggerHandler()
 
     def __log(self, message: str):
