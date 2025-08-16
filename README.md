@@ -1,5 +1,4 @@
 # Pustaka Python `norsodikin`
----
 
 [![Versi PyPI](https://img.shields.io/pypi/v/norsodikin.svg)](https://pypi.org/project/norsodikin/)
 [![Lisensi: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -27,7 +26,7 @@ Gunakan "extras" untuk menginstal dependensi untuk fitur tertentu. Disarankan me
     pip install "norsodikin[pyrogram]"
     ```
 
-*   **Untuk fitur AI (Google Gemini & Bing Image Creator):**
+*   **Untuk fitur AI (Google Gemini & Image Generation):**
     ```bash
     pip install "norsodikin[ai]"
     ```
@@ -108,18 +107,17 @@ print(f"Query: {query}")
 
 ---
 
-### 3. `bing` -> `client.ns.ai.bing`
+### 3. `bing` -> `client.ns.ai.bing` (Tidak Stabil)
 
-Ubah imajinasimu jadi gambar keren pake Bing Image Creator. Kamu cuma butuh satu *cookie* otentikasi (`_U`) dari akun Bing-mu.
+**Peringatan:** Metode untuk Bing Image Creator menggunakan *web scraping* dan sangat tidak stabil karena seringnya perubahan pada situs Bing, terutama masalah rendering gambar. **Sangat disarankan untuk menggunakan `client.ns.ai.hf` sebagai alternatif.**
 
 **Cara Pakai:**
 
 ```python
 import asyncio
 
-# Login ke bing.com/create di browser. Buka Developer Tools (F12),
-# pergi ke tab Application -> Cookies -> https://www.bing.com,
-# cari cookie dengan nama '_U' dan copy value-nya.
+# Login ke bing.com/create, lalu dari Developer Tools -> Application -> Cookies,
+# copy value dari cookie bernama "_U".
 BING_AUTH_COOKIE_U = "COOKIE_U_KAMU"
 
 bing_gen = client.ns.ai.bing(
@@ -136,7 +134,55 @@ except Exception as e:
 
 ---
 
-### 4. `button` -> `client.ns.telegram.button`
+### 4. `hf` -> `client.ns.ai.hf` (Gratis & Stabil - Direkomendasikan)
+
+Alternatif yang jauh lebih stabil untuk membuat gambar menggunakan **Hugging Face Inference API**. Layanan ini gratis untuk digunakan pada model-model publik.
+
+**Cara Mendapatkan API Token:**
+1.  Buat akun gratis di [huggingface.co](https://huggingface.co).
+2.  Pergi ke **Settings** -> **Access Tokens**.
+3.  Klik **"New token"**, beri nama, pilih role **"read"** sudah cukup, lalu klik **"Generate a token"**.
+4.  Salin token tersebut. Token ini berformat `hf_...`.
+
+**Cara Pakai:**
+Fungsi ini akan mengembalikan **list of bytes**. Cara terbaik untuk menanganinya adalah dengan `io.BytesIO` agar bisa dikirim langsung tanpa menyimpannya ke disk.
+
+```python
+import asyncio
+from io import BytesIO
+
+# Dapatkan token Anda dari pengaturan akun Hugging Face
+HF_API_TOKEN = "hf_TOKEN_ANDA"
+
+# Inisialisasi generator
+hf_gen = client.ns.ai.hf(api_key=HF_API_TOKEN)
+    
+prompt = "kucing astronot minum kopi di bulan, gaya sinematik, detail tinggi"
+try:
+    # Minta 1 gambar, hasilnya adalah list of bytes
+    list_gambar_bytes = await hf_gen.generate(prompt=prompt, num_images=1)
+    
+    if list_gambar_bytes:
+        # Ambil data gambar pertama
+        image_data = list_gambar_bytes[0]
+
+        # Buat file-like object di memori menggunakan BytesIO
+        photo_to_send = BytesIO(image_data)
+        photo_to_send.name = "result.png" # Beri nama file untuk diunduh pengguna
+
+        # Kirim langsung via Pyrogram dari memori
+        # await message.reply_photo(
+        #     photo=photo_to_send,
+        #     caption=f"Hasil untuk: `{prompt}`"
+        # )
+        print("Objek BytesIO siap dikirim!")
+
+except Exception as e:
+    print(f"Gagal membuat gambar: {e}")
+```
+---
+
+### 5. `button` -> `client.ns.telegram.button`
 
 Lupakan pusingnya bikin keyboard Telegram. Dengan `client.ns.telegram.button`, kamu bisa bikin tombol inline atau reply pake sintaks berbasis teks yang gampang dibaca.
 
@@ -158,7 +204,7 @@ await message.reply(sisa_teks_reply, reply_markup=reply_keyboard)
 
 ---
 
-### 5. `colorize` -> `client.ns.utils.color`
+### 6. `colorize` -> `client.ns.utils.color`
 
 Berikan sentuhan warna-warni ke output terminal skrip kamu agar tidak membosankan.
 
@@ -171,7 +217,7 @@ print(f"{colors.RED}Peringatan: Bahaya!{colors.RESET}")
 
 ---
 
-### 6. `database` -> `client.ns.data.db`
+### 7. `database` -> `client.ns.data.db`
 
 Butuh tempat nyimpen data user? `client.ns.data.db` adalah solusinya! Fleksibel, mendukung penyimpanan JSON lokal, SQLite, hingga MongoDB, dan sudah dilengkapi enkripsi otomatis.
 
@@ -193,7 +239,7 @@ print(f"Masa aktif sisa: {db.daysLeft(user_id)} hari")
 
 ---
 
-### 7. `encrypt` -> `client.ns.code`
+### 8. `encrypt` -> `client.ns.code`
 
 Butuh cara cepet buat nyembunyiin atau nyamarkan data? `client.ns.code` nyediain beberapa metode enkripsi, masing-masing dengan keunikannya.
 
@@ -231,7 +277,7 @@ print(f"Teks Asli: {teks_asli_ascii}")
 
 ---
 
-### 8. `gemini` -> `client.ns.ai.gemini`
+### 9. `gemini` -> `client.ns.ai.gemini`
 
 Integrasikan AI canggih dari Google ke bot kamu. Bisa buat chatbot santai atau hiburan "cek khodam" yang lagi viral.
 
@@ -250,7 +296,7 @@ print(f"Jawaban Bot: {jawaban}")
 
 ---
 
-### 9. `gradient` -> `client.ns.utils.grad`
+### 10. `gradient` -> `client.ns.utils.grad`
 
 Hidupkan tampilan terminal dengan banner teks bergradien dan *countdown timer* animatif.
 
@@ -267,7 +313,7 @@ await client.ns.utils.grad.countdown(10, text="Tunggu {time} lagi...")
 
 ---
 
-### 10. `listen` -> `client.listen()` & `chat.ask()`
+### 11. `listen` -> `client.listen()` & `chat.ask()`
 
 Fitur spesial ini 'memperkuat' Pyrogram dengan menambahkan metode `.listen()` dan `.ask()` untuk membuat alur percakapan jadi sangat mudah. Untuk mengaktifkannya, Anda cukup mengimpor modul `listen` dari `nsdev` di awal skrip Anda. Proses *patching* akan terjadi secara otomatis.
 
@@ -305,7 +351,7 @@ app.run()
 
 ---
 
-### 11. `logger` -> `client.ns.utils.log`
+### 12. `logger` -> `client.ns.utils.log`
 
 Logger canggih pengganti `print()` yang mencatat pesan ke konsol dengan format rapi, penuh warna, lengkap dengan info waktu, file, dan fungsi.
 
@@ -321,7 +367,7 @@ def fungsi_penting():
 
 ---
 
-### 12. `payment` -> `client.ns.payment`
+### 13. `payment` -> `client.ns.payment`
 
 Mau jualan di bot? Modul ini menyediakan klien untuk payment gateway populer. Cukup panggil kelas yang sesuai dari `client.ns.payment`.
 
@@ -358,7 +404,7 @@ if payment.success:
 
 ---
 
-### 13. `storekey` -> `client.ns.data.key`
+### 14. `storekey` -> `client.ns.data.key`
 
 `client.ns.data.key` ini kayak "brankas kecil" buat nyimpen data sensitif (misal kunci API) secara terenkripsi di file sementara, agar tidak *hardcode* di skrip.
 
@@ -375,7 +421,7 @@ print(f"Kunci yang dipakai: {kunci}")
 
 ---
 
-### 14. `ymlreder` -> `client.ns.data.yaml`
+### 15. `ymlreder` -> `client.ns.data.yaml`
 
 Mengubah file konfigurasi `.yml` menjadi objek Python yang bisa diakses pake notasi titik. Sangat praktis!
 
@@ -395,7 +441,7 @@ if config:
 Meskipun dirancang untuk Pyrogram, kamu tetap bisa pake modul-modul ini secara terpisah di proyek Python lain.
 
 ```python
-from nsdev import DataBase, AnsiColors, ChatbotGemini
+from nsdev import DataBase, AnsiColors, HuggingFaceGenerator
 # ...dan seterusnya
 ```
 
@@ -405,5 +451,4 @@ Pustaka ini dirilis di bawah [Lisensi MIT](https://opensource.org/licenses/MIT).
 
 ---
 
-Semoga dokumentasi ini bikin kamu makin semangat ngoding! Selamat mencoba dan berkreasi dengan `norsodikin`. Jika ada pertanyaan, jangan ragu untuk kontak di [Telegram](https://t.me/NorSodikin).
-```
+Semoga dokumentasi ini bikin kamu makin semangat ngoding! Selamat mencoba dan berkreasi dengan `norsodikin`. Jika ada pertanyaan, jangan ragu untuk kontak di [Telegram](https://t.me/NorSodikin)
