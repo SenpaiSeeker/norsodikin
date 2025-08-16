@@ -97,18 +97,20 @@ Ubah imajinasimu jadi gambar keren pake Bing Image Creator. Kamu cuma butuh *coo
 ```python
 import asyncio
 
-# Login dulu ke bing.com/create di browser, lalu copy-paste cookie di bawah.
+# Login ke bing.com/create, lalu dari Developer Tools -> Application -> Cookies,
+# copy value dari cookie bernama "_U".
 BING_AUTH_COOKIE_U = "COOKIE_U_KAMU"
-BING_AUTH_COOKIE_SRCHHPGUSR = "COOKIE_SRCHHPGUSR_KAMU"
 
 bing_gen = client.ns.ai.bing(
-    auth_cookie_u=BING_AUTH_COOKIE_U,
-    auth_cookie_srchhpgusr=BING_AUTH_COOKIE_SRCHHPGUSR
+    auth_cookie_u=BING_AUTH_COOKIE_U
 )
     
-prompt = "kucing astronot minum kopi di bulan"
-list_url_gambar = await bing_gen.generate(prompt=prompt, num_images=4)
-print(f"URL Gambar berhasil dibuat: {list_url_gambar}")
+prompt = "kucing astronot minum kopi di bulan, gaya sinematik"
+try:
+    list_url_gambar = await bing_gen.generate(prompt=prompt, num_images=4)
+    print(f"URL Gambar berhasil dibuat: {list_url_gambar}")
+except Exception as e:
+    print(f"Gagal membuat gambar: {e}")
 ```
 
 ---
