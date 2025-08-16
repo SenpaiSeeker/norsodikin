@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from .addUser import SSHUserManager
 from .argument import Argument
 from .bing import ImageGenerator
+from .huggingface import HuggingFaceGenerator
 from .button import Button
 from .colorize import AnsiColors
 from .database import DataBase
@@ -14,7 +15,7 @@ from .payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
 from .storekey import KeyManager
 from .ymlreder import YamlHandler
 
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 __author__ = "@NorSodikin"
 
 
@@ -25,6 +26,7 @@ class NsDev:
         self.ai = SimpleNamespace(
             bing=ImageGenerator,
             gemini=ChatbotGemini,
+            hf=HuggingFaceGenerator,
         )
 
         self.telegram = SimpleNamespace(
