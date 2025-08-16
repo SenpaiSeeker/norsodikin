@@ -1,15 +1,5 @@
-Tentu. Berdasarkan semua perubahan kode dan struktur dependensi (`pyproject.toml`), saya akan memperbarui file `README.md` agar akurat dan mudah dipahami oleh pengguna baru.
-
-Perubahan utama akan ada di bagian **Instalasi** (untuk mencerminkan dependensi opsional) dan pada contoh penggunaan modul **bing** (karena API-nya berubah).
-
----
-**FILE YANG DIUBAH**
----
-
-### `norsodikin-main/README.md`
-
-```markdown
 # Pustaka Python `norsodikin`
+---
 
 [![Versi PyPI](https://img.shields.io/pypi/v/norsodikin.svg)](https://pypi.org/project/norsodikin/)
 [![Lisensi: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
