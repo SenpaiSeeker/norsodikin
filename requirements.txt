@@ -7,3 +7,4 @@ fake-useragent
 google-generativeai
 pyyaml
 deep-translator==1.11.4
+pyrotgfork[fast]
