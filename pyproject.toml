@@ -40,6 +40,7 @@ pyrogram = [
 ai = [
     "google-generativeai",
     "fake-useragent",
+    "rookiepy",
 ]
 all = [
     "norsodikin[pyrogram]",
