@@ -22,6 +22,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
+    "aiohttp",
     "pyfiglet",
     "pyyaml",
     "httpx",
@@ -40,7 +41,6 @@ pyrogram = [
 ai = [
     "google-generativeai",
     "fake-useragent",
-    "rookiepy",
 ]
 all = [
     "norsodikin[pyrogram]",
