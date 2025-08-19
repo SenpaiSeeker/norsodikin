@@ -14,8 +14,22 @@ class Gradient:
             self.random.randint(128, 255),
         )
 
+    def _rgb_to_256_ansi_index(self, r, g, b):
+        if r == g == b:
+            if r < 8:
+                return 16
+            if r > 248:
+                return 231
+            return round(((r - 8) / 247) * 24) + 232
+
+        r_idx = int(round(r / 255 * 5))
+        g_idx = int(round(g / 255 * 5))
+        b_idx = int(round(b / 255 * 5))
+        return 16 + (36 * r_idx) + (6 * g_idx) + b_idx
+
     def rgb_to_ansi(self, r, g, b):
-        return f"\033[38;2;{r};{g};{b}m"
+        color_index = self._rgb_to_256_ansi_index(r, g, b)
+        return f"\033[38;5;{color_index}m"
 
     def interpolate_color(self, factor):
         r = max(
@@ -64,7 +78,7 @@ class Gradient:
         return ":".join(result[::-1]) if result else "0s"
 
     async def countdown(self, seconds, text="Tunggu {time} untuk melanjutkan", bar_length=30):
-        animation_wave = "▁▂▃▄▅▆▇█▇▆▅▄▃▂▁"
+        animation_wave = " ▂▃▄▅▆▇█▇▆▅▄▃▂ "
 
         for remaining in range(seconds, -1, -1):
             time_display = self.gettime(remaining)
