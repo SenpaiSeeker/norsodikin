@@ -78,7 +78,7 @@ class Gradient:
         return ":".join(result[::-1]) if result else "0s"
 
     async def countdown(self, seconds, text="Tunggu {time} untuk melanjutkan", bar_length=30):
-        animation_wave = " ▂▃▄▅▆▇█▇▆▅▄▃▂ "
+        animation_wave = "▁▂▃▄▅▆▇█▇▆▅▄▃▂▁"
 
         for remaining in range(seconds, -1, -1):
             time_display = self.gettime(remaining)
