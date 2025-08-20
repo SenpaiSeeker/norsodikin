@@ -10,11 +10,11 @@ class KeyManager:
     def handle_arguments(self):
         parser = self.argparse.ArgumentParser(
             description="Pemuat konfigurasi.",
-            add_help=False, 
+            add_help=False,
         )
         parser.add_argument("--key", type=str, help="Kunci rahasia untuk enkripsi data.")
         parser.add_argument("--env", type=str, help="Nama file environment yang akan dimuat.")
-        
+
         args, unknown = parser.parse_known_args()
 
         if args.key and args.env:
@@ -23,19 +23,25 @@ class KeyManager:
                 with open(self.cache_file, "w") as f:
                     self.json.dump(cache_data, f)
             except Exception as e:
-                self.logger.print(f"{self.logger.RED}Duh, gagal nyimpen file cache. Folder ini kayaknya gak bisa ditulisi, coba cek dulu ya. Error: {e}")
+                self.logger.print(
+                    f"{self.logger.RED}Duh, gagal nyimpen file cache. Folder ini kayaknya gak bisa ditulisi, coba cek dulu ya. Error: {e}"
+                )
                 self.sys.exit(1)
             return args.key, args.env
-        
+
         elif self.os.path.exists(self.cache_file):
             try:
                 with open(self.cache_file, "r") as f:
                     cache_data = self.json.load(f)
                 return cache_data["key"], cache_data["env"]
             except Exception:
-                self.logger.print(f"{self.logger.RED}Waduh, file cache-nya kayaknya rusak. Coba jalanin lagi pakai `--key` dan `--env` buat benerin, ya.")
+                self.logger.print(
+                    f"{self.logger.RED}Waduh, file cache-nya kayaknya rusak. Coba jalanin lagi pakai `--key` dan `--env` buat benerin, ya."
+                )
                 self.sys.exit(1)
-        
+
         else:
-            self.logger.print(f"{self.logger.RED}Oh, ini baru pertama kali ya? Perlu di-setup dulu. Coba jalanin lagi pakai argumen `--key` dan `--env`.")
+            self.logger.print(
+                f"{self.logger.RED}Oh, ini baru pertama kali ya? Perlu di-setup dulu. Coba jalanin lagi pakai argumen `--key` dan `--env`."
+            )
             self.sys.exit(1)
