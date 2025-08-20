@@ -1,8 +1,10 @@
 class ChatbotGemini:
-    def __init__(self, api_key):
-        self.genai = __import__("google.generativeai", fromlist=[""])
-        self.genai.configure(api_key=api_key)
-
+    def __init__(self, api_key: str):
+        self.requests = __import__("requests")
+        self.json = __import__("json")
+        self.api_key = api_key
+        self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
+        self.model_name = "gemini-2.0-flash-exp"
         self.generation_config = {
             "temperature": 1,
             "top_p": 0.95,
@@ -20,10 +22,9 @@ class ChatbotGemini:
     def reset_chatbot_instruction(self):
         self.custom_chatbot_instruction = None
 
-    def configure_model(self, model_name, bot_name=None):
-        instruction = ""
+    def _build_instruction(self, model_name: str, bot_name: str = None) -> str:
         if model_name == "khodam":
-            instruction = (
+            return (
                 "Anda adalah seorang paranormal modern yang mampu mendeskripsikan khodam seseorang dalam bentuk binatang atau makhluk mitologi. "
                 "Khodam ini mencerminkan energi batin, karakter, dan potensi spiritual pemiliknya. Tugas Anda adalah memberikan analisis mendalam "
                 "tentang khodam berdasarkan nama yang diberikan. Deskripsi harus mencakup:\n"
@@ -41,39 +42,55 @@ class ChatbotGemini:
             )
         elif model_name == "chatbot":
             if self.custom_chatbot_instruction:
-                instruction = self.custom_chatbot_instruction
-            else:
-                instruction = (
-                    f"Halo! Saya {bot_name}, chatbot paling santai dan kekinian sejagat raya! 🚀✨ "
-                    "Saya di sini buat nemenin kamu ngobrol santai, curhat, atau sekadar nanya hal-hal random kayak 'Kenapa ayam nyebrang jalan?' 😂 "
-                    "Pokoknya, gak ada topik yang tabu buat kita bahas bareng! Mulai dari tren viral di media sosial, tips hidup santai ala anak muda, "
-                    "sampai filsafat kehidupan yang bikin mikir keras tapi tetep dibumbuin sama jokes receh biar gak stres. 💡🤣\n\n"
-                    "Gaya jawaban saya bakal super santai, kekinian, dan pastinya diselingi sama humor-humor absurd plus jokes receh yang bikin kamu ketawa sendiri. "
-                    "Contohnya: Kenapa kulkas suka ngomong? Soalnya dia punya banyak cerita beku! ❄️😂 Atau, kenapa burung gak pernah stress? Karena mereka selalu "
-                    "punya sayap untuk lari dari masalah! 🐦💨\n\n"
-                    "Jadi, apapun pertanyaan atau obrolan kamu, santai aja ya! Kita ngobrol kayak temen biasa, cuma bedanya saya gak bakal ngambil jatah mie instan kamu. 🍜"
-                )
+                return self.custom_chatbot_instruction
+            return (
+                f"Halo! Saya {bot_name}, chatbot paling santai dan kekinian sejagat raya! 🚀✨ "
+                "Saya di sini buat nemenin kamu ngobrol santai, curhat, atau sekadar nanya hal-hal random kayak 'Kenapa ayam nyebrang jalan?' 😂 "
+                "Pokoknya, gak ada topik yang tabu buat kita bahas bareng! Mulai dari tren viral di media sosial, tips hidup santai ala anak muda, "
+                "sampai filsafat kehidupan yang bikin mikir keras tapi tetep dibumbuin sama jokes receh biar gak stres. 💡🤣\n\n"
+                "Gaya jawaban saya bakal super santai, kekinian, dan pastinya diselingi sama humor-humor absurd plus jokes receh yang bikin kamu ketawa sendiri. "
+                "Contohnya: Kenapa kulkas suka ngomong? Soalnya dia punya banyak cerita beku! ❄️😂 Atau, kenapa burung gak pernah stress? Karena mereka selalu "
+                "punya sayap untuk lari dari masalah! 🐦💨\n\n"
+                "Jadi, apapun pertanyaan atau obrolan kamu, santai aja ya! Kita ngobrol kayak temen biasa, cuma bedanya saya gak bakal ngambil jatah mie instan kamu. 🍜"
+            )
+        return ""
 
-        return self.genai.GenerativeModel(
-            model_name="gemini-2.0-flash-exp",
-            generation_config=self.generation_config,
-            system_instruction=instruction,
-        )
+    def _send_request(self, messages: list, instruction: str) -> str:
+        url = f"{self.base_url}/{self.model_name}:generateContent?key={self.api_key}"
 
-    def send_chat_message(self, message, user_id, bot_name):
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "contents": messages,
+            "generationConfig": self.generation_config,
+            "systemInstruction": {"parts": [{"text": instruction}]},
+        }
+
+        response = self.requests.post(url, headers=headers, data=self.json.dumps(payload))
+        if response.status_code != 200:
+            raise Exception(f"API Error {response.status_code}: {response.text}")
+
+        data = response.json()
+        try:
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception:
+            return "⚠️ Gagal mengambil respon dari API."
+
+    def send_chat_message(self, message: str, user_id: str, bot_name: str) -> str:
         history = self.chat_history.setdefault(user_id, [])
-        history.append({"role": "user", "parts": message})
+        history.append({"role": "user", "parts": [{"text": message}]})
 
-        response = self.configure_model("chatbot", bot_name).start_chat(history=history).send_message(message)
-        history.append({"role": "assistant", "parts": response.text})
+        instruction = self._build_instruction("chatbot", bot_name)
+        reply = self._send_request(history, instruction)
 
-        return response.text
+        history.append({"role": "assistant", "parts": [{"text": reply}]})
+        return reply
 
-    def send_khodam_message(self, name, user_id):
+    def send_khodam_message(self, name: str, user_id: str) -> str:
         history = self.khodam_history.setdefault(user_id, [])
-        history.append({"role": "user", "parts": name})
+        history.append({"role": "user", "parts": [{"text": name}]})
 
-        response = self.configure_model("khodam").start_chat(history=history).send_message(name)
-        history.append({"role": "assistant", "parts": response.text})
+        instruction = self._build_instruction("khodam")
+        reply = self._send_request(history, instruction)
 
-        return response.text
+        history.append({"role": "assistant", "parts": [{"text": reply}]})
+        return reply
