@@ -1,5 +1,6 @@
 class Argument:
-    def __init__(self):
+    def __init__(self, client):
+        self.client = client
         self.asyncio = __import__("asyncio")
         self.pyrogram = __import__("pyrogram")
         self.requests = __import__("requests")
@@ -92,6 +93,6 @@ class Argument:
         return user_id
 
     async def copyMessage(self, chatId, msgId, chatTarget):
-        get_msg = await self.get_messages(chatId, msgId)
+        get_msg = await self.client.get_messages(chatId, msgId)
         await get_msg.copy(chatTarget, protect_content=True)
         await self.asyncio.sleep(1)
