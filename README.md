@@ -26,16 +26,6 @@ Gunakan "extras" untuk menginstal dependensi untuk fitur tertentu. Disarankan me
     pip install "norsodikin[pyrogram]"
     ```
 
-*   **Untuk fitur AI (Google Gemini & Image Generation):**
-    ```bash
-    pip install "norsodikin[ai]"
-    ```
-
-*   **Untuk menginstal semua fitur sekaligus:**
-    ```bash
-    pip install "norsodikin[all]"
-    ```
-
 ## Integrasi Ajaib dengan Pyrogram
 
 Cukup `import nsdev`, dan semua keajaiban `norsodikin` akan otomatis menempel di objek `client` Pyrogram kamu lewat namespace `ns`. Semua modul kini dikelompokkan ke dalam namespace yang logis seperti `ai`, `telegram`, `data`, `utils`, dan `server` untuk membuat kode lebih terstruktur.
