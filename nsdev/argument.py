@@ -8,7 +8,7 @@ class Argument:
         name = f"{me.first_name} {me.last_name}" if me.last_name else me.first_name
         link = f"tg://user?id={me.id}"
         return (
-            f"{me.id}|{name}"
+            f"{name} ({me.id})"
             if logs
             else (
                 name
@@ -91,7 +91,7 @@ class Argument:
         user_id, _ = await self.getReasonAndId(message, sender_chat=True)
         return user_id
 
-    async def copyMessage(self, client, chatId, msgId, chatTarget):
-        get_msg = await client.get_messages(chatId, msgId)
+    async def copyMessage(self, chatId, msgId, chatTarget):
+        get_msg = await self.get_messages(chatId, msgId)
         await get_msg.copy(chatTarget, protect_content=True)
         await self.asyncio.sleep(1)
