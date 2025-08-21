@@ -15,7 +15,7 @@ from .payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
 from .storekey import KeyManager
 from .ymlreder import YamlHandler
 
-__version__ = "1.0.7"
+__version__ = "1.0.7.1"
 __author__ = "@NorSodikin"
 
 
@@ -30,7 +30,7 @@ class NsDev:
         )
 
         self.telegram = SimpleNamespace(
-            arg=Argument(),
+            arg=Argument(self._client),
             button=Button(),
         )
 
