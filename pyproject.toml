@@ -27,24 +27,17 @@ dependencies = [
     "pyyaml",
     "httpx",
     "requests",
+    "fake-useragent",
     "faker",
 ]
 
 [project.urls]
-Homepage = "https://t.me/NorSodikin"
+Homepage = "https://github.com/SenpaiSeeker/norsodikin"
 
 [project.optional-dependencies]
 pyrogram = [
     "pyrotgfork[fast]",
     "pymongo",
-]
-ai = [
-    "google-generativeai",
-    "fake-useragent",
-]
-all = [
-    "norsodikin[pyrogram]",
-    "norsodikin[ai]",
 ]
 
 [tool.setuptools]
