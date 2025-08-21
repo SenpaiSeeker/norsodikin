@@ -50,7 +50,7 @@ class Argument:
             entity_index = 1 if message.text.startswith("/") else 0
             entity = message.entities[entity_index]
             if entity.type == self.pyrogram.enums.MessageEntityType.MENTION:
-                return (await message._client.get_chat(username)).id
+                return (await self.client.get_chat(username)).id
             elif entity.type == self.pyrogram.enums.MessageEntityType.TEXT_MENTION:
                 return entity.user.id
         return username
@@ -82,7 +82,7 @@ class Argument:
             return (None, None)
 
     async def getAdmin(self, message):
-        member = await message._client.get_chat_member(message.chat.id, message.from_user.id)
+        member = await self.client.get_chat_member(message.chat.id, message.from_user.id)
         return member.status in (
             self.pyrogram.enums.ChatMemberStatus.ADMINISTRATOR,
             self.pyrogram.enums.ChatMemberStatus.OWNER,
