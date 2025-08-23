@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from importlib.metadata import version, PackageNotFoundError
 
 from .addUser import SSHUserManager
 from .argument import Argument
@@ -15,7 +16,11 @@ from .payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
 from .storekey import KeyManager
 from .ymlreder import YamlHandler
 
-__version__ = "1.0.7.1"
+try:
+    __version__ = version("norsodikin")
+except PackageNotFoundError:
+    __version__ = "unknown"
+    
 __author__ = "@NorSodikin"
 
 
