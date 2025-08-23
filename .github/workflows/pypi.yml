@@ -1,36 +1,36 @@
-name: PyPi package release
+name: Publish Python Package to PyPI
 
 on:
   workflow_dispatch:
     inputs:
-      api_pypi:
-        description: 'PyPI API token'
+      pypi_token:
+        description: 'PyPI API Token'
         required: true
 
 jobs:
-  build-n-publish:
+  pypi-publish:
     name: Build and publish to PyPI
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - name: Install dependencies for build and publish
-        run: |
-          pip install build twine
+      - name: Install build dependencies
+        run: pip install build
 
       - name: Build package
         run: python -m build
 
       - name: Publish package to PyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ github.event.inputs.api_pypi }}
-        run: |
-          twine upload --repository pypi dist/*
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ github.event.inputs.pypi_token }}
