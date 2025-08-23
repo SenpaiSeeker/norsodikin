@@ -7,10 +7,8 @@ class MarkdownDelimiters:
     CODE = "`"
     PRE = "```"
     BLOCKQUOTE = ">"
-    BLOCKQUOTE_ESCAPE = "|>"
     BLOCKQUOTE_EXPANDABLE = "**>"
     BLOCKQUOTE_EXPANDABLE_END = "<**"
-
 
 class TextFormatter(MarkdownDelimiters):
     def __init__(self, mode: str = "markdown"):
@@ -40,7 +38,7 @@ class TextFormatter(MarkdownDelimiters):
         else:
             self._parts.append(f"{self.ITALIC}{text_content}{self.ITALIC}")
         return self
-
+        
     def underline(self, text_content: str):
         if self.mode == "html":
             self._parts.append(f"<u>{self.html.escape(text_content)}</u>")
@@ -54,10 +52,10 @@ class TextFormatter(MarkdownDelimiters):
         else:
             self._parts.append(f"{self.STRIKE}{text_content}{self.STRIKE}")
         return self
-
+        
     def spoiler(self, text_content: str):
         if self.mode == "html":
-            self._parts.append(f"<tg-spoiler>{self.html.escape(text_content)}</tg-spoiler>")
+            self._parts.append(f"<spoiler>{self.html.escape(text_content)}</spoiler>")
         else:
             self._parts.append(f"{self.SPOILER}{text_content}{self.SPOILER}")
         return self
@@ -68,32 +66,21 @@ class TextFormatter(MarkdownDelimiters):
         else:
             self._parts.append(f"{self.CODE}{text_content}{self.CODE}")
         return self
-
-    def pre(self, text_content: str, language: str = ""):
+        
+    def pre(self, text_content: str):
         if self.mode == "html":
             safe_text = self.html.escape(text_content)
-            class_attr = f' class="language-{language}"' if language else ""
-            self._parts.append(f"<pre><code{class_attr}>{safe_text}</code></pre>")
+            self._parts.append(f"<pre>{safe_text}</pre>")
         else:
-            lang = language if language else ""
-            self._parts.append(f"{self.PRE}{lang}\n{text_content}\n{self.PRE}")
+            self._parts.append(f"{self.PRE}\n{text_content}\n{self.PRE}")
         return self
 
     def blockquote(self, text_content: str):
         if self.mode == "html":
             self._parts.append(f"<blockquote>{self.html.escape(text_content)}</blockquote>")
         else:
-            lines = text_content.strip().split("\n")
-            formatted_lines = [f"{self.BLOCKQUOTE} {line}" for line in lines]
-            self._parts.append("\n".join(formatted_lines))
-        return self
-
-    def escaped_blockquote(self, text_content: str):
-        if self.mode == "html":
-            return self.blockquote(text_content)
-        else:
-            lines = text_content.strip().split("\n")
-            formatted_lines = [f"{self.BLOCKQUOTE_ESCAPE} {line}" for line in lines]
+            lines = text_content.strip().split('\n')
+            formatted_lines = [f"{self.BLOCKQUOTE}{line}" for line in lines]
             self._parts.append("\n".join(formatted_lines))
         return self
 
