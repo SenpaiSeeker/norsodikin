@@ -1,19 +1,16 @@
 name: Publish Python Package to PyPI
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      pypi_token:
+        description: 'PyPI API Token'
+        required: true
 
 jobs:
   pypi-publish:
     name: Build and publish to PyPI
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/norsodikin
-    permissions:
-      id-token: write
 
     steps:
       - name: Checkout repository
@@ -22,7 +19,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: setup-python@v5
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -34,3 +31,6 @@ jobs:
 
       - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ github.event.inputs.pypi_token }}
