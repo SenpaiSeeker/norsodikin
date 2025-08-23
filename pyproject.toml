@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=61.0", "setuptools-scm"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "norsodikin"
 dynamic = ["version"]
-description = "Library of special mission and encrypted code"
+description = "A versatile Python toolkit designed to simplify complex tasks like Telegram bot development, Linux server management, data encryption, and AI integration. Deeply integrated with Pyrogram, it makes your code cleaner, more intuitive, and powerful."
 readme = "README.md"
 authors = [
     { name = "NorSodikin", email = "admin@NorSodikin.com" },
@@ -43,4 +43,5 @@ pyrogram = [
 [tool.setuptools]
 packages = ["nsdev"]
 
-[tool.setuptools_scm]
+[tool.setuptools.dynamic]
+version = { attr = "nsdev.__version__" }
