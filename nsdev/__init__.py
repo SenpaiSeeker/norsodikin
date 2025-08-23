@@ -1,5 +1,5 @@
+from importlib.metadata import PackageNotFoundError, version
 from types import SimpleNamespace
-from importlib.metadata import version, PackageNotFoundError
 
 from .addUser import SSHUserManager
 from .argument import Argument
@@ -20,7 +20,7 @@ try:
     __version__ = version("norsodikin")
 except PackageNotFoundError:
     __version__ = "unknown"
-    
+
 __author__ = "@NorSodikin"
 
 
