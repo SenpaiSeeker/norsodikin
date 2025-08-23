@@ -91,46 +91,57 @@ class Button:
         items_per_row: int = 1,
         callback_prefix: str = "nav",
         item_callback_prefix: str = None,
-        extra_params: dict = None
+        extra_params: dict = None,
     ):
         if current_page < 1:
             current_page = 1
-        
+
         total_items = len(items)
         total_pages = self.math.ceil(total_items / items_per_page) or 1
-        
+
         current_page = min(current_page, total_pages)
-        
+
         start_index = (current_page - 1) * items_per_page
         end_index = start_index + items_per_page
-        
+
         page_items = items[start_index:end_index]
-        
+
         item_buttons_data = [
-            {'text': item.get('text'), 'callback_data': f"{item_callback_prefix}_{item.get('data')}" if item_callback_prefix else item.get('data')} if isinstance(item, dict)
-            else {'text': str(item), 'callback_data': f"{item_callback_prefix}_{item}" if item_callback_prefix else str(item)}
+            (
+                {
+                    "text": item.get("text"),
+                    "callback_data": (
+                        f"{item_callback_prefix}_{item.get('data')}" if item_callback_prefix else item.get("data")
+                    ),
+                }
+                if isinstance(item, dict)
+                else {
+                    "text": str(item),
+                    "callback_data": f"{item_callback_prefix}_{item}" if item_callback_prefix else str(item),
+                }
+            )
             for item in page_items
         ]
-        
+
         layout = [
             [self.pyrogram.types.InlineKeyboardButton(**data) for data in item_buttons_data[i : i + items_per_row]]
             for i in range(0, len(item_buttons_data), items_per_row)
         ]
-        
+
         nav_row_data = []
         if current_page > 1:
-            nav_row_data.append({'text': "⬅️", 'callback_data': f"{callback_prefix}_{current_page - 1}"})
-        
+            nav_row_data.append({"text": "⬅️", "callback_data": f"{callback_prefix}_{current_page - 1}"})
+
         if total_pages > 1:
-            nav_row_data.append({'text': f"[{current_page}/{total_pages}]", 'callback_data': "noop"})
-            
+            nav_row_data.append({"text": f"[{current_page}/{total_pages}]", "callback_data": "noop"})
+
         if current_page < total_pages:
-            nav_row_data.append({'text': "➡️", 'callback_data': f"{callback_prefix}_{current_page + 1}"})
-        
+            nav_row_data.append({"text": "➡️", "callback_data": f"{callback_prefix}_{current_page + 1}"})
+
         if nav_row_data:
             layout.append([self.pyrogram.types.InlineKeyboardButton(**data) for data in nav_row_data])
-            
+
         if extra_params:
             layout.append([self.pyrogram.types.InlineKeyboardButton(**extra_params)])
-        
+
         return self.pyrogram.types.InlineKeyboardMarkup(layout) if layout else None
