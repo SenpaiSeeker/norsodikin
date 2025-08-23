@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -43,5 +43,4 @@ pyrogram = [
 [tool.setuptools]
 packages = ["nsdev"]
 
-[tool.setuptools.dynamic]
-version = { attr = "nsdev.__version__" }
+[tool.setuptools_scm]
