@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+
 from .addUser import SSHUserManager
 from .argument import Argument
 from .bing import ImageGenerator
@@ -6,21 +7,22 @@ from .button import Button
 from .colorize import AnsiColors
 from .database import DataBase
 from .encrypt import AsciiManager, CipherHandler
+from .formatter import TextFormatter
 from .gemini import ChatbotGemini
 from .gradient import Gradient
 from .huggingface import HuggingFaceGenerator
 from .logger import LoggerHandler
-from .payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
-from .storekey import KeyManager
-from .ymlreder import YamlHandler
 from .monitor import ServerMonitor
+from .payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
+from .progress import TelegramProgressBar
+from .storekey import KeyManager
 from .tts import TextToSpeech
 from .web_summarizer import WebSummarizer
-from .progress import TelegramProgressBar
-from .formatter import TextFormatter
+from .ymlreder import YamlHandler
 
 __version__ = "1.0.8"
 __author__ = "@NorSodikin"
+
 
 class NsDev:
     def __init__(self, client):
@@ -62,14 +64,17 @@ class NsDev:
             Violet=VioletMediaPayClient,
         )
 
+
 @property
 def ns(self) -> NsDev:
     if not hasattr(self, "_nsdev_instance"):
         self._nsdev_instance = NsDev(self)
     return self._nsdev_instance
 
+
 try:
     from pyrogram import Client
+
     Client.ns = ns
 except Exception:
     pass
