@@ -6,14 +6,14 @@ class TelegramProgressBar:
         self.start_time = __import__("time").time()
         self.last_update_time = 0
         self.time = __import__("time")
-    
+
     def _format_bytes(self, size):
         if not size:
             return "0B"
         power = 1024
         n = 0
-        power_labels = {0: '', 1: 'K', 2: 'M', 3: 'G', 4: 'T'}
-        while size > power and n < len(power_labels) -1 :
+        power_labels = {0: "", 1: "K", 2: "M", 3: "G", 4: "T"}
+        while size > power and n < len(power_labels) - 1:
             size /= power
             n += 1
         return f"{size:.2f} {power_labels[n]}B"
@@ -31,7 +31,7 @@ class TelegramProgressBar:
             speed = 0
         progress_bar_length = 10
         filled_length = int(progress_bar_length * current // total)
-        bar = '█' * filled_length + '░' * (progress_bar_length - filled_length)
+        bar = "█" * filled_length + "░" * (progress_bar_length - filled_length)
         status_text = (
             f"**{self.task_name} sedang berjalan...**\n\n"
             f"`[{bar}] {percentage:.1f}%`\n\n"
