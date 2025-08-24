@@ -15,10 +15,10 @@ class WebSummarizer:
                 soup = self.bs4.BeautifulSoup(response.text, "lxml")
                 for script_or_style in soup(["script", "style"]):
                     script_or_style.decompose()
-                paragraphs = soup.find_all('p')
-                text = ' '.join(p.get_text(strip=True) for p in paragraphs)
+                paragraphs = soup.find_all("p")
+                text = " ".join(p.get_text(strip=True) for p in paragraphs)
                 if not text:
-                    text = soup.body.get_text(separator=' ', strip=True)
+                    text = soup.body.get_text(separator=" ", strip=True)
                 return text
             except Exception as e:
                 raise Exception(f"Gagal mengambil konten dari URL: {e}")
