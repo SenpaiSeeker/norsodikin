@@ -372,26 +372,6 @@ if payment.status:
     print(f"Link QR Code: {payment.data.target}")
 ```
 
-#### **Contoh dengan `Midtrans`**
-```python
-midtrans_pay = client.ns.payment.Midtrans(
-    server_key="SERVER_KEY_MIDTRANS", client_key="CLIENT_KEY_MIDTRANS", is_production=False
-)
-payment_info = midtrans_pay.create_payment(order_id="order-123", gross_amount=10000)
-print(f"Link Pembayaran: {payment_info.redirect_url}")
-```
-
-#### **Contoh dengan `Tripay`**
-```python
-tripay = client.ns.payment.Tripay(api_key="API_KEY_TRIPAY")
-payment = tripay.create_payment(
-    method="QRIS", amount=15000, order_id="trx-456", customer_name="Budi"
-)
-if payment.success:
-    print(f"Kode Pembayaran: {payment.data.pay_code}")
-    print(f"Link Checkout: {payment.data.checkout_url}")
-```
-
 ---
 
 ### 14. `storekey` -> `client.ns.data.key`
@@ -426,6 +406,177 @@ if config:
     print(f"Host: {config.database.host}")
 ```
 
+---
+
+### 16. `monitor` -> `client.ns.server.monitor`
+
+Pantau kondisi server Linux Anda langsung dari Telegram. Dapatkan informasi penggunaan CPU, RAM, dan Disk dengan satu panggilan fungsi.
+
+**Cara Pakai:**
+```python
+# Tidak perlu inisialisasi, langsung pakai
+stats = client.ns.server.monitor.get_stats()
+
+await message.reply(
+    f"🖥️ **Status Server Terkini**:\n"
+    f"
+- **CPU Load**: `{stats.cpu_percent}%`\n"
+    f"- **RAM Used**: `{stats.ram_used_gb:.2f} GB / {stats.ram_total_gb:.2f} GB ({stats.ram_percent}%)`\n"
+    f"- **Disk Space**: `Sisa {100 - stats.disk_percent:.1f}% ({stats.disk_used_gb:.1f} GB terpakai)`"
+)
+```
+
+---
+
+### 17. `paginator` -> `client.ns.telegram.button.create_pagination_keyboard`
+
+Lupakan pusingnya bikin keyboard dengan puluhan tombol. Gunakan paginator canggih ini untuk membaginya menjadi beberapa halaman, mengatur jumlah tombol per baris, dan menambahkan tombol kembali dengan mudah.
+
+**Cara Pakai (di dalam handler callback query):**
+```python
+# Daftar item yang ingin ditampilkan (bisa berisi string atau dict)
+list_produk = [{"text": f"Produk #{i}", "data": i} for i in range(1, 31)]
+
+# Dapatkan halaman yang diminta dari callback data, misal "nav_produk_2"
+try:
+    halaman = int(query.data.split("_")[-1])
+except ValueError:
+    halaman = 1
+
+# Buat keyboard untuk halaman tersebut
+keyboard = client.ns.telegram.button.create_pagination_keyboard(
+    items=list_produk,
+    current_page=halaman,
+    items_per_page=6,   # Tampilkan 6 item dalam satu halaman
+    items_per_row=2,    # Atur agar ada 2 tombol item per baris
+    callback_prefix="nav_produk",
+    item_callback_prefix="pilih_produk",
+    back_button={"text": "« Kembali ke Menu", "callback_data": "menu_utama"}
+)
+
+await query.message.edit("Silakan pilih produk:", reply_markup=keyboard)
+```
+
+---
+
+### 18. `tts` -> `client.ns.ai.tts`
+
+Ubah teks apapun menjadi pesan suara (voice note) dengan mudah menggunakan AI.
+
+**Cara Pakai:**
+```python
+from io import BytesIO
+
+# Inisialisasi generator TTS
+tts_gen = client.ns.ai.tts()
+    
+teks = "Halo! Ini adalah pesan suara yang dibuat otomatis oleh bot canggih."
+try:
+    # Hasilnya adalah bytes
+    audio_bytes = await tts_gen.generate(text=teks, lang="id")
+    
+    # Kirim langsung sebagai pesan suara
+    voice_file = BytesIO(audio_bytes)
+    voice_file.name = "pesan.ogg" # Pyrogram butuh nama
+    await message.reply_voice(voice=voice_file, caption="Pesan suara untukmu!")
+except Exception as e:
+    print(f"Gagal membuat suara: {e}")
+```
+
+---
+
+### 19. `web` -> `client.ns.ai.web`
+
+Bot kamu perlu tahu isi sebuah artikel tanpa membukanya? Gunakan fitur ini untuk mengambil konten dari URL dan merangkumnya menggunakan AI Gemini.
+
+**Cara Pakai:**
+```python
+# Pertama, inisialisasi Gemini seperti biasa
+GEMINI_API_KEY = "API_KEY_KAMU"
+gemini_bot = client.ns.ai.gemini(api_key=GEMINI_API_KEY)
+
+# Kemudian, berikan instance Gemini ke WebSummarizer
+web_summarizer = client.ns.ai.web(gemini_instance=gemini_bot)
+
+url_artikel = "https://www.liputan6.com/tekno/read/5482319/cara-membuat-stiker-whatsapp-pakai-ai-tanpa-aplikasi-tambahan"
+await message.reply("Sedang membaca dan merangkum artikel, mohon tunggu...")
+
+# Panggil fungsi summarize
+rangkuman = await web_summarizer.summarize(url_artikel)
+await message.reply(f"📄 **Rangkuman Artikel:**\n\n{rangkuman}")
+```
+
+---
+
+### 20. `progress` -> `client.ns.utils.progress`
+
+Berikan user feedback visual saat bot sedang melakukan tugas berat seperti mengunggah atau mengunduh file. Progress bar ini akan mengupdate pesan secara otomatis.
+
+**Cara Pakai (saat mengunggah file):**
+```python
+# Kirim pesan awal
+msg = await message.reply("🚀 Mengunggah file besar, mohon bersabar...")
+
+# Inisialisasi progress bar dengan pesan yang ingin diupdate
+progress_tracker = client.ns.utils.progress(client=client, message=msg, task_name="Upload Video")
+
+# Gunakan method .update sebagai callback di Pyrogram
+await client.send_video(
+    chat_id=message.chat.id,
+    video="path/to/your/large_video.mp4",
+    progress=progress_tracker.update # -> Kuncinya ada di sini!
+)
+
+# Pesan final setelah selesai
+await msg.edit("✅ Unggah Selesai!")
+```
+
+---
+
+### 21. `formatter` -> `client.ns.telegram.formatter`
+
+Formatter ini bukan formatter biasa! Gunakan `formatter` ini untuk membuat pesan berformat dengan **sintaks Markdown kustom** yang unik (`__italic__`, `--underline--`, dll) atau mode HTML standar dengan cara yang bersih dan berantai (*chainable*).
+
+**Cara Pakai (Mode Kustom Markdown):**
+```python
+from pyrogram.enums import ParseMode
+
+fmt = client.ns.telegram.formatter("markdown")
+
+pesan = (
+    fmt.bold("Notifikasi Penting").new_line()
+    .underline("Sistem akan di-restart").new_line()
+    .italic("Harap simpan pekerjaan Anda.").new_line(2)
+    .text("Detail Log:").new_line()
+    .expandable_blockquote("Ini adalah kutipan lipat (hanya visual di MD, tidak fungsional).") # -> **>...<**
+    .new_line(2)
+    .text("Bocoran cerita: ").spoiler("Karakter utamanya ternyata kucing.")
+    .to_string()
+)
+
+await message.reply(pesan, parse_mode=ParseMode.MARKDOWN)
+```
+
+**Cara Pakai (Mode HTML Fungsional):**
+Gunakan mode `html` untuk fungsionalitas penuh seperti kutipan lipat yang benar-benar bisa diklik.
+```python
+from pyrogram.enums import ParseMode
+
+fmt_html = client.ns.telegram.formatter("html")
+
+log_error = "Traceback (most recent call last):\n  File \"main.py\", line 1"
+pesan_html = (
+    fmt_html.bold("Laporan Error").new_line()
+    .text("Klik untuk melihat detail log:").new_line()
+    .expandable_blockquote(log_error) # Ini akan bisa dilipat
+    .to_string()
+)
+
+await message.reply(pesan_html, parse_mode=ParseMode.HTML)
+```
+
+---
+
 ## Penggunaan Standalone (Tanpa Pyrogram)
 
 Meskipun dirancang untuk Pyrogram, kamu tetap bisa pake modul-modul ini secara terpisah di proyek Python lain.
@@ -438,7 +589,5 @@ from nsdev import DataBase, AnsiColors, HuggingFaceGenerator
 ## Lisensi
 
 Pustaka ini dirilis di bawah [Lisensi MIT](https://opensource.org/licenses/MIT). Artinya, kamu bebas pakai, modifikasi, dan distribusikan untuk proyek apa pun.
-
----
 
 Semoga dokumentasi ini bikin kamu makin semangat ngoding! Selamat mencoba dan berkreasi dengan `norsodikin`. Jika ada pertanyaan, jangan ragu untuk kontak di [Telegram](https://t.me/NorSodikin)
