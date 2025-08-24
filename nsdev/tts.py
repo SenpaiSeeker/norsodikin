@@ -16,12 +16,7 @@ class TextToSpeech:
 
     async def generate(self, text: str, lang: str = "id") -> bytes:
         loop = self.asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            None,
-            self._sync_generate,
-            text,
-            lang
-        )
+        result = await loop.run_in_executor(None, self._sync_generate, text, lang)
         if isinstance(result, Exception):
             raise result
         return result
