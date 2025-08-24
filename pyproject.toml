@@ -21,14 +21,12 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+
 dependencies = [
     "aiohttp",
-    "pyfiglet",
     "pyyaml",
     "httpx",
     "requests",
-    "fake-useragent",
-    "faker",
 ]
 
 [project.urls]
@@ -37,7 +35,28 @@ Homepage = "https://github.com/SenpaiSeeker/norsodikin"
 [project.optional-dependencies]
 pyrogram = [
     "pyrotgfork[fast]",
+]
+ai = [
+    "gTTS",
+    "beautifulsoup4",
+    "lxml",
+    "fake-useragent",
+]
+server = [
+    "psutil",
+]
+database = [
     "pymongo",
+]
+cli = [
+    "pyfiglet",
+]
+payment = [
+    "faker",
+]
+
+all = [
+    "norsodikin[pyrogram,ai,server,database,cli,payment]",
 ]
 
 [tool.setuptools]
