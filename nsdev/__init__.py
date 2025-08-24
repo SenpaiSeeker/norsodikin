@@ -1,5 +1,4 @@
 from types import SimpleNamespace
-
 from .addUser import SSHUserManager
 from .argument import Argument
 from .bing import ImageGenerator
@@ -14,53 +13,54 @@ from .logger import LoggerHandler
 from .payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
 from .storekey import KeyManager
 from .ymlreder import YamlHandler
+from .monitor import ServerMonitor
+from .tts import TextToSpeech
+from .web_summarizer import WebSummarizer
+from .progress import TelegramProgressBar
+from .formatter import TextFormatter
 
-__version__ = "1.0.7.1"
+__version__ = "1.0.8"
 __author__ = "@NorSodikin"
-
 
 class NsDev:
     def __init__(self, client):
         self._client = client
-
         self.ai = SimpleNamespace(
             bing=ImageGenerator,
             gemini=ChatbotGemini,
             hf=HuggingFaceGenerator,
+            tts=TextToSpeech,
+            web=WebSummarizer,
         )
-
         self.telegram = SimpleNamespace(
             arg=Argument(self._client),
             button=Button(),
+            formatter=TextFormatter,
         )
-
         self.data = SimpleNamespace(
             db=DataBase,
             key=KeyManager,
             yaml=YamlHandler(),
         )
-
         self.utils = SimpleNamespace(
             color=AnsiColors(),
             grad=Gradient(),
             log=LoggerHandler(),
+            progress=TelegramProgressBar,
         )
-
         self.server = SimpleNamespace(
             user=SSHUserManager,
+            monitor=ServerMonitor(),
         )
-
         self.code = SimpleNamespace(
             Cipher=CipherHandler,
             Ascii=AsciiManager,
         )
-
         self.payment = SimpleNamespace(
             Midtrans=PaymentMidtrans,
             Tripay=PaymentTripay,
             Violet=VioletMediaPayClient,
         )
-
 
 @property
 def ns(self) -> NsDev:
@@ -68,10 +68,8 @@ def ns(self) -> NsDev:
         self._nsdev_instance = NsDev(self)
     return self._nsdev_instance
 
-
 try:
     from pyrogram import Client
-
     Client.ns = ns
 except Exception:
     pass
