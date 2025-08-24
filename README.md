@@ -188,12 +188,21 @@ keyboard_reply, sisa_teks_reply = client.ns.telegram.button.create_button_keyboa
 ```
 
 **Membuat Paginasi (Halaman Tombol) Otomatis**
+Fungsi `create_pagination_keyboard` secara otomatis membuat keyboard berhalaman untuk daftar yang panjang.
 ```python
 list_produk = [{"text": f"Produk #{i}", "data": i} for i in range(1, 31)]
+halaman_sekarang = 2
+
 keyboard_paginasi = client.ns.telegram.button.create_pagination_keyboard(
-    items=list_produk, current_page=2, items_per_page=6, items_per_row=2,
-    callback_prefix="nav_produk", item_callback_prefix="pilih_produk",
-    extra_params=[{"text": "« Kembali", "callback_data": "menu_utama"}]
+    items=list_produk,
+    current_page=halaman_sekarang,
+    items_per_page=6,
+    items_per_row=2,
+    callback_prefix="nav_produk",
+    item_callback_prefix="pilih_produk",
+    extra_params=[
+        {"text": "« Kembali ke Menu", "callback_data": "menu_utama"},
+    ]
 )
 # await message.reply("Daftar produk:", reply_markup=keyboard_paginasi)
 ```
@@ -460,11 +469,11 @@ status = tripay.check_transaction(reference=payment_data.data.reference)
 **C. VioletMediaPay**
 ```python
 violet = client.ns.payment.Violet(
-    api_key="API_KEY_VIOLET_ANDA", secret_key="SECRET_KEY_VIOLET_ANDA", live=True 
+    api_key="API_KEY_VIOLET_ANDA", secret_key="SECRET_KEY_VIOLET_ANDA", live=False
 )
 payment_result = await violet.create_payment(channel_payment="QRIS", amount="10000")
 if payment_result.status:
-    status = await violet.check_transaction(ref=payment_result.data.ref_kode, ref_id=payment_result.data.id_reference)
+    status = await violet.check_transaction(ref="invoice", ref_id=payment_result.data.ref_id)
 ```
 
 ---
@@ -476,6 +485,7 @@ Callback helper untuk menampilkan progress bar dinamis saat mengunggah atau meng
 1.  Kirim pesan awal (placeholder).
 2.  Inisialisasi `TelegramProgressBar` dengan `client` dan `message` dari langkah 1.
 3.  Gunakan metode `.update` dari objek progress bar sebagai nilai parameter `progress`.
+4.  (Opsional) Panggil `await progress_bar.new_task("Nama Tugas Baru")` jika ingin menggunakan progress bar yang sama untuk tugas berbeda (misal: setelah download selesai, lanjut upload).
 
 **Contoh Penggunaan:**
 ```python
@@ -544,11 +554,11 @@ Metode `summarize` menerima `url` dan `max_length` (opsional, default 8000 karak
 
 **Contoh Penggunaan:**
 ```python
-url_berita = "https://www.cnbcindonesia.com/news/20231120094757-4-490311/jokowi-buka-bukaan-minta-biden-dorong-gencatan-senjata-gaza"
+url_berita = "https://www.kompas.com/global/read/2023/12/13/165507970/apa-itu-kecerdasan-buatan-pengertian-dan-contohnya"
 await message.reply("⏳ Sedang membaca dan merangkum artikel...")
 
-# Memulai proses peringkasan dengan panjang teks maksimal 2048 karakter
-rangkuman = await web_summarizer.summarize(url_berita, max_length=2048)
+# Memulai proses peringkasan dengan panjang teks maksimal 5000 karakter
+rangkuman = await web_summarizer.summarize(url_berita, max_length=5000)
 
 # Tampilkan hasilnya
 # await message.reply(f"📄 **Rangkuman:**\n\n{rangkuman}")
