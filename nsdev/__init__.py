@@ -20,7 +20,7 @@ from .tts import TextToSpeech
 from .web_summarizer import WebSummarizer
 from .ymlreder import YamlHandler
 
-__version__ = "1.0.8"
+__version__ = "1.0.9"
 __author__ = "@NorSodikin"
 
 
