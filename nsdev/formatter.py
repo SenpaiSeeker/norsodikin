@@ -53,7 +53,7 @@ class TextFormatter(MarkdownDelimiters):
 
     def spoiler(self, text_content: str):
         if self.mode == "html":
-            self._parts.append(f"<tg-spoiler>{text_content}</tg-spoiler>")
+            self._parts.append(f"<spoiler>{text_content}</spoiler>")
         else:
             self._parts.append(f"{self.SPOILER}{text_content}{self.SPOILER}")
         return self
