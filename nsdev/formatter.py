@@ -11,6 +11,7 @@ class MarkdownDelimiters:
     BLOCKQUOTE_EXPANDABLE = "**>"
     BLOCKQUOTE_EXPANDABLE_END = "<**"
 
+
 class TextFormatter(MarkdownDelimiters):
     def __init__(self, mode: str = "markdown"):
         self.html = __import__("html")
@@ -22,7 +23,7 @@ class TextFormatter(MarkdownDelimiters):
     def _process_content(self, content):
         if isinstance(content, TextFormatter):
             return content.to_string()
-        
+
         text_content = str(content)
         if self.mode == "html":
             return self.html.escape(text_content)
@@ -47,7 +48,7 @@ class TextFormatter(MarkdownDelimiters):
         else:
             self._parts.append(f"{self.ITALIC}{processed}{self.ITALIC}")
         return self
-        
+
     def underline(self, text_content: str):
         processed = self._process_content(text_content)
         if self.mode == "html":
@@ -63,7 +64,7 @@ class TextFormatter(MarkdownDelimiters):
         else:
             self._parts.append(f"{self.STRIKE}{processed}{self.STRIKE}")
         return self
-        
+
     def spoiler(self, content):
         inner_text = self._process_content(content)
         if self.mode == "html":
@@ -79,7 +80,7 @@ class TextFormatter(MarkdownDelimiters):
         else:
             self._parts.append(f"{self.CODE}{processed}{self.CODE}")
         return self
-        
+
     def pre(self, content):
         inner_text = self._process_content(content)
         if self.mode == "html":
@@ -93,7 +94,7 @@ class TextFormatter(MarkdownDelimiters):
         if self.mode == "html":
             self._parts.append(f"<blockquote>{inner_text}</blockquote>")
         else:
-            lines = inner_text.strip().split('\n')
+            lines = inner_text.strip().split("\n")
             formatted_lines = [f"{self.BLOCKQUOTE} {line}" for line in lines]
             self._parts.append("\n".join(formatted_lines))
         return self
@@ -103,7 +104,7 @@ class TextFormatter(MarkdownDelimiters):
         if self.mode == "html":
             self._parts.append(f"<blockquote>{inner_text}</blockquote>")
         else:
-            lines = inner_text.strip().split('\n')
+            lines = inner_text.strip().split("\n")
             formatted_lines = [f"{self.BLOCKQUOTE_ESCAPE} {line}" for line in lines]
             self._parts.append("\n".join(formatted_lines))
         return self
