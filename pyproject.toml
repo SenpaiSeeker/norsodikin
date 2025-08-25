@@ -41,6 +41,8 @@ ai = [
     "beautifulsoup4",
     "lxml",
     "fake-useragent",
+    "googletrans-py",
+    "qrcode[pil]",
 ]
 server = [
     "psutil",
