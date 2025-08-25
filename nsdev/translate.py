@@ -13,12 +13,7 @@ class Translator:
 
     async def to(self, text: str, dest_lang: str = "en") -> str:
         loop = self.asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            None, 
-            self._sync_translate, 
-            text, 
-            dest_lang
-        )
+        result = await loop.run_in_executor(None, self._sync_translate, text, dest_lang)
         if isinstance(result, Exception):
             raise result
         return result.text
