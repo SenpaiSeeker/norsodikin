@@ -67,7 +67,7 @@ class TextFormatter(MarkdownDelimiters):
 
     def pre(self, text_content: str):
         if self.mode == "html":
-            self._parts.append(f"<pre><code>{text_content}</code></pre>")
+            self._parts.append(f"<pre>{text_content}</pre>")
         else:
             self._parts.append(f"{self.PRE}\n{text_content}\n{self.PRE}")
         return self
