@@ -1,6 +1,7 @@
 name: Code Improvements
 
-on: push
+on: 
+  workflow_dispatch:
   
 jobs:
   code_improvement:
