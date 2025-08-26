@@ -44,6 +44,8 @@ ai = [
     "googletrans-py",
     "qrcode[pil]",
     "pyzbar",
+    "google-generativeai",
+    "ollama",
 ]
 server = [
     "psutil",
@@ -57,9 +59,13 @@ cli = [
 payment = [
     "faker",
 ]
+media = [
+    "yt-dlp",
+    "ffmpeg-python",
+]
 
 all = [
-    "norsodikin[pyrogram,ai,server,database,cli,payment]",
+    "norsodikin[pyrogram,ai,server,database,cli,payment,media]",
 ]
 
 [tool.setuptools]
