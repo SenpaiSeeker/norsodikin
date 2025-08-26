@@ -68,7 +68,7 @@ class NsDev:
             progress=TelegramProgressBar,
             shell=ShellExecutor(),
             url=UrlUtils(),
-            downloader=MediaDownloader(),
+            downloader=MediaDownloader(cookies_file_path="cookies.txt"),
         )
         self.server = SimpleNamespace(
             user=SSHUserManager,
