@@ -1,11 +1,14 @@
+import sys
+import argparse
+
+from .logger import LoggerHandler
+
 class KeyManager:
     def __init__(self):
-        self.sys = __import__("sys")
-        self.argparse = __import__("argparse")
-        self.logger = __import__("nsdev").logger.LoggerHandler()
+        self.logger = LoggerHandler()
 
     def handle_arguments(self):
-        parser = self.argparse.ArgumentParser(
+        parser = argparse.ArgumentParser(
             description="Pemuat konfigurasi skrip.",
             epilog="Argumen --key dan --env wajib disertakan untuk menjalankan skrip.",
         )
@@ -16,7 +19,7 @@ class KeyManager:
         if not args.key or not args.env:
             self.logger.print(f"{self.logger.RED}Argumen --key dan --env harus disertakan untuk menjalankan bot.")
             self.logger.print(f"{self.logger.YELLOW}Contoh: python3 main.py --key kunci-rahasia-anda --env robot.env")
-            self.sys.exit(1)
+            sys.exit(1)
 
         self.logger.print(f"{self.logger.GREEN}Berhasil memuat kunci dan file environment dari argumen baris perintah.")
         return args.key, args.env
