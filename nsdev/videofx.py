@@ -3,19 +3,21 @@ import glob
 import math
 import os
 import random
+from typing import List
 
 import numpy as np
-from moviepy.editor import VideoClip, VideoFileClip 
 from PIL import Image, ImageDraw, ImageFont
 
 from .logger import LoggerHandler
 
+from moviepy import VideoClip, VideoFileClip
+
 
 class VideoFX:
-    def __init__(self):
+    def __init__(self, fonts_dir: str = "fonts"):
         self.log = LoggerHandler()
-        self.fonts_dir = "fonts"
-        self.available_fonts = []
+        self.fonts_dir = fonts_dir
+        self.available_fonts: List[str] = []
         if os.path.isdir(self.fonts_dir):
             ttf_files = glob.glob(os.path.join(self.fonts_dir, "*.ttf"))
             otf_files = glob.glob(os.path.join(self.fonts_dir, "*.otf"))
@@ -23,10 +25,10 @@ class VideoFX:
 
         if not self.available_fonts:
             self.log.print(
-                f"{self.log.YELLOW}Peringatan: Tidak ada font ditemukan di folder 'fonts'. Akan menggunakan font default."
+                f"{self.log.YELLOW}Peringatan: Tidak ada font ditemukan di folder '{self.fonts_dir}'. Akan menggunakan font default."
             )
 
-    def _get_font(self, font_size):
+    def _get_font(self, font_size: int):
         if self.available_fonts:
             random_font_path = random.choice(self.available_fonts)
             try:
@@ -43,11 +45,16 @@ class VideoFX:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, func, *args)
 
-    def _create_rgb_video(self, text_lines: list, output_path: str, duration: float, fps: int):
+    def _create_rgb_video(self, text_lines: List[str], output_path: str, duration: float, fps: int):
+        text_lines = [t.strip() for t in text_lines if t and t.strip()]
+        if not text_lines:
+            text_lines = [" "]
+
         font_size = 90
         font = self._get_font(font_size)
 
-        dummy_draw = ImageDraw.Draw(Image.new('RGB', (1, 1)))
+        dummy_img = Image.new("RGB", (1, 1))
+        dummy_draw = ImageDraw.Draw(dummy_img)
 
         text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
         text_heights = [dummy_draw.textbbox((0, 0), line, font=font)[3] for line in text_lines]
@@ -58,7 +65,7 @@ class VideoFX:
         canvas_w = max(512, canvas_w)
 
         def make_frame(t):
-            img = Image.new('RGB', (canvas_w, canvas_h), 'black')
+            img = Image.new("RGB", (canvas_w, canvas_h), "black")
             draw = ImageDraw.Draw(img)
 
             r = int(127 * (1 + math.sin(t * 15 + 0))) + 128
@@ -76,11 +83,14 @@ class VideoFX:
             return np.array(img)
 
         animation = VideoClip(make_frame, duration=duration)
-        animation.write_videofile(output_path, fps=fps, codec='libx264', logger=None)
+        animation.write_videofile(output_path, fps=fps, codec="libx264", logger=None)
         animation.close()
 
     async def text_to_video(self, text: str, output_path: str, duration: float = 3.0, fps: int = 24):
-        text_lines = text.split(';')
+        if ";" in text:
+            text_lines = text.split(";")
+        else:
+            text_lines = text.splitlines()
         await self._run_in_executor(self._create_rgb_video, text_lines, output_path, duration, fps)
         return output_path
 
@@ -91,13 +101,14 @@ class VideoFX:
         trimmed_clip = clip.subclip(0, max_duration)
 
         if trimmed_clip.w >= trimmed_clip.h:
-            resized_clip = trimmed_clip.resize(width=512)
+            resized_clip = trimmed_clip.with_resized(width=512)
         else:
-            resized_clip = trimmed_clip.resize(height=512)
+            resized_clip = trimmed_clip.with_resized(height=512)
 
-        final_clip = resized_clip.set_position(('center', 'center'))
+        final_clip = resized_clip.with_position(("center", "center"))
 
-        final_clip.write_videofile(output_path, codec='libvpx-vp9', audio=False, logger=None)
+        final_clip.write_videofile(output_path, codec="libvpx-vp9", audio=False, logger=None)
+
         clip.close()
         trimmed_clip.close()
         resized_clip.close()
