@@ -1,7 +1,9 @@
+import json
+
+import requests
+
 class ChatbotGemini:
     def __init__(self, api_key: str):
-        self.requests = __import__("requests")
-        self.json = __import__("json")
         self.api_key = api_key
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
         self.model_name = "gemini-2.0-flash-exp"
@@ -65,7 +67,7 @@ class ChatbotGemini:
             "systemInstruction": {"parts": [{"text": instruction}]},
         }
 
-        response = self.requests.post(url, headers=headers, data=self.json.dumps(payload))
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
         if response.status_code != 200:
             raise Exception(f"API Error {response.status_code}: {response.text}")
 
