@@ -1,4 +1,11 @@
-class LoggerHandler(__import__("nsdev").AnsiColors):
+import datetime
+import zoneinfo
+import sys
+import os
+
+from .colorize import AnsiColors
+
+class LoggerHandler(AnsiColors):
     def __init__(self, **options):
         super().__init__()
         """
@@ -9,12 +16,7 @@ class LoggerHandler(__import__("nsdev").AnsiColors):
             - fmt: Format log (default: '{asctime} {levelname} {module}:{funcName}:{lineno} {message}')
             - datefmt: Format tanggal dan waktu (default: '%Y-%m-%d %H:%M:%S')
         """
-        self.datetime = __import__("datetime")
-        self.zoneinfo = __import__("zoneinfo")
-        self.sys = __import__("sys")
-        self.os = __import__("os")
-
-        self.tz = self.zoneinfo.ZoneInfo(options.get("tz", "Asia/Jakarta"))
+        self.tz = zoneinfo.ZoneInfo(options.get("tz", "Asia/Jakarta"))
         self.fmt = options.get("fmt", "{asctime} {levelname} {module}:{funcName}:{lineno} {message}")
         self.datefmt = options.get("datefmt", "%Y-%m-%d %H:%M:%S %Z")
 
@@ -32,7 +34,7 @@ class LoggerHandler(__import__("nsdev").AnsiColors):
         }
 
     def formatTime(self):
-        utc_time = self.datetime.datetime.utcfromtimestamp(self.datetime.datetime.now().timestamp())
+        utc_time = datetime.datetime.utcfromtimestamp(datetime.datetime.now().timestamp())
         local_time = utc_time.astimezone(self.tz)
         return local_time.strftime(self.datefmt)
 
@@ -46,15 +48,15 @@ class LoggerHandler(__import__("nsdev").AnsiColors):
         return self.fmt.format(
             asctime=f"{self.get_colors()['TIME']}[ {self.formatTime()} ]",
             levelname=record["levelname"],
-            module=f"{pipe_color}│ {self.get_colors()['MODULE']}{self.os.path.basename(record.get('module', '<unknown>'))}",
+            module=f"{pipe_color}│ {self.get_colors()['MODULE']}{os.path.basename(record.get('module', '<unknown>'))}",
             funcName=record.get("funcName", "<unknown>"),
             lineno=record.get("lineno", 0),
             message=record["message"],
         )
 
     def log(self, level, message):
-        frame = self.sys._getframe(2)
-        filename = self.os.path.basename(frame.f_globals.get("__file__", "<unknown>"))
+        frame = sys._getframe(2)
+        filename = os.path.basename(frame.f_globals.get("__file__", "<unknown>"))
         record = {
             "levelname": level,
             "module": filename,
