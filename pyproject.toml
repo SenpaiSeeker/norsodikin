@@ -43,6 +43,7 @@ ai = [
     "fake-useragent",
     "googletrans-py",
     "qrcode[pil]",
+    "pyzbar-py",
 ]
 server = [
     "psutil",
