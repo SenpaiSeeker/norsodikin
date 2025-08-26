@@ -7,31 +7,36 @@ from .bing import ImageGenerator
 from .button import Button
 from .colorize import AnsiColors
 from .database import DataBase
+from .downloader import MediaDownloader
 from .encrypt import AsciiManager, CipherHandler
 from .formatter import TextFormatter
 from .gemini import ChatbotGemini
 from .gradient import Gradient
 from .huggingface import HuggingFaceGenerator
+from .local import OllamaClient
 from .logger import LoggerHandler
 from .monitor import ServerMonitor
 from .payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
+from .process import ProcessManager
 from .progress import TelegramProgressBar
 from .qrcode import QrCodeGenerator
 from .shell import ShellExecutor
+from .stt import SpeechToText
 from .storekey import KeyManager
 from .translate import Translator
 from .tts import TextToSpeech
 from .url import UrlUtils
+from .vision import VisionAnalyzer
 from .web_summarizer import WebSummarizer
 from .ymlreder import YamlHandler
 
-__version__ = "1.2.1"
+__version__ = "1.3.0"
 __author__ = "@NorSodikin"
-
 
 class NsDev:
     def __init__(self, client):
         self._client = client
+        
         self.ai = SimpleNamespace(
             bing=ImageGenerator,
             gemini=ChatbotGemini,
@@ -40,6 +45,9 @@ class NsDev:
             web=WebSummarizer,
             translate=Translator,
             qrcode=QrCodeGenerator,
+            vision=VisionAnalyzer,
+            stt=SpeechToText,
+            local=OllamaClient,
         )
         self.telegram = SimpleNamespace(
             arg=Argument(self._client),
@@ -59,10 +67,12 @@ class NsDev:
             progress=TelegramProgressBar,
             shell=ShellExecutor(),
             url=UrlUtils(),
+            downloader=MediaDownloader(),
         )
         self.server = SimpleNamespace(
             user=SSHUserManager,
             monitor=ServerMonitor(),
+            process=ProcessManager(),
         )
         self.code = SimpleNamespace(
             Cipher=CipherHandler,
@@ -74,17 +84,14 @@ class NsDev:
             Violet=VioletMediaPayClient,
         )
 
-
 @property
 def ns(self) -> NsDev:
     if not hasattr(self, "_nsdev_instance"):
         self._nsdev_instance = NsDev(self)
     return self._nsdev_instance
 
-
 try:
     from pyrogram import Client
-
     Client.ns = ns
 except Exception:
     pass
