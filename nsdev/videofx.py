@@ -5,7 +5,7 @@ import os
 import random
 
 import numpy as np
-from moviepy import VideoClip, VideoFileClip
+from moviepy.editor import VideoClip, VideoFileClip 
 from PIL import Image, ImageDraw, ImageFont
 
 from .logger import LoggerHandler
