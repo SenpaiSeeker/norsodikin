@@ -1,6 +1,6 @@
 # Pustaka Python `norsodikin`
 
-[![Versi PyPI](https://img.shields.io/pypi/v/norsodikin.svg)](https://pypi.org/project/norsodikin/)
+[![Versi](https://img.shields.io/badge/Version-1.2.0-blue.svg)](https://github.com/SenpaiSeeker/norsodikin/blob/main/nsdev/__init__.py)
 [![Lisensi: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Selamat datang di `norsodikin`! Ini bukan sekadar pustaka Python biasa, melainkan toolkit sakti buat kamu yang mau bikin bot Telegram super canggih, ngelola server, enkripsi data, sampai mainan AI, semuanya jadi lebih gampang dan seru.
@@ -9,45 +9,45 @@ Selamat datang di `norsodikin`! Ini bukan sekadar pustaka Python biasa, melainka
 
 ## Instalasi
 
-Instalasi `norsodikin` dirancang agar super fleksibel. Anda hanya perlu menginstal apa yang Anda butuhkan.
+Instalasi `norsodikin` dilakukan langsung dari repositori GitHub untuk memastikan Anda mendapatkan versi terkini. Cukup instal apa yang Anda butuhkan.
 
 **1. Instalasi Inti (Sangat Ringan)**
 Perintah ini hanya akan menginstal pustaka inti dengan fitur dasar seperti `encrypt`, `payment`, `gemini`, `hf`, dan utilitas umum. Fitur-fitur lain memerlukan dependensi tambahan.
 
 ```bash
-pip install norsodikin
+pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin"
 ```
 
 **2. Instalasi dengan Fitur Tambahan (Extras)**
-Gunakan "extras" untuk menambahkan dependensi bagi fitur-fitur spesifik. Anda bisa menggabungkan beberapa grup sekaligus. Disarankan menggunakan tanda kutip.
+Gunakan "extras" untuk menambahkan dependensi bagi fitur-fitur spesifik. Anda bisa menggabungkan beberapa grup sekaligus.
 
 *   **Untuk integrasi Pyrogram:**
     ```bash
-    pip install "norsodikin[pyrogram]"
+    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[pyrogram]"
     ```
-*   **Untuk semua fitur AI (TTS, Web Summarizer, Bing):**
+*   **Untuk semua fitur AI (TTS, Web Summarizer, Bing, Translate, QR Code):**
     ```bash
-    pip install "norsodikin[ai]"
+    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[ai]"
     ```
 *   **Untuk monitoring server:**
     ```bash
-    pip install "norsodikin[server]"
+    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[server]"
     ```
 *   **Untuk menggunakan database MongoDB:**
     ```bash
-    pip install "norsodikin[database]"
+    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[database]"
     ```
 *   **Untuk utilitas CLI (seperti gradient banner):**
     ```bash
-    pip install "norsodikin[cli]"
+    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[cli]"
     ```
 *   **Menggabungkan beberapa fitur (contoh: Pyrogram + AI + Database):**
     ```bash
-    pip install "norsodikin[pyrogram,ai,database]"
+    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[pyrogram,ai,database]"
     ```
 *   **Instal Semua Fitur (Sakti Penuh):**
     ```bash
-    pip install "norsodikin[all]"
+    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[all]"
     ```
 
 ## Integrasi Ajaib dengan Pyrogram
@@ -70,14 +70,57 @@ client.ns.utils.log.info("Logger keren siap mencatat!")
 ```
 
 ---
-## Referensi API Lengkap (`client.ns`)
+
+<details>
+<summary><h2><strong>Referensi API Lengkap (Klik untuk Buka/Tutup)</strong></h2></summary>
+
 Berikut adalah panduan mendalam untuk setiap modul yang tersedia.
 
-### 1. `addUser` -> `client.ns.server.user`
+### 1. `actions` -> `client.ns.telegram.actions`
+Modul untuk menampilkan status *chat action* (seperti "typing...", "uploading photo...") secara otomatis selama sebuah proses berjalan. Ini memberikan feedback visual kepada pengguna bahwa bot sedang sibuk.
+
+**Struktur & Inisialisasi:**
+Modul ini digunakan sebagai *context manager* (`async with`), yang akan memulai dan menghentikan pengiriman *chat action* secara otomatis.
+
+**Contoh Penggunaan Lengkap:**
+```python
+import asyncio
+
+# @app.on_message(...)
+async def long_process_handler(client, message):
+    # Bot akan menampilkan status "typing..." selama 5 detik
+    await message.reply("Saya akan berpura-pura sibuk mengetik selama 5 detik...")
+    async with client.ns.telegram.actions.typing(message.chat.id):
+        await asyncio.sleep(5)
+    
+    # Bot akan menampilkan "uploading video..." selama proses upload
+    await message.reply("Sekarang saya akan upload video (simulasi)...")
+    async with client.ns.telegram.actions.upload_video(message.chat.id):
+        # ... kode untuk proses upload file video Anda di sini ...
+        await asyncio.sleep(8)
+    
+    await message.reply("Selesai!")
+
+```
+**Metode yang Tersedia:**
+- `.typing(chat_id)`
+- `.upload_photo(chat_id)`
+- `.upload_video(chat_id)`
+- `.record_video(chat_id)`
+- `.record_voice(chat_id)`
+
+---
+
+### 2. `addUser` -> `client.ns.server.user`
 Modul ini berfungsi sebagai manajer pengguna SSH jarak jauh di server Linux, memungkinkan Anda menambah dan menghapus pengguna langsung dari skrip Python dan mengirim notifikasi ke Telegram.
 
 **Struktur & Inisialisasi:**
 Kelas `SSHUserManager` diinisialisasi dengan kredensial bot Telegram yang akan digunakan untuk mengirim detail login.
+
+- **Parameter Wajib:**
+  - `bot_token` (`str`): Token bot Telegram Anda.
+  - `chat_id` (`int`|`str`): ID chat tujuan untuk notifikasi.
+
 ```python
 user_manager = client.ns.server.user(
     bot_token="TOKEN_BOT_TELEGRAM_ANDA", 
@@ -88,10 +131,14 @@ user_manager = client.ns.server.user(
 **Contoh Penggunaan Lengkap:**
 ```python
 # Menambah pengguna dengan username dan password acak
+# Detail login akan dikirim ke chat_id yang dikonfigurasi
 user_manager.add_user()
 
 # Menambah pengguna dengan username dan password yang ditentukan
-user_manager.add_user(ssh_username="budi", ssh_password="PasswordKuatRahasia123")
+user_manager.add_user(
+    ssh_username="budi", 
+    ssh_password="PasswordKuatRahasia123"
+)
 
 # Menghapus pengguna dari sistem
 user_manager.delete_user(ssh_username="budi")
@@ -100,7 +147,7 @@ user_manager.delete_user(ssh_username="budi")
 
 ---
 
-### 2. `argument` -> `client.ns.telegram.arg`
+### 3. `argument` -> `client.ns.telegram.arg`
 Toolkit untuk mem-parsing dan mengekstrak informasi dari objek `message` Pyrogram. Sangat berguna di dalam message handler untuk mengambil argumen, user, dan alasan.
 
 **Contoh Penggunaan:**
@@ -109,16 +156,19 @@ Anggap Anda memiliki handler untuk perintah `/ban @user Pelanggaran berat`.
 @app.on_message(filters.command("ban"))
 async def ban_user(client, message):
     # Mengambil ID user dan alasan dari pesan
+    # Bekerja untuk reply, username (@user), dan user ID
     user_id, reason = await client.ns.telegram.arg.getReasonAndId(message)
     if user_id:
         print(f"User yang akan diban: {user_id}")
         print(f"Alasan: {reason or 'Tidak ada alasan'}")
+    else:
+        print("User tidak ditemukan.")
 
     # Mengambil seluruh teks setelah perintah
     full_args = client.ns.telegram.arg.getMessage(message, is_arg=True)
     print(f"Argumen lengkap: {full_args}")
 
-    # Cek apakah pengirim pesan adalah admin
+    # Cek apakah pengirim pesan adalah admin di grup
     is_admin = await client.ns.telegram.arg.getAdmin(message)
     print(f"Apakah pengirim admin? {is_admin}")
     
@@ -130,11 +180,15 @@ async def ban_user(client, message):
 
 ---
 
-### 3. `bing` -> `client.ns.ai.bing` (Tidak Stabil)
+### 4. `bing` -> `client.ns.ai.bing` (Tidak Stabil)
 Generator gambar AI menggunakan Bing Image Creator. Karena ketergantungan pada *web scraping*, modul ini rentan terhadap perubahan dari sisi Bing. Gunakan dengan hati-hati.
 
 **Struktur & Inisialisasi:**
 Membutuhkan cookie autentikasi `_U` dari browser Anda setelah login ke `bing.com/create`.
+
+- **Parameter Wajib:**
+  - `auth_cookie_u` (`str`): Nilai cookie `_U` dari bing.com.
+
 ```python
 BING_COOKIE = "NILAI_COOKIE__U_ANDA"
 bing_generator = client.ns.ai.bing(auth_cookie_u=BING_COOKIE)
@@ -144,19 +198,27 @@ bing_generator = client.ns.ai.bing(auth_cookie_u=BING_COOKIE)
 ```python
 prompt_gambar = "seekor rubah cyberpunk mengendarai motor di kota neon"
 try:
-    list_url = await bing_generator.generate(prompt=prompt_gambar, num_images=2)
+    # Parameter opsional: num_images (default: 4), max_wait_seconds (default: 300)
+    list_url = await bing_generator.generate(
+        prompt=prompt_gambar, 
+        num_images=2
+    )
     print("URL gambar yang dihasilkan:", list_url)
+    # Anda bisa mengirim URL ini langsung ke Telegram
+    # for url in list_url:
+    #     await message.reply_photo(url)
 except Exception as e:
     print(f"Gagal membuat gambar: {e}")
 ```
 
 ---
 
-### 4. `button` -> `client.ns.telegram.button`
+### 5. `button` -> `client.ns.telegram.button`
 Perkakas canggih untuk membuat `InlineKeyboardMarkup` dan `ReplyKeyboardMarkup` dengan sintaks yang intuitif, termasuk fitur paginasi otomatis.
 
 **Membuat Inline Keyboard dari Teks**
-- **Aturan:** Setiap tombol harus dalam blok `|...|` nya sendiri. Setiap blok membuat baris baru.
+- **Aturan:** Setiap tombol harus dalam blok `|...|`. Setiap blok membuat baris baru.
+- **Format:** `| Teks Tombol - data_callback_atau_url |`
 - **Gabung Baris:** Gunakan `;same` di akhir data callback untuk menggabungkan tombol ke baris sebelumnya.
 
 ```python
@@ -171,47 +233,32 @@ keyboard_inline, sisa_teks = client.ns.telegram.button.create_inline_keyboard(te
 # await message.reply(sisa_teks, reply_markup=keyboard_inline)
 ```
 
-**Membuat Reply Keyboard dari Teks**
-- **Aturan:** Semua definisi tombol berada di dalam satu blok `|...|`. Tombol dipisahkan oleh `-`.
-- Secara default, setiap tombol membuat baris baru.
-- **Gabung Baris:** Gunakan `;same` untuk meletakkan tombol di baris yang sama dengan tombol sebelumnya.
-- **Tombol Khusus:** Gunakan `;is_contact` untuk meminta kontak.
-
-```python
-teks_reply = """
-Selamat datang!
-| 📞 Bagikan Kontak;is_contact - 📚 Bantuan - ⚙️ Pengaturan;same |
-"""
-# Layout: Baris 1: "Bagikan Kontak". Baris 2: "Bantuan" dan "Pengaturan".
-keyboard_reply, sisa_teks_reply = client.ns.telegram.button.create_button_keyboard(teks_reply)
-# await message.reply(sisa_teks_reply, reply_markup=keyboard_reply)
-```
-
 **Membuat Paginasi (Halaman Tombol) Otomatis**
 Fungsi `create_pagination_keyboard` secara otomatis membuat keyboard berhalaman untuk daftar yang panjang.
 ```python
-list_produk = [{"text": f"Produk #{i}", "data": i} for i in range(1, 31)]
-halaman_sekarang = 2
+list_produk = [{"text": f"Produk #{i}", "data": f"prod_{i}"} for i in range(1, 31)]
+halaman_sekarang = 2 # Halaman yang ingin ditampilkan
 
+# Membuat keyboard paginasi
 keyboard_paginasi = client.ns.telegram.button.create_pagination_keyboard(
-    items=list_produk,
-    current_page=halaman_sekarang,
-    items_per_page=6,
-    items_per_row=2,
-    callback_prefix="nav_produk",
-    item_callback_prefix="pilih_produk",
-    extra_params=[
+    items=list_produk,                      # list item, bisa dict atau string
+    current_page=halaman_sekarang,          # halaman saat ini
+    items_per_page=6,                       # jumlah item per halaman (opsional, default 5)
+    items_per_row=2,                        # jumlah item per baris (opsional, default 1)
+    callback_prefix="nav_produk",           # prefix untuk callback navigasi (e.g., "nav_produk_1")
+    item_callback_prefix="pilih_produk",    # prefix untuk callback item (e.g., "pilih_produk_prod_5")
+    extra_params=[                          # tombol tambahan di bagian bawah
         {"text": "« Kembali ke Menu", "callback_data": "menu_utama"},
     ]
 )
-# await message.reply("Daftar produk:", reply_markup=keyboard_paginasi)
+# await message.reply("Daftar produk (Halaman 2 dari 5):", reply_markup=keyboard_paginasi)
 ```
 ---
 
-### 5. `database` -> `client.ns.data.db`
+### 6. `database` -> `client.ns.data.db`
 Sistem database fleksibel yang mendukung penyimpanan lokal (JSON), SQLite, dan MongoDB, dengan enkripsi data otomatis.
 
-**Bagian 1: Inisialisasi Database**
+**Inisialisasi Database**
 Pilih backend penyimpanan Anda saat inisialisasi.
 
 ```python
@@ -231,199 +278,268 @@ db_mongo = client.ns.data.db(
 db_full = client.ns.data.db(
     storage_type="sqlite",
     file_name="production_db",
-    keys_encrypt="KUNCI_ENKRIPSI_SANGAT_RAHASIA_ANDA",
-    method_encrypt="bytes",
+    keys_encrypt="KUNCI_ENKRIPSI_SANGAT_RAHASIA_ANDA", # Ganti dengan kunci Anda sendiri!
+    method_encrypt="bytes", # Pilihan: 'bytes', 'shift', 'binary'
     auto_backup=True,
     backup_bot_token="TOKEN_BOT_UNTUK_BACKUP",
     backup_chat_id="ID_CHAT_TUJUAN_BACKUP",
-    backup_interval_hours=24
+    backup_interval_hours=24 # Backup setiap 24 jam
 )
 ```
 
-**Bagian 2: Operasi Data Dasar (Variabel Tunggal)**
-Gunakan `setVars`, `getVars`, dan `removeVars`. Parameter `var_key` berfungsi seperti "folder" untuk mengorganisir data.
+**Operasi Data Dasar (CRUD)**
+Gunakan `setVars`, `getVars`, `setListVars`, `getListVars`, `removeVars` dll. Parameter `var_key` berfungsi seperti "folder" untuk mengorganisir data.
 
 ```python
 user_id = 12345
+# Menyimpan string
 db.setVars(user_id, "nama", "Budi", var_key="profil")
+# Menyimpan list
+db.setListVars(user_id, "hobi", "Membaca", var_key="profil")
+db.setListVars(user_id, "hobi", "Ngoding", var_key="profil")
+# Mendapatkan data
 nama = db.getVars(user_id, "nama", var_key="profil")
-db.removeVars(user_id, "kota", var_key="profil")
-```
+hobi_list = db.getListVars(user_id, "hobi", var_key="profil")
+print(f"{nama} punya hobi: {hobi_list}") # Output: Budi punya hobi: ['Membaca', 'Ngoding']
 
-**Bagian 3: Bekerja dengan List**
-Gunakan `setListVars`, `getListVars`, dan `removeListVars`.
-
-```python
-user_id = 12345
-db.setListVars(user_id, "item", "Apel", var_key="keranjang")
-items = db.getListVars(user_id, "item", var_key="keranjang")
-db.removeListVars(user_id, "item", "Apel", var_key="keranjang")
-```
-
-**Bagian 4: Manajemen Masa Aktif Pengguna**
-Kelola akses pengguna berbasis waktu.
-
-```python
-user_id = 12345
-db.setExp(user_id, exp=30)
+# Mengelola masa aktif user
+db.setExp(user_id, exp=30) # User aktif selama 30 hari
 sisa_hari = db.daysLeft(user_id)
-if db.checkAndDeleteIfExpired(user_id): print("Pengguna kedaluwarsa.")
+print(f"Sisa masa aktif: {sisa_hari} hari")
+
+if db.checkAndDeleteIfExpired(user_id):
+    print("Pengguna kedaluwarsa dan datanya telah dihapus.")
 ```
-
-**Bagian 5: Penyimpanan Khusus Bot (Userbot/Bot)**
-Simpan sesi Pyrogram atau token bot dengan aman.
-
-```python
-user_id = 12345
-db.saveBot(user_id, api_id=123, api_hash="abc", value="SESSION_STRING_ANDA")
-db.saveBot(user_id, api_id=456, api_hash="def", value="TOKEN_BOT_ANDA", is_token=True)
-semua_userbot = db.getBots()
-semua_bot = db.getBots(is_token=True)
-```
-
 ---
 
-### 6. `encrypt` -> `client.ns.code`
-Koleksi kelas untuk enkripsi dan dekripsi data.
+### 7. `encrypt` -> `client.ns.code`
+Koleksi kelas untuk enkripsi dan dekripsi data dengan berbagai metode.
 
 **Struktur & Inisialisasi:**
+- **Parameter `CipherHandler`:**
+  - `key` (`str`): Kunci rahasia untuk enkripsi.
+  - `method` (`str`): Metode enkripsi. Pilihan: `bytes` (direkomendasikan), `shift`, `binary`.
+- **Parameter `AsciiManager`:**
+  - `key` (`str`): Kunci rahasia untuk enkripsi berbasis ASCII offset.
+
 ```python
-cipher = client.ns.code.Cipher(key="kunci-rahasia", method="bytes")
-ascii_manager = client.ns.code.Ascii(key="kunci-lain")
+# Direkomendasikan
+cipher_bytes = client.ns.code.Cipher(key="kunci-rahasia-super-aman-123", method="bytes")
+
+# Metode alternatif
+cipher_shift = client.ns.code.Cipher(key="kunci-shift", method="shift")
+ascii_manager = client.ns.code.Ascii(key="kunci-lain-lagi")
 ```
 
 **Contoh Penggunaan:**
 ```python
-data_asli = {"id": 123, "plan": "premium"}
-terenkripsi_hex = cipher.encrypt(data_asli)
-didekripsi_kembali = cipher.decrypt(terenkripsi_hex)
+data_asli = {"id": 123, "plan": "premium", "user": "Budi"}
+
+# Enkripsi
+terenkripsi_hex = cipher_bytes.encrypt(data_asli)
+print(f"Data Terenkripsi (hex): {terenkripsi_hex}")
+
+# Dekripsi
+didekripsi_kembali = cipher_bytes.decrypt(terenkripsi_hex)
+print(f"Data Didekripsi: {didekripsi_kembali}")
+print(f"Tipe data setelah dekripsi: {type(didekripsi_kembali)}")
 ```
 
 ---
 
-### 7. `formatter` -> `client.ns.telegram.formatter`
+### 8. `formatter` -> `client.ns.telegram.formatter`
 Builder canggih untuk menyusun pesan berformat dengan sintaks Markdown kustom atau mode HTML standar.
 
 **Struktur & Inisialisasi:**
+- **Parameter:** `mode` (`str`) - "markdown" (default) atau "html".
+
 ```python
-fmt_md = client.ns.telegram.formatter("markdown")
-fmt_html = client.ns.telegram.formatter("html")
+fmt = client.ns.telegram.formatter("markdown") # Atau "html"
 ```
 Sintaks Markdown Kustom: `**Bold**`, `__Italic__`, `--Underline--`, `~~Strike~~`, `||Spoiler||`, `\`Code\``.
 
 **Contoh Penggunaan:**
 ```python
-pesan_md = (
-    fmt_md.bold("Update Sistem").new_line()
-    .underline("Layanan Pulih").new_line()
-    .italic("Terima kasih atas kesabaran Anda.").new_line()
-    .pre("22:00 - Outage\n22:30 - Stable")
+pesan_terformat = (
+    fmt.bold("🔥 Update Sistem Penting 🔥").new_line(2)
+    .text("Halo semua, kami ingin menginformasikan bahwa:").new_line()
+    .underline("Semua Layanan Telah Kembali Normal").new_line()
+    .italic("Terima kasih atas kesabaran Anda selama perbaikan.").new_line(2)
+    .mono("Kode insiden: SRV-2024-08-XYZ").new_line()
+    .link("Lihat log lengkap di sini", "https://github.com/SenpaiSeeker/norsodikin")
     .to_string()
 )
-# await message.reply(pesan_md)
+# await message.reply(pesan_terformat, disable_web_page_preview=True)
 ```
-
 ---
 
-### 8. `gemini` -> `client.ns.ai.gemini`
-Integrasi dengan Google Gemini API untuk fungsionalitas chatbot.
+### 9. `gemini` -> `client.ns.ai.gemini`
+Integrasi dengan Google Gemini API untuk fungsionalitas chatbot dan fitur AI kreatif lainnya seperti "Cek Khodam".
 
 **Struktur & Inisialisasi:**
+- **Parameter Wajib:**
+  - `api_key` (`str`): Kunci API Google Gemini Anda.
+
 ```python
 GEMINI_KEY = "API_KEY_GEMINI_ANDA"
 chatbot = client.ns.ai.gemini(api_key=GEMINI_KEY)
 ```
 
-**Contoh Penggunaan:**
+**Contoh 1: Chatbot Umum**
 ```python
-user_id = "sesi_unik_123"
-jawaban = chatbot.send_chat_message("jelaskan relativitas", user_id, "Bot Cerdas")
+user_id = "sesi_unik_pengguna_123"
+bot_name = "Bot Cerdas" # Nama bot Anda untuk salam pembuka
+pertanyaan = "jelaskan apa itu lubang hitam secara sederhana"
+jawaban = chatbot.send_chat_message(pertanyaan, user_id, bot_name)
+
+print(jawaban)
+# await message.reply(jawaban)
+```
+
+**Contoh 2: Fitur "Cek Khodam" (Hiburan)**
+Fungsi `send_khodam_message` menggunakan instruksi sistem khusus untuk menghasilkan deskripsi "khodam" berdasarkan nama.
+```python
+user_id = message.from_user.id # Gunakan ID user untuk memisahkan sesi
+nama_pengguna = message.from_user.first_name
+deskripsi_khodam = chatbot.send_khodam_message(nama_pengguna, user_id)
+
+pesan_khodam = (
+    fmt.bold(f"✨ Khodam Terdeteksi untuk {nama_pengguna} ✨").new_line(2)
+    .text(deskripsi_khodam)
+    .to_string()
+)
+# await message.reply(pesan_khodam)
 ```
 
 ---
 
-### 9. `gradient` -> `client.ns.utils.grad`
-Mempercantik output terminal dengan teks bergradien dan timer countdown.
+### 10. `gradient` -> `client.ns.utils.grad`
+Mempercantik output terminal dengan teks bergradien dan timer countdown. Berguna untuk CLI atau saat menjalankan bot dari konsol.
 
 **Contoh Penggunaan:**
 ```python
 import asyncio
+
+# Menampilkan banner teks dengan warna gradien
 client.ns.utils.grad.render_text("Norsodikin")
-await client.ns.utils.grad.countdown(10, text="Sisa waktu: {time}")
+
+# Menjalankan timer countdown di terminal
+await client.ns.utils.grad.countdown(
+    seconds=10, 
+    text="Bot akan dimulai dalam: {time}"
+)
+print("\nBot dimulai!")
 ```
 
 ---
 
-### 10. `hf` -> `client.ns.ai.hf` (Direkomendasikan)
-Generator gambar AI stabil menggunakan Hugging Face Inference API.
+### 11. `hf` -> `client.ns.ai.hf` (Direkomendasikan)
+Generator gambar AI stabil menggunakan Hugging Face Inference API. Alternatif yang lebih andal dibandingkan `bing`.
 
 **Struktur & Inisialisasi:**
+- **Parameter Wajib:**
+  - `api_key` (`str`): Token API Hugging Face Anda (biasanya dimulai dengan `hf_`).
+- **Parameter Opsional:**
+  - `model_id` (`str`): ID model di Hugging Face Hub (default: `stabilityai/stable-diffusion-xl-base-1.0`).
+
 ```python
 HF_TOKEN = "hf_TOKEN_ANDA"
-hf_generator = client.ns.ai.hf(api_key=HF_TOKEN)
-```
-
-**Contoh Penggunaan:**
-```python
-from io import BytesIO
-list_bytes = await hf_generator.generate("foto penyihir di perpustakaan", num_images=1)
-gambar = BytesIO(list_bytes[0])
-gambar.name = "hasil.png"
-# await message.reply_photo(gambar)
-```
-
----
-
-### 11. `listen` -> `client.listen()` & `chat.ask()`
-*Monkey-patching* untuk Pyrogram yang menambahkan alur percakapan interaktif.
-
-**Aktivasi:** Cukup `from nsdev import listen` di awal skrip.
-
-**Contoh Penggunaan:**
-```python
-@app.on_message(filters.command("register"))
-async def register(client, message):
-    try:
-        nama = await message.chat.ask("Siapa namamu?", timeout=60)
-        umur = await message.chat.ask(f"Halo {nama.text}! Berapa usiamu?")
-        await message.reply(f"Data tersimpan: {nama.text}, {umur.text} tahun")
-    except asyncio.TimeoutError:
-        await message.reply("Waktu habis.")
-```
-
----
-
-### 12. `logger` -> `client.ns.utils.log`
-Logger canggih pengganti `print()` yang memberikan output berwarna dan informatif ke konsol.
-
-**Struktur & Inisialisasi:**
-Logger dapat dikustomisasi saat diinisialisasi untuk mengubah format output atau zona waktu.
-```python
-# Inisialisasi default (WIB, format standar)
-log = client.ns.utils.log
-
-# Inisialisasi kustom
-custom_log = client.ns.utils.log.__class__(
-    tz='America/New_York', # Zona waktu
-    fmt='{asctime} [{levelname}] {message}', # Format log yang lebih simpel
-    datefmt='%H:%M:%S' # Format waktu
+hf_generator = client.ns.ai.hf(
+    api_key=HF_TOKEN, 
+    model_id="runwayml/stable-diffusion-v1-5" # Contoh menggunakan model lain
 )
 ```
 
 **Contoh Penggunaan:**
 ```python
-client.ns.utils.log.info("Memulai proses penting...")
-data = {"id": 42, "user": "admin"}
-client.ns.utils.log.debug(f"Data yang diterima: {data}")
+from io import BytesIO
+
+prompt = "foto seorang astronot duduk santai di pantai mars, gaya realistis"
 try:
-    100 / 0
+    # Generate 1 gambar
+    list_bytes = await hf_generator.generate(prompt, num_images=1)
+    
+    if list_bytes:
+        gambar_bytes = list_bytes[0]
+        # Kirim sebagai file
+        file_gambar = BytesIO(gambar_bytes)
+        file_gambar.name = "hasil-ai.png"
+        # await message.reply_photo(file_gambar, caption=f"Prompt: {prompt}")
 except Exception as e:
-    client.ns.utils.log.error(f"Terjadi kesalahan fatal: {e}")
+    print(f"Gagal membuat gambar: {e}")
 ```
 
 ---
 
-### 13. `monitor` -> `client.ns.server.monitor`
+### 12. `listen` -> `client.listen()` & `chat.ask()`
+*Monkey-patching* untuk Pyrogram yang menambahkan alur percakapan interaktif, memungkinkan bot untuk "menunggu" jawaban dari pengguna.
+
+**Aktivasi:** Cukup `from nsdev import listen` di awal skrip utama Anda.
+
+**Contoh Penggunaan:**
+```python
+import asyncio
+from nsdev import listen # Wajib di-import
+
+# @app.on_message(filters.command("register"))
+async def register(client, message):
+    try:
+        nama_msg = await message.chat.ask(
+            "Halo! Siapa namamu?", 
+            timeout=30 # Waktu tunggu dalam detik (opsional)
+        )
+        
+        umur_msg = await message.chat.ask(
+            f"Senang bertemu, {nama_msg.text}! Sekarang, berapa usiamu?",
+            filters=filters.regex(r"^\d+$"), # Hanya menerima angka (opsional)
+            timeout=30
+        )
+        
+        await message.reply(
+            f"Terima kasih! Data kamu tersimpan:\n"
+            f"Nama: {nama_msg.text}\n"
+            f"Umur: {umur_msg.text} tahun"
+        )
+    except asyncio.TimeoutError:
+        await message.reply("Waktu habis. Silakan coba lagi /register.")
+    except Exception as e:
+        await message.reply(f"Terjadi error: {e}")
+```
+
+---
+
+### 13. `logger` -> `client.ns.utils.log`
+Logger canggih pengganti `print()` yang memberikan output berwarna, berformat, dan informatif ke konsol.
+
+**Penggunaan Dasar (Tanpa Konfigurasi):**
+```python
+client.ns.utils.log.info("Memulai proses penting...")
+data = {"id": 42, "user": "admin"}
+client.ns.utils.log.debug(f"Data yang diterima: {data}")
+
+try:
+    hasil = 100 / 0
+except Exception as e:
+    # Error akan ditampilkan dengan warna merah dan detail lengkap
+    client.ns.utils.log.error(f"Terjadi kesalahan fatal saat pembagian: {e}")
+client.ns.utils.log.warning("Ini adalah peringatan, proses tetap berjalan.")
+```
+
+**Inisialisasi Kustom (Opsional):**
+Anda bisa membuat instance logger baru dengan konfigurasi berbeda.
+```python
+# Membuat logger baru untuk modul spesifik
+payment_logger = client.ns.utils.log.__class__(
+    tz='America/New_York', # Zona waktu
+    fmt='{asctime} [{levelname}] [PAYMENT] {message}', # Format log yang lebih simpel
+    datefmt='%H:%M:%S' # Format waktu
+)
+payment_logger.info("Memproses pembayaran...")
+```
+
+---
+
+### 14. `monitor` -> `client.ns.server.monitor`
 Utilitas sederhana untuk memantau penggunaan sumber daya server Linux (CPU, RAM, Disk) secara real-time.
 
 **Struktur & Return Value:**
@@ -434,10 +550,12 @@ Metode `get_stats()` mengembalikan objek `SimpleNamespace` yang berisi:
 ```python
 stats = client.ns.server.monitor.get_stats()
 fmt = client.ns.telegram.formatter("markdown")
+
 pesan_status = (
     fmt.bold("🖥️ Status Server").new_line(2)
     .text("▫️ CPU Load: ").mono(f"{stats.cpu_percent}%").new_line()
     .text("▫️ RAM Usage: ").mono(f"{stats.ram_used_gb:.2f} / {stats.ram_total_gb:.2f} GB ({stats.ram_percent}%)").new_line()
+    .text("▫️ Disk Usage: ").mono(f"{stats.disk_used_gb:.2f} / {stats.disk_total_gb:.2f} GB ({stats.disk_percent}%)").new_line()
     .to_string()
 )
 # await message.reply(pesan_status)
@@ -445,63 +563,135 @@ pesan_status = (
 
 ---
 
-### 14. `payment` -> `client.ns.payment`
+### 15. `payment` -> `client.ns.payment`
 Klien terintegrasi untuk berbagai payment gateway populer di Indonesia.
 
 **A. Midtrans**
 ```python
 midtrans = client.ns.payment.Midtrans(
-    server_key="SERVER_KEY_ANDA", client_key="CLIENT_KEY_ANDA", is_production=False
+    server_key="SERVER_KEY_ANDA", 
+    client_key="CLIENT_KEY_ANDA", 
+    is_production=False # Set True untuk mode produksi
 )
-payment_info = midtrans.create_payment(order_id="order-123", gross_amount=50000)
-status = midtrans.check_transaction(order_id="order-123")
+payment_info = midtrans.create_payment(
+    order_id="order-xyz-12345", 
+    gross_amount=50000
+)
+print("URL Pembayaran Midtrans:", payment_info.redirect_url)
+
+# Untuk mengecek status
+status = midtrans.check_transaction(order_id="order-xyz-12345")
+print("Status Transaksi:", status.transaction_status)
 ```
 
 **B. Tripay**
 ```python
 tripay = client.ns.payment.Tripay(api_key="API_KEY_TRIPAY_ANDA")
 payment_data = tripay.create_payment(
-    method="QRIS", amount=25000, order_id="order-456", customer_name="Budi"
+    method="QRIS", 
+    amount=25000, 
+    order_id="order-abc-67890", 
+    customer_name="Budi"
 )
-status = tripay.check_transaction(reference=payment_data.data.reference)
-```
-
-**C. VioletMediaPay**
-```python
-violet = client.ns.payment.Violet(
-    api_key="API_KEY_VIOLET_ANDA", secret_key="SECRET_KEY_VIOLET_ANDA", live=False
-)
-payment_result = await violet.create_payment(channel_payment="QRIS", amount="10000")
-if payment_result.status:
-    status = await violet.check_transaction(ref="invoice", ref_id=payment_result.data.ref_id)
+print("Referensi Tripay:", payment_data.data.reference)
+print("URL Checkout:", payment_data.data.checkout_url)
 ```
 
 ---
 
-### 15. `progress` -> `client.ns.utils.progress`
+### 16. `progress` -> `client.ns.utils.progress`
 Callback helper untuk menampilkan progress bar dinamis saat mengunggah atau mengunduh file besar dengan Pyrogram.
 
 **Alur Kerja:**
 1.  Kirim pesan awal (placeholder).
 2.  Inisialisasi `TelegramProgressBar` dengan `client` dan `message` dari langkah 1.
-3.  Gunakan metode `.update` dari objek progress bar sebagai nilai parameter `progress`.
-4.  (Opsional) Panggil `await progress_bar.new_task("Nama Tugas Baru")` jika ingin menggunakan progress bar yang sama untuk tugas berbeda (misal: setelah download selesai, lanjut upload).
+3.  Gunakan metode `.update` dari objek progress bar sebagai nilai parameter `progress` di fungsi Pyrogram.
 
 **Contoh Penggunaan:**
 ```python
-pesan_status = await message.reply("🚀 Mempersiapkan unggahan...")
-progress_bar = client.ns.utils.progress(
-    client=client, message=pesan_status, task_name="Uploading Video.mp4"
-)
-await client.send_video(
-    chat_id=message.chat.id, video="path/ke/video.mp4", progress=progress_bar.update
-)
-await pesan_status.edit("✅ Unggah Selesai!")
+# @app.on_message(filters.command("upload"))
+async def upload_handler(client, message):
+    pesan_status = await message.reply("🚀 Mempersiapkan unggahan...")
+    progress_bar = client.ns.utils.progress(
+        client=client, 
+        message=pesan_status, 
+        task_name="Uploading Video.mp4"
+    )
+
+    try:
+        await client.send_video(
+            chat_id=message.chat.id, 
+            video="path/ke/video_besar.mp4", 
+            caption="Ini video besar yang diunggah dengan progress bar.",
+            progress=progress_bar.update # Ini kuncinya!
+        )
+        await pesan_status.delete() # Hapus pesan progress setelah selesai
+    except Exception as e:
+        await pesan_status.edit(f"Gagal mengunggah: {e}")
+
+```
+---
+
+### 17. `qrcode` -> `client.ns.ai.qrcode`
+Modul AI sederhana untuk membuat gambar QR Code dari teks atau URL.
+
+**Struktur & Inisialisasi:**
+Kelas `QrCodeGenerator` tidak memerlukan parameter saat inisialisasi.
+
+```python
+qr_generator = client.ns.ai.qrcode()
+```
+
+**Contoh Penggunaan:**
+```python
+from io import BytesIO
+
+teks_atau_url = "https://github.com/SenpaiSeeker/norsodikin"
+
+# Generate QR code, mengembalikan data dalam bentuk bytes
+qr_bytes = await qr_generator.generate(data=teks_atau_url)
+
+# Siapkan file untuk dikirim
+qr_file = BytesIO(qr_bytes)
+qr_file.name = "qrcode.png"
+
+# Kirim sebagai foto
+# await message.reply_photo(
+#     qr_file, 
+#     caption=f"QR Code untuk:\n`{teks_atau_url}`"
+# )
 ```
 
 ---
 
-### 16. `storekey` -> `client.ns.data.key`
+### 18. `shell` -> `client.ns.utils.shell`
+Eksekutor perintah shell/terminal secara asinkron dari dalam Python. Berguna untuk tugas otomatisasi dan manajemen server.
+
+**Struktur & Return Value:**
+Metode `run(command)` mengembalikan tuple yang berisi: (`stdout`, `stderr`, `returncode`).
+- `stdout` (`str`): Output standar dari perintah.
+- `stderr` (`str`): Output error dari perintah (jika ada).
+- `returncode` (`int`): Kode status eksekusi (0 berarti sukses).
+
+**Contoh Penggunaan:**
+```python
+# Menjalankan perintah 'ls -l'
+stdout, stderr, code = await client.ns.utils.shell.run("ls -l /home")
+
+if code == 0:
+    # Sukses
+    # await message.reply(f"**Hasil `ls -l`:**\n```{stdout}```")
+    print(stdout)
+else:
+    # Gagal
+    # await message.reply(f"**Error saat menjalankan perintah:**\n```{stderr}```")
+    print(stderr)
+```
+**Peringatan Keamanan:** Hati-hati saat menjalankan perintah yang berasal dari input pengguna untuk menghindari *shell injection*. Selalu validasi input jika memungkinkan.
+
+---
+
+### 19. `storekey` -> `client.ns.data.key`
 Manajer untuk menangani kunci rahasia dan nama file environment dari argumen terminal, mencegah *hardcoding* kredensial.
 
 **1. Cara Menjalankan di Terminal:**
@@ -511,34 +701,100 @@ python3 main.py --key kunci-rahasia-anda --env config.env
 
 **2. Cara Menggunakan di Kode Python:**
 ```python
+# Di file main.py Anda
 key_manager = client.ns.data.key()
 try:
+    # Fungsi ini akan membaca argumen dari terminal
     kunci_rahasia, nama_file_env = key_manager.handle_arguments()
+    
     print(f"Menggunakan Kunci: {kunci_rahasia}")
+    print(f"File Environment: {nama_file_env}")
+    
+    # Gunakan variabel ini untuk setup selanjutnya, misal load env file
+    # from dotenv import load_dotenv
+    # load_dotenv(nama_file_env)
+    
 except SystemExit:
-    print("Skrip dihentikan karena argumen tidak lengkap.")
+    # Skrip akan berhenti jika argumen tidak lengkap
+    print("Skrip dihentikan karena argumen --key dan --env wajib diisi.")
+
 ```
 ---
 
-### 17. `tts` -> `client.ns.ai.tts`
+### 20. `translate` -> `client.ns.ai.translate`
+Modul AI untuk menerjemahkan teks ke berbagai bahasa menggunakan Google Translate API.
+
+**Struktur & Inisialisasi:**
+Kelas `Translator` tidak memerlukan parameter saat inisialisasi.
+
+**Metode Utama & Parameter:**
+- `to(text: str, dest_lang: str = 'en')`
+  - `text`: Teks yang ingin diterjemahkan.
+  - `dest_lang`: Kode bahasa tujuan (misal: 'en' untuk Inggris, 'ja' untuk Jepang, 'id' untuk Indonesia). Default-nya adalah 'en'.
+
+**Contoh Penggunaan:**
+```python
+translator = client.ns.ai.translate()
+
+# Terjemahkan dari Indonesia ke Inggris
+teks_id = "Selamat pagi, bagaimana kabarmu?"
+hasil_en = await translator.to(teks_id, dest_lang="en")
+print(f"'{teks_id}' -> '{hasil_en}'")
+
+# Terjemahkan dari Inggris ke Jepang
+teks_en = "Artificial intelligence will change the world."
+hasil_ja = await translator.to(teks_en, dest_lang="ja")
+print(f"'{teks_en}' -> '{hasil_ja}'")
+```
+
+---
+
+### 21. `tts` -> `client.ns.ai.tts`
 Modul AI untuk mengubah teks menjadi pesan suara (Text-to-Speech) menggunakan API Google.
 
 **Struktur & Inisialisasi:**
-Kelas ini tidak memerlukan parameter saat inisialisasi. Metode `generate` menerima `text` dan `lang` (kode bahasa, default 'id').
+Kelas ini tidak memerlukan parameter saat inisialisasi.
 
 **Contoh Penggunaan:**
 ```python
 from io import BytesIO
+
 tts_generator = client.ns.ai.tts()
-audio_bytes = await tts_generator.generate(text="Halo, ini pesan suara otomatis.", lang="id")
+audio_bytes = await tts_generator.generate(
+    text="Halo, ini adalah pesan suara yang dibuat secara otomatis oleh Norsodikin.", 
+    lang="id" # Kode bahasa (opsional, default 'id')
+)
+
 file_suara = BytesIO(audio_bytes)
-file_suara.name = "notifikasi.ogg"
+file_suara.name = "notifikasi.ogg" # Nama file penting untuk Telegram
 # await message.reply_voice(file_suara, caption="Pesan Suara Penting!")
 ```
 
 ---
 
-### 18. `web` -> `client.ns.ai.web`
+### 22. `url` -> `client.ns.utils.url`
+Utilitas sederhana untuk memendekkan URL menggunakan layanan TinyURL.
+
+**Struktur & Inisialisasi:**
+Kelas `UrlUtils` tidak memerlukan parameter saat inisialisasi.
+
+**Metode Utama & Parameter:**
+- `shorten(long_url: str)`
+  - `long_url`: URL panjang yang ingin Anda perpendek.
+
+**Contoh Penggunaan:**
+```python
+url_panjang = "https://github.com/SenpaiSeeker/norsodikin/blob/main/README.md"
+url_pendek = await client.ns.utils.url.shorten(url_panjang)
+
+print(f"URL Panjang: {url_panjang}")
+print(f"URL Pendek: {url_pendek}")
+# await message.reply(f"URL telah dipendekkan: {url_pendek}")
+```
+
+---
+
+### 23. `web` -> `client.ns.ai.web`
 Alat AI canggih untuk melakukan *scraping* konten teks dari sebuah URL dan merangkumnya menggunakan model Gemini.
 
 **Struktur & Inisialisasi:**
@@ -550,27 +806,27 @@ gemini_bot = client.ns.ai.gemini(api_key="GEMINI_API_KEY_ANDA")
 # 2. Berikan instance tersebut saat membuat WebSummarizer
 web_summarizer = client.ns.ai.web(gemini_instance=gemini_bot)
 ```
-Metode `summarize` menerima `url` dan `max_length` (opsional, default 8000 karakter) untuk membatasi teks yang dikirim ke AI.
 
 **Contoh Penggunaan:**
 ```python
 url_berita = "https://www.kompas.com/global/read/2023/12/13/165507970/apa-itu-kecerdasan-buatan-pengertian-dan-contohnya"
-await message.reply("⏳ Sedang membaca dan merangkum artikel...")
+status_msg = await message.reply("⏳ Sedang membaca dan merangkum artikel...")
 
-# Memulai proses peringkasan dengan panjang teks maksimal 5000 karakter
-rangkuman = await web_summarizer.summarize(url_berita, max_length=5000)
+try:
+    # Parameter max_length bersifat opsional, default 8000 karakter
+    # Berguna untuk menghemat token jika artikel sangat panjang
+    rangkuman = await web_summarizer.summarize(url_berita, max_length=5000)
 
-# Tampilkan hasilnya
-# await message.reply(f"📄 **Rangkuman:**\n\n{rangkuman}")
+    # Tampilkan hasilnya
+    # await status_msg.edit(f"📄 **Rangkuman Artikel:**\n\n{rangkuman}")
+except Exception as e:
+    # await status_msg.edit(f"Gagal merangkum: {e}")
 ```
 
 ---
 
-### 19. `ymlreder` -> `client.ns.data.yaml`
+### 24. `ymlreder` -> `client.ns.data.yaml`
 Utilitas praktis untuk membaca file konfigurasi `.yml` dan mengubahnya menjadi objek Python yang bisa diakses dengan notasi titik (`.`).
-
-**Cara Kerja:**
-Fungsi `loadAndConvert` membaca file YAML dan mengubah struktur bersarangnya menjadi objek `SimpleNamespace`. Ini memungkinkan Anda mengakses nilai-nilai seperti `config.database.host` alih-alih `config['database']['host']`.
 
 **Contoh File `config.yml`:**
 ```yaml
@@ -598,14 +854,16 @@ if config:
     print(f"Nama Aplikasi: {config.app.name} (v{config.app.version})")
     print(f"Host Database: {config.database.host}:{config.database.port}")
     
-    # Bekerja dengan list
+    # Bekerja dengan list of objects
     for api in config.api_keys:
-        print(f"API {api.name}: {api.key}")
+        if api.name == "google":
+            print(f"Kunci API Google ditemukan: {api.key}")
 else:
     print("Gagal memuat file konfigurasi.")
 ```
-
 ---
+</details>
+
 ## Lisensi
 
 Pustaka ini dirilis di bawah [Lisensi MIT](https://opensource.org/licenses/MIT). Artinya, kamu bebas pakai, modifikasi, dan distribusikan untuk proyek apa pun.
