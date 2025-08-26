@@ -1,18 +1,20 @@
+import uuid
+
+import httpx
+import bs4
+
 class WebSummarizer:
     def __init__(self, gemini_instance):
         if not gemini_instance:
             raise ValueError("WebSummarizer memerlukan instance dari ChatbotGemini.")
         self.gemini = gemini_instance
-        self.httpx = __import__("httpx")
-        self.bs4 = __import__("bs4")
-        self.uuid = __import__("uuid")
 
     async def _scrape_text(self, url: str) -> str:
-        async with self.httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
             try:
                 response = await client.get(url)
                 response.raise_for_status()
-                soup = self.bs4.BeautifulSoup(response.text, "lxml")
+                soup = bs4.BeautifulSoup(response.text, "lxml")
                 for script_or_style in soup(["script", "style"]):
                     script_or_style.decompose()
                 paragraphs = soup.find_all("p")
@@ -36,7 +38,7 @@ class WebSummarizer:
                 "Berikut adalah teksnya:\n\n---\n\n"
                 f"{truncated_text}"
             )
-            summary_session_id = f"summary-{self.uuid.uuid4()}"
+            summary_session_id = f"summary-{uuid.uuid4()}"
             summary = self.gemini.send_chat_message(prompt, user_id=summary_session_id, bot_name=bot_name)
             return summary
         except Exception as e:
