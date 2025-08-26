@@ -1,6 +1,5 @@
 # Pustaka Python `norsodikin`
 
-[![Versi](https://img.shields.io/badge/Version-1.2.0-blue.svg)](https://github.com/SenpaiSeeker/norsodikin/blob/main/nsdev/__init__.py)
 [![Lisensi: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Selamat datang di `norsodikin`! Ini bukan sekadar pustaka Python biasa, melainkan toolkit sakti buat kamu yang mau bikin bot Telegram super canggih, ngelola server, enkripsi data, sampai mainan AI, semuanya jadi lebih gampang dan seru.
@@ -29,6 +28,10 @@ Gunakan "extras" untuk menambahkan dependensi bagi fitur-fitur spesifik. Anda bi
     ```bash
     pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[ai]"
     ```
+    > **Catatan Penting untuk Pembaca QR Code:**
+    > Fitur `qrcode.read()` memerlukan library `zbar`. Jika Anda menggunakan sistem berbasis Debian/Ubuntu, instal dengan perintah:
+    > `sudo apt-get update && sudo apt-get install -y libzbar0`
+
 *   **Untuk monitoring server:**
     ```bash
     pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[server]"
@@ -633,23 +636,23 @@ async def upload_handler(client, message):
 ---
 
 ### 17. `qrcode` -> `client.ns.ai.qrcode`
-Modul AI sederhana untuk membuat gambar QR Code dari teks atau URL.
+Modul AI untuk membuat dan membaca gambar QR Code dari teks atau URL.
 
 **Struktur & Inisialisasi:**
 Kelas `QrCodeGenerator` tidak memerlukan parameter saat inisialisasi.
 
 ```python
-qr_generator = client.ns.ai.qrcode()
+qr_manager = client.ns.ai.qrcode()
 ```
 
-**Contoh Penggunaan:**
+**Membuat QR Code**
 ```python
 from io import BytesIO
 
 teks_atau_url = "https://github.com/SenpaiSeeker/norsodikin"
 
 # Generate QR code, mengembalikan data dalam bentuk bytes
-qr_bytes = await qr_generator.generate(data=teks_atau_url)
+qr_bytes = await qr_manager.generate(data=teks_atau_url)
 
 # Siapkan file untuk dikirim
 qr_file = BytesIO(qr_bytes)
@@ -660,6 +663,29 @@ qr_file.name = "qrcode.png"
 #     qr_file, 
 #     caption=f"QR Code untuk:\n`{teks_atau_url}`"
 # )
+```
+
+**Membaca QR Code dari Gambar**
+Metode `read` akan mengembalikan teks dari QR code (`str`) atau `None` jika tidak ada QR code yang terdeteksi.
+```python
+# Handler ini akan merespon jika seseorang membalas sebuah foto dengan perintah /readqr
+# @app.on_message(filters.command("readqr") & filters.reply)
+async def read_qr_handler(client, message):
+    if not message.reply_to_message.photo:
+        await message.reply("Silakan balas sebuah foto yang berisi QR Code.")
+        return
+
+    # Download foto ke memori (lebih efisien daripada menyimpan ke disk)
+    status_msg = await message.reply("🔍 Memindai QR Code...")
+    image_bytes = await client.download_media(message.reply_to_message.photo, in_memory=True)
+    
+    # Baca QR Code dari bytes gambar
+    hasil_scan = await qr_manager.read(image_bytes)
+
+    if hasil_scan:
+        await status_msg.edit(f"✅ **QR Code Terdeteksi:**\n\n`{hasil_scan}`")
+    else:
+        await status_msg.edit("❌ Tidak dapat menemukan QR Code pada gambar ini.")
 ```
 
 ---
