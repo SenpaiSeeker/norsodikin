@@ -21,23 +21,22 @@ from .process import ProcessManager
 from .progress import TelegramProgressBar
 from .qrcode import QrCodeGenerator
 from .shell import ShellExecutor
-from .storekey import KeyManager
 from .stt import SpeechToText
+from .storekey import KeyManager
 from .translate import Translator
 from .tts import TextToSpeech
 from .url import UrlUtils
+from .videofx import VideoFX
 from .vision import VisionAnalyzer
 from .web_summarizer import WebSummarizer
 from .ymlreder import YamlHandler
 
-__version__ = "1.3.5.5"
+__version__ = "1.4.0"
 __author__ = "@NorSodikin"
-
 
 class NsDev:
     def __init__(self, client):
         self._client = client
-
         self.ai = SimpleNamespace(
             bing=ImageGenerator,
             gemini=ChatbotGemini,
@@ -55,6 +54,7 @@ class NsDev:
             button=Button(),
             formatter=TextFormatter,
             actions=TelegramActions(self._client),
+            videofx=VideoFX(),
         )
         self.data = SimpleNamespace(
             db=DataBase,
@@ -85,17 +85,14 @@ class NsDev:
             Violet=VioletMediaPayClient,
         )
 
-
 @property
 def ns(self) -> NsDev:
     if not hasattr(self, "_nsdev_instance"):
         self._nsdev_instance = NsDev(self)
     return self._nsdev_instance
 
-
 try:
     from pyrogram import Client
-
     Client.ns = ns
 except Exception:
     pass
