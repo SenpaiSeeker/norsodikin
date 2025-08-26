@@ -1,3 +1,15 @@
+import base64
+import hmac
+import hashlib
+import time
+import uuid
+
+import requests
+import httpx
+from faker import Faker
+
+from .ymlreder import YamlHandler
+
 class PaymentMidtrans:
     def __init__(
         self,
@@ -6,10 +18,7 @@ class PaymentMidtrans:
         callback_url="https://SenpaiSeeker.github.io/payment",
         is_production=True,
     ):
-        self.requests = __import__("requests")
-        self.base64 = __import__("base64")
-        self.convert = __import__("nsdev").YamlHandler()
-
+        self.convert = YamlHandler()
         self.server_key = server_key
         self.callback_url = callback_url
 
@@ -21,7 +30,7 @@ class PaymentMidtrans:
             self.core_api_base_url = "https://api.sandbox.midtrans.com/v2"
 
         auth_string = f"{self.server_key}:".encode("utf-8")
-        encoded_auth = self.base64.b64encode(auth_string).decode("utf-8")
+        encoded_auth = base64.b64encode(auth_string).decode("utf-8")
 
         self.headers = {
             "Accept": "application/json",
@@ -42,10 +51,10 @@ class PaymentMidtrans:
             },
         }
         try:
-            response = self.requests.post(url, headers=self.headers, json=payload, timeout=30)
+            response = requests.post(url, headers=self.headers, json=payload, timeout=30)
             response.raise_for_status()
             return self.convert._convertToNamespace(response.json())
-        except self.requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException as e:
             raise Exception(f"Error communicating with Midtrans API: {e}")
         except Exception as e:
             raise Exception(f"Error creating Midtrans transaction: {e}")
@@ -53,10 +62,10 @@ class PaymentMidtrans:
     def check_transaction(self, order_id):
         url = f"{self.core_api_base_url}/{order_id}/status"
         try:
-            response = self.requests.get(url, headers=self.headers, timeout=30)
+            response = requests.get(url, headers=self.headers, timeout=30)
             response.raise_for_status()
             return self.convert._convertToNamespace(response.json())
-        except self.requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException as e:
             raise Exception(f"Error communicating with Midtrans API: {e}")
         except Exception as e:
             raise Exception(f"Error checking Midtrans transaction status: {e}")
@@ -66,9 +75,7 @@ class PaymentTripay:
     def __init__(self, api_key):
         self.api_key = api_key
         self.base_url = "https://tripay.co.id/api"
-
-        self.requests = __import__("requests")
-        self.convert = __import__("nsdev").YamlHandler()
+        self.convert = YamlHandler()
 
     def create_payment(self, method, amount, order_id, customer_name):
         url = f"{self.base_url}/transaction/create"
@@ -80,7 +87,7 @@ class PaymentTripay:
             "customer_name": customer_name,
         }
 
-        response = self.requests.post(url, headers=headers, json=payload)
+        response = requests.post(url, headers=headers, json=payload)
 
         if response.status_code != 200:
             raise Exception(f"Error creating payment: {response.json().get('message')}")
@@ -92,7 +99,7 @@ class PaymentTripay:
         headers = {"Authorization": f"Bearer {self.api_key}"}
         params = {"reference": reference}
 
-        response = self.requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=headers, params=params)
 
         if response.status_code != 200:
             raise Exception(f"Error checking payment: {response.json().get('message')}")
@@ -107,13 +114,8 @@ class VioletMediaPayClient:
         secret_key: str,
         live: bool = False,
     ):
-        self.httpx = __import__("httpx")
-        self.hmac = __import__("hmac")
-        self.hashlib = __import__("hashlib")
-        self.time = __import__("time")
-        self.uuid = __import__("uuid")
-        self.faker = __import__("faker").Faker("id_ID")
-        self.convert = __import__("nsdev").YamlHandler()
+        self.faker = Faker("id_ID")
+        self.convert = YamlHandler()
 
         self.api_key = api_key
         self.secret_key = secret_key
@@ -121,7 +123,7 @@ class VioletMediaPayClient:
 
     def _generate_signature(self, ref_kode: str, amount: str) -> str:
         message = f"{ref_kode}{self.api_key}{amount}"
-        signature = self.hmac.new(self.secret_key.encode(), message.encode(), self.hashlib.sha256).hexdigest()
+        signature = hmac.new(self.secret_key.encode(), message.encode(), hashlib.sha256).hexdigest()
         return signature
 
     async def create_payment(
@@ -135,9 +137,9 @@ class VioletMediaPayClient:
     ):
         url = f"{self.base_url}/create"
 
-        ref_kode = str(self.uuid.uuid4().hex)
+        ref_kode = str(uuid.uuid4().hex)
         signature = self._generate_signature(ref_kode, amount)
-        expired_time = int(self.time.time()) + expired
+        expired_time = int(time.time()) + expired
 
         cus_nama = self.faker.name()
         cus_email = self.faker.email()
@@ -160,17 +162,17 @@ class VioletMediaPayClient:
         }
 
         try:
-            async with self.httpx.AsyncClient(verify=True, timeout=30.0) as client:
+            async with httpx.AsyncClient(verify=True, timeout=30.0) as client:
                 response = await client.post(url, data=payload)
                 response.raise_for_status()
                 return self.convert._convertToNamespace(response.json())
-        except self.httpx.ConnectTimeout as e:
+        except httpx.ConnectTimeout as e:
             raise Exception(f"Connection timeout: Gagal terhubung ke server. Periksa koneksi internet Anda. Error: {e}")
-        except self.httpx.ReadTimeout as e:
+        except httpx.ReadTimeout as e:
             raise Exception(f"Read timeout: Server tidak merespons dalam waktu yang ditentukan. Error: {e}")
-        except self.httpx.HTTPStatusError as e:
+        except httpx.HTTPStatusError as e:
             raise Exception(f"HTTP Error: {e.response.status_code} - Server merespons dengan error: {e.response.text}")
-        except self.httpx.RequestError as e:
+        except httpx.RequestError as e:
             raise Exception(f"Network error: Terjadi kesalahan jaringan yang tidak terduga. Error: {e}")
         except Exception as e:
             raise Exception(f"Error creating payment: Terjadi kesalahan tidak terduga: {str(e)}")
@@ -186,17 +188,17 @@ class VioletMediaPayClient:
         }
 
         try:
-            async with self.httpx.AsyncClient(verify=True, timeout=30.0) as client:
+            async with httpx.AsyncClient(verify=True, timeout=30.0) as client:
                 response = await client.post(url, data=payload)
                 response.raise_for_status()
                 return self.convert._convertToNamespace(response.json())
-        except self.httpx.ConnectTimeout as e:
+        except httpx.ConnectTimeout as e:
             raise Exception(f"Connection timeout: Gagal terhubung ke server. Periksa koneksi internet Anda. Error: {e}")
-        except self.httpx.ReadTimeout as e:
+        except httpx.ReadTimeout as e:
             raise Exception(f"Read timeout: Server tidak merespons dalam waktu yang ditentukan. Error: {e}")
-        except self.httpx.HTTPStatusError as e:
+        except httpx.HTTPStatusError as e:
             raise Exception(f"HTTP Error: {e.response.status_code} - Server merespons dengan error: {e.response.text}")
-        except self.httpx.RequestError as e:
+        except httpx.RequestError as e:
             raise Exception(f"Network error: Terjadi kesalahan jaringan yang tidak terduga. Error: {e}")
         except Exception as e:
             raise Exception(f"Error checking transaction: Terjadi kesalahan tidak terduga: {str(e)}")
