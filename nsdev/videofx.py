@@ -144,7 +144,7 @@ class VideoFX:
         )
         return output_path
 
-    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 24):
+    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30):
         clip = VideoFileClip(video_path)
 
         max_duration = min(clip.duration, 2.95)
@@ -154,15 +154,28 @@ class VideoFX:
             resized_clip = trimmed_clip.resized(width=512)
         else:
             resized_clip = trimmed_clip.resized(height=512)
-
+        
         final_clip = resized_clip.with_fps(fps).with_position(("center", "center"))
-        final_clip.write_videofile(output_path, codec="libvpx-vp9", audio=False, logger=None)
+        
+        ffmpeg_params = [
+            '-pix_fmt', 'yuv420p',
+            '-crf', '30',
+            '-b:v', '0'
+        ]
+        
+        final_clip.write_videofile(
+            output_path, 
+            codec="libvpx-vp9", 
+            audio=False, 
+            logger=None,
+            ffmpeg_params=ffmpeg_params
+        )
 
         clip.close()
         trimmed_clip.close()
         resized_clip.close()
         final_clip.close()
 
-    async def video_to_sticker(self, video_path: str, output_path: str, fps: int = 24):
-        await self._run_in_executor(self._convert_to_sticker, video_path, output_path, fps)
+    async def video_to_sticker(self, video_path: str, output_path: str, fps: int = 30):
+        await self._run_in_executor(self._convert_to_sticker, video_path, output_path, fps=fps)
         return output_path
