@@ -63,9 +63,14 @@ media = [
     "yt-dlp",
     "ffmpeg-python",
 ]
+video = [
+    "moviepy",
+    "numpy",
+    "Pillow"
+]
 
 all = [
-    "norsodikin[pyrogram,ai,server,database,cli,payment,media]",
+    "norsodikin[pyrogram,ai,server,database,cli,payment,media,video]",
 ]
 
 [tool.setuptools]
