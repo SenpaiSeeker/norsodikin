@@ -1,3 +1,10 @@
+import base64
+import binascii
+import json
+
+from .logger import LoggerHandler
+from .colorize import AnsiColors
+
 class CipherHandler:
     """
     Handler untuk enkripsi dan dekripsi menggunakan berbagai metode.
@@ -9,10 +16,6 @@ class CipherHandler:
     """
 
     def __init__(self, **options):
-        self.base64 = __import__("base64")
-        self.binascii = __import__("binascii")
-        self.json = __import__("json")
-
         self.method = options.get("method", "shift")
         self.key = self._normalize_key(options.get("key", "my_s3cr3t_k3y_@2024!"))
         self.numeric_key = self._get_numeric_key()
@@ -21,7 +24,7 @@ class CipherHandler:
         if not self.key:
             raise ValueError("Key cannot be empty.")
 
-        self.log = __import__("nsdev").logger.LoggerHandler()
+        self.log = LoggerHandler()
 
     def _normalize_key(self, key) -> str:
         try:
@@ -54,16 +57,16 @@ class CipherHandler:
         return bytes([data[i] ^ key_bytes[i % len(key_bytes)] for i in range(len(data))])
 
     def _base64_encode(self, data: str) -> str:
-        encoded_bytes = self.base64.b64encode(data.encode("utf-8"))
+        encoded_bytes = base64.b64encode(data.encode("utf-8"))
         return encoded_bytes.decode("utf-8").rstrip("=")
 
     def _base64_decode(self, encoded_data: str) -> str:
         try:
             padding_needed = (4 - len(encoded_data) % 4) % 4
             padded_data = encoded_data + "=" * padding_needed
-            decoded_bytes = self.base64.b64decode(padded_data)
+            decoded_bytes = base64.b64decode(padded_data)
             return decoded_bytes.decode("utf-8")
-        except (self.binascii.Error, UnicodeDecodeError) as e:
+        except (binascii.Error, UnicodeDecodeError) as e:
             raise ValueError(f"Base64 decryption failed: {e}")
 
     def decrypt(self, encrypted_data: str, only_base64: bool = False):
@@ -81,8 +84,8 @@ class CipherHandler:
             raise ValueError(f"Metode dekripsi '{self.method}' tidak dikenali.")
 
         try:
-            return self.json.loads(decrypted_string)
-        except (self.json.JSONDecodeError, TypeError):
+            return json.loads(decrypted_string)
+        except (json.JSONDecodeError, TypeError):
             return decrypted_string
 
     def decrypt_binary(self, encrypted_bits: str) -> str:
@@ -114,7 +117,7 @@ class CipherHandler:
             return self._base64_encode(data)
 
         if not isinstance(data, str):
-            message_to_encrypt = self.json.dumps(data, separators=(",", ":"))
+            message_to_encrypt = json.dumps(data, separators=(",", ":"))
         else:
             message_to_encrypt = data
 
@@ -180,10 +183,9 @@ class CipherHandler:
             raise IOError(f"Saving file failed: {e}")
 
 
-class AsciiManager(__import__("nsdev").AnsiColors):
+class AsciiManager(AnsiColors):
     def __init__(self, key):
         super().__init__()
-        self.json = __import__("json")
         try:
             self.no_format_key = key
             self.key = self._normalize_key(key)
@@ -210,7 +212,7 @@ class AsciiManager(__import__("nsdev").AnsiColors):
     def encrypt(self, data) -> list[int]:
         try:
             if not isinstance(data, str):
-                message = self.json.dumps(data, separators=(",", ":"))
+                message = json.dumps(data, separators=(",", ":"))
             else:
                 message = data
             return [int(ord(char) + self._offset(i)) for i, char in enumerate(message)]
@@ -221,8 +223,8 @@ class AsciiManager(__import__("nsdev").AnsiColors):
         try:
             decrypted_string = "".join(chr(int(code) - self._offset(i)) for i, code in enumerate(encrypted))
             try:
-                return self.json.loads(decrypted_string)
-            except (self.json.JSONDecodeError, TypeError):
+                return json.loads(decrypted_string)
+            except (json.JSONDecodeError, TypeError):
                 return decrypted_string
         except Exception as e:
             raise Exception(f"Decryption failed: {e}")
