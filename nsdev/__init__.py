@@ -25,7 +25,7 @@ from .url import UrlUtils
 from .web_summarizer import WebSummarizer
 from .ymlreder import YamlHandler
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 __author__ = "@NorSodikin"
 
 
