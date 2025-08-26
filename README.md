@@ -197,7 +197,7 @@ async def download_media(client, message):
     status_msg = await message.reply("📥 Sedang memproses URL...")
 
     try:
-        downloader = client.ns.utils.downloader()
+        downloader = client.ns.utils.downloader
         
         # Download sebagai audio (format mp3)
         result = await downloader.download(url, audio_only=True)
