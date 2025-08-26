@@ -1,5 +1,6 @@
 import httpx
 
+
 class SpeechToText:
     def __init__(self, api_key: str, model_id: str = "openai/whisper-large-v3"):
         self.api_url = f"https://api-inference.huggingface.co/models/{model_id}"
@@ -8,11 +9,7 @@ class SpeechToText:
     async def transcribe(self, audio_bytes: bytes) -> str:
         async with httpx.AsyncClient(timeout=300) as client:
             try:
-                response = await client.post(
-                    self.api_url,
-                    headers=self.headers,
-                    content=audio_bytes
-                )
+                response = await client.post(self.api_url, headers=self.headers, content=audio_bytes)
                 response.raise_for_status()
                 result = response.json()
                 return result.get("text", "")

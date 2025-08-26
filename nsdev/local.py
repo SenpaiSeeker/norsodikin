@@ -1,5 +1,6 @@
 import httpx
 
+
 class OllamaClient:
     def __init__(self, host: str = "http://localhost:11434"):
         self.base_url = host
@@ -16,11 +17,7 @@ class OllamaClient:
 
     async def chat(self, prompt: str, model: str = "llama3") -> str:
         url = f"{self.base_url}/api/generate"
-        payload = {
-            "model": model,
-            "prompt": prompt,
-            "stream": False
-        }
+        payload = {"model": model, "prompt": prompt, "stream": False}
         async with httpx.AsyncClient(timeout=120) as client:
             try:
                 response = await client.post(url, json=payload)
