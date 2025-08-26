@@ -1,8 +1,9 @@
-import random
 import asyncio
+import random
 import time
 
 import pyfiglet
+
 
 class Gradient:
     def __init__(self):

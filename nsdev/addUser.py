@@ -2,7 +2,9 @@ import os
 import random
 import string
 import subprocess
+
 import requests
+
 
 class SSHUserManager:
     def __init__(
@@ -41,14 +43,21 @@ class SSHUserManager:
             else:
                 subprocess.run(
                     [
-                        "sudo", "adduser", "--disabled-password", "--gecos", "",
-                        ssh_username, "--force-badname",
+                        "sudo",
+                        "adduser",
+                        "--disabled-password",
+                        "--gecos",
+                        "",
+                        ssh_username,
+                        "--force-badname",
                     ],
                     check=True,
                 )
                 subprocess.run(
-                    ["sudo", "chpasswd"], input=f"{ssh_username}:{ssh_password}",
-                    text=True, check=True,
+                    ["sudo", "chpasswd"],
+                    input=f"{ssh_username}:{ssh_password}",
+                    text=True,
+                    check=True,
                 )
                 subprocess.run(["sudo", "usermod", "-aG", "sudo", ssh_username], check=True)
 

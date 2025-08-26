@@ -2,9 +2,12 @@ import asyncio
 import re
 import time
 import urllib.parse
-import httpx
+
 import fake_useragent
+import httpx
+
 from .logger import LoggerHandler
+
 
 class ImageGenerator:
     def __init__(
@@ -81,6 +84,8 @@ class ImageGenerator:
             image_urls = re.findall(r'src="([^"]+)"', poll_response.text)
             processed_urls = list(set([url.split("?w=")[0] for url in image_urls if "tse" in url]))
             if processed_urls:
-                self.__log(f"{self.log.GREEN}Ditemukan {len(processed_urls)} gambar. Total waktu: {round(time.time() - start_time, 2)}s.")
+                self.__log(
+                    f"{self.log.GREEN}Ditemukan {len(processed_urls)} gambar. Total waktu: {round(time.time() - start_time, 2)}s."
+                )
                 return processed_urls[:num_images]
             await asyncio.sleep(3)

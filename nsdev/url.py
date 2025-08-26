@@ -2,6 +2,7 @@ from urllib import parse
 
 import httpx
 
+
 class UrlUtils:
     async def shorten(self, long_url: str):
         api_url = f"http://tinyurl.com/api-create.php?url={parse.quote(long_url)}"

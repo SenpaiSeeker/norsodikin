@@ -1,9 +1,10 @@
 import datetime
-import zoneinfo
-import sys
 import os
+import sys
+import zoneinfo
 
 from .colorize import AnsiColors
+
 
 class LoggerHandler(AnsiColors):
     def __init__(self, **options):

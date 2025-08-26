@@ -1,7 +1,8 @@
 import uuid
 
-import httpx
 import bs4
+import httpx
+
 
 class WebSummarizer:
     def __init__(self, gemini_instance):

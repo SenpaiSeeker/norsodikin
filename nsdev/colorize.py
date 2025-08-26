@@ -1,5 +1,6 @@
 import random
 
+
 class AnsiColors:
     def __init__(self):
         self.RESET = "\033[0m"

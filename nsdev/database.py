@@ -1,15 +1,17 @@
-import os
-import stat
-import json
 import datetime
-import zoneinfo
-import subprocess
+import json
+import os
+import sqlite3
+import stat
 import threading
 import time
 import zipfile
+import zoneinfo
+
 import requests
-import sqlite3
+
 from .encrypt import CipherHandler
+
 
 class DataBase:
     def __init__(self, **options):
@@ -36,6 +38,7 @@ class DataBase:
         self.backup_interval_hours = options.get("backup_interval_hours", 24)
         if self.storage_type == "mongo":
             import pymongo
+
             self.mongo_url = options.get("mongo_url")
             if not self.mongo_url:
                 raise ValueError("mongo_url is required for MongoDB storage")
@@ -51,7 +54,9 @@ class DataBase:
             self._initialize_files()
         if self.auto_backup and self.storage_type in ["local", "sqlite"]:
             if not self.backup_bot_token or not self.backup_chat_id:
-                self.cipher.log.print(f"{self.cipher.log.YELLOW}[BACKUP] Auto backup disabled due to missing credentials.")
+                self.cipher.log.print(
+                    f"{self.cipher.log.YELLOW}[BACKUP] Auto backup disabled due to missing credentials."
+                )
             else:
                 self._start_backup_thread()
 
@@ -64,7 +69,9 @@ class DataBase:
 
     def _backup_looper(self):
         interval_seconds = self.backup_interval_hours * 3600
-        self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] akan dijalankan setiap {self.backup_interval_hours} jam.")
+        self.cipher.log.print(
+            f"{self.cipher.log.GREEN}[BACKUP] akan dijalankan setiap {self.backup_interval_hours} jam."
+        )
         while True:
             time.sleep(interval_seconds)
             try:
@@ -139,12 +146,14 @@ class DataBase:
     def _initialize_sqlite(self):
         try:
             self.cursor.execute("CREATE TABLE IF NOT EXISTS vars (user_id TEXT PRIMARY KEY, data TEXT)")
-            self.cursor.execute("""
+            self.cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS bots (
                     user_id TEXT PRIMARY KEY, api_id TEXT, api_hash TEXT,
                     bot_token TEXT, session_string TEXT
                 )
-            """)
+            """
+            )
             self.conn.commit()
             self._set_permissions()
         except Exception as e:
@@ -152,7 +161,9 @@ class DataBase:
 
     def _set_permissions(self):
         try:
-            os.chmod(self.db_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH | stat.S_IWGRP | stat.S_IWOTH)
+            os.chmod(
+                self.db_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH | stat.S_IWGRP | stat.S_IWOTH
+            )
             self.cipher.log.print(f"{self.cipher.log.GREEN}[SQLite] Permissions set: {self.db_file}")
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.RED}[SQLite] Set permissions gagal: {e}")
@@ -173,7 +184,9 @@ class DataBase:
 
     def _sqlite_set_vars(self, user_id, data):
         try:
-            self.cursor.execute("INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)", (str(user_id), json.dumps(data)))
+            self.cursor.execute(
+                "INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)", (str(user_id), json.dumps(data))
+            )
             self.conn.commit()
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.RED}[SQLite] Simpan vars gagal: {e}")
@@ -182,14 +195,18 @@ class DataBase:
         return self.data.vars.find_one({"_id": str(user_id)}) or {}
 
     def _mongo_set_vars(self, user_id, var_key, query_name, encrypted_value):
-        self.data.vars.update_one({"_id": str(user_id)}, {"$set": {f"{var_key}.{query_name}": encrypted_value}}, upsert=True)
+        self.data.vars.update_one(
+            {"_id": str(user_id)}, {"$set": {f"{var_key}.{query_name}": encrypted_value}}, upsert=True
+        )
 
     def _mongo_push_list_vars(self, user_id, var_key, query_name, encrypted_value):
-        self.data.vars.update_one({"_id": str(user_id)}, {"$push": {f"{var_key}.{query_name}": encrypted_value}}, upsert=True)
+        self.data.vars.update_one(
+            {"_id": str(user_id)}, {"$push": {f"{var_key}.{query_name}": encrypted_value}}, upsert=True
+        )
 
     def _mongo_pull_list_vars(self, user_id, var_key, query_name, encrypted_value):
         self.data.vars.update_one({"_id": str(user_id)}, {"$pull": {f"{var_key}.{query_name}": encrypted_value}})
-    
+
     def setVars(self, user_id, query_name, value, var_key="variabel"):
         user_id_str = str(user_id)
         value_to_encrypt = json.dumps(value) if isinstance(value, (dict, list)) else str(value)
@@ -213,7 +230,9 @@ class DataBase:
         if self.storage_type == "mongo":
             encrypted_value = self._mongo_get_vars(user_id_str).get(var_key, {}).get(query_name)
         elif self.storage_type == "sqlite":
-            encrypted_value = self._sqlite_get_vars(user_id_str).get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name)
+            encrypted_value = (
+                self._sqlite_get_vars(user_id_str).get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name)
+            )
         else:
             encrypted_value = self._load_data().get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name)
         if not encrypted_value:
@@ -262,9 +281,17 @@ class DataBase:
         if self.storage_type == "mongo":
             encrypted_values = self._mongo_get_vars(user_id_str).get(var_key, {}).get(query_name, [])
         elif self.storage_type == "sqlite":
-            encrypted_values = self._sqlite_get_vars(user_id_str).get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name, [])
+            encrypted_values = (
+                self._sqlite_get_vars(user_id_str)
+                .get("vars", {})
+                .get(user_id_str, {})
+                .get(var_key, {})
+                .get(query_name, [])
+            )
         else:
-            encrypted_values = self._load_data().get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name, [])
+            encrypted_values = (
+                self._load_data().get("vars", {}).get(user_id_str, {}).get(var_key, {}).get(query_name, [])
+            )
         decrypted_list = []
         for value in encrypted_values:
             decrypted_str = self.cipher.decrypt(value)
@@ -298,7 +325,9 @@ class DataBase:
         have_exp = self.getVars(user_id_str, "EXPIRED_DATE")
         now = datetime.datetime.now(zoneinfo.ZoneInfo("Asia/Jakarta"))
         if have_exp:
-            now = datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S").astimezone(zoneinfo.ZoneInfo("Asia/Jakarta"))
+            now = datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S").astimezone(
+                zoneinfo.ZoneInfo("Asia/Jakarta")
+            )
         expire_date = now + datetime.timedelta(days=exp)
         self.setVars(user_id_str, "EXPIRED_DATE", expire_date.strftime("%Y-%m-%d %H:%M:%S"))
 
@@ -306,7 +335,9 @@ class DataBase:
         user_id_str = str(user_id)
         expired_date = self.getVars(user_id_str, "EXPIRED_DATE")
         if expired_date:
-            exp_datetime = datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(zoneinfo.ZoneInfo("Asia/Jakarta"))
+            exp_datetime = datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(
+                zoneinfo.ZoneInfo("Asia/Jakarta")
+            )
             return (exp_datetime - datetime.datetime.now(zoneinfo.ZoneInfo("Asia/Jakarta"))).days
         return None
 
@@ -331,11 +362,19 @@ class DataBase:
         if self.storage_type == "mongo":
             self.data.bot.update_one({"user_id": user_id_str}, {"$set": encrypted_data}, upsert=True)
         elif self.storage_type == "sqlite":
-            self.cursor.execute("""
+            self.cursor.execute(
+                """
                 INSERT OR REPLACE INTO bots (user_id, api_id, api_hash, bot_token, session_string)
                 VALUES (?, ?, ?, ?, ?)
-            """, (user_id_str, encrypted_data["api_id"], encrypted_data["api_hash"],
-                  encrypted_data.get("bot_token"), encrypted_data.get("session_string")))
+            """,
+                (
+                    user_id_str,
+                    encrypted_data["api_id"],
+                    encrypted_data["api_hash"],
+                    encrypted_data.get("bot_token"),
+                    encrypted_data.get("session_string"),
+                ),
+            )
             self.conn.commit()
         else:
             data = self._load_data()
@@ -358,8 +397,11 @@ class DataBase:
         elif self.storage_type == "sqlite":
             self.cursor.execute("SELECT user_id, api_id, api_hash, bot_token, session_string FROM bots")
             rows = self.cursor.fetchall()
-            raw_bots = [{"user_id": r[0], "api_id": r[1], "api_hash": r[2], "bot_token": r[3], "session_string": r[4]}
-                        for r in rows if (r[3] if is_token else r[4])]
+            raw_bots = [
+                {"user_id": r[0], "api_id": r[1], "api_hash": r[2], "bot_token": r[3], "session_string": r[4]}
+                for r in rows
+                if (r[3] if is_token else r[4])
+            ]
         else:
             raw_bots = [bot for bot in self._load_data().get("bots", []) if field in bot]
         for bot_data in raw_bots:

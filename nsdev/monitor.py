@@ -1,5 +1,7 @@
-import psutil
 from types import SimpleNamespace
+
+import psutil
+
 
 class ServerMonitor:
     def get_stats(self):

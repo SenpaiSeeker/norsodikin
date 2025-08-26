@@ -5,6 +5,7 @@ import httpx
 
 from .logger import LoggerHandler
 
+
 class HuggingFaceGenerator:
     def __init__(
         self,

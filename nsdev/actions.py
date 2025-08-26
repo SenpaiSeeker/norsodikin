@@ -1,6 +1,8 @@
 import asyncio
 from contextlib import asynccontextmanager
+
 from pyrogram.enums import ChatAction
+
 
 class TelegramActions:
     def __init__(self, client):
@@ -20,7 +22,7 @@ class TelegramActions:
                 except asyncio.CancelledError:
                     break
                 except Exception:
-                    break 
+                    break
 
         task = asyncio.create_task(send_action_loop())
         try:
@@ -29,7 +31,7 @@ class TelegramActions:
             raise e
         finally:
             task.cancel()
-    
+
     def typing(self, chat_id):
         return self._action_context(chat_id, ChatAction.TYPING)
 

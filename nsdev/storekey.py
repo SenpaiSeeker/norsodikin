@@ -1,7 +1,8 @@
-import sys
 import argparse
+import sys
 
 from .logger import LoggerHandler
+
 
 class KeyManager:
     def __init__(self):

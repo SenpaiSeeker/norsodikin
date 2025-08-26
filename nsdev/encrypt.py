@@ -2,8 +2,9 @@ import base64
 import binascii
 import json
 
-from .logger import LoggerHandler
 from .colorize import AnsiColors
+from .logger import LoggerHandler
+
 
 class CipherHandler:
     """

@@ -4,6 +4,7 @@ import yaml
 
 from .colorize import AnsiColors
 
+
 class YamlHandler(AnsiColors):
     def __init__(self):
         super().__init__()

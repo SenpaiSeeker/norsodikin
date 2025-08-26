@@ -1,5 +1,6 @@
 import time
 
+
 class TelegramProgressBar:
     def __init__(self, client, message, task_name="Proses"):
         self.client = client

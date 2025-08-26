@@ -2,6 +2,7 @@ import asyncio
 
 import googletrans
 
+
 class Translator:
     def __init__(self):
         self._translator = googletrans.Translator()

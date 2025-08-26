@@ -3,6 +3,7 @@ from io import BytesIO
 
 from gtts import gTTS
 
+
 class TextToSpeech:
     def _sync_generate(self, text: str, lang: str):
         try:
