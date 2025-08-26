@@ -7,22 +7,26 @@ from .button import Button
 from .colorize import AnsiColors
 from .database import DataBase
 from .encrypt import AsciiManager, CipherHandler
-from .formatter import TextFormatter
 from .gemini import ChatbotGemini
 from .gradient import Gradient
 from .huggingface import HuggingFaceGenerator
 from .logger import LoggerHandler
-from .monitor import ServerMonitor
 from .payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
-from .progress import TelegramProgressBar
 from .storekey import KeyManager
+from .ymlreder import YamlHandler
+from .monitor import ServerMonitor
 from .tts import TextToSpeech
 from .web_summarizer import WebSummarizer
-from .ymlreder import YamlHandler
+from .progress import TelegramProgressBar
+from .formatter import TextFormatter
+from .translate import Translator
+from .qrcode import QrCodeGenerator
+from .actions import TelegramActions
+from .shell import ShellExecutor
+from .url import UrlUtils
 
-__version__ = "1.0.9"
+__version__ = "1.2.0"
 __author__ = "@NorSodikin"
-
 
 class NsDev:
     def __init__(self, client):
@@ -33,11 +37,14 @@ class NsDev:
             hf=HuggingFaceGenerator,
             tts=TextToSpeech,
             web=WebSummarizer,
+            translate=Translator,
+            qrcode=QrCodeGenerator,
         )
         self.telegram = SimpleNamespace(
             arg=Argument(self._client),
             button=Button(),
             formatter=TextFormatter,
+            actions=TelegramActions(self._client),
         )
         self.data = SimpleNamespace(
             db=DataBase,
@@ -49,6 +56,8 @@ class NsDev:
             grad=Gradient(),
             log=LoggerHandler(),
             progress=TelegramProgressBar,
+            shell=ShellExecutor(),
+            url=UrlUtils(),
         )
         self.server = SimpleNamespace(
             user=SSHUserManager,
