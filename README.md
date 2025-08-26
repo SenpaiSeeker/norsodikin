@@ -75,7 +75,7 @@ client.ns.utils.log.info("Logger keren siap mencatat!")
 ---
 
 <details>
-<summary>Referensi API Lengkap (Klik untuk Buka/Tutup)</summary>
+<summary><strong>Referensi API Lengkap (Klik untuk Buka/Tutup)</strong></summary>
 
 Berikut adalah panduan mendalam untuk setiap modul yang tersedia.
 
