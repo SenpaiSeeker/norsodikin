@@ -3,38 +3,38 @@ import glob
 import math
 import os
 import random
-from typing import List
 
 import numpy as np
+from moviepy import VideoClip, VideoFileClip
 from PIL import Image, ImageDraw, ImageFont
 
 from .logger import LoggerHandler
-
-from moviepy import VideoClip, VideoFileClip
 
 
 class VideoFX:
     def __init__(self, fonts_dir: str = "fonts"):
         self.log = LoggerHandler()
         self.fonts_dir = fonts_dir
-        self.available_fonts: List[str] = []
+        self.available_fonts = []
         if os.path.isdir(self.fonts_dir):
-            ttf = glob.glob(os.path.join(self.fonts_dir, "*.ttf"))
-            otf = glob.glob(os.path.join(self.fonts_dir, "*.otf"))
-            self.available_fonts = ttf + otf
+            ttf_files = glob.glob(os.path.join(self.fonts_dir, "*.ttf"))
+            otf_files = glob.glob(os.path.join(self.fonts_dir, "*.otf"))
+            self.available_fonts = ttf_files + otf_files
 
         if not self.available_fonts:
             self.log.print(
-                f"{self.log.YELLOW}Peringatan: tidak ada font di '{self.fonts_dir}'. Menggunakan font default."
+                f"{self.log.YELLOW}Peringatan: Tidak ada font ditemukan di folder 'fonts'. Akan menggunakan font default."
             )
 
     def _get_font(self, font_size: int):
         if self.available_fonts:
-            path = random.choice(self.available_fonts)
+            random_font_path = random.choice(self.available_fonts)
             try:
-                return ImageFont.truetype(path, font_size)
-            except IOError:
-                self.log.print(f"{self.log.YELLOW}Gagal memuat font '{path}'. Menggunakan default.")
+                return ImageFont.truetype(random_font_path, font_size)
+            except OSError:
+                self.log.print(
+                    f"{self.log.YELLOW}Peringatan: Gagal memuat font '{random_font_path}'. Menggunakan font default."
+                )
                 return ImageFont.load_default()
         return ImageFont.load_default()
 
@@ -42,37 +42,33 @@ class VideoFX:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, func, *args)
 
-    def _create_rgb_video(self, text_lines: List[str], output_path: str, duration: float, fps: int):
-        text_lines = [t.strip() for t in text_lines if t and t.strip()]
-        if not text_lines:
-            text_lines = [" "]
-
+    def _create_rgb_video(self, text_lines: list, output_path: str, duration: float, fps: int):
         font_size = 90
         font = self._get_font(font_size)
 
-        dummy = Image.new("RGB", (1,1))
-        draw_dummy = ImageDraw.Draw(dummy)
-        widths = [draw_dummy.textbbox((0,0), line, font=font)[2] for line in text_lines]
-        heights = [draw_dummy.textbbox((0,0), line, font=font)[3] for line in text_lines]
+        dummy_draw = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+        text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
+        text_heights = [dummy_draw.textbbox((0, 0), line, font=font)[3] for line in text_lines]
 
-        canvas_w = max(max(widths) + 40, 512)
-        total_h = sum(heights) + len(text_lines)*20
+        canvas_w = max(max(text_widths) + 40, 512)
+        total_h = sum(text_heights) + (len(text_lines) * 20)
         canvas_h = max(total_h, 512)
 
         def make_frame(t):
             img = Image.new("RGB", (canvas_w, canvas_h), "black")
             draw = ImageDraw.Draw(img)
-            r = int(127*(1 + math.sin(t*15 + 0))) + 128
-            g = int(127*(1 + math.sin(t*15 + 2))) + 128
-            b = int(127*(1 + math.sin(t*15 + 4))) + 128
 
-            y = (canvas_h - total_h) / 2
+            r = int(127 * (1 + math.sin(t * 15 + 0))) + 128
+            g = int(127 * (1 + math.sin(t * 15 + 2))) + 128
+            b = int(127 * (1 + math.sin(t * 15 + 4))) + 128
+
+            current_y = (canvas_h - total_h) / 2
             for i, line in enumerate(text_lines):
-                w = widths[i]
-                h = heights[i]
-                pos = ((canvas_w - w)/2, y)
-                draw.text(pos, line, font=font, fill=(r,g,b))
-                y += h + 20
+                line_w = text_widths[i]
+                line_h = text_heights[i]
+                position = ((canvas_w - line_w) / 2, current_y)
+                draw.text(position, line, font=font, fill=(r, g, b))
+                current_y += line_h + 20
 
             return np.array(img)
 
@@ -81,29 +77,28 @@ class VideoFX:
         animation.close()
 
     async def text_to_video(self, text: str, output_path: str, duration: float = 3.0, fps: int = 24):
-        lines = text.split(";") if ";" in text else text.splitlines()
-        await self._run_in_executor(self._create_rgb_video, lines, output_path, duration, fps)
+        text_lines = text.split(";")
+        await self._run_in_executor(self._create_rgb_video, text_lines, output_path, duration, fps)
         return output_path
 
     def _convert_to_sticker(self, video_path: str, output_path: str):
         clip = VideoFileClip(video_path)
 
-        duration = min(clip.duration, 2.95)
-        trimmed = clip.subclipped(0, duration)
+        max_duration = min(clip.duration, 2.95)
+        trimmed_clip = clip.subclipped(0, max_duration)
 
-        if trimmed.w >= trimmed.h:
-            resized = trimmed.with_resized(width=512)
+        if trimmed_clip.w >= trimmed_clip.h:
+            resized_clip = trimmed_clip.resized(width=512)
         else:
-            resized = trimmed.with_resized(height=512)
+            resized_clip = trimmed_clip.resized(height=512)
 
-        final = resized.with_position(("center", "center"))
-
-        final.write_videofile(output_path, codec="libvpx-vp9", audio=False, logger=None)
+        final_clip = resized_clip.with_position(("center", "center"))
+        final_clip.write_videofile(output_path, codec="libvpx-vp9", audio=False, logger=None)
 
         clip.close()
-        trimmed.close()
-        resized.close()
-        final.close()
+        trimmed_clip.close()
+        resized_clip.close()
+        final_clip.close()
 
     async def video_to_sticker(self, video_path: str, output_path: str):
         await self._run_in_executor(self._convert_to_sticker, video_path, output_path)
