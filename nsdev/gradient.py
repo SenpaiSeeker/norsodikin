@@ -1,17 +1,20 @@
+import random
+import asyncio
+import time
+
+import pyfiglet
+
 class Gradient:
     def __init__(self):
-        self.figlet = __import__("pyfiglet").Figlet(font="slant")
-        self.random = __import__("random")
-        self.asyncio = __import__("asyncio")
-        self.time = __import__("time")
+        self.figlet = pyfiglet.Figlet(font="slant")
         self.start_color = self.random_color()
         self.end_color = self.random_color()
 
     def random_color(self):
         return (
-            self.random.randint(128, 255),
-            self.random.randint(128, 255),
-            self.random.randint(128, 255),
+            random.randint(128, 255),
+            random.randint(128, 255),
+            random.randint(128, 255),
         )
 
     def _rgb_to_256_ansi_index(self, r, g, b):
@@ -95,11 +98,11 @@ class Gradient:
                 end="\r",
                 flush=True,
             )
-            await self.asyncio.sleep(1)
+            await asyncio.sleep(1)
 
     async def ping(self):
-        start_time = self.time.perf_counter()
-        await self.asyncio.sleep(self.random.uniform(0.1, 0.5))
-        end_time = self.time.perf_counter()
+        start_time = time.perf_counter()
+        await asyncio.sleep(random.uniform(0.1, 0.5))
+        end_time = time.perf_counter()
 
         return (end_time - start_time) * 1000
