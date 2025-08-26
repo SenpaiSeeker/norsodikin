@@ -1,7 +1,8 @@
+import random
+
 class AnsiColors:
     def __init__(self):
         self.RESET = "\033[0m"
-
         self.BLACK = "\033[1;38;5;16m"
         self.RED = "\033[1;38;5;196m"
         self.GREEN = "\033[1;38;5;46m"
@@ -30,7 +31,6 @@ class AnsiColors:
         self.OLIVE = "\033[1;38;5;58m"
         self.BEIGE = "\033[1;38;5;230m"
         self.MINT = "\033[1;38;5;121m"
-
         self.LIGHT_BLACK = "\033[1;38;5;235m"
         self.LIGHT_RED = "\033[1;38;5;203m"
         self.LIGHT_GREEN = "\033[1;38;5;120m"
@@ -60,11 +60,13 @@ class AnsiColors:
         self.LIGHT_BEIGE = "\033[1;38;5;253m"
         self.LIGHT_MINT = "\033[1;38;5;157m"
 
+    @property
     def print_all_colors(self):
         colors_dict = vars(self)
         for name, code in colors_dict.items():
             if name != "RESET":
                 print(f"{code}{name}{self.RESET}")
 
+    @property
     def random_color(self):
-        return __import__("random").choice([code for name, code in vars(self).items() if name != "RESET"]), self.RESET
+        return random.choice([code for name, code in vars(self).items() if name != "RESET"]), self.RESET
