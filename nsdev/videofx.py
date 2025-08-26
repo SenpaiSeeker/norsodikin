@@ -3,6 +3,7 @@ import glob
 import math
 import os
 import random
+import functools
 from typing import List
 
 import numpy as np
@@ -39,9 +40,10 @@ class VideoFX:
                 return ImageFont.load_default()
         return ImageFont.load_default()
 
-    async def _run_in_executor(self, func, *args):
+    async def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, func, *args)
+        call = functools.partial(func, *args, **kwargs)
+        return await loop.run_in_executor(None, call)
 
     def _create_rgb_video(
         self,
@@ -119,6 +121,7 @@ class VideoFX:
         output_path: str,
         duration: float = 3.0,
         fps: int = 24,
+        *,
         blink: bool = False,
         blink_rate: float = 2.0,
         blink_duty: float = 0.15,
