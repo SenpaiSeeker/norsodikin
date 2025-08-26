@@ -1,15 +1,16 @@
+import time
+
 class TelegramProgressBar:
     def __init__(self, client, message, task_name="Proses"):
         self.client = client
         self.message = message
         self.task_name = task_name
-        self.time = __import__("time")
-        self.start_time = self.time.time()
+        self.start_time = time.time()
         self.last_update_time = 0
 
     def reset(self, new_task_name: str):
         self.task_name = new_task_name
-        self.start_time = self.time.time()
+        self.start_time = time.time()
         self.last_update_time = 0
 
     def _format_bytes(self, size):
@@ -24,7 +25,7 @@ class TelegramProgressBar:
         return f"{size:.2f} {power_labels[n]}B"
 
     async def update(self, current, total):
-        current_time = self.time.time()
+        current_time = time.time()
         if current_time - self.last_update_time < 2 and current < total:
             return
         self.last_update_time = current_time
