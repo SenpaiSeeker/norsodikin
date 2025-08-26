@@ -1,13 +1,13 @@
-class TextToSpeech:
-    def __init__(self):
-        self.gTTS = __import__("gtts").gTTS
-        self.BytesIO = __import__("io").BytesIO
-        self.asyncio = __import__("asyncio")
+import asyncio
+from io import BytesIO
 
+from gtts import gTTS
+
+class TextToSpeech:
     def _sync_generate(self, text: str, lang: str):
         try:
-            tts = self.gTTS(text=text, lang=lang, slow=False)
-            fp = self.BytesIO()
+            tts = gTTS(text=text, lang=lang, slow=False)
+            fp = BytesIO()
             tts.write_to_fp(fp)
             fp.seek(0)
             return fp.getvalue()
@@ -15,7 +15,7 @@ class TextToSpeech:
             return e
 
     async def generate(self, text: str, lang: str = "id") -> bytes:
-        loop = self.asyncio.get_running_loop()
+        loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, self._sync_generate, text, lang)
         if isinstance(result, Exception):
             raise result
