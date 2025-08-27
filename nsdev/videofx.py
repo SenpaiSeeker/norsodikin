@@ -33,8 +33,6 @@ class VideoFX:
             self.available_fonts = self._ensure_local_fonts(font_urls)
 
         random.seed(42)
-        self._lightning_phases = [random.random() * 2 * math.pi for _ in range(6)]
-        self._lightning_amps = [0.6 + random.random() * 0.8 for _ in range(6)]
 
     def _fetch_google_font_urls(self, limit: int = 15) -> List[str]:
         all_font_families = []
@@ -134,14 +132,6 @@ class VideoFX:
         blink_duty: float = 0.15,
         blink_smooth: bool = False,
         font_size: int = 90,
-        lightning: bool = False,
-        lightning_rate: float = 1.0,
-        lightning_bolts: int = 2,
-        lightning_color: Tuple[int, int, int] = (255, 240, 200),
-        lightning_width: int = 2,
-        lightning_glow: bool = True,
-        lightning_glow_width: int = 10,
-        lightning_strength: float = 1.0,
         transparent: bool = True,
     ):
         text_lines = [t.strip() for t in text_lines if t and t.strip()]
@@ -167,35 +157,6 @@ class VideoFX:
         else:
             period = None
             on_duration = None
-
-        def _compute_lightning_spike(t: float) -> float:
-            val = 0.0
-            for i, phase in enumerate(self._lightning_phases):
-                freq = lightning_rate * (1 + i * 0.3)
-                amp = self._lightning_amps[i]
-                v = abs(math.sin(2 * math.pi * freq * t + phase))
-                val += (v**30) * amp
-            val = val * lightning_strength
-            return max(0.0, min(1.0, val))
-
-        def _bolt_points_around_rect(rect, segments=7, jitter=0.25):
-            x0, y0, x1, y1 = rect
-            w = x1 - x0
-            h = y1 - y0
-            cx = (x0 + x1) / 2
-            cy = (y0 + y1) / 2
-            points = []
-            vertical_offset = h * 0.9
-            sx = cx + (random.random() - 0.5) * w * 1.2
-            sy = cy - vertical_offset
-            ex = cx + (random.random() - 0.5) * w * 1.2
-            ey = cy + vertical_offset
-            for i in range(segments + 1):
-                t = i / segments
-                x = sx + (ex - sx) * t + (random.random() - 0.5) * w * jitter * (1 - abs(0.5 - t) * 2)
-                y = sy + (ey - sy) * t + (random.random() - 0.5) * h * jitter * (1 - abs(0.5 - t) * 2)
-                points.append((x, y))
-            return points
 
         def make_frame(t):
             base = Image.new(mode, (canvas_w, canvas_h), (0, 0, 0, 0) if transparent else (0, 0, 0, 255))
@@ -228,52 +189,6 @@ class VideoFX:
                 y1 = position[1] + line_h + rect_margin
                 rects.append((x0, y0, x1, y1))
                 current_y += line_h + 20
-            if lightning:
-                spike = _compute_lightning_spike(t)
-                if spike > 0.3:
-                    overlay = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-                    draw_ov = ImageDraw.Draw(overlay)
-                    flash_alpha = min(255, int(255 * spike * 2))
-                    draw_ov.rectangle((0, 0, canvas_w, canvas_h), fill=(255, 255, 255, flash_alpha))
-
-                    bolts = max(1, int(lightning_bolts + spike * 4))
-                    for bidx in range(bolts):
-                        target_rect = random.choice(rects)
-                        points = _bolt_points_around_rect(
-                            target_rect, segments=6, jitter=0.28 + spike * 0.5
-                        )
-                        color_alpha = int(200 * spike)
-                        lw = max(1, int(lightning_width * (1 + spike * 3)))
-                        col = (lightning_color[0], lightning_color[1], lightning_color[2], color_alpha)
-                        if lightning_glow:
-                            glow_w = lightning_glow_width + int(spike * 20)
-                            for gw in range(glow_w, 0, -3):
-                                aal = int(max(8, color_alpha * (gw / (glow_w + 1)) * 0.6))
-                                draw_ov.line(points, fill=(lightning_color[0], lightning_color[1], lightning_color[2], aal), width=gw)
-                        draw_ov.line(points, fill=col, width=lw)
-
-                        if random.random() < 0.4:
-                            mid = random.randint(1, len(points) - 2)
-                            bx0, by0 = points[mid]
-                            x0, y0, x1, y1 = target_rect
-                            w = x1 - x0
-                            h = y1 - y0
-                            ex = bx0 + (random.random() - 0.5) * w * 0.5
-                            ey = by0 + random.uniform(h * 0.3, h * 0.7)
-                            branch_points = [(bx0, by0)]
-                            for i in range(1, 4):
-                                t2 = i / 3
-                                x = bx0 + (ex - bx0) * t2 + (random.random() - 0.5) * (w * 0.1)
-                                y = by0 + (ey - by0) * t2 + (random.random() - 0.5) * (h * 0.1)
-                                branch_points.append((x, y))
-                            branch_col = (
-                                lightning_color[0], lightning_color[1], lightning_color[2],
-                                int(color_alpha * 0.7)
-                            )
-                            branch_width = max(1, lw // 2)
-                            draw_ov.line(branch_points, fill=branch_col, width=branch_width)
-
-                    base = Image.alpha_composite(base.convert("RGBA"), overlay).convert(mode)
 
             arr = np.array(base, dtype=np.uint8)
             return arr
@@ -297,23 +212,14 @@ class VideoFX:
         self,
         text: str,
         output_path: str,
-        duration: float = 3.0,
+        duration: float = 5.0,
         fps: int = 24,
-        *,
         blink: bool = False,
         blink_rate: float = 2.0,
         blink_duty: float = 0.15,
         blink_smooth: bool = False,
         font_size: int = 90,
-        lightning: bool = False,
-        lightning_rate: float = 1.0,
-        lightning_bolts: int = 2,
-        lightning_color: Tuple[int, int, int] = (255, 240, 200),
-        lightning_width: int = 2,
-        lightning_glow: bool = True,
-        lightning_glow_width: int = 10,
-        lightning_strength: float = 1.0,
-        transparent: bool = True,
+        transparent: bool = False,
     ):
         if ";" in text:
             text_lines = text.split(";")
@@ -330,19 +236,11 @@ class VideoFX:
             blink_duty=blink_duty,
             blink_smooth=blink_smooth,
             font_size=font_size,
-            lightning=lightning,
-            lightning_rate=lightning_rate,
-            lightning_bolts=lightning_bolts,
-            lightning_color=lightning_color,
-            lightning_width=lightning_width,
-            lightning_glow=lightning_glow,
-            lightning_glow_width=lightning_glow_width,
-            lightning_strength=lightning_strength,
             transparent=transparent,
         )
         return output_path
 
-    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30, transparent: bool = True):
+    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30, transparent: bool = False):
         clip = VideoFileClip(video_path)
         max_duration = min(clip.duration, 2.95)
         trimmed_clip = clip.subclipped(0, max_duration)
@@ -363,6 +261,6 @@ class VideoFX:
         resized_clip.close()
         final_clip.close()
 
-    async def video_to_sticker(self, video_path: str, output_path: str, fps: int = 30, transparent: bool = True):
+    async def video_to_sticker(self, video_path: str, output_path: str, fps: int = 30, transparent: bool = False):
         await self._run_in_executor(self._convert_to_sticker, video_path, output_path, fps=fps, transparent=transparent)
         return output_path
