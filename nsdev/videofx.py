@@ -3,13 +3,21 @@ import functools
 import math
 import os
 import random
+import shutil
+import subprocess
+import tempfile
 import urllib.request
 from typing import List, Tuple
+import shlex
 
 import numpy as np
 import requests
 from moviepy import VideoClip, VideoFileClip
 from PIL import Image, ImageDraw, ImageFont
+
+from .logger import LoggerHandler 
+
+log = LoggerHandler()
 
 
 class VideoFX:
@@ -122,6 +130,61 @@ class VideoFX:
         call = functools.partial(func, *args, **kwargs)
         return await loop.run_in_executor(None, call)
 
+    def _compute_lightning_spike(self, t: float, lightning_rate: float, lightning_strength: float) -> float:
+        val = 0.0
+        for i, phase in enumerate(self._lightning_phases):
+            freq = lightning_rate * (1 + i * 0.3)
+            amp = self._lightning_amps[i]
+            v = abs(math.sin(2 * math.pi * freq * t + phase))
+            val += (v**30) * amp
+        val = val * lightning_strength
+        return max(0.0, min(1.0, val))
+
+    def _bolt_points_around_rect(self, rect, segments=7, jitter=0.25):
+        x0, y0, x1, y1 = rect
+        w = x1 - x0
+        h = y1 - y0
+        cx = (x0 + x1) / 2
+        cy = (y0 + y1) / 2
+        points = []
+        vertical_offset = h * 0.9
+        sx = cx + (random.random() - 0.5) * w * 1.2
+        sy = cy - vertical_offset
+        ex = cx + (random.random() - 0.5) * w * 1.2
+        ey = cy + vertical_offset
+        for i in range(segments + 1):
+            t = i / segments
+            x = sx + (ex - sx) * t + (random.random() - 0.5) * w * jitter * (1 - abs(0.5 - t) * 2)
+            y = sy + (ey - sy) * t + (random.random() - 0.5) * h * jitter * (1 - abs(0.5 - t) * 2)
+            points.append((x, y))
+        return points
+
+    def _write_png_sequence_and_encode(self, make_frame, duration: float, fps: int, output_path: str) -> None:
+        tmp_dir = tempfile.mkdtemp(prefix="videofx_frames_")
+        try:
+            nframes = max(1, int(math.ceil(duration * fps)))
+            for i in range(nframes):
+                t = i / fps
+                frame = make_frame(t)
+                if frame.dtype != np.uint8:
+                    frame = frame.astype(np.uint8)
+                img = Image.fromarray(frame)
+                img.save(os.path.join(tmp_dir, f"frame_{i:05d}.png"))
+
+            if not output_path.lower().endswith(('.webm', '.mkv')):
+                output_path = os.path.splitext(output_path)[0] + '.webm'
+
+            cmd = [
+                'ffmpeg', '-y', '-framerate', str(fps), '-i', os.path.join(tmp_dir, 'frame_%05d.png'),
+                '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-crf', '30', '-b:v', '0', output_path
+            ]
+            subprocess.run(cmd, check=True)
+        finally:
+            try:
+                shutil.rmtree(tmp_dir)
+            except Exception:
+                pass
+
     def _create_rgb_video(
         self,
         text_lines: List[str],
@@ -153,49 +216,20 @@ class VideoFX:
         dummy_draw = ImageDraw.Draw(dummy_img)
         text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
         text_heights = [dummy_draw.textbbox((0, 0), line, font=font)[3] for line in text_lines]
-        
+
         base_w = max(max(text_widths) + 40, 512)
         canvas_w = base_w - (base_w % 2)
-        
+
         total_h = sum(text_heights) + (len(text_lines) * 20)
         base_h = max(total_h, 512)
         canvas_h = base_h - (base_h % 2)
-        
+
         if blink and blink_rate > 0:
             period = 1.0 / blink_rate
             on_duration = max(0.0, min(1.0, blink_duty)) * period
         else:
             period = None
             on_duration = None
-
-        def _compute_lightning_spike(t: float) -> float:
-            val = 0.0
-            for i, phase in enumerate(self._lightning_phases):
-                freq = lightning_rate * (1 + i * 0.3)
-                amp = self._lightning_amps[i]
-                v = abs(math.sin(2 * math.pi * freq * t + phase))
-                val += (v**30) * amp
-            val = val * lightning_strength
-            return max(0.0, min(1.0, val))
-
-        def _bolt_points_around_rect(rect, segments=7, jitter=0.25):
-            x0, y0, x1, y1 = rect
-            w = x1 - x0
-            h = y1 - y0
-            cx = (x0 + x1) / 2
-            cy = (y0 + y1) / 2
-            points = []
-            vertical_offset = h * 0.9
-            sx = cx + (random.random() - 0.5) * w * 1.2
-            sy = cy - vertical_offset
-            ex = cx + (random.random() - 0.5) * w * 1.2
-            ey = cy + vertical_offset
-            for i in range(segments + 1):
-                t = i / segments
-                x = sx + (ex - sx) * t + (random.random() - 0.5) * w * jitter * (1 - abs(0.5 - t) * 2)
-                y = sy + (ey - sy) * t + (random.random() - 0.5) * h * jitter * (1 - abs(0.5 - t) * 2)
-                points.append((x, y))
-            return points
 
         def make_frame(t):
             base = Image.new(mode, (canvas_w, canvas_h), (0, 0, 0, 0) if transparent else (0, 0, 0, 255))
@@ -220,7 +254,10 @@ class VideoFX:
                 line_w = text_widths[i]
                 line_h = text_heights[i]
                 position = ((canvas_w - line_w) / 2, current_y)
-                draw_base.text(position, line, font=font, fill=(rr, gg, bb, 255) if transparent else (rr, gg, bb))
+                if transparent:
+                    draw_base.text(position, line, font=font, fill=(rr, gg, bb, 255))
+                else:
+                    draw_base.text(position, line, font=font, fill=(rr, gg, bb))
                 rect_margin = 12 + int(font_size * 0.12)
                 x0 = position[0] - rect_margin
                 y0 = position[1] - rect_margin
@@ -228,15 +265,16 @@ class VideoFX:
                 y1 = position[1] + line_h + rect_margin
                 rects.append((x0, y0, x1, y1))
                 current_y += line_h + 20
+
             if lightning:
-                spike = _compute_lightning_spike(t)
-                if spike > 0.003:
+                spike = self._compute_lightning_spike(t, lightning_rate, lightning_strength)
+                if spike > 0.003 and rects:
                     overlay = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
                     draw_ov = ImageDraw.Draw(overlay)
                     bolts = max(1, int(lightning_bolts + spike * 4))
                     for bidx in range(bolts):
                         target_rect = random.choice(rects)
-                        points = _bolt_points_around_rect(target_rect, segments=6, jitter=0.28 + spike * 0.5)
+                        points = self._bolt_points_around_rect(target_rect, segments=6, jitter=0.28 + spike * 0.5)
                         color_alpha = int(200 * spike)
                         lw = max(1, int(lightning_width * (1 + spike * 3)))
                         col = (lightning_color[0], lightning_color[1], lightning_color[2], color_alpha)
@@ -247,23 +285,47 @@ class VideoFX:
                                 draw_ov.line(points, fill=(lightning_color[0], lightning_color[1], lightning_color[2], aal), width=gw)
                         draw_ov.line(points, fill=col, width=lw)
                     base = Image.alpha_composite(base.convert("RGBA"), overlay).convert(mode)
+
             arr = np.array(base, dtype=np.uint8)
+            if transparent and arr.ndim == 3 and arr.shape[2] == 3:
+                alpha = np.full((arr.shape[0], arr.shape[1], 1), 255, dtype=np.uint8)
+                arr = np.concatenate([arr, alpha], axis=2)
             return arr
 
-        if transparent:
-            animation = VideoClip(make_frame, is_mask=True, duration=duration)
-        else:
-            animation = VideoClip(make_frame, duration=duration)
+        animation = VideoClip(make_frame, duration=duration)
 
-        if transparent:
-            animation.write_videofile(
-                output_path, fps=fps, codec="libvpx-vp9", logger=None, ffmpeg_params=["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"]
-            )
-        else:
-            animation.write_videofile(
-                output_path, fps=fps, codec="libx264", logger=None, ffmpeg_params=["-pix_fmt", "yuv420p"]
-            )
-        animation.close()
+        if transparent and not output_path.lower().endswith(('.webm', '.mkv')):
+            output_path = os.path.splitext(output_path)[0] + '.webm'
+
+        try:
+            if transparent:
+                animation.write_videofile(
+                    output_path,
+                    fps=fps,
+                    codec="libvpx-vp9",
+                    logger=None,
+                    ffmpeg_params=["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"],
+                )
+            else:
+                animation.write_videofile(
+                    output_path,
+                    fps=fps,
+                    codec="libx264",
+                    logger=None,
+                    ffmpeg_params=["-pix_fmt", "yuv420p"],
+                )
+        except Exception as e:
+            log.print(f"{log.YELLOW}MoviePy writer failed, falling back to PNG->ffmpeg. Error: {log.RED}{e}")
+            if transparent:
+                try:
+                    self._write_png_sequence_and_encode(make_frame, duration, fps, output_path)
+                except Exception as e2:
+                    log.print(f"{log.YELLOW}Fallback PNG->ffmpeg juga gagal: {log.RED}{e2}")
+                    raise Exception(e2)
+            else:
+                raise Exception("Ffmpeg callback_query-> error")
+        finally:
+            animation.close()
 
     async def text_to_video(
         self,
@@ -291,7 +353,7 @@ class VideoFX:
             text_lines = text.split(";")
         else:
             text_lines = text.splitlines()
-        await self._run_in_executor(
+        return await self._run_in_executor(
             self._create_rgb_video,
             text_lines,
             output_path,
@@ -312,29 +374,68 @@ class VideoFX:
             lightning_strength=lightning_strength,
             transparent=transparent,
         )
-        return output_path
 
     def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30, transparent: bool = True):
         clip = VideoFileClip(video_path)
         max_duration = min(clip.duration, 2.95)
-        trimmed_clip = clip.subclipped(0, max_duration)
+        trimmed_clip = clip.subclip(0, max_duration)
         if trimmed_clip.w >= trimmed_clip.h:
-            resized_clip = trimmed_clip.resized(width=512)
+            resized_clip = trimmed_clip.resize(width=512)
         else:
-            resized_clip = trimmed_clip.resized(height=512)
-        final_clip = resized_clip.with_fps(fps).with_position(("center", "center"))
-        if transparent:
-            ffmpeg_params = ["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"]
-        else:
-            ffmpeg_params = ["-pix_fmt", "yuv420p", "-crf", "30", "-b:v", "0"]
-        final_clip.write_videofile(
-            output_path, codec="libvpx-vp9", audio=False, logger=None, ffmpeg_params=ffmpeg_params
-        )
-        clip.close()
-        trimmed_clip.close()
-        resized_clip.close()
-        final_clip.close()
+            resized_clip = trimmed_clip.resize(height=512)
+        final_clip = resized_clip.set_fps(fps)
+
+        if transparent and not output_path.lower().endswith(('.webm', '.mkv')):
+            output_path = os.path.splitext(output_path)[0] + '.webm'
+
+        try:
+            if transparent:
+                final_clip.write_videofile(
+                    output_path,
+                    codec='libvpx-vp9',
+                    audio=False,
+                    logger=None,
+                    ffmpeg_params=['-pix_fmt', 'yuva420p', '-crf', '30', '-b:v', '0'],
+                )
+            else:
+                final_clip.write_videofile(
+                    output_path,
+                    codec='libx264',
+                    audio=False,
+                    logger=None,
+                    ffmpeg_params=['-pix_fmt', 'yuv420p'],
+                )
+        except Exception as e:
+            log.print(f"{log.YELLOW}Sticker write failed, falling back to ffmpeg frames. Error: {log.RED}{e}")
+            tmp_dir = tempfile.mkdtemp(prefix='sticker_frames_')
+            try:
+                nframes = max(1, int(math.ceil(max_duration * fps)))
+                for i in range(nframes):
+                    t = i / fps
+                    frame = final_clip.get_frame(t)
+                    if frame.dtype != np.uint8:
+                        frame = frame.astype(np.uint8)
+                    img = Image.fromarray(frame)
+                    img.save(os.path.join(tmp_dir, f"frame_{i:05d}.png"))
+
+                cmd = [
+                    'ffmpeg', '-y', '-framerate', str(fps), '-i', os.path.join(tmp_dir, 'frame_%05d.png'),
+                    '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-crf', '30', '-b:v', '0', output_path
+                ]
+                subprocess.run(cmd, check=True)
+            finally:
+                try:
+                    shutil.rmtree(tmp_dir)
+                except Exception:
+                    pass
+        finally:
+            clip.close()
+            try:
+                trimmed_clip.close()
+                resized_clip.close()
+                final_clip.close()
+            except Exception:
+                pass
 
     async def video_to_sticker(self, video_path: str, output_path: str, fps: int = 30, transparent: bool = True):
-        await self._run_in_executor(self._convert_to_sticker, video_path, output_path, fps=fps, transparent=transparent)
-        return output_path
+        return await self._run_in_executor(self._convert_to_sticker, video_path, output_path, fps, transparent)
