@@ -162,9 +162,14 @@ class VideoFX:
         dummy_draw = ImageDraw.Draw(dummy_img)
         text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
         text_heights = [dummy_draw.textbbox((0, 0), line, font=font)[3] for line in text_lines]
-        canvas_w = max(max(text_widths) + 40, 512)
+
+        base_w = max(max(text_widths) + 40, 512)
+        canvas_w = base_w - (base_w % 2)
+
         total_h = sum(text_heights) + (len(text_lines) * 20)
-        canvas_h = max(total_h, 512)
+        base_h = max(total_h, 512)
+        canvas_h = base_h - (base_h % 2)
+
         if blink and blink_rate > 0:
             period = 1.0 / blink_rate
             on_duration = max(0.0, min(1.0, blink_duty)) * period
@@ -189,14 +194,11 @@ class VideoFX:
             cx = (x0 + x1) / 2
             cy = (y0 + y1) / 2
             points = []
-            
             vertical_offset = h * 0.9
-            
             sx = cx + (random.random() - 0.5) * w * 1.2
             sy = cy - vertical_offset
             ex = cx + (random.random() - 0.5) * w * 1.2
             ey = cy + vertical_offset
-            
             for i in range(segments + 1):
                 t = i / segments
                 x = sx + (ex - sx) * t + (random.random() - 0.5) * w * jitter * (1 - abs(0.5 - t) * 2)
@@ -271,7 +273,13 @@ class VideoFX:
                 ffmpeg_params=["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"],
             )
         else:
-            animation.write_videofile(output_path, fps=fps, codec="libx264", logger=None)
+            animation.write_videofile(
+                output_path, 
+                fps=fps, 
+                codec="libx264", 
+                logger=None, 
+                ffmpeg_params=["-pix_fmt", "yuv420p"]
+            )
         animation.close()
 
     async def text_to_video(
