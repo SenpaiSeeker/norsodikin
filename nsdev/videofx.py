@@ -5,7 +5,7 @@ import os
 import random
 import functools
 import urllib.request
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 from moviepy import VideoClip, VideoFileClip
@@ -33,6 +33,9 @@ class VideoFX:
             self.log.print(
                 f"{self.log.YELLOW}Peringatan: Tidak ada font berhasil didownload. Akan menggunakan font default."
             )
+        random.seed(42)
+        self._lightning_phases = [random.random() * 2 * math.pi for _ in range(6)]
+        self._lightning_amps = [0.6 + random.random() * 0.8 for _ in range(6)]
 
     def _ensure_local_fonts(self, urls: List[str]) -> List[str]:
         paths: List[str] = []
@@ -90,12 +93,20 @@ class VideoFX:
         blink_duty: float = 0.15,
         blink_smooth: bool = False,
         font_size: int = 90,
+        lightning: bool = False,
+        lightning_rate: float = 1.0,
+        lightning_bolts: int = 2,
+        lightning_color: Tuple[int, int, int] = (255, 240, 200),
+        lightning_width: int = 2,
+        lightning_glow: bool = True,
+        lightning_glow_width: int = 10,
+        lightning_strength: float = 1.0,
     ):
         text_lines = [t.strip() for t in text_lines if t and t.strip()]
         if not text_lines:
             text_lines = [" "]
         font = self._get_font(font_size)
-        dummy_img = Image.new("RGB", (1, 1))
+        dummy_img = Image.new("RGBA", (1, 1))
         dummy_draw = ImageDraw.Draw(dummy_img)
         text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
         text_heights = [dummy_draw.textbbox((0, 0), line, font=font)[3] for line in text_lines]
@@ -109,9 +120,37 @@ class VideoFX:
             period = None
             on_duration = None
 
+        def _compute_lightning_spike(t: float) -> float:
+            val = 0.0
+            for i, phase in enumerate(self._lightning_phases):
+                freq = lightning_rate * (1 + i * 0.3)
+                amp = self._lightning_amps[i]
+                v = abs(math.sin(2 * math.pi * freq * t + phase))
+                val += (v ** 30) * amp
+            val = val * lightning_strength
+            return max(0.0, min(1.0, val))
+
+        def _bolt_points_around_rect(rect, segments=7, jitter=0.25):
+            x0, y0, x1, y1 = rect
+            w = x1 - x0
+            h = y1 - y0
+            cx = (x0 + x1) / 2
+            cy = (y0 + y1) / 2
+            points = []
+            sx = cx + (random.random() - 0.5) * w * 1.2
+            sy = y0 - h * 0.4
+            ex = cx + (random.random() - 0.5) * w * 1.2
+            ey = y1 + h * 0.4
+            for i in range(segments + 1):
+                t = i / segments
+                x = sx + (ex - sx) * t + (random.random() - 0.5) * w * jitter * (1 - abs(0.5 - t) * 2)
+                y = sy + (ey - sy) * t + (random.random() - 0.5) * h * jitter * (1 - abs(0.5 - t) * 2)
+                points.append((x, y))
+            return points
+
         def make_frame(t):
-            img = Image.new("RGB", (canvas_w, canvas_h), "black")
-            draw = ImageDraw.Draw(img)
+            base = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 255))
+            draw_base = ImageDraw.Draw(base)
             r = int(127 * (1 + math.sin(t * 5 + 0))) + 64
             g = int(127 * (1 + math.sin(t * 5 + 2))) + 64
             b = int(127 * (1 + math.sin(t * 5 + 4))) + 64
@@ -127,13 +166,39 @@ class VideoFX:
             gg = int(g * intensity)
             bb = int(b * intensity)
             current_y = (canvas_h - total_h) / 2
+            rects = []
             for i, line in enumerate(text_lines):
                 line_w = text_widths[i]
                 line_h = text_heights[i]
                 position = ((canvas_w - line_w) / 2, current_y)
-                draw.text(position, line, font=font, fill=(rr, gg, bb))
+                draw_base.text(position, line, font=font, fill=(rr, gg, bb, 255))
+                rect_margin = 12 + int(font_size * 0.12)
+                x0 = position[0] - rect_margin
+                y0 = position[1] - rect_margin
+                x1 = position[0] + line_w + rect_margin
+                y1 = position[1] + line_h + rect_margin
+                rects.append((x0, y0, x1, y1))
                 current_y += line_h + 20
-            arr = np.array(img, dtype=np.uint8)
+            if lightning:
+                spike = _compute_lightning_spike(t)
+                if spike > 0.003:
+                    overlay = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+                    draw_ov = ImageDraw.Draw(overlay)
+                    bolts = max(1, int(lightning_bolts + spike * 4))
+                    for bidx in range(bolts):
+                        target_rect = random.choice(rects)
+                        points = _bolt_points_around_rect(target_rect, segments=6, jitter=0.28 + spike * 0.5)
+                        color_alpha = int(200 * spike)
+                        lw = max(1, int(lightning_width * (1 + spike * 3)))
+                        col = (lightning_color[0], lightning_color[1], lightning_color[2], color_alpha)
+                        if lightning_glow:
+                            glow_w = lightning_glow_width + int(spike * 20)
+                            for gw in range(glow_w, 0, -3):
+                                aal = int(max(8, color_alpha * (gw / (glow_w + 1)) * 0.6))
+                                draw_ov.line(points, fill=(lightning_color[0], lightning_color[1], lightning_color[2], aal), width=gw)
+                        draw_ov.line(points, fill=col, width=lw)
+                    base = Image.alpha_composite(base, overlay)
+            arr = np.array(base.convert("RGB"), dtype=np.uint8)
             return arr
 
         animation = VideoClip(make_frame, duration=duration)
@@ -152,6 +217,14 @@ class VideoFX:
         blink_duty: float = 0.15,
         blink_smooth: bool = False,
         font_size: int = 90,
+        lightning: bool = False,
+        lightning_rate: float = 1.0,
+        lightning_bolts: int = 2,
+        lightning_color: Tuple[int, int, int] = (255, 240, 200),
+        lightning_width: int = 2,
+        lightning_glow: bool = True,
+        lightning_glow_width: int = 10,
+        lightning_strength: float = 1.0,
     ):
         if ";" in text:
             text_lines = text.split(";")
@@ -168,6 +241,14 @@ class VideoFX:
             blink_duty=blink_duty,
             blink_smooth=blink_smooth,
             font_size=font_size,
+            lightning=lightning,
+            lightning_rate=lightning_rate,
+            lightning_bolts=lightning_bolts,
+            lightning_color=lightning_color,
+            lightning_width=lightning_width,
+            lightning_glow=lightning_glow,
+            lightning_glow_width=lightning_glow_width,
+            lightning_strength=lightning_strength,
         )
         return output_path
 
