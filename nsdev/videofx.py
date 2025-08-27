@@ -1,12 +1,13 @@
 import asyncio
+import functools
 import math
 import os
 import random
-import functools
 import urllib.request
 from typing import List, Tuple
 
 import numpy as np
+import requests
 from moviepy import VideoClip, VideoFileClip
 from PIL import Image, ImageDraw, ImageFont
 
@@ -14,28 +15,82 @@ from .logger import LoggerHandler
 
 
 class VideoFX:
-    def __init__(self, font_urls: List[str] | None = None):
+    def __init__(self):
         self.log = LoggerHandler()
         self.font_cache_dir = ".cache_fonts"
         os.makedirs(self.font_cache_dir, exist_ok=True)
-        if font_urls is None:
-            self.font_urls = [
-                "https://raw.githubusercontent.com/google/fonts/main/ofl/lato/Lato-Regular.ttf",
-                "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Regular.ttf",
-                "https://raw.githubusercontent.com/google/fonts/main/apache/roboto/Roboto-Regular.ttf",
-                "https://raw.githubusercontent.com/google/fonts/main/apache/opensans/OpenSans-Regular.ttf",
-                "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/Montserrat-Regular.ttf",
-                "https://raw.githubusercontent.com/google/fonts/main/ofl/oswald/Oswald-Regular.ttf",
-                "https://raw.githubusercontent.com/google/fonts/main/ofl/comfortaa/Comfortaa-Regular.ttf",
-            ]
-        else:
-            self.font_urls = font_urls
-        self.available_fonts: List[str] = self._ensure_local_fonts(self.font_urls)
+
+        font_urls = self._fetch_google_font_urls(limit=15)
+        self.available_fonts: List[str] = self._ensure_local_fonts(font_urls)
+
         if not self.available_fonts:
-            self.log.print(f"{self.log.YELLOW}Peringatan: Tidak ada font berhasil didownload. Akan menggunakan font default.")
+            self.log.print(
+                f"{self.log.YELLOW}Peringatan: Tidak ada font kustom yang berhasil diunduh. Akan menggunakan font default sistem."
+            )
+
         random.seed(42)
         self._lightning_phases = [random.random() * 2 * math.pi for _ in range(6)]
         self._lightning_amps = [0.6 + random.random() * 0.8 for _ in range(6)]
+
+    def _fetch_google_font_urls(self, limit: int = 15) -> List[str]:
+        self.log.print(f"{self.log.CYAN}Mencari font dari repositori Google Fonts...")
+        all_font_families = []
+        base_dirs = ["ofl", "apache"]
+        api_base_url = "https://api.github.com/repos/google/fonts/contents/"
+
+        try:
+            for dir_name in base_dirs:
+                response = requests.get(f"{api_base_url}{dir_name}", timeout=10)
+                response.raise_for_status()
+                for item in response.json():
+                    if isinstance(item, dict) and item.get("type") == "dir":
+                        all_font_families.append(item)
+
+            if not all_font_families:
+                self.log.print(f"{self.log.YELLOW}Tidak dapat menemukan direktori font di repositori.")
+                return []
+
+            random.shuffle(all_font_families)
+            selected_families = all_font_families[:limit]
+
+            font_urls = []
+            self.log.print(f"{self.log.CYAN}Mengambil metadata untuk {len(selected_families)} keluarga font acak...")
+
+            for family in selected_families:
+                try:
+                    family_response = requests.get(family["url"], timeout=10)
+                    family_response.raise_for_status()
+                    font_files = family_response.json()
+
+                    if not isinstance(font_files, list):
+                        continue
+
+                    regular_match = None
+                    any_ttf_match = None
+
+                    for font_file in font_files:
+                        if isinstance(font_file, dict) and font_file.get("type") == "file":
+                            name = font_file.get("name", "").lower()
+                            if "regular" in name and name.endswith(".ttf"):
+                                regular_match = font_file
+                                break
+                            if any_ttf_match is None and name.endswith(".ttf"):
+                                any_ttf_match = font_file
+
+                    best_match = regular_match or any_ttf_match
+
+                    if best_match and best_match.get("download_url"):
+                        font_urls.append(best_match["download_url"])
+
+                except requests.RequestException:
+                    continue
+
+            self.log.print(f"{self.log.GREEN}Berhasil menemukan {len(font_urls)} URL font yang valid.")
+            return font_urls
+
+        except requests.RequestException as e:
+            self.log.print(f"{self.log.RED}Gagal mengambil daftar font dari GitHub API: {e}")
+            return []
 
     def _ensure_local_fonts(self, urls: List[str]) -> List[str]:
         paths: List[str] = []
@@ -128,7 +183,7 @@ class VideoFX:
                 freq = lightning_rate * (1 + i * 0.3)
                 amp = self._lightning_amps[i]
                 v = abs(math.sin(2 * math.pi * freq * t + phase))
-                val += (v ** 30) * amp
+                val += (v**30) * amp
             val = val * lightning_strength
             return max(0.0, min(1.0, val))
 
