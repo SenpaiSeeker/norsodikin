@@ -21,8 +21,8 @@ from .process import ProcessManager
 from .progress import TelegramProgressBar
 from .qrcode import QrCodeGenerator
 from .shell import ShellExecutor
-from .stt import SpeechToText
 from .storekey import KeyManager
+from .stt import SpeechToText
 from .translate import Translator
 from .tts import TextToSpeech
 from .url import UrlUtils
@@ -33,6 +33,7 @@ from .ymlreder import YamlHandler
 
 __version__ = "1.5.4"
 __author__ = "@NorSodikin"
+
 
 class NsDev:
     def __init__(self, client):
@@ -85,14 +86,17 @@ class NsDev:
             Violet=VioletMediaPayClient,
         )
 
+
 @property
 def ns(self) -> NsDev:
     if not hasattr(self, "_nsdev_instance"):
         self._nsdev_instance = NsDev(self)
     return self._nsdev_instance
 
+
 try:
     from pyrogram import Client
+
     Client.ns = ns
 except Exception:
     pass

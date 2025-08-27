@@ -192,7 +192,7 @@ class VideoFX:
             w = x1 - x0
             h = y1 - y0
             cx = (x0 + x1) / 2
-            cy = (y0 + y1) / 2
+            (y0 + y1) / 2
             points = []
             sx = cx + (random.random() - 0.5) * w * 1.2
             sy = y0 - h * 0.4
@@ -252,7 +252,11 @@ class VideoFX:
                             glow_w = lightning_glow_width + int(spike * 20)
                             for gw in range(glow_w, 0, -3):
                                 aal = int(max(8, color_alpha * (gw / (glow_w + 1)) * 0.6))
-                                draw_ov.line(points, fill=(lightning_color[0], lightning_color[1], lightning_color[2], aal), width=gw)
+                                draw_ov.line(
+                                    points,
+                                    fill=(lightning_color[0], lightning_color[1], lightning_color[2], aal),
+                                    width=gw,
+                                )
                         draw_ov.line(points, fill=col, width=lw)
                     base = Image.alpha_composite(base.convert("RGBA"), overlay).convert(mode)
             arr = np.array(base, dtype=np.uint8)
@@ -260,7 +264,13 @@ class VideoFX:
 
         animation = VideoClip(make_frame, duration=duration)
         if transparent:
-            animation.write_videofile(output_path, fps=fps, codec="libvpx-vp9", logger=None, ffmpeg_params=["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"])
+            animation.write_videofile(
+                output_path,
+                fps=fps,
+                codec="libvpx-vp9",
+                logger=None,
+                ffmpeg_params=["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"],
+            )
         else:
             animation.write_videofile(output_path, fps=fps, codec="libx264", logger=None)
         animation.close()
@@ -327,7 +337,9 @@ class VideoFX:
             ffmpeg_params = ["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"]
         else:
             ffmpeg_params = ["-pix_fmt", "yuv420p", "-crf", "30", "-b:v", "0"]
-        final_clip.write_videofile(output_path, codec="libvpx-vp9", audio=False, logger=None, ffmpeg_params=ffmpeg_params)
+        final_clip.write_videofile(
+            output_path, codec="libvpx-vp9", audio=False, logger=None, ffmpeg_params=ffmpeg_params
+        )
         clip.close()
         trimmed_clip.close()
         resized_clip.close()
