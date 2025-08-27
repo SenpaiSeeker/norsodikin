@@ -31,7 +31,7 @@ from .vision import VisionAnalyzer
 from .web_summarizer import WebSummarizer
 from .ymlreder import YamlHandler
 
-__version__ = "1.6.3"
+__version__ = "1.6.4"
 __author__ = "@NorSodikin"
 
 
