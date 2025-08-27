@@ -210,71 +210,59 @@ class VideoFX:
             rr = int(r * intensity)
             gg = int(g * intensity)
             bb = int(b * intensity)
-            current_y = (canvas_h - total_h) / 2
             positions = []
-            rects = []
+            current_y = (canvas_h - total_h) / 2
             for i, line in enumerate(text_lines):
                 line_w = text_widths[i]
                 line_h = text_heights[i]
                 position = ((canvas_w - line_w) / 2, current_y)
                 positions.append((line, position))
-                rect_margin = 12 + int(font_size * 0.12)
-                x0 = position[0] - rect_margin
-                y0 = position[1] - rect_margin
-                x1 = position[0] + line_w + rect_margin
-                y1 = position[1] + line_h + rect_margin
-                rects.append((x0, y0, x1, y1))
                 current_y += line_h + 20
-
             if lightning:
                 aura_img = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
                 draw_aura = ImageDraw.Draw(aura_img)
-                base_color = lightning_color
-                dark_tone = (
-                    max(0, int(base_color[0] * 0.35)),
-                    max(0, int(base_color[1] * 0.35)),
-                    max(0, int(base_color[2] * 0.6)),
-                )
-                inner_alpha = min(255, max(10, int(180 * lightning_strength)))
-                mid_alpha = min(255, max(6, int(110 * lightning_strength)))
-                outer_alpha = min(255, max(3, int(60 * lightning_strength)))
-                for text, pos in positions:
-                    inner_sw = max(1, int(font_size * 0.12))
-                    mid_sw = inner_sw + int(lightning_glow_width * 0.6)
-                    outer_sw = mid_sw + int(lightning_glow_width * 1.2)
-                    draw_aura.text(pos, text, font=font, fill=(dark_tone[0], dark_tone[1], dark_tone[2], inner_alpha), stroke_width=inner_sw, stroke_fill=(dark_tone[0], dark_tone[1], dark_tone[2], inner_alpha))
-                    draw_aura.text(pos, text, font=font, fill=(dark_tone[0], dark_tone[1], dark_tone[2], mid_alpha), stroke_width=mid_sw, stroke_fill=(dark_tone[0], dark_tone[1], dark_tone[2], mid_alpha))
-                    draw_aura.text(pos, text, font=font, fill=(dark_tone[0], dark_tone[1], dark_tone[2], outer_alpha), stroke_width=outer_sw, stroke_fill=(dark_tone[0], dark_tone[1], dark_tone[2], outer_alpha))
-                blur_radius = max(1.0, float(lightning_glow_width) * max(0.5, float(lightning_strength)))
+                aura_base_color = lightning_color
+                aura_strength = max(0.2, min(2.5, lightning_strength))
+                layer_count = max(3, min(8, lightning_glow_width // 2 + 3))
+                for line, pos in positions:
+                    for li in range(layer_count):
+                        sw = int(1 + (li / layer_count) * (font_size * 0.35 + lightning_glow_width))
+                        alpha = int(max(8, 180 * aura_strength * (1.0 - li / (layer_count + 0.5))))
+                        col = (aura_base_color[0], aura_base_color[1], aura_base_color[2], alpha)
+                        draw_aura.text(pos, line, font=font, fill=col, stroke_width=sw, stroke_fill=col)
+                blur_radius = max(2, lightning_glow_width / 2)
                 aura_img = aura_img.filter(ImageFilter.GaussianBlur(radius=blur_radius))
-                base = Image.alpha_composite(base.convert("RGBA"), aura_img).convert(mode)
-
-            draw_base = ImageDraw.Draw(base)
-            text_fill = (255, 255, 255, 255) if mode == "RGBA" else (255, 255, 255)
-            stroke_w = max(1, int(font_size * 0.04))
-            for line, pos in positions:
-                try:
-                    draw_base.text(pos, line, font=font, fill=text_fill, stroke_width=stroke_w, stroke_fill=(0, 0, 0, 180) if mode == "RGBA" else (0, 0, 0))
-                except TypeError:
-                    draw_base.text(pos, line, font=font, fill=text_fill)
-
+                text_img = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+                draw_text = ImageDraw.Draw(text_img)
+                text_color = (255, 255, 255, 255)
+                for line, pos in positions:
+                    draw_text.text(pos, line, font=font, fill=text_color)
+                combined = Image.alpha_composite(aura_img, text_img)
+                base = Image.alpha_composite(base.convert("RGBA"), combined).convert(mode)
+            else:
+                draw_base = ImageDraw.Draw(base)
+                for line, pos in positions:
+                    draw_base.text(pos, line, font=font, fill=(rr, gg, bb, 255) if transparent else (rr, gg, bb))
             arr = np.array(base, dtype=np.uint8)
+            if transparent and arr.ndim == 3 and arr.shape[2] == 3:
+                alpha = np.full((arr.shape[0], arr.shape[1], 1), 255, dtype=np.uint8)
+                arr = np.concatenate([arr, alpha], axis=2)
             return arr
 
         animation = VideoClip(make_frame, duration=duration)
-
         if transparent and not output_path.lower().endswith(('.webm', '.mkv')):
             output_path = os.path.splitext(output_path)[0] + '.webm'
-
-        if transparent:
-            animation.write_videofile(
-                output_path, fps=fps, codec="libvpx-vp9", logger=None, ffmpeg_params=["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"]
-            )
-        else:
-            animation.write_videofile(
-                output_path, fps=fps, codec="libx264", logger=None, ffmpeg_params=["-pix_fmt", "yuv420p"]
-            )
-        animation.close()
+        try:
+            if transparent:
+                animation.write_videofile(
+                    output_path, fps=fps, codec="libvpx-vp9", logger=None, ffmpeg_params=["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"]
+                )
+            else:
+                animation.write_videofile(
+                    output_path, fps=fps, codec="libx264", logger=None, ffmpeg_params=["-pix_fmt", "yuv420p"]
+                )
+        finally:
+            animation.close()
 
     async def text_to_video(
         self,
