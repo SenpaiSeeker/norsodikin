@@ -251,7 +251,7 @@ class VideoFX:
             return arr
 
         if transparent:
-            animation = VideoClip(make_frame, duration=duration, has_mask=True)
+            animation = VideoClip(make_frame, is_mask=True, duration=duration)
         else:
             animation = VideoClip(make_frame, duration=duration)
 
