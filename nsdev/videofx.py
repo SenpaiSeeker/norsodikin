@@ -11,12 +11,9 @@ import requests
 from moviepy import VideoClip, VideoFileClip
 from PIL import Image, ImageDraw, ImageFont
 
-from .logger import LoggerHandler
-
 
 class VideoFX:
     def __init__(self):
-        self.log = LoggerHandler()
         self.font_cache_dir = ".cache_fonts"
         os.makedirs(self.font_cache_dir, exist_ok=True)
 
@@ -26,31 +23,20 @@ class VideoFX:
                 for f in os.listdir(self.font_cache_dir)
                 if f.lower().endswith(".ttf") and os.path.isfile(os.path.join(self.font_cache_dir, f))
             ]
-        except Exception as e:
-            self.log.print(f"{self.log.YELLOW}Peringatan: Gagal membaca cache font: {e}")
+        except Exception:
             local_fonts = []
 
         if local_fonts:
             self.available_fonts = local_fonts
-            self.log.print(
-                f"{self.log.GREEN}Menemukan {len(self.available_fonts)} font di cache. Melewati proses unduh."
-            )
         else:
-            self.log.print(f"{self.log.YELLOW}Cache font kosong. Memulai proses unduh font baru...")
             font_urls = self._fetch_google_font_urls(limit=15)
             self.available_fonts = self._ensure_local_fonts(font_urls)
-
-        if not self.available_fonts:
-            self.log.print(
-                f"{self.log.YELLOW}Peringatan: Tidak ada font kustom yang tersedia. Akan menggunakan font default sistem."
-            )
 
         random.seed(42)
         self._lightning_phases = [random.random() * 2 * math.pi for _ in range(6)]
         self._lightning_amps = [0.6 + random.random() * 0.8 for _ in range(6)]
 
     def _fetch_google_font_urls(self, limit: int = 15) -> List[str]:
-        self.log.print(f"{self.log.CYAN}Mencari font dari repositori Google Fonts...")
         all_font_families = []
         base_dirs = ["ofl", "apache"]
         api_base_url = "https://api.github.com/repos/google/fonts/contents/"
@@ -64,15 +50,12 @@ class VideoFX:
                         all_font_families.append(item)
 
             if not all_font_families:
-                self.log.print(f"{self.log.YELLOW}Tidak dapat menemukan direktori font di repositori.")
                 return []
 
             random.shuffle(all_font_families)
             selected_families = all_font_families[:limit]
 
             font_urls = []
-            self.log.print(f"{self.log.CYAN}Mengambil metadata untuk {len(selected_families)} keluarga font acak...")
-
             for family in selected_families:
                 try:
                     family_response = requests.get(family["url"], timeout=10)
@@ -102,11 +85,9 @@ class VideoFX:
                 except requests.RequestException:
                     continue
 
-            self.log.print(f"{self.log.GREEN}Berhasil menemukan {len(font_urls)} URL font yang valid.")
             return font_urls
 
-        except requests.RequestException as e:
-            self.log.print(f"{self.log.RED}Gagal mengambil daftar font dari GitHub API: {e}")
+        except requests.RequestException:
             return []
 
     def _ensure_local_fonts(self, urls: List[str]) -> List[str]:
@@ -134,15 +115,12 @@ class VideoFX:
         return paths
 
     def _get_font(self, font_size: int):
-        if self.available_fonts:
+        if hasattr(self, 'available_fonts') and self.available_fonts:
             random_font_path = random.choice(self.available_fonts)
             try:
                 return ImageFont.truetype(random_font_path, font_size)
             except Exception:
-                try:
-                    return ImageFont.load_default()
-                except Exception:
-                    return ImageFont.load_default()
+                pass
         try:
             return ImageFont.load_default()
         except Exception:
@@ -211,14 +189,14 @@ class VideoFX:
             cx = (x0 + x1) / 2
             cy = (y0 + y1) / 2
             points = []
-
+            
             vertical_offset = h * 0.9
-
+            
             sx = cx + (random.random() - 0.5) * w * 1.2
             sy = cy - vertical_offset
             ex = cx + (random.random() - 0.5) * w * 1.2
             ey = cy + vertical_offset
-
+            
             for i in range(segments + 1):
                 t = i / segments
                 x = sx + (ex - sx) * t + (random.random() - 0.5) * w * jitter * (1 - abs(0.5 - t) * 2)
