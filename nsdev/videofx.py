@@ -177,28 +177,25 @@ class VideoFX:
                 val += (v**30) * amp
             val = val * lightning_strength
             return max(0.0, min(1.0, val))
-        def _bolt_points_branching(start, end, segments=8, jitter=0.25, branch_prob=0.3):
-            points = [start]
-            for i in range(1, segments):
+
+        def _bolt_points_around_rect(rect, segments=7, jitter=0.25):
+            x0, y0, x1, y1 = rect
+            w = x1 - x0
+            h = y1 - y0
+            cx = (x0 + x1) / 2
+            cy = (y0 + y1) / 2
+            points = []
+            vertical_offset = h * 0.9
+            sx = cx + (random.random() - 0.5) * w * 1.2
+            sy = cy - vertical_offset
+            ex = cx + (random.random() - 0.5) * w * 1.2
+            ey = cy + vertical_offset
+            for i in range(segments + 1):
                 t = i / segments
-                x = start[0] + (end[0] - start[0]) * t + (random.random() - 0.5) * jitter * abs(end[1] - start[1])
-                y = start[1] + (end[1] - start[1]) * t + (random.random() - 0.5) * jitter * abs(end[1] - start[1])
+                x = sx + (ex - sx) * t + (random.random() - 0.5) * w * jitter * (1 - abs(0.5 - t) * 2)
+                y = sy + (ey - sy) * t + (random.random() - 0.5) * h * jitter * (1 - abs(0.5 - t) * 2)
                 points.append((x, y))
-            points.append(end)
-            branches = []
-            for i in range(2, len(points) - 2):
-                if random.random() < branch_prob:
-                    bx, by = points[i]
-                    ex = bx + (random.random() - 0.5) * 120
-                    ey = by + (random.random() * 100 + 50)
-                    branch = [(bx, by)]
-                    for j in range(3):
-                        t = (j + 1) / 3
-                        xx = bx + (ex - bx) * t + (random.random() - 0.5) * 30
-                        yy = by + (ey - by) * t + (random.random() - 0.5) * 30
-                        branch.append((xx, yy))
-                    branches.append(branch)
-            return points, branches
+            return points
 
         def make_frame(t):
             base = Image.new(mode, (canvas_w, canvas_h), (0, 0, 0, 0) if transparent else (0, 0, 0, 255))
@@ -239,27 +236,16 @@ class VideoFX:
                     bolts = max(1, int(lightning_bolts + spike * 4))
                     for bidx in range(bolts):
                         target_rect = random.choice(rects)
-                        x0, y0, x1, y1 = target_rect
-                        cx = (x0 + x1) / 2
-                        sy = y0 - canvas_h * 0.3
-                        ex = cx + (random.random() - 0.5) * canvas_w * 0.5
-                        ey = y1 + canvas_h * 0.3
-                        main_points, branches = _bolt_points_branching((cx, sy), (ex, ey), jitter=0.3 + spike * 0.5)
-                        color_alpha = int(220 * spike)
-                        lw = max(2, int(lightning_width * (1 + spike * 3)))
-                        col_core = (255, 255, 255, color_alpha)
-                        col_glow = (lightning_color[0], lightning_color[1], lightning_color[2], int(color_alpha * 0.6))
+                        points = _bolt_points_around_rect(target_rect, segments=6, jitter=0.28 + spike * 0.5)
+                        color_alpha = int(200 * spike)
+                        lw = max(1, int(lightning_width * (1 + spike * 3)))
+                        col = (lightning_color[0], lightning_color[1], lightning_color[2], color_alpha)
                         if lightning_glow:
-                            glow_w = lightning_glow_width + int(spike * 15)
+                            glow_w = lightning_glow_width + int(spike * 20)
                             for gw in range(glow_w, 0, -3):
-                                aal = int(max(10, color_alpha * (gw / (glow_w + 1)) * 0.5))
-                                draw_ov.line(main_points, fill=col_glow[:-1] + (aal,), width=gw)
-                        draw_ov.line(main_points, fill=col_core, width=lw)
-                        for br in branches:
-                            draw_ov.line(br, fill=col_core, width=max(1, lw - 1))
-                    if random.random() < spike * 0.5:
-                        flash = Image.new("RGBA", (canvas_w, canvas_h), (255, 255, 255, int(120 * spike)))
-                        overlay = Image.alpha_composite(overlay, flash)
+                                aal = int(max(8, color_alpha * (gw / (glow_w + 1)) * 0.6))
+                                draw_ov.line(points, fill=(lightning_color[0], lightning_color[1], lightning_color[2], aal), width=gw)
+                        draw_ov.line(points, fill=col, width=lw)
                     base = Image.alpha_composite(base.convert("RGBA"), overlay).convert(mode)
             arr = np.array(base, dtype=np.uint8)
             return arr
