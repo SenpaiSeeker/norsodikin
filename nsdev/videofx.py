@@ -230,13 +230,18 @@ class VideoFX:
                 current_y += line_h + 20
             if lightning:
                 spike = _compute_lightning_spike(t)
-                if spike > 0.003:
+                if spike > 0.3:
                     overlay = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
                     draw_ov = ImageDraw.Draw(overlay)
+                    flash_alpha = min(255, int(255 * spike * 2))
+                    draw_ov.rectangle((0, 0, canvas_w, canvas_h), fill=(255, 255, 255, flash_alpha))
+
                     bolts = max(1, int(lightning_bolts + spike * 4))
                     for bidx in range(bolts):
                         target_rect = random.choice(rects)
-                        points = _bolt_points_around_rect(target_rect, segments=6, jitter=0.28 + spike * 0.5)
+                        points = _bolt_points_around_rect(
+                            target_rect, segments=6, jitter=0.28 + spike * 0.5
+                        )
                         color_alpha = int(200 * spike)
                         lw = max(1, int(lightning_width * (1 + spike * 3)))
                         col = (lightning_color[0], lightning_color[1], lightning_color[2], color_alpha)
@@ -246,7 +251,30 @@ class VideoFX:
                                 aal = int(max(8, color_alpha * (gw / (glow_w + 1)) * 0.6))
                                 draw_ov.line(points, fill=(lightning_color[0], lightning_color[1], lightning_color[2], aal), width=gw)
                         draw_ov.line(points, fill=col, width=lw)
+
+                        if random.random() < 0.4:
+                            mid = random.randint(1, len(points) - 2)
+                            bx0, by0 = points[mid]
+                            x0, y0, x1, y1 = target_rect
+                            w = x1 - x0
+                            h = y1 - y0
+                            ex = bx0 + (random.random() - 0.5) * w * 0.5
+                            ey = by0 + random.uniform(h * 0.3, h * 0.7)
+                            branch_points = [(bx0, by0)]
+                            for i in range(1, 4):
+                                t2 = i / 3
+                                x = bx0 + (ex - bx0) * t2 + (random.random() - 0.5) * (w * 0.1)
+                                y = by0 + (ey - by0) * t2 + (random.random() - 0.5) * (h * 0.1)
+                                branch_points.append((x, y))
+                            branch_col = (
+                                lightning_color[0], lightning_color[1], lightning_color[2],
+                                int(color_alpha * 0.7)
+                            )
+                            branch_width = max(1, lw // 2)
+                            draw_ov.line(branch_points, fill=branch_col, width=branch_width)
+
                     base = Image.alpha_composite(base.convert("RGBA"), overlay).convert(mode)
+
             arr = np.array(base, dtype=np.uint8)
             return arr
 
