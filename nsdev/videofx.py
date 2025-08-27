@@ -54,20 +54,16 @@ class VideoFX:
 
             random.shuffle(all_font_families)
             selected_families = all_font_families[:limit]
-
             font_urls = []
             for family in selected_families:
                 try:
                     family_response = requests.get(family["url"], timeout=10)
                     family_response.raise_for_status()
                     font_files = family_response.json()
-
                     if not isinstance(font_files, list):
                         continue
-
                     regular_match = None
                     any_ttf_match = None
-
                     for font_file in font_files:
                         if isinstance(font_file, dict) and font_file.get("type") == "file":
                             name = font_file.get("name", "").lower()
@@ -76,17 +72,12 @@ class VideoFX:
                                 break
                             if any_ttf_match is None and name.endswith(".ttf"):
                                 any_ttf_match = font_file
-
                     best_match = regular_match or any_ttf_match
-
                     if best_match and best_match.get("download_url"):
                         font_urls.append(best_match["download_url"])
-
                 except requests.RequestException:
                     continue
-
             return font_urls
-
         except requests.RequestException:
             return []
 
@@ -151,7 +142,7 @@ class VideoFX:
         lightning_glow: bool = True,
         lightning_glow_width: int = 10,
         lightning_strength: float = 1.0,
-        transparent: bool = False,
+        transparent: bool = True,
     ):
         text_lines = [t.strip() for t in text_lines if t and t.strip()]
         if not text_lines:
@@ -162,14 +153,14 @@ class VideoFX:
         dummy_draw = ImageDraw.Draw(dummy_img)
         text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
         text_heights = [dummy_draw.textbbox((0, 0), line, font=font)[3] for line in text_lines]
-
+        
         base_w = max(max(text_widths) + 40, 512)
         canvas_w = base_w - (base_w % 2)
-
+        
         total_h = sum(text_heights) + (len(text_lines) * 20)
         base_h = max(total_h, 512)
         canvas_h = base_h - (base_h % 2)
-
+        
         if blink and blink_rate > 0:
             period = 1.0 / blink_rate
             on_duration = max(0.0, min(1.0, blink_duty)) * period
@@ -253,32 +244,24 @@ class VideoFX:
                             glow_w = lightning_glow_width + int(spike * 20)
                             for gw in range(glow_w, 0, -3):
                                 aal = int(max(8, color_alpha * (gw / (glow_w + 1)) * 0.6))
-                                draw_ov.line(
-                                    points,
-                                    fill=(lightning_color[0], lightning_color[1], lightning_color[2], aal),
-                                    width=gw,
-                                )
+                                draw_ov.line(points, fill=(lightning_color[0], lightning_color[1], lightning_color[2], aal), width=gw)
                         draw_ov.line(points, fill=col, width=lw)
                     base = Image.alpha_composite(base.convert("RGBA"), overlay).convert(mode)
             arr = np.array(base, dtype=np.uint8)
             return arr
 
-        animation = VideoClip(make_frame, duration=duration)
+        if transparent:
+            animation = VideoClip(make_frame, duration=duration, has_mask=True)
+        else:
+            animation = VideoClip(make_frame, duration=duration)
+
         if transparent:
             animation.write_videofile(
-                output_path,
-                fps=fps,
-                codec="libvpx-vp9",
-                logger=None,
-                ffmpeg_params=["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"],
+                output_path, fps=fps, codec="libvpx-vp9", logger=None, ffmpeg_params=["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"]
             )
         else:
             animation.write_videofile(
-                output_path, 
-                fps=fps, 
-                codec="libx264", 
-                logger=None, 
-                ffmpeg_params=["-pix_fmt", "yuv420p"]
+                output_path, fps=fps, codec="libx264", logger=None, ffmpeg_params=["-pix_fmt", "yuv420p"]
             )
         animation.close()
 
@@ -302,7 +285,7 @@ class VideoFX:
         lightning_glow: bool = True,
         lightning_glow_width: int = 10,
         lightning_strength: float = 1.0,
-        transparent: bool = False,
+        transparent: bool = True,
     ):
         if ";" in text:
             text_lines = text.split(";")
@@ -331,7 +314,7 @@ class VideoFX:
         )
         return output_path
 
-    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30, transparent: bool = False):
+    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30, transparent: bool = True):
         clip = VideoFileClip(video_path)
         max_duration = min(clip.duration, 2.95)
         trimmed_clip = clip.subclipped(0, max_duration)
@@ -352,6 +335,6 @@ class VideoFX:
         resized_clip.close()
         final_clip.close()
 
-    async def video_to_sticker(self, video_path: str, output_path: str, fps: int = 30, transparent: bool = False):
+    async def video_to_sticker(self, video_path: str, output_path: str, fps: int = 30, transparent: bool = True):
         await self._run_in_executor(self._convert_to_sticker, video_path, output_path, fps=fps, transparent=transparent)
         return output_path
