@@ -9,7 +9,7 @@ from typing import List, Tuple
 import numpy as np
 import requests
 from moviepy import VideoClip, VideoFileClip
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 
 class VideoFX:
@@ -122,6 +122,35 @@ class VideoFX:
         call = functools.partial(func, *args, **kwargs)
         return await loop.run_in_executor(None, call)
 
+    def _compute_lightning_spike(self, t: float, lightning_rate: float, lightning_strength: float) -> float:
+        val = 0.0
+        for i, phase in enumerate(self._lightning_phases):
+            freq = lightning_rate * (1 + i * 0.3)
+            amp = self._lightning_amps[i]
+            v = abs(math.sin(2 * math.pi * freq * t + phase))
+            val += (v**30) * amp
+        val = val * lightning_strength
+        return max(0.0, min(1.0, val))
+
+    def _bolt_points_around_rect(self, rect, segments=7, jitter=0.25):
+        x0, y0, x1, y1 = rect
+        w = x1 - x0
+        h = y1 - y0
+        cx = (x0 + x1) / 2
+        cy = (y0 + y1) / 2
+        points = []
+        vertical_offset = h * 0.9
+        sx = cx + (random.random() - 0.5) * w * 1.2
+        sy = cy - vertical_offset
+        ex = cx + (random.random() - 0.5) * w * 1.2
+        ey = cy + vertical_offset
+        for i in range(segments + 1):
+            t = i / segments
+            x = sx + (ex - sx) * t + (random.random() - 0.5) * w * jitter * (1 - abs(0.5 - t) * 2)
+            y = sy + (ey - sy) * t + (random.random() - 0.5) * h * jitter * (1 - abs(0.5 - t) * 2)
+            points.append((x, y))
+        return points
+
     def _create_rgb_video(
         self,
         text_lines: List[str],
@@ -153,14 +182,11 @@ class VideoFX:
         dummy_draw = ImageDraw.Draw(dummy_img)
         text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
         text_heights = [dummy_draw.textbbox((0, 0), line, font=font)[3] for line in text_lines]
-        
         base_w = max(max(text_widths) + 40, 512)
         canvas_w = base_w - (base_w % 2)
-        
         total_h = sum(text_heights) + (len(text_lines) * 20)
         base_h = max(total_h, 512)
         canvas_h = base_h - (base_h % 2)
-        
         if blink and blink_rate > 0:
             period = 1.0 / blink_rate
             on_duration = max(0.0, min(1.0, blink_duty)) * period
@@ -168,38 +194,8 @@ class VideoFX:
             period = None
             on_duration = None
 
-        def _compute_lightning_spike(t: float) -> float:
-            val = 0.0
-            for i, phase in enumerate(self._lightning_phases):
-                freq = lightning_rate * (1 + i * 0.3)
-                amp = self._lightning_amps[i]
-                v = abs(math.sin(2 * math.pi * freq * t + phase))
-                val += (v**30) * amp
-            val = val * lightning_strength
-            return max(0.0, min(1.0, val))
-
-        def _bolt_points_around_rect(rect, segments=7, jitter=0.25):
-            x0, y0, x1, y1 = rect
-            w = x1 - x0
-            h = y1 - y0
-            cx = (x0 + x1) / 2
-            cy = (y0 + y1) / 2
-            points = []
-            vertical_offset = h * 0.9
-            sx = cx + (random.random() - 0.5) * w * 1.2
-            sy = cy - vertical_offset
-            ex = cx + (random.random() - 0.5) * w * 1.2
-            ey = cy + vertical_offset
-            for i in range(segments + 1):
-                t = i / segments
-                x = sx + (ex - sx) * t + (random.random() - 0.5) * w * jitter * (1 - abs(0.5 - t) * 2)
-                y = sy + (ey - sy) * t + (random.random() - 0.5) * h * jitter * (1 - abs(0.5 - t) * 2)
-                points.append((x, y))
-            return points
-
         def make_frame(t):
             base = Image.new(mode, (canvas_w, canvas_h), (0, 0, 0, 0) if transparent else (0, 0, 0, 255))
-            draw_base = ImageDraw.Draw(base)
             r = int(127 * (1 + math.sin(t * 5 + 0))) + 64
             g = int(127 * (1 + math.sin(t * 5 + 2))) + 64
             b = int(127 * (1 + math.sin(t * 5 + 4))) + 64
@@ -215,12 +211,13 @@ class VideoFX:
             gg = int(g * intensity)
             bb = int(b * intensity)
             current_y = (canvas_h - total_h) / 2
+            positions = []
             rects = []
             for i, line in enumerate(text_lines):
                 line_w = text_widths[i]
                 line_h = text_heights[i]
                 position = ((canvas_w - line_w) / 2, current_y)
-                draw_base.text(position, line, font=font, fill=(rr, gg, bb, 255) if transparent else (rr, gg, bb))
+                positions.append((line, position))
                 rect_margin = 12 + int(font_size * 0.12)
                 x0 = position[0] - rect_margin
                 y0 = position[1] - rect_margin
@@ -228,60 +225,46 @@ class VideoFX:
                 y1 = position[1] + line_h + rect_margin
                 rects.append((x0, y0, x1, y1))
                 current_y += line_h + 20
+
             if lightning:
-                spike = _compute_lightning_spike(t)
-                if spike > 0.3:
-                    overlay = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-                    draw_ov = ImageDraw.Draw(overlay)
-                    flash_alpha = min(255, int(255 * spike * 2))
-                    draw_ov.rectangle((0, 0, canvas_w, canvas_h), fill=(255, 255, 255, flash_alpha))
+                aura_img = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+                draw_aura = ImageDraw.Draw(aura_img)
+                base_color = lightning_color
+                dark_tone = (
+                    max(0, int(base_color[0] * 0.35)),
+                    max(0, int(base_color[1] * 0.35)),
+                    max(0, int(base_color[2] * 0.6)),
+                )
+                inner_alpha = min(255, max(10, int(180 * lightning_strength)))
+                mid_alpha = min(255, max(6, int(110 * lightning_strength)))
+                outer_alpha = min(255, max(3, int(60 * lightning_strength)))
+                for text, pos in positions:
+                    inner_sw = max(1, int(font_size * 0.12))
+                    mid_sw = inner_sw + int(lightning_glow_width * 0.6)
+                    outer_sw = mid_sw + int(lightning_glow_width * 1.2)
+                    draw_aura.text(pos, text, font=font, fill=(dark_tone[0], dark_tone[1], dark_tone[2], inner_alpha), stroke_width=inner_sw, stroke_fill=(dark_tone[0], dark_tone[1], dark_tone[2], inner_alpha))
+                    draw_aura.text(pos, text, font=font, fill=(dark_tone[0], dark_tone[1], dark_tone[2], mid_alpha), stroke_width=mid_sw, stroke_fill=(dark_tone[0], dark_tone[1], dark_tone[2], mid_alpha))
+                    draw_aura.text(pos, text, font=font, fill=(dark_tone[0], dark_tone[1], dark_tone[2], outer_alpha), stroke_width=outer_sw, stroke_fill=(dark_tone[0], dark_tone[1], dark_tone[2], outer_alpha))
+                blur_radius = max(1.0, float(lightning_glow_width) * max(0.5, float(lightning_strength)))
+                aura_img = aura_img.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+                base = Image.alpha_composite(base.convert("RGBA"), aura_img).convert(mode)
 
-                    bolts = max(1, int(lightning_bolts + spike * 4))
-                    for bidx in range(bolts):
-                        target_rect = random.choice(rects)
-                        points = _bolt_points_around_rect(
-                            target_rect, segments=6, jitter=0.28 + spike * 0.5
-                        )
-                        color_alpha = int(200 * spike)
-                        lw = max(1, int(lightning_width * (1 + spike * 3)))
-                        col = (lightning_color[0], lightning_color[1], lightning_color[2], color_alpha)
-                        if lightning_glow:
-                            glow_w = lightning_glow_width + int(spike * 20)
-                            for gw in range(glow_w, 0, -3):
-                                aal = int(max(8, color_alpha * (gw / (glow_w + 1)) * 0.6))
-                                draw_ov.line(points, fill=(lightning_color[0], lightning_color[1], lightning_color[2], aal), width=gw)
-                        draw_ov.line(points, fill=col, width=lw)
-
-                        if random.random() < 0.4:
-                            mid = random.randint(1, len(points) - 2)
-                            bx0, by0 = points[mid]
-                            x0, y0, x1, y1 = target_rect
-                            w = x1 - x0
-                            h = y1 - y0
-                            ex = bx0 + (random.random() - 0.5) * w * 0.5
-                            ey = by0 + random.uniform(h * 0.3, h * 0.7)
-                            branch_points = [(bx0, by0)]
-                            for i in range(1, 4):
-                                t2 = i / 3
-                                x = bx0 + (ex - bx0) * t2 + (random.random() - 0.5) * (w * 0.1)
-                                y = by0 + (ey - by0) * t2 + (random.random() - 0.5) * (h * 0.1)
-                                branch_points.append((x, y))
-                            branch_col = (
-                                lightning_color[0], lightning_color[1], lightning_color[2],
-                                int(color_alpha * 0.7)
-                            )
-                            branch_width = max(1, lw // 2)
-                            draw_ov.line(branch_points, fill=branch_col, width=branch_width)
-
-                    base = Image.alpha_composite(base.convert("RGBA"), overlay).convert(mode)
+            draw_base = ImageDraw.Draw(base)
+            text_fill = (255, 255, 255, 255) if mode == "RGBA" else (255, 255, 255)
+            stroke_w = max(1, int(font_size * 0.04))
+            for line, pos in positions:
+                try:
+                    draw_base.text(pos, line, font=font, fill=text_fill, stroke_width=stroke_w, stroke_fill=(0, 0, 0, 180) if mode == "RGBA" else (0, 0, 0))
+                except TypeError:
+                    draw_base.text(pos, line, font=font, fill=text_fill)
 
             arr = np.array(base, dtype=np.uint8)
             return arr
 
-        if transparent:
-            animation = VideoClip(make_frame, is_mask=True, duration=duration)
-        else:
-            animation = VideoClip(make_frame, duration=duration)
+        animation = VideoClip(make_frame, duration=duration)
+
+        if transparent and not output_path.lower().endswith(('.webm', '.mkv')):
+            output_path = os.path.splitext(output_path)[0] + '.webm'
 
         if transparent:
             animation.write_videofile(
