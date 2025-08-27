@@ -1,5 +1,4 @@
 import asyncio
-import glob
 import math
 import os
 import random
@@ -15,24 +14,25 @@ from .logger import LoggerHandler
 
 
 class VideoFX:
-    def __init__(self):
+    def __init__(self, font_urls: List[str] | None = None):
         self.log = LoggerHandler()
         self.font_cache_dir = ".cache_fonts"
         os.makedirs(self.font_cache_dir, exist_ok=True)
-        self.font_urls = [
-            "https://github.com/google/fonts/raw/main/apache/roboto/Roboto-Regular.ttf",
-            "https://github.com/google/fonts/raw/main/apache/opensans/OpenSans-Regular.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/lato/Lato-Regular.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/montserrat/Montserrat-Regular.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/notosans/NotoSans-Regular.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Regular.ttf",
-            "https://github.com/google/fonts/raw/main/ofl/oswald/Oswald-Regular.ttf",
-        ]
+        if font_urls is None:
+            self.font_urls = [
+                "https://raw.githubusercontent.com/google/fonts/main/ofl/lato/Lato-Regular.ttf",
+                "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Regular.ttf",
+                "https://raw.githubusercontent.com/google/fonts/main/apache/roboto/Roboto-Regular.ttf",
+                "https://raw.githubusercontent.com/google/fonts/main/apache/opensans/OpenSans-Regular.ttf",
+                "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/Montserrat-Regular.ttf",
+                "https://raw.githubusercontent.com/google/fonts/main/ofl/oswald/Oswald-Regular.ttf",
+                "https://raw.githubusercontent.com/google/fonts/main/ofl/comfortaa/Comfortaa-Regular.ttf",
+            ]
+        else:
+            self.font_urls = font_urls
         self.available_fonts: List[str] = self._ensure_local_fonts(self.font_urls)
         if not self.available_fonts:
-            self.log.print(
-                f"{self.log.YELLOW}Peringatan: Tidak ada font berhasil didownload. Akan menggunakan font default."
-            )
+            self.log.print(f"{self.log.YELLOW}Peringatan: Tidak ada font berhasil didownload. Akan menggunakan font default.")
         random.seed(42)
         self._lightning_phases = [random.random() * 2 * math.pi for _ in range(6)]
         self._lightning_amps = [0.6 + random.random() * 0.8 for _ in range(6)]
@@ -101,12 +101,14 @@ class VideoFX:
         lightning_glow: bool = True,
         lightning_glow_width: int = 10,
         lightning_strength: float = 1.0,
+        transparent: bool = False,
     ):
         text_lines = [t.strip() for t in text_lines if t and t.strip()]
         if not text_lines:
             text_lines = [" "]
         font = self._get_font(font_size)
-        dummy_img = Image.new("RGBA", (1, 1))
+        mode = "RGBA" if transparent else "RGB"
+        dummy_img = Image.new(mode, (1, 1))
         dummy_draw = ImageDraw.Draw(dummy_img)
         text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
         text_heights = [dummy_draw.textbbox((0, 0), line, font=font)[3] for line in text_lines]
@@ -149,7 +151,7 @@ class VideoFX:
             return points
 
         def make_frame(t):
-            base = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 255))
+            base = Image.new(mode, (canvas_w, canvas_h), (0, 0, 0, 0) if transparent else (0, 0, 0, 255))
             draw_base = ImageDraw.Draw(base)
             r = int(127 * (1 + math.sin(t * 5 + 0))) + 64
             g = int(127 * (1 + math.sin(t * 5 + 2))) + 64
@@ -171,7 +173,7 @@ class VideoFX:
                 line_w = text_widths[i]
                 line_h = text_heights[i]
                 position = ((canvas_w - line_w) / 2, current_y)
-                draw_base.text(position, line, font=font, fill=(rr, gg, bb, 255))
+                draw_base.text(position, line, font=font, fill=(rr, gg, bb, 255) if transparent else (rr, gg, bb))
                 rect_margin = 12 + int(font_size * 0.12)
                 x0 = position[0] - rect_margin
                 y0 = position[1] - rect_margin
@@ -197,12 +199,15 @@ class VideoFX:
                                 aal = int(max(8, color_alpha * (gw / (glow_w + 1)) * 0.6))
                                 draw_ov.line(points, fill=(lightning_color[0], lightning_color[1], lightning_color[2], aal), width=gw)
                         draw_ov.line(points, fill=col, width=lw)
-                    base = Image.alpha_composite(base, overlay)
-            arr = np.array(base.convert("RGB"), dtype=np.uint8)
+                    base = Image.alpha_composite(base.convert("RGBA"), overlay).convert(mode)
+            arr = np.array(base, dtype=np.uint8)
             return arr
 
         animation = VideoClip(make_frame, duration=duration)
-        animation.write_videofile(output_path, fps=fps, codec="libx264", logger=None)
+        if transparent:
+            animation.write_videofile(output_path, fps=fps, codec="libvpx-vp9", logger=None, ffmpeg_params=["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"])
+        else:
+            animation.write_videofile(output_path, fps=fps, codec="libx264", logger=None)
         animation.close()
 
     async def text_to_video(
@@ -225,6 +230,7 @@ class VideoFX:
         lightning_glow: bool = True,
         lightning_glow_width: int = 10,
         lightning_strength: float = 1.0,
+        transparent: bool = False,
     ):
         if ";" in text:
             text_lines = text.split(";")
@@ -249,6 +255,7 @@ class VideoFX:
             lightning_glow=lightning_glow,
             lightning_glow_width=lightning_glow_width,
             lightning_strength=lightning_strength,
+            transparent=transparent,
         )
         return output_path
 
@@ -265,13 +272,7 @@ class VideoFX:
             ffmpeg_params = ["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"]
         else:
             ffmpeg_params = ["-pix_fmt", "yuv420p", "-crf", "30", "-b:v", "0"]
-        final_clip.write_videofile(
-            output_path,
-            codec="libvpx-vp9",
-            audio=False,
-            logger=None,
-            ffmpeg_params=ffmpeg_params,
-        )
+        final_clip.write_videofile(output_path, codec="libvpx-vp9", audio=False, logger=None, ffmpeg_params=ffmpeg_params)
         clip.close()
         trimmed_clip.close()
         resized_clip.close()
