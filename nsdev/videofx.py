@@ -20,12 +20,27 @@ class VideoFX:
         self.font_cache_dir = ".cache_fonts"
         os.makedirs(self.font_cache_dir, exist_ok=True)
 
-        font_urls = self._fetch_google_font_urls(limit=15)
-        self.available_fonts: List[str] = self._ensure_local_fonts(font_urls)
+        try:
+            local_fonts = [
+                os.path.join(self.font_cache_dir, f)
+                for f in os.listdir(self.font_cache_dir)
+                if f.lower().endswith(".ttf") and os.path.isfile(os.path.join(self.font_cache_dir, f))
+            ]
+        except Exception as e:
+            self.log.print(f"{self.log.YELLOW}Peringatan: Gagal membaca cache font: {e}")
+            local_fonts = []
+
+        if local_fonts:
+            self.available_fonts = local_fonts
+            self.log.print(f"{self.log.GREEN}Menemukan {len(self.available_fonts)} font di cache. Melewati proses unduh.")
+        else:
+            self.log.print(f"{self.log.YELLOW}Cache font kosong. Memulai proses unduh font baru...")
+            font_urls = self._fetch_google_font_urls(limit=15)
+            self.available_fonts = self._ensure_local_fonts(font_urls)
 
         if not self.available_fonts:
             self.log.print(
-                f"{self.log.YELLOW}Peringatan: Tidak ada font kustom yang berhasil diunduh. Akan menggunakan font default sistem."
+                f"{self.log.YELLOW}Peringatan: Tidak ada font kustom yang tersedia. Akan menggunakan font default sistem."
             )
 
         random.seed(42)
@@ -192,12 +207,16 @@ class VideoFX:
             w = x1 - x0
             h = y1 - y0
             cx = (x0 + x1) / 2
-            (y0 + y1) / 2
+            cy = (y0 + y1) / 2
             points = []
+            
+            vertical_offset = h * 0.9
+            
             sx = cx + (random.random() - 0.5) * w * 1.2
-            sy = y0 - h * 0.4
+            sy = cy - vertical_offset
             ex = cx + (random.random() - 0.5) * w * 1.2
-            ey = y1 + h * 0.4
+            ey = cy + vertical_offset
+            
             for i in range(segments + 1):
                 t = i / segments
                 x = sx + (ex - sx) * t + (random.random() - 0.5) * w * jitter * (1 - abs(0.5 - t) * 2)
