@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import yaml
 
-from .colorize import AnsiColors
+from ..utils.colorize import AnsiColors
 
 
 class YamlHandler(AnsiColors):
