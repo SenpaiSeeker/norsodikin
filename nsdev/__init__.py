@@ -21,6 +21,7 @@ from .server.process import ProcessManager
 from .telegram.actions import TelegramActions
 from .telegram.argument import Argument
 from .telegram.button import Button
+from .telegram.copier import MessageCopier
 from .telegram.formatter import TextFormatter
 from .telegram.videofx import VideoFX
 from .utils.colorize import AnsiColors
@@ -31,7 +32,7 @@ from .utils.progress import TelegramProgressBar
 from .utils.shell import ShellExecutor
 from .utils.url import UrlUtils
 
-__version__ = "1.6.4"
+__version__ = "1.6.7"
 __author__ = "@NorSodikin"
 
 
@@ -56,6 +57,7 @@ class NsDev:
             formatter=TextFormatter,
             actions=TelegramActions(self._client),
             videofx=VideoFX(),
+            copier=MessageCopier(self._client),
         )
         self.data = SimpleNamespace(
             db=DataBase,
