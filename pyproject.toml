@@ -74,7 +74,9 @@ all = [
 ]
 
 [tool.setuptools]
-packages = ["nsdev"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nsdev*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "nsdev.__version__" }
