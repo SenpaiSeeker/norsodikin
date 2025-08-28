@@ -1,7 +1,7 @@
 import asyncio
 import os
 import re
-from typing import List, Tuple
+from typing import Tuple
 
 from pyrogram.errors import RPCError
 from pyrogram.types import Message
@@ -33,18 +33,19 @@ class MessageCopier:
 
         try:
             if message.media:
-                download_progress = TelegramProgressBar(self._client, status_message, task_name="Mengunduh")
+                download_progress = TelegramProgressBar(self._client, status_message, task_name="Downloads")
                 file_path = await self._client.download_media(
                     message,
                     progress=download_progress.update
                 )
 
-                if message.video and message.video.thumbs:
-                    thumb_path = await self._client.download_media(message.video.thumbs[-1].file_id)
+                media_obj = message.video or message.audio
+                if media_obj and hasattr(media_obj, "thumbs") and media_obj.thumbs:
+                    thumb_path = await self._client.download_media(media_obj.thumbs[-1].file_id)
 
-                upload_progress = TelegramProgressBar(self._client, status_message, task_name="Mengunggah")
-
+                upload_progress = TelegramProgressBar(self._client, status_message, task_name="Uploading")
                 media_type = message.media.value
+                
                 sender_map = {
                     "video": self._client.send_video,
                     "audio": self._client.send_audio,
@@ -57,19 +58,25 @@ class MessageCopier:
 
                 if media_type in sender_map:
                     send_func = sender_map[media_type]
+                    
                     kwargs = {
                         "chat_id": user_chat_id,
                         media_type: file_path,
                         "caption": message.caption.html if message.caption else "",
                         "progress": upload_progress.update,
                     }
-                    if thumb_path and media_type == "video":
-                        kwargs["thumb"] = thumb_path
+
+                    media_attributes = getattr(message, media_type, None)
+                    if media_attributes:
+                        if hasattr(media_attributes, "duration") and media_attributes.duration:
+                            kwargs["duration"] = media_attributes.duration
+                        
+                        if thumb_path and media_type in ["video", "audio"]:
+                            kwargs["thumb"] = thumb_path
                     
                     await send_func(**kwargs)
                 else:
                     await message.copy(user_chat_id)
-
             else:
                 await message.copy(user_chat_id)
         finally:
@@ -95,7 +102,7 @@ class MessageCopier:
             message_ids = list(range(start_id, end_id + 1))
             chat_id_to_process = chat_id1
 
-            await status_message.edit(f"Siap menyalin {len(message_ids)} pesan dari `{chat_id_to_process}`...")
+            await status_message.edit(f"Siap menyalin {len(message_ids)} pesan dari {chat_id_to_process}...")
             await asyncio.sleep(2)
             
             total = len(message_ids)
@@ -108,9 +115,9 @@ class MessageCopier:
                     await self._process_single_message(message, user_chat_id, status_message)
                     await asyncio.sleep(1)
                 except RPCError as e:
-                    await self._client.send_message(user_chat_id, f"Gagal mengambil pesan ID {msg_id}: `{e}`")
+                    await self._client.send_message(user_chat_id, f"Gagal mengambil pesan ID {msg_id}: {e}")
                 except Exception as e:
-                    await self._client.send_message(user_chat_id, f"Terjadi kesalahan pada pesan ID {msg_id}: `{e}`")
+                    await self._client.send_message(user_chat_id, f"Terjadi kesalahan pada pesan ID {msg_id}: {e}")
 
         else:
             links = links_text.split()
@@ -118,7 +125,7 @@ class MessageCopier:
             for i, link in enumerate(links):
                 chat_id, msg_id = self._parse_link(link)
                 if not chat_id:
-                    await self._client.send_message(user_chat_id, f"Link tidak valid: `{link}`")
+                    await self._client.send_message(user_chat_id, f"Link tidak valid: {link}")
                     continue
                 
                 await status_message.edit(f"Memproses link {i+1}/{total}...")
@@ -134,6 +141,6 @@ class MessageCopier:
                 except Exception as e:
                      await self._client.send_message(user_chat_id, f"Terjadi kesalahan pada link `{link}`: `{e}`")
 
-        await status_message.edit("✅ **Semua proses selesai!**")
+        await status_message.edit("✅ Semua proses selesai!")
         await asyncio.sleep(3)
         await status_message.delete()
