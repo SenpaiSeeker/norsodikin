@@ -22,7 +22,7 @@ class MediaDownloader:
             ydl_opts["cookiefile"] = self.cookies_file_path
         else:
             raise Exception(
-                f"File: {self.cookies_file_pat}, silakan tambahkan terlebih dahulu dan isi dengan cookies youtube anda.\nDisarankan menggunakan akun youtube yang gak terpakai demi keamanan"
+                f"File: {self.cookies_file_path}, silakan tambahkan terlebih dahulu dan isi dengan cookies youtube anda.\nDisarankan menggunakan akun youtube yang gak terpakai demi keamanan"
             )
 
         if audio_only:
