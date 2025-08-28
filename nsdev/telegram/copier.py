@@ -3,7 +3,7 @@ import os
 import re
 from typing import Tuple
 
-from pyrogram.errors import RPCError
+from pyrogram.errors import FloodWait, RPCError
 from pyrogram.types import Message
 
 from ..utils.progress import TelegramProgressBar
@@ -12,6 +12,7 @@ from ..utils.progress import TelegramProgressBar
 class MessageCopier:
     def __init__(self, client):
         self._client = client
+        self._log = self._client.ns.utils.log
 
     def _parse_link(self, link: str) -> Tuple[int, int] or Tuple[None, None]:
         public_match = re.match(r"https://t\.me/(\w+)/(\d+)", link)
@@ -62,7 +63,7 @@ class MessageCopier:
                     kwargs = {
                         "chat_id": user_chat_id,
                         media_type: file_path,
-                        "caption": message.caption or "",
+                        "caption": message.caption.html if message.caption else "",
                         "progress": upload_progress.update,
                     }
 
@@ -106,40 +107,66 @@ class MessageCopier:
             await asyncio.sleep(2)
             
             total = len(message_ids)
-            for i, msg_id in enumerate(message_ids):
-                await status_message.edit(f"Memproses pesan {i+1}/{total} (ID: {msg_id})...")
+            i = 0
+            while i < total:
+                msg_id = message_ids[i]
                 try:
+                    await status_message.edit(f"Memproses pesan {i+1}/{total} (ID: {msg_id})...")
                     message = await self._client.get_messages(chat_id_to_process, msg_id)
                     if message.empty:
+                        i += 1
                         continue
+                    
                     await self._process_single_message(message, user_chat_id, status_message)
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(1.5)
+                    i += 1
+
+                except FloodWait as e:
+                    wait_time = e.value + 2
+                    self._log.print(f"{self._log.YELLOW}[FloodWait] Terkena batasan Telegram. Menunggu {wait_time} detik...{self._log.RESET}")
+                    await asyncio.sleep(wait_time)
+                
                 except RPCError as e:
                     await self._client.send_message(user_chat_id, f"Gagal mengambil pesan ID {msg_id}: `{e}`")
+                    i += 1
                 except Exception as e:
                     await self._client.send_message(user_chat_id, f"Terjadi kesalahan pada pesan ID {msg_id}: `{e}`")
-
+                    i += 1
         else:
             links = links_text.split()
             total = len(links)
-            for i, link in enumerate(links):
-                chat_id, msg_id = self._parse_link(link)
-                if not chat_id:
-                    await self._client.send_message(user_chat_id, f"Link tidak valid: `{link}`")
-                    continue
-                
-                await status_message.edit(f"Memproses link {i+1}/{total}...")
+            i = 0
+            while i < total:
+                link = links[i]
                 try:
+                    chat_id, msg_id = self._parse_link(link)
+                    if not chat_id:
+                        await self._client.send_message(user_chat_id, f"Link tidak valid: `{link}`")
+                        i += 1
+                        continue
+                    
+                    await status_message.edit(f"Memproses link {i+1}/{total}...")
                     message = await self._client.get_messages(chat_id, msg_id)
                     if message.empty:
                         await self._client.send_message(user_chat_id, f"Pesan di link ini kosong atau telah dihapus:\n`{link}`")
+                        i += 1
                         continue
+
                     await self._process_single_message(message, user_chat_id, status_message)
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(1.5)
+                    i += 1
+
+                except FloodWait as e:
+                    wait_time = e.value + 2
+                    self._log.print(f"{self._log.YELLOW}[FloodWait] Terkena batasan Telegram. Menunggu {wait_time} detik...{self._log.RESET}")
+                    await asyncio.sleep(wait_time)
+
                 except RPCError as e:
                     await self._client.send_message(user_chat_id, f"Gagal mengambil pesan dari link `{link}`: `{e}`")
+                    i += 1
                 except Exception as e:
-                     await self._client.send_message(user_chat_id, f"Terjadi kesalahan pada link `{link}`: `{e}`")
+                    await self._client.send_message(user_chat_id, f"Terjadi kesalahan pada link `{link}`: `{e}`")
+                    i += 1
 
         await status_message.edit("✅ **Semua proses selesai!**")
         await asyncio.sleep(3)
