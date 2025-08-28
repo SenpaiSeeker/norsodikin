@@ -30,7 +30,7 @@ Gunakan "extras" untuk menambahkan dependensi bagi fitur-fitur spesifik.
     ```
     > **Catatan Penting untuk Pembaca QR Code:**
     > Fitur `qrcode.read()` memerlukan library `zbar`. Pada sistem berbasis Debian/Ubuntu, instal dengan:
-    > `sudo apt-get install -y libzbar0`
+    > `sudo apt-get update && sudo apt-get install -y libzbar0`
 
 *   **Untuk pengunduh media (YouTube, dll.):**
     ```bash
@@ -583,16 +583,144 @@ pesan_status = (
 ---
 
 ### 17. `payment` -> `client.ns.payment`
-Klien terintegrasi untuk berbagai payment gateway populer. (Contoh untuk Midtrans)
+Klien terintegrasi untuk berbagai payment gateway populer di Indonesia, memudahkan Anda menerima pembayaran di dalam bot atau aplikasi.
+
+---
+#### **Contoh Midtrans**
+Gateway pembayaran yang sangat populer dan stabil.
 
 **Inisialisasi:**
-`midtrans = client.ns.payment.Midtrans(server_key, client_key)`
+`midtrans = client.ns.payment.Midtrans(server_key, client_key, **kwargs)`
+
+| Parameter      | Tipe Data | Default                                | Deskripsi                                                       |
+|----------------|-----------|----------------------------------------|-----------------------------------------------------------------|
+| `server_key`   | `str`     | -                                      | **Wajib.** Kunci Server Midtrans Anda (dari dashboard).           |
+| `client_key`   | `str`     | -                                      | **Wajib.** Kunci Klien Midtrans Anda.                           |
+| `is_production`| `bool`    | `True`                                 | Atur ke `False` untuk menggunakan mode Sandbox (pengembangan). |
+| `callback_url` | `str`     | `"https://.../payment"`                | URL tujuan setelah pelanggan menyelesaikan pembayaran.          |
+
+**Metode Utama:**
+- `create_payment(order_id, gross_amount)`: Membuat sesi pembayaran baru.
+- `check_transaction(order_id)`: Memeriksa status transaksi yang ada.
 
 **Contoh Penggunaan:**
 ```python
-midtrans = client.ns.payment.Midtrans(server_key="SB-SERVER-KEY-ANDA", client_key="SB-CLIENT-KEY-ANDA", is_production=False)
-payment_info = midtrans.create_payment(order_id="order-id-123", gross_amount=50000)
-print("URL Pembayaran:", payment_info.redirect_url)
+# Inisialisasi untuk mode Sandbox
+midtrans = client.ns.payment.Midtrans(
+    server_key="SB-SERVER-KEY-ANDA", 
+    client_key="SB-CLIENT-KEY-ANDA", 
+    is_production=False
+)
+
+# Membuat pembayaran
+try:
+    payment_info = midtrans.create_payment(
+        order_id="INV-USER123-002", 
+        gross_amount=50000
+    )
+    # Anda bisa mengirim URL ini ke pengguna
+    print("URL Pembayaran:", payment_info.redirect_url)
+except Exception as e:
+    print(f"Gagal membuat pembayaran: {e}")
+```
+
+---
+#### **Contoh Tripay**
+Alternatif payment gateway dengan banyak pilihan channel pembayaran.
+
+**Inisialisasi:**
+`tripay = client.ns.payment.Tripay(api_key)`
+
+| Parameter | Tipe Data | Default | Deskripsi                            |
+|-----------|-----------|---------|--------------------------------------|
+| `api_key` | `str`     | -       | **Wajib.** Kunci API Tripay Anda.      |
+
+**Metode Utama:**
+- `create_payment(method, amount, order_id, customer_name)`: Membuat transaksi baru.
+- `check_transaction(reference)`: Memeriksa status transaksi berdasarkan referensi.
+
+**Contoh Penggunaan:**
+```python
+# Inisialisasi (ganti dengan kredensial Anda)
+TRIPAY_API_KEY = "TRIPAY_API_KEY_ANDA"
+tripay = client.ns.payment.Tripay(api_key=TRIPAY_API_KEY)
+
+# Membuat pembayaran (contoh QRIS)
+try:
+    payment_info = tripay.create_payment(
+        method="QRIS",           # Kode channel pembayaran (lihat dok. Tripay)
+        amount=10000,
+        order_id="INV-USER123-003",
+        customer_name="Budi Santoso"
+    )
+    print("URL QRIS:", payment_info.data.qr_url)
+    print("Reference untuk pengecekan:", payment_info.data.reference)
+except Exception as e:
+    print(f"Gagal membuat pembayaran Tripay: {e}")
+```
+---
+#### **Contoh VioletMediaPay**
+Gateway pembayaran lain yang menyediakan metode pembayaran umum. Perhatikan bahwa metode pada kelas ini bersifat `async`.
+
+**Inisialisasi:**
+`violet = client.ns.payment.Violet(api_key, secret_key, live=False)`
+
+| Parameter    | Tipe Data | Default | Deskripsi                                             |
+|--------------|-----------|---------|-------------------------------------------------------|
+| `api_key`    | `str`     | -       | **Wajib.** Kunci API VioletMediaPay Anda.             |
+| `secret_key` | `str`     | -       | **Wajib.** Kunci Rahasia VioletMediaPay Anda.         |
+| `live`       | `bool`    | `False` | Atur ke `True` untuk beralih ke mode produksi/live.   |
+
+**Metode Utama (Asinkron):**
+- `create_payment(channel_payment, amount, **kwargs)`: Membuat pembayaran.
+- `check_transaction(ref, ref_id)`: Memeriksa status pembayaran.
+
+**Contoh Penggunaan (dalam fungsi `async`):**
+```python
+import asyncio
+
+async def buat_pembayaran_violet(client):
+    VIOLET_API_KEY = "VIOLET_API_KEY_ANDA"
+    VIOLET_SECRET_KEY = "VIOLET_SECRET_KEY_ANDA"
+    
+    violet = client.ns.payment.Violet(
+        api_key=VIOLET_API_KEY,
+        secret_key=VIOLET_SECRET_KEY,
+        live=False  # Mode Sandbox
+    )
+
+    try:
+        # Membuat pembayaran
+        payment_info = await violet.create_payment(
+            channel_payment="QRISC",  # Contoh: QRIS Cepat
+            amount="15000",
+            produk="Donasi untuk Bot Keren"
+        )
+
+        if payment_info.success:
+            print("URL QR:", payment_info.data.qrcode)
+            print("Reference ID:", payment_info.data.ref_id)
+            print("Reference Kode:", payment_info.data.ref)
+
+            # Simpan ref dan ref_id untuk pengecekan nanti
+            ref_kode = payment_info.data.ref_kode
+            ref_id = payment_info.data.id_reference
+            
+            # Menunggu sebentar sebelum cek status
+            await asyncio.sleep(10)
+            
+            # Memeriksa status transaksi
+            status_info = await violet.check_transaction(ref=ref_kode, ref_id=ref_id)
+            if status_info.success:
+                print(f"Status Pembayaran [{ref_kode}]: {status_info.data.status}")
+        else:
+            print("Gagal membuat pembayaran:", payment_info.msg)
+            
+    except Exception as e:
+        print(f"Terjadi kesalahan saat proses pembayaran: {e}")
+
+# Untuk menjalankan contoh ini (di luar event handler Pyrogram):
+# asyncio.run(buat_pembayaran_violet(client))
 ```
 
 ---
