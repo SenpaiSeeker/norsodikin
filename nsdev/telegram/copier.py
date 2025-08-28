@@ -35,10 +35,7 @@ class MessageCopier:
         try:
             if message.media:
                 download_progress = TelegramProgressBar(self._client, status_message, task_name="Downloads")
-                file_path = await self._client.download_media(
-                    message,
-                    progress=download_progress.update
-                )
+                file_path = await self._client.download_media(message, progress=download_progress.update)
 
                 media_obj = message.video or message.audio
                 if media_obj and hasattr(media_obj, "thumbs") and media_obj.thumbs:
@@ -46,7 +43,7 @@ class MessageCopier:
 
                 upload_progress = TelegramProgressBar(self._client, status_message, task_name="Uploading")
                 media_type = message.media.value
-                
+
                 sender_map = {
                     "video": self._client.send_video,
                     "audio": self._client.send_audio,
@@ -54,12 +51,12 @@ class MessageCopier:
                     "photo": self._client.send_photo,
                     "voice": self._client.send_voice,
                     "animation": self._client.send_animation,
-                    "sticker": self._client.send_sticker
+                    "sticker": self._client.send_sticker,
                 }
 
                 if media_type in sender_map:
                     send_func = sender_map[media_type]
-                    
+
                     kwargs = {
                         "chat_id": user_chat_id,
                         media_type: file_path,
@@ -71,10 +68,10 @@ class MessageCopier:
                     if media_attributes:
                         if hasattr(media_attributes, "duration") and media_attributes.duration:
                             kwargs["duration"] = media_attributes.duration
-                        
+
                         if thumb_path and media_type in ["video", "audio"]:
                             kwargs["thumb"] = thumb_path
-                    
+
                     await send_func(**kwargs)
                 else:
                     await message.copy(user_chat_id)
@@ -91,13 +88,13 @@ class MessageCopier:
             parts = [part.strip() for part in links_text.split("|")]
             if len(parts) != 2:
                 raise ValueError("Format rentang tidak valid. Gunakan: `link_awal | link_akhir`")
-            
+
             chat_id1, msg_id1 = self._parse_link(parts[0])
             chat_id2, msg_id2 = self._parse_link(parts[1])
 
             if not (chat_id1 and chat_id2) or chat_id1 != chat_id2:
                 raise ValueError("Link tidak valid atau tidak berasal dari chat yang sama untuk rentang.")
-            
+
             start_id = min(msg_id1, msg_id2)
             end_id = max(msg_id1, msg_id2)
             message_ids = list(range(start_id, end_id + 1))
@@ -105,7 +102,7 @@ class MessageCopier:
 
             await status_message.edit(f"Siap menyalin {len(message_ids)} pesan dari `{chat_id_to_process}`...")
             await asyncio.sleep(2)
-            
+
             total = len(message_ids)
             i = 0
             while i < total:
@@ -116,16 +113,18 @@ class MessageCopier:
                     if message.empty:
                         i += 1
                         continue
-                    
+
                     await self._process_single_message(message, user_chat_id, status_message)
                     await asyncio.sleep(1.5)
                     i += 1
 
                 except FloodWait as e:
                     wait_time = e.value + 2
-                    self._log.print(f"{self._log.YELLOW}[FloodWait] Terkena batasan Telegram. Menunggu {wait_time} detik...{self._log.RESET}")
+                    self._log.print(
+                        f"{self._log.YELLOW}[FloodWait] Terkena batasan Telegram. Menunggu {wait_time} detik...{self._log.RESET}"
+                    )
                     await asyncio.sleep(wait_time)
-                
+
                 except RPCError as e:
                     await self._client.send_message(user_chat_id, f"Gagal mengambil pesan ID {msg_id}: `{e}`")
                     i += 1
@@ -144,11 +143,13 @@ class MessageCopier:
                         await self._client.send_message(user_chat_id, f"Link tidak valid: `{link}`")
                         i += 1
                         continue
-                    
+
                     await status_message.edit(f"Memproses link {i+1}/{total}...")
                     message = await self._client.get_messages(chat_id, msg_id)
                     if message.empty:
-                        await self._client.send_message(user_chat_id, f"Pesan di link ini kosong atau telah dihapus:\n`{link}`")
+                        await self._client.send_message(
+                            user_chat_id, f"Pesan di link ini kosong atau telah dihapus:\n`{link}`"
+                        )
                         i += 1
                         continue
 
@@ -158,7 +159,9 @@ class MessageCopier:
 
                 except FloodWait as e:
                     wait_time = e.value + 2
-                    self._log.print(f"{self._log.YELLOW}[FloodWait] Terkena batasan Telegram. Menunggu {wait_time} detik...{self._log.RESET}")
+                    self._log.print(
+                        f"{self._log.YELLOW}[FloodWait] Terkena batasan Telegram. Menunggu {wait_time} detik...{self._log.RESET}"
+                    )
                     await asyncio.sleep(wait_time)
 
                 except RPCError as e:

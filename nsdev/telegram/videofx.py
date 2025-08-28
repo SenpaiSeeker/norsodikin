@@ -4,7 +4,7 @@ import math
 import os
 import random
 import urllib.request
-from typing import List, Tuple
+from typing import List
 
 import numpy as np
 import requests
@@ -104,7 +104,7 @@ class VideoFX:
         return paths
 
     def _get_font(self, font_size: int):
-        if hasattr(self, 'available_fonts') and self.available_fonts:
+        if hasattr(self, "available_fonts") and self.available_fonts:
             random_font_path = random.choice(self.available_fonts)
             try:
                 return ImageFont.truetype(random_font_path, font_size)
@@ -143,14 +143,14 @@ class VideoFX:
         dummy_draw = ImageDraw.Draw(dummy_img)
         text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
         text_heights = [dummy_draw.textbbox((0, 0), line, font=font)[3] for line in text_lines]
-        
+
         base_w = max(max(text_widths) + 40, 512)
         canvas_w = base_w - (base_w % 2)
-        
+
         total_h = sum(text_heights) + (len(text_lines) * 20)
         base_h = max(total_h, 512)
         canvas_h = base_h - (base_h % 2)
-        
+
         if blink and blink_rate > 0:
             period = 1.0 / blink_rate
             on_duration = max(0.0, min(1.0, blink_duty)) * period
@@ -200,7 +200,11 @@ class VideoFX:
 
         if transparent:
             animation.write_videofile(
-                output_path, fps=fps, codec="libvpx-vp9", logger=None, ffmpeg_params=["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"]
+                output_path,
+                fps=fps,
+                codec="libvpx-vp9",
+                logger=None,
+                ffmpeg_params=["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"],
             )
         else:
             animation.write_videofile(
