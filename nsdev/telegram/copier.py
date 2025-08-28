@@ -60,7 +60,7 @@ class MessageCopier:
                     kwargs = {
                         "chat_id": user_chat_id,
                         media_type: file_path,
-                        "caption": message.caption.html or "",
+                        "caption": message.caption.html if message.caption else "",
                         "progress": upload_progress.update,
                     }
                     if thumb_path and media_type == "video":
