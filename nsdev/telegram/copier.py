@@ -62,7 +62,7 @@ class MessageCopier:
                     kwargs = {
                         "chat_id": user_chat_id,
                         media_type: file_path,
-                        "caption": message.caption.html if message.caption else "",
+                        "caption": message.caption or "",
                         "progress": upload_progress.update,
                     }
 
@@ -102,7 +102,7 @@ class MessageCopier:
             message_ids = list(range(start_id, end_id + 1))
             chat_id_to_process = chat_id1
 
-            await status_message.edit(f"Siap menyalin {len(message_ids)} pesan dari {chat_id_to_process}...")
+            await status_message.edit(f"Siap menyalin {len(message_ids)} pesan dari `{chat_id_to_process}`...")
             await asyncio.sleep(2)
             
             total = len(message_ids)
@@ -115,9 +115,9 @@ class MessageCopier:
                     await self._process_single_message(message, user_chat_id, status_message)
                     await asyncio.sleep(1)
                 except RPCError as e:
-                    await self._client.send_message(user_chat_id, f"Gagal mengambil pesan ID {msg_id}: {e}")
+                    await self._client.send_message(user_chat_id, f"Gagal mengambil pesan ID {msg_id}: `{e}`")
                 except Exception as e:
-                    await self._client.send_message(user_chat_id, f"Terjadi kesalahan pada pesan ID {msg_id}: {e}")
+                    await self._client.send_message(user_chat_id, f"Terjadi kesalahan pada pesan ID {msg_id}: `{e}`")
 
         else:
             links = links_text.split()
@@ -125,7 +125,7 @@ class MessageCopier:
             for i, link in enumerate(links):
                 chat_id, msg_id = self._parse_link(link)
                 if not chat_id:
-                    await self._client.send_message(user_chat_id, f"Link tidak valid: {link}")
+                    await self._client.send_message(user_chat_id, f"Link tidak valid: `{link}`")
                     continue
                 
                 await status_message.edit(f"Memproses link {i+1}/{total}...")
@@ -141,6 +141,6 @@ class MessageCopier:
                 except Exception as e:
                      await self._client.send_message(user_chat_id, f"Terjadi kesalahan pada link `{link}`: `{e}`")
 
-        await status_message.edit("✅ Semua proses selesai!")
+        await status_message.edit("✅ **Semua proses selesai!**")
         await asyncio.sleep(3)
         await status_message.delete()
