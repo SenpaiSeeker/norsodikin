@@ -1,7 +1,7 @@
 import argparse
 import sys
 
-from .logger import LoggerHandler
+from ..utils.logger import LoggerHandler
 
 
 class KeyManager:
