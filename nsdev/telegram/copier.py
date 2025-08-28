@@ -6,11 +6,14 @@ from typing import Tuple
 from pyrogram.errors import FloodWait, RPCError
 from pyrogram.types import Message
 
+from ..utils.logger import LoggerHandler
+from ..utils.progress import TelegramProgressBar
+
 
 class MessageCopier:
     def __init__(self, client):
         self._client = client
-        self._log = self._client.ns.utils.log
+        self._log = LoggerHandler()
 
     def _parse_link(self, link: str) -> Tuple[int, int] or Tuple[None, None]:
         public_match = re.match(r"https://t\.me/(\w+)/(\d+)", link)
@@ -32,14 +35,14 @@ class MessageCopier:
 
         try:
             if message.media:
-                download_progress = self._client.ns.utils.progress(self._client, status_message, task_name="Downloads")
+                download_progress = TelegramProgressBar(self._client, status_message, task_name="Downloads")
                 file_path = await self._client.download_media(message, progress=download_progress.update)
 
                 media_obj = message.video or message.audio
                 if media_obj and hasattr(media_obj, "thumbs") and media_obj.thumbs:
                     thumb_path = await self._client.download_media(media_obj.thumbs[-1].file_id)
 
-                upload_progress = self._client.ns.utils.progress(self._client, status_message, task_name="Uploading")
+                upload_progress = TelegramProgressBar(self._client, status_message, task_name="Uploading")
                 media_type = message.media.value
 
                 sender_map = {
