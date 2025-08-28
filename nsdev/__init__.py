@@ -32,7 +32,7 @@ from .utils.progress import TelegramProgressBar
 from .utils.shell import ShellExecutor
 from .utils.url import UrlUtils
 
-__version__ = "1.7"
+__version__ = "1.7.1"
 __author__ = "@NorSodikin"
 
 
