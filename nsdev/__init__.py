@@ -1,3 +1,5 @@
+from functools import partial
+
 from types import SimpleNamespace
 
 from .ai.bing import ImageGenerator
@@ -32,7 +34,7 @@ from .utils.progress import TelegramProgressBar
 from .utils.shell import ShellExecutor
 from .utils.url import UrlUtils
 
-__version__ = "1.7.1"
+__version__ = "1.7.2"
 __author__ = "@NorSodikin"
 
 
@@ -55,7 +57,7 @@ class NsDev:
             arg=Argument(self._client),
             button=Button(),
             formatter=TextFormatter,
-            actions=TelegramActions(self._client),
+            actions=partial(TelegramActions, self._client),
             videofx=VideoFX(),
             copier=MessageCopier(self._client),
         )
