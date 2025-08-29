@@ -703,8 +703,8 @@ async def buat_pembayaran_violet(client):
             print("Reference Kode:", payment_info.data.ref)
 
             # Simpan ref dan ref_id untuk pengecekan nanti
-            ref_kode = payment_info.data.ref_kode
-            ref_id = payment_info.data.id_reference
+            ref_kode = payment_info.data.ref
+            ref_id = payment_info.data.ref_id
             
             # Menunggu sebentar sebelum cek status
             await asyncio.sleep(10)
@@ -955,6 +955,63 @@ config = client.ns.data.yaml.loadAndConvert("config.yml")
 if config:
     print(f"Nama Aplikasi: {config.app.name}")
     print(f"Host Database: {config.database.host}")
+```
+
+---
+
+### 30. `copier` -> `client.ns.telegram.copier`
+Modul canggih untuk menyalin pesan dari link Telegram, baik dari chat publik maupun privat. Mendukung penyalinan tunggal, ganda, dan dalam rentang (range), dengan penanganan `FloodWait` otomatis. Jika pesan berupa media, modul akan mengunduh dan mengirim ulang file dengan metadata lengkap (thumbnail, durasi) dan progress bar. Pesan non-media akan disalin secara efisien.
+
+**Metode Utama:**
+`copy_from_links(user_chat_id, links_text, status_message)`
+
+| Parameter | Tipe Data | Deskripsi |
+|---|---|---|
+| `user_chat_id` | `int` | ID chat tujuan ke mana pesan akan dikirim. |
+| `links_text` | `str` | String yang berisi link pesan, dapat dalam 3 format. |
+| `status_message` | `pyrogram.types.Message` | Pesan yang dikirim bot untuk menampilkan status proses. |
+
+**Format `links_text`:**
+1.  **Link Tunggal**: Cukup satu URL pesan.
+    `https://t.me/channel/123`
+2.  **Beberapa Link**: Beberapa URL dipisahkan oleh spasi.
+    `https://t.me/channel/123 https://t.me/channel/456`
+3.  **Rentang Link**: Dua URL (dari chat yang sama) dipisahkan oleh `|`.
+    `https://t.me/c/12345/10 | https://t.me/c/12345/20`
+
+**Contoh Penggunaan Lengkap:**
+```python
+COPY_HELP_TEXT = """
+**Fitur Penyalin Pesan**
+Saya bisa menyalin pesan dari channel/grup mana pun, cukup berikan linknya.
+
+• **Satu Pesan**: `/copy <link>`
+• **Beberapa Pesan**: `/copy <link1> <link2>`
+• **Rentang Pesan**: `/copy <link_awal> | <link_akhir>`
+"""
+
+@app.on_message(filters.command("copy"))
+async def copy_message_handler(client, message):
+    if len(message.command) < 2:
+        await message.reply_text(COPY_HELP_TEXT, quote=True)
+        return
+        
+    links_text = message.text.split(None, 1)[1]
+    status_msg = await message.reply_text("⏳ `Memvalidasi link...`", quote=True)
+    
+    try:
+        # Panggil modul MessageCopier dari namespace `ns`
+        await client.ns.telegram.copier.copy_from_links(
+            user_chat_id=message.chat.id,
+            links_text=links_text,
+            status_message=status_msg
+        )
+    except ValueError as ve:
+        await status_msg.edit(f"❌ **Error:** {ve}")
+    except Exception as e:
+        client.ns.utils.log.error(f"Copy Handler Error: {e}")
+        await status_msg.edit(f"❌ **Terjadi kesalahan tak terduga:**\n`{e}`")
+
 ```
 ---
 
