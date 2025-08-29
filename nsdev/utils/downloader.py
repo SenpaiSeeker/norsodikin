@@ -1,6 +1,8 @@
 import asyncio
 import os
+from functools import partial
 
+import requests
 from yt_dlp import YoutubeDL
 
 
@@ -11,20 +13,29 @@ class MediaDownloader:
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
 
-    def _sync_download(self, url: str, audio_only: bool) -> dict:
+    def _sync_download(self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop) -> dict:
+        
+        def _hook(d):
+            if d['status'] == 'downloading' and progress_callback:
+                total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
+                if total_bytes:
+                    asyncio.run_coroutine_threadsafe(
+                        progress_callback(d['downloaded_bytes'], total_bytes), 
+                        loop
+                    )
+
         ydl_opts = {
             "outtmpl": os.path.join(self.download_path, "%(title)s.%(ext)s"),
             "noplaylist": True,
             "quiet": True,
         }
+        
+        if progress_callback:
+            ydl_opts['progress_hooks'] = [_hook]
 
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
             ydl_opts["cookiefile"] = self.cookies_file_path
-        else:
-            raise Exception(
-                f"File: {self.cookies_file_path}, silakan tambahkan terlebih dahulu dan isi dengan cookies youtube anda.\nDisarankan menggunakan akun youtube yang gak terpakai demi keamanan"
-            )
-
+        
         if audio_only:
             ydl_opts.update(
                 {
@@ -48,17 +59,28 @@ class MediaDownloader:
                 base, _ = os.path.splitext(filename)
                 filename = base + ".mp3"
 
+            thumbnail_data = None
+            thumbnail_url = info.get("thumbnail")
+            if thumbnail_url:
+                try:
+                    thumb_response = requests.get(thumbnail_url)
+                    thumb_response.raise_for_status()
+                    thumbnail_data = thumb_response.content
+                except requests.RequestException:
+                    thumbnail_data = None
+
             return {
                 "path": filename,
                 "title": info.get("title", "N/A"),
                 "duration": info.get("duration", 0),
-                "thumbnail": info.get("thumbnail", None),
+                "thumbnail_data": thumbnail_data,
             }
 
-    async def download(self, url: str, audio_only: bool = False) -> dict:
+    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> dict:
         loop = asyncio.get_running_loop()
         try:
-            result = await loop.run_in_executor(None, self._sync_download, url, audio_only)
+            func_call = partial(self._sync_download, url, audio_only, progress_callback, loop)
+            result = await loop.run_in_executor(None, func_call)
             return result
         except Exception as e:
             raise Exception(f"Failed to download media: {e}")
