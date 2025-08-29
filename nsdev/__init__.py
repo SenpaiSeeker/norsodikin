@@ -1,4 +1,3 @@
-from functools import partial
 from types import SimpleNamespace
 
 from .ai.bing import ImageGenerator
