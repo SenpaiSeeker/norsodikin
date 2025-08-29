@@ -57,7 +57,7 @@ class NsDev:
             arg=Argument(self._client),
             button=Button(),
             formatter=TextFormatter,
-            actions=partial(TelegramActions, self._client),
+            actions=TelegramActions(self._client),
             videofx=VideoFX(),
             copier=MessageCopier(self._client),
         )
