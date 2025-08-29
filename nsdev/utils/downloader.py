@@ -13,29 +13,28 @@ class MediaDownloader:
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
 
-    def _sync_download(self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop) -> dict:
-        
+    def _sync_download(
+        self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop
+    ) -> dict:
+
         def _hook(d):
-            if d['status'] == 'downloading' and progress_callback:
-                total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
+            if d["status"] == "downloading" and progress_callback:
+                total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate")
                 if total_bytes:
-                    asyncio.run_coroutine_threadsafe(
-                        progress_callback(d['downloaded_bytes'], total_bytes), 
-                        loop
-                    )
+                    asyncio.run_coroutine_threadsafe(progress_callback(d["downloaded_bytes"], total_bytes), loop)
 
         ydl_opts = {
             "outtmpl": os.path.join(self.download_path, "%(title)s.%(ext)s"),
             "noplaylist": True,
             "quiet": True,
         }
-        
+
         if progress_callback:
-            ydl_opts['progress_hooks'] = [_hook]
+            ydl_opts["progress_hooks"] = [_hook]
 
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
             ydl_opts["cookiefile"] = self.cookies_file_path
-        
+
         if audio_only:
             ydl_opts.update(
                 {
