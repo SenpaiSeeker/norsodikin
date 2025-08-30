@@ -54,7 +54,7 @@ class MediaDownloader:
 
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            return json.dumps(info, indent=4)
+            return json.dumps(info, indent=4, sort_keys=True)
 
     async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> str:
         loop = asyncio.get_running_loop()
