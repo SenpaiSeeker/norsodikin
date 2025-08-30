@@ -1,8 +1,8 @@
 import asyncio
-import json
 import os
 from functools import partial
 
+import requests
 from yt_dlp import YoutubeDL
 
 
@@ -13,7 +13,9 @@ class MediaDownloader:
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
 
-    def _sync_download(self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop) -> str:
+    def _sync_download(
+        self, url: str, audio_only: bool, progress_callback: callable, on_start_entry_callback: callable, loop: asyncio.AbstractEventLoop
+    ) -> list:
         
         def _hook(d):
             if d['status'] == 'downloading' and progress_callback:
@@ -25,9 +27,9 @@ class MediaDownloader:
                     )
 
         ydl_opts = {
-            "outtmpl": os.path.join(self.download_path, "%(title)s.%(ext)s"),
+            "outtmpl": os.path.join(self.download_path, "%(playlist_index)s - %(title)s.%(ext)s" if 'playlist' in url else "%(title)s.%(ext)s"),
             "quiet": True,
-            "ignoreerrors": True, 
+            "noplaylist": False, 
         }
         
         if progress_callback:
@@ -52,15 +54,53 @@ class MediaDownloader:
         else:
             ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
 
+        
+        results = []
         with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            return json.dumps(info, indent=4, sort_keys=True)
+            playlist_info = ydl.extract_info(url, download=False)
+            
+            entries = playlist_info.get('entries', [playlist_info])
+            total_entries = len(entries)
 
-    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> str:
+            for i, entry in enumerate(entries):
+                if on_start_entry_callback:
+                    asyncio.run_coroutine_threadsafe(
+                        on_start_entry_callback(i + 1, total_entries, entry),
+                        loop
+                    ).result()
+
+                info = ydl.extract_info(entry['url'], download=True)
+                filename = ydl.prepare_filename(info)
+                if audio_only:
+                    base, _ = os.path.splitext(filename)
+                    filename = base + ".mp3"
+
+                thumbnail_data = None
+                thumbnail_url = info.get("thumbnail")
+                if thumbnail_url:
+                    try:
+                        thumb_response = requests.get(thumbnail_url)
+                        thumb_response.raise_for_status()
+                        thumbnail_data = thumb_response.content
+                    except requests.RequestException:
+                        thumbnail_data = None
+
+                results.append({
+                    "path": filename,
+                    "title": info.get("fulltitle", "N/A"),
+                    "duration": info.get("duration", 0),
+                    "thumbnail_data": thumbnail_data,
+                })
+        
+        return results
+
+    async def download(
+        self, url: str, audio_only: bool = False, progress_callback: callable = None, on_start_entry_callback: callable = None
+    ) -> list:
         loop = asyncio.get_running_loop()
         try:
-            func_call = partial(self._sync_download, url, audio_only, progress_callback, loop)
-            result_json = await loop.run_in_executor(None, func_call)
-            return result_json
+            func_call = partial(self._sync_download, url, audio_only, progress_callback, on_start_entry_callback, loop)
+            results = await loop.run_in_executor(None, func_call)
+            return results
         except Exception as e:
             raise Exception(f"Failed to download media: {e}")
