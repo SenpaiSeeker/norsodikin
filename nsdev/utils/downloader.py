@@ -1,10 +1,8 @@
 import asyncio
+import json
 import os
 from functools import partial
-from types import SimpleNamespace
-from typing import Callable, List
 
-import requests
 from yt_dlp import YoutubeDL
 
 
@@ -15,21 +13,21 @@ class MediaDownloader:
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
 
-    def _sync_download(self, url: str, audio_only: bool, progress_callback: Callable, loop: asyncio.AbstractEventLoop) -> List[SimpleNamespace]:
+    def _sync_download(self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop) -> str:
         
         def _hook(d):
             if d['status'] == 'downloading' and progress_callback:
                 total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
                 if total_bytes:
                     asyncio.run_coroutine_threadsafe(
-                        progress_callback(d['downloaded_bytes'], total_bytes),
+                        progress_callback(d['downloaded_bytes'], total_bytes), 
                         loop
                     )
 
         ydl_opts = {
-            "outtmpl": os.path.join(self.download_path, "%(title)s [%(id)s].%(ext)s"),
+            "outtmpl": os.path.join(self.download_path, "%(title)s.%(ext)s"),
             "quiet": True,
-            "ignoreerrors": True,
+            "ignoreerrors": True, 
         }
         
         if progress_callback:
@@ -39,57 +37,30 @@ class MediaDownloader:
             ydl_opts["cookiefile"] = self.cookies_file_path
         
         if audio_only:
-            ydl_opts.update({
-                "format": "bestaudio/best",
-                "postprocessors": [{
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": "mp3",
-                    "preferredquality": "192",
-                }],
-            })
+            ydl_opts.update(
+                {
+                    "format": "bestaudio/best",
+                    "postprocessors": [
+                        {
+                            "key": "FFmpegExtractAudio",
+                            "preferredcodec": "mp3",
+                            "preferredquality": "192",
+                        }
+                    ],
+                }
+            )
         else:
             ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
 
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
+            return json.dumps(info, indent=4)
 
-            results = []
-            videos_to_process = info.get('entries', [info])
-
-            for video_info in videos_to_process:
-                if not video_info:
-                    continue
-
-                result_data = video_info.copy()
-                
-                final_path = ydl.prepare_filename(video_info)
-                if audio_only:
-                    base, _ = os.path.splitext(final_path)
-                    final_path = base + ".mp3"
-                
-                result_data["path"] = final_path
-
-                thumbnail_data = None
-                thumbnail_url = video_info.get("thumbnail")
-                if thumbnail_url:
-                    try:
-                        thumb_response = requests.get(thumbnail_url)
-                        thumb_response.raise_for_status()
-                        thumbnail_data = thumb_response.content
-                    except requests.RequestException:
-                        thumbnail_data = None
-                
-                result_data["thumbnail_data"] = thumbnail_data
-                
-                results.append(SimpleNamespace(**result_data))
-                
-            return results
-
-    async def download(self, url: str, audio_only: bool = False, progress_callback: Callable = None) -> List[SimpleNamespace]:
+    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> str:
         loop = asyncio.get_running_loop()
         try:
             func_call = partial(self._sync_download, url, audio_only, progress_callback, loop)
-            results = await loop.run_in_executor(None, func_call)
-            return results
+            result_json = await loop.run_in_executor(None, func_call)
+            return result_json
         except Exception as e:
             raise Exception(f"Failed to download media: {e}")
