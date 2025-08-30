@@ -73,7 +73,7 @@ class MediaDownloader:
                 "path": filename,
                 "title": info.get("title", "N/A"),
                 "duration": info.get("duration", 0),
-                "thumbnail_data": thumbnail_data,L
+                "thumbnail_data": thumbnail_data,
             }
 
     async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> dict:
