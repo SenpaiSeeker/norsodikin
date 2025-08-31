@@ -908,6 +908,84 @@ async def get_user_stories_handler(client, message):
         # Menangani error (misal: dijalankan di bot biasa)
         await status_msg.edit_text(f"❌ **Error Kritis:** {e}")
 ```
+### `videofx` -> `client.ns.telegram.videofx`
+Modul untuk manipulasi video, seperti membuat video dari teks (dengan efek RGB berkedip) atau mengubah video biasa menjadi stiker video `.webm` yang sesuai untuk Telegram. Modul ini secara otomatis mengunduh dan menyimpan *cache* font untuk menghasilkan teks yang menarik secara visual.
+
+#### **Metode Utama: `text_to_video()`**
+Mengubah satu atau beberapa baris teks menjadi file video `.mp4`.
+
+| Parameter       | Tipe Data | Default  | Deskripsi                                                                 |
+|-----------------|-----------|----------|---------------------------------------------------------------------------|
+| `text`          | `str`     | -        | Teks yang akan dianimasikan. Gunakan `;` untuk membuat baris baru.         |
+| `output_path`   | `str`     | -        | Path file tujuan untuk menyimpan video (misal: `"hasil.mp4"`).              |
+| `duration`      | `float`   | `5.0`    | Durasi video dalam detik.                                                 |
+| `fps`           | `int`     | `24`     | *Frames per second* untuk video.                                            |
+| `blink`         | `bool`    | `False`  | Aktifkan efek berkedip untuk teks.                                        |
+| `blink_smooth`  | `bool`    | `False`  | Jika `blink` aktif, `True` akan membuat kedipan halus (fade in/out).       |
+| `font_size`     | `int`     | `90`     | Ukuran font teks.                                                         |
+
+#### **Metode Utama: `video_to_sticker()`**
+Mengonversi file video menjadi stiker video `.webm` dengan resolusi 512px yang sesuai standar Telegram.
+
+| Parameter   | Tipe Data | Default  | Deskripsi                                                        |
+|-------------|-----------|----------|------------------------------------------------------------------|
+| `video_path`  | `str`     | -        | Path file video sumber yang akan dikonversi.                       |
+| `output_path` | `str`     | -        | Path file tujuan untuk stiker `.webm`.                            |
+| `fps`         | `int`     | `30`     | FPS untuk stiker. Nilai yang lebih tinggi mungkin ditolak Telegram. |
+
+---
+#### **Contoh Penggunaan:**
+
+Berikut adalah contoh *handler* lengkap yang membuat stiker animasi dari teks yang diberikan pengguna. Stiker yang dihasilkan akan memiliki latar belakang hitam.
+
+```python
+import os
+import uuid
+
+# Contoh Handler untuk perintah /stickerfx
+@app.on_message(filters.command("stickerfx"))
+async def animated_sticker_handler(client, message):
+    text_input = client.ns.telegram.arg.getMessage(message, is_arg=True)
+    if not text_input:
+        return await message.reply("Gunakan: `/stickerfx Teks Anda;Baris baru`")
+
+    status_msg = await message.reply("🎨 Membuat animasi dari teks...")
+
+    # Buat nama file sementara yang unik
+    video_path = f"{uuid.uuid4()}.mp4"
+    sticker_path = f"{uuid.uuid4()}.webm"
+
+    try:
+        # Langkah 1: Buat video dari teks dengan efek kedip
+        await client.ns.telegram.videofx.text_to_video(
+            text=text_input,
+            output_path=video_path,
+            blink=True,
+            blink_smooth=True
+        )
+
+        await status_msg.edit("✨ Mengonversi video menjadi stiker...")
+
+        # Langkah 2: Konversi video yang baru dibuat menjadi stiker .webm
+        await client.ns.telegram.videofx.video_to_sticker(
+            video_path=video_path,
+            output_path=sticker_path
+        )
+
+        # Langkah 3: Kirim stiker dan hapus pesan status
+        await client.send_sticker(message.chat.id, sticker_path)
+        await status_msg.delete()
+
+    except Exception as e:
+        await status_msg.edit(f"❌ Terjadi kesalahan: {e}")
+    finally:
+        # Selalu bersihkan file sementara
+        if os.path.exists(video_path):
+            os.remove(video_path)
+        if os.path.exists(sticker_path):
+            os.remove(sticker_path)
+
+```
 
 </details>
 
