@@ -8,7 +8,6 @@ from typing import Optional, Union
 import qrcode
 from PIL import Image, ImageDraw
 from pyzbar import pyzbar
-
 from qrcode.image.styledpil import StyledPilImage
 from qrcode.image.styles.moduledrawers import CircleModuleDrawer
 
@@ -25,15 +24,15 @@ class QrCodeGenerator:
             for x in range(size):
                 distance = math.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
                 ratio = distance / max_dist
-                
+
                 intensity = max(0, 1 - ratio**2)
-                
+
                 r = int(color[0] * intensity)
                 g = int(color[1] * intensity)
                 b = int(color[2] * intensity)
 
                 draw.point((x, y), fill=(r, g, b))
-        
+
         return background
 
     def _sync_generate(self, data: str, use_dots: bool, glow_background: bool) -> bytes:
@@ -48,32 +47,21 @@ class QrCodeGenerator:
                 qr = qrcode.QRCode(**qr_options)
                 qr.add_data(data)
                 qr.make(fit=True)
-                
+
                 image_factory = StyledPilImage if use_dots else None
                 drawer_module = CircleModuleDrawer() if use_dots else None
-                
-                img = qr.make_image(
-                    image_factory=image_factory,
-                    module_drawer=drawer_module
-                )
-            
+
+                img = qr.make_image(image_factory=image_factory, module_drawer=drawer_module)
+
             else:
-                qr = qrcode.QRCode(
-                    version=1,
-                    error_correction=qrcode.constants.ERROR_CORRECT_H,
-                    box_size=10,
-                    border=4
-                )
+                qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=10, border=4)
                 qr.add_data(data)
                 qr.make(fit=True)
-                
+
                 drawer = CircleModuleDrawer() if use_dots else None
-                
+
                 qr_img = qr.make_image(
-                    image_factory=StyledPilImage, 
-                    module_drawer=drawer, 
-                    fill_color="black", 
-                    back_color=(0,0,0,0)
+                    image_factory=StyledPilImage, module_drawer=drawer, fill_color="black", back_color=(0, 0, 0, 0)
                 ).convert("RGBA")
 
                 qr_size = qr_img.size[0]
@@ -87,7 +75,7 @@ class QrCodeGenerator:
                 glow_color = tuple(int(c * 255) for c in rgb_float)
 
                 background = self._sync_create_glow_background(bg_size, glow_color)
-                
+
                 paste_position = (padding, padding)
                 background.paste(qr_img, paste_position, qr_img)
                 img = background

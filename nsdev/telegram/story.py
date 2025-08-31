@@ -27,22 +27,17 @@ class StoryDownloader:
 
         try:
             peer = await self._client.resolve_peer(user.id)
-            
-            peer_stories = await self._client.invoke(
-                functions.stories.GetPeerStories(
-                    peer=peer
-                )
-            )
+
+            peer_stories = await self._client.invoke(functions.stories.GetPeerStories(peer=peer))
 
             active_stories = peer_stories.stories.stories
 
             if not active_stories:
                 return await status_message.edit_text(f"✅ Pengguna `{username}` tidak memiliki story aktif.")
-               
 
             total = len(active_stories)
             await status_message.edit_text(f"✅ Ditemukan {total} story aktif. Memulai pengunduhan...")
-            
+
             for i, story in enumerate(active_stories):
                 downloaded_path = None
                 try:
@@ -55,7 +50,7 @@ class StoryDownloader:
                         await self._client.send_video(chat_id, downloaded_path, caption=caption)
                     elif isinstance(story.media, types.MessageMediaPhoto):
                         await self._client.send_photo(chat_id, downloaded_path, caption=caption)
-                    
+
                     await asyncio.sleep(1.5)
 
                 finally:
