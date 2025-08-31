@@ -5,7 +5,7 @@ from pyrogram.errors import PeerIdInvalid, RPCError, UsernameInvalid
 from pyrogram.raw import functions, types
 from pyrogram.types import Message
 
-from ..logger import LoggerHandler 
+from ..utils.logger import LoggerHandler
 
 
 class StoryDownloader:
