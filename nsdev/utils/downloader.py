@@ -7,7 +7,7 @@ from yt_dlp import YoutubeDL
 
 
 class MediaDownloader:
-    def __init__(self, cookies_file_path: str = None, download_path: str = "downloads"):
+    def __init__(self, cookies_file_path: str = "cookies.txt", download_path: str = "downloads"):
         self.download_path = download_path
         self.cookies_file_path = cookies_file_path
         if not os.path.exists(self.download_path):
