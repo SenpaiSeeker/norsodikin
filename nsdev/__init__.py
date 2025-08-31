@@ -24,6 +24,7 @@ from .telegram.button import Button
 from .telegram.copier import MessageCopier
 from .telegram.errors import ErrorHandler
 from .telegram.formatter import TextFormatter
+from .telegram.story import StoryDownloader
 from .telegram.videofx import VideoFX
 from .utils.colorize import AnsiColors
 from .utils.downloader import MediaDownloader
@@ -62,6 +63,7 @@ class NsDev:
             videofx=VideoFX(),
             copier=MessageCopier(self._client),
             errors=ErrorHandler(self._client),
+            story=StoryDownloader(self._client),
         )
         self.data = SimpleNamespace(
             db=DataBase,
