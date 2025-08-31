@@ -1,5 +1,5 @@
 import time
-from functools import wraps
+from functools import wraps, partial
 from typing import Dict, Tuple
 
 from pyrogram.types import CallbackQuery, Message
@@ -23,7 +23,8 @@ class RateLimiter:
                 else:
                     return await func(client, update, *args, **kwargs)
 
-                key = f"{user_id}:{func.__name__}"
+                actual_func = func.func if isinstance(func, partial) else func
+                key = f"{user_id}:{actual_func.__name__}"
                 
                 current_time = time.time()
                 
