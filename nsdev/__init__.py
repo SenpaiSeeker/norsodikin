@@ -22,17 +22,20 @@ from .telegram.actions import TelegramActions
 from .telegram.argument import Argument
 from .telegram.button import Button
 from .telegram.copier import MessageCopier
+from .telegram.errors import ErrorHandler
 from .telegram.formatter import TextFormatter
 from .telegram.videofx import VideoFX
 from .utils.colorize import AnsiColors
 from .utils.downloader import MediaDownloader
 from .utils.gradient import Gradient
+from .utils.image import ImageManipulator
 from .utils.logger import LoggerHandler
 from .utils.progress import TelegramProgressBar
+from .utils.ratelimit import RateLimiter
 from .utils.shell import ShellExecutor
 from .utils.url import UrlUtils
 
-__version__ = "1.7.7"
+__version__ = "1.8.0"
 __author__ = "@NorSodikin"
 
 
@@ -58,6 +61,7 @@ class NsDev:
             actions=TelegramActions(self._client),
             videofx=VideoFX(),
             copier=MessageCopier(self._client),
+            errors=ErrorHandler(self._client),
         )
         self.data = SimpleNamespace(
             db=DataBase,
@@ -72,6 +76,8 @@ class NsDev:
             shell=ShellExecutor(),
             url=UrlUtils(),
             downloader=MediaDownloader,
+            ratelimit=RateLimiter(self._client),
+            image=ImageManipulator(),
         )
         self.server = SimpleNamespace(
             user=SSHUserManager,
