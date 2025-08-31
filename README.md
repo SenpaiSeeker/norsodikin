@@ -820,6 +820,37 @@ async def copy_message_handler(client, message):
         await status_msg.edit(f"❌ **Terjadi kesalahan tak terduga:**\n`{e}`")
 ```
 ---
+### `errors.handle`
+Decorator untuk menangani error di *handler* secara otomatis. Mencegah bot crash dan menyediakan logging yang detail serta pesan yang ramah untuk pengguna.
+
+**Parameter Decorator:**
+| Parameter | Tipe Data | Deskripsi |
+|---|---|---|
+| `log_channel_id` | `int` | ID channel (atau chat) untuk mengirim log traceback lengkap. |
+| `error_message_template`| `str` | Template pesan yang akan dikirim ke pengguna jika terjadi error. |
+| `silent`|`bool`| Jika `True`, tidak akan mengirim pesan balasan ke pengguna. |
+
+**Contoh Penggunaan:**
+```python
+LOG_CHANNEL = -1001234567890
+
+# Handler tanpa penanganan error manual
+# @app.on_message(filters.command("divide"))
+# async def divide_by_zero(client, message):
+#     await message.reply(1 / 0)
+
+# Handler yang sama, tapi sekarang aman dan informatif
+@app.on_message(filters.command("divide"))
+@client.ns.telegram.errors.handle(log_channel_id=LOG_CHANNEL)
+async def divide_by_zero_safe(client, message):
+    await message.reply(1 / 0)
+
+# Jika terjadi error, decorator akan:
+# 1. Menangkap ZeroDivisionError.
+# 2. Mengirim traceback lengkap ke LOG_CHANNEL.
+# 3. Membalas pesan pengguna dengan: "❌ Terjadi kesalahan:\n`ZeroDivisionError: division by zero`"
+```
+---
 ### `formatter`
 Builder canggih untuk menyusun pesan berformat dengan sintaks yang fasih.
 
@@ -832,8 +863,7 @@ fmt = client.ns.telegram.formatter("markdown")
 pesan = (
     fmt.bold("🔥 Update Sistem").new_line(2)
     .text("Layanan telah kembali normal.").new_line()
-    .italic("Terima kasih atas kesabaran Anda.")
-    .to_string()
+    .italic("Terima kasih atas kesabaran Anda.").to_string()
 )
 # await message.reply(pesan)
 ```
@@ -907,6 +937,45 @@ Mempercantik output terminal dengan teks bergradien dan timer countdown.
 - `render_text(text)`
 - `countdown(seconds)`
 ---
+### `image`
+Kumpulan alat untuk memanipulasi gambar dengan mudah. Menggunakan font yang di-cache secara otomatis.
+
+**Metode Utama:**
+- `add_watermark(image_bytes, text, **kwargs)`: Menambahkan watermark teks.
+- `resize(image_bytes, size, keep_aspect_ratio=True)`: Mengubah ukuran gambar.
+- `convert_format(image_bytes, output_format="PNG")`: Mengubah format gambar.
+
+**Contoh Penggunaan (`add_watermark`):**
+```python
+# Handler untuk perintah /wmark
+# Pengguna harus membalas (reply) ke sebuah foto
+@app.on_message(filters.command("wmark"))
+async def watermark_handler(client, message):
+    if not message.reply_to_message or not message.reply_to_message.photo:
+        return await message.reply("Balas ke foto untuk menambahkan watermark.")
+
+    text = " ".join(message.command[1:]) or "© norsodikin"
+    status = await message.reply("Memproses gambar...")
+
+    try:
+        photo_bytes = await client.download_media(message.reply_to_message, in_memory=True)
+        
+        watermarked_bytes = await client.ns.utils.image.add_watermark(
+            image_bytes=photo_bytes.getvalue(),
+            text=text,
+            font_size=50,
+            opacity=150
+        )
+        
+        final_image = BytesIO(watermarked_bytes)
+        final_image.name = "watermarked.png"
+        
+        await client.send_photo(message.chat.id, final_image, caption=f"Watermark: `{text}`")
+        await status.delete()
+    except Exception as e:
+        await status.edit(f"Gagal: {e}")
+```
+---
 ### `log`
 Logger canggih pengganti `print()` yang memberikan output berwarna dan informatif ke konsol.
 
@@ -934,6 +1003,32 @@ async def upload_handler(client, message):
         progress=progress_bar.update
     )
     await status.delete()
+```
+---
+### `ratelimit`
+Decorator untuk membatasi frekuensi penggunaan perintah oleh pengguna. Mencegah spam dan penyalahgunaan.
+
+**Parameter Decorator:**
+| Parameter | Tipe Data | Deskripsi |
+|---|---|---|
+| `limit` | `int` | Jumlah maksimum panggilan yang diizinkan. |
+| `per_seconds`| `int` | Jangka waktu dalam detik. |
+
+**Contoh Penggunaan:**
+Decorator ini bekerja untuk `Message` dan `CallbackQuery`.
+
+```python
+# Membatasi /generate hanya bisa digunakan 1 kali setiap 60 detik per pengguna
+@app.on_message(filters.command("generate"))
+@client.ns.utils.ratelimit(limit=1, per_seconds=60)
+async def generate_command(client, message):
+    await message.reply("Gambar Anda sedang dibuat...")
+
+# Membatasi callback query hanya bisa ditekan 1 kali setiap 5 detik per pengguna
+@app.on_callback_query(filters.regex("my_button"))
+@client.ns.utils.ratelimit(limit=1, per_seconds=5)
+async def my_button_callback(client, callback_query):
+    await callback_query.answer("Aksi berhasil!")
 ```
 ---
 ### `shell`
