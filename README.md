@@ -867,6 +867,47 @@ pesan = (
 )
 # await message.reply(pesan)
 ```
+### `story`
+Modul untuk mengunduh semua story aktif dari seorang pengguna berdasarkan username mereka.
+
+> **⚠️ PERINGATAN PENTING:** Fitur ini **HANYA BERFUNGSI JIKA DIGUNAKAN DI USERBOT** (akun pengguna). Bot API standar tidak memiliki izin untuk melihat atau mengunduh story. Mencoba menjalankan ini dengan akun bot akan menghasilkan error.
+
+**Metode Utama:**
+`download_user_stories(username, chat_id, status_message)`
+
+| Parameter        | Tipe Data                  | Deskripsi                                             |
+|------------------|----------------------------|-------------------------------------------------------|
+| `username`       | `str`                      | Username target (misal: `"@telegram"`).                |
+| `chat_id`        | `int`                      | ID chat ke mana hasil story akan dikirim.             |
+| `status_message` | `pyrogram.types.Message`   | Pesan yang akan diedit untuk menampilkan status proses. |
+
+**Contoh Penggunaan pada Userbot:**
+```python
+# Contoh handler untuk perintah .getstory
+@app.on_message(filters.command("getstory", prefixes=".") & filters.me)
+async def get_user_stories_handler(client, message):
+    if len(message.command) < 2:
+        return await message.edit_text("Sintaks: `.getstory @username`")
+
+    username = message.command[1]
+    # Mengedit pesan perintah itu sendiri sebagai pesan status
+    status_msg = await message.edit_text(f"Memulai proses untuk `{username}`...")
+
+    try:
+        await client.ns.telegram.story.download_user_stories(
+            username=username,
+            chat_id=message.chat.id,
+            status_message=status_msg  # Menggunakan pesan yang sama untuk update
+        )
+        # Jika berhasil, pesan status akan terhapus oleh fungsi itu sendiri
+        # Kita bisa menghapus pesan perintah awal jika mau
+        if status_msg.id != message.id:
+            await message.delete()
+
+    except Exception as e:
+        # Menangani error (misal: dijalankan di bot biasa)
+        await status_msg.edit_text(f"❌ **Error Kritis:** {e}")
+```
 
 </details>
 
