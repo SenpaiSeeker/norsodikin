@@ -544,8 +544,8 @@ async def buat_pembayaran_violet(client):
 
         if payment_info.success:
             print("URL QR:", payment_info.data.qrcode)
-            print("Reference ID:", payment_info.data.ref_id)
-            print("Reference Kode:", payment_info.data.ref)
+            print("Reference ID:", payment_info.data.ref_kode)
+            print("Reference Kode:", payment_info.data.id_reference)
 
             # Simpan ref dan ref_id untuk pengecekan nanti
             ref_kode = payment_info.data.ref_kode 
@@ -677,7 +677,114 @@ async def ban_user(client, message):
 ```
 ---
 ### `button`
-Perkakas canggih untuk membuat `InlineKeyboardMarkup` dan `ReplyKeyboardMarkup`. Lihat dokumentasi lengkap di atas (No. 5) untuk semua metode (`create_inline_keyboard`, `create_button_keyboard`, `build_button_grid`, `create_pagination_keyboard`).
+Perkakas canggih untuk membuat `InlineKeyboardMarkup` dan `ReplyKeyboardMarkup`.
+
+#### `create_inline_keyboard(text)`
+Membuat keyboard inline dari sintaks teks sederhana.
+- **Sintaks:** `| Label Tombol - callback_data |` atau `| Label Tombol - https://url.com |`
+- **Parameter Tambahan (opsional):** Tambahkan `;same`, `;copy`, atau `;user` setelah callback data.
+  - `;same`: Menempatkan tombol di baris yang sama dengan tombol sebelumnya.
+  - `;copy`: Tombol akan menyalin teks (payload) ke clipboard.
+  - `;user`: Tombol akan membuka chat dengan user ID (payload).
+
+**Contoh `create_inline_keyboard`:**
+```python
+teks_inline = """
+Pilih salah satu menu di bawah:
+| 👤 Profil - profil_user |
+| 💰 Donasi - donasi;same |
+| 🌐 Website Kami - https://github.com/SenpaiSeeker/norsodikin |
+| 📋 Salin ID Saya - 12345678;copy |
+"""
+keyboard, sisa_teks = client.ns.telegram.button.create_inline_keyboard(teks_inline)
+await message.reply(sisa_teks, reply_markup=keyboard)
+```
+
+#### `create_button_keyboard(text)`
+Membuat keyboard balasan (tombol di bawah area input teks).
+- **Sintaks:** `| Label Tombol |`
+- **Parameter Tambahan (opsional):** `| Label;is_contact |` atau `| Label;same |`.
+  - `;is_contact`: Meminta kontak pengguna.
+  - `;same`: Tombol di baris yang sama.
+
+**Contoh `create_button_keyboard`:**
+```python
+teks_reply = """
+Halo! Apa yang bisa saya bantu?
+| 📑 Daftar Produk |
+| 📞 Hubungi CS;is_contact |
+| ❓ Bantuan;same |
+"""
+keyboard, sisa_teks = client.ns.telegram.button.create_button_keyboard(teks_reply)
+await message.reply(sisa_teks, reply_markup=keyboard)
+```
+
+#### `build_button_grid(buttons, row_inline=None, row_width=2)`
+Membuat keyboard inline dari daftar dictionary secara terprogram.
+
+**Contoh `build_button_grid`:**
+```python
+button_list = [
+    {"text": "Apple", "callback_data": "fruit_apple"},
+    {"text": "Orange", "callback_data": "fruit_orange"},
+    {"text": "Grape", "callback_data": "fruit_grape"}
+]
+footer_button = [{"text": "« Kembali", "callback_data": "back_to_main"}]
+
+keyboard = client.ns.telegram.button.build_button_grid(
+    buttons=button_list,
+    row_inline=footer_button,
+    row_width=2  # 2 tombol per baris
+)
+await message.reply("Pilih buah:", reply_markup=keyboard)
+```
+
+#### `create_pagination_keyboard(...)`
+Membuat keyboard paginasi yang dinamis untuk menampilkan daftar item.
+
+| Parameter              | Tipe Data      | Deskripsi                                                        |
+|------------------------|----------------|------------------------------------------------------------------|
+| `items`                | `list`         | Daftar item yang akan ditampilkan (bisa `str` atau `dict`).        |
+| `current_page`         | `int`          | Halaman yang sedang aktif.                                         |
+| `items_per_page`       | `int`          | Jumlah item per halaman.                                           |
+| `callback_prefix`      | `str`          | Prefix untuk callback data tombol navigasi (misal: "nav_2").        |
+| `item_callback_prefix` | `str`          | Prefix untuk callback data setiap item.                            |
+| `extra_params`         | `list` (opt)   | Tombol tambahan di bagian bawah (misal: tombol kembali).         |
+
+**Contoh `create_pagination_keyboard`:**
+```python
+# Asumsikan 'products' adalah daftar item dari database
+products = [f"Produk {i}" for i in range(1, 21)]
+
+# Handler untuk perintah awal
+@app.on_message(filters.command("produk"))
+async def show_products(client, message):
+    keyboard = client.ns.telegram.button.create_pagination_keyboard(
+        items=products,
+        current_page=1,
+        items_per_page=5,
+        callback_prefix="produk_page",
+        item_callback_prefix="pilih_produk"
+    )
+    await message.reply("Daftar Produk (Halaman 1/4):", reply_markup=keyboard)
+
+# Handler untuk callback navigasi
+@app.on_callback_query(filters.regex(r"^produk_page_"))
+async def change_page(client, callback_query):
+    page = int(callback_query.data.split("_")[-1])
+    keyboard = client.ns.telegram.button.create_pagination_keyboard(
+        items=products,
+        current_page=page,
+        items_per_page=5,
+        callback_prefix="produk_page",
+        item_callback_prefix="pilih_produk"
+    )
+    total_pages = (len(products) + 4) // 5
+    await callback_query.message.edit_text(
+        f"Daftar Produk (Halaman {page}/{total_pages}):",
+        reply_markup=keyboard
+    )
+```
 ---
 ### `copier`
 Modul canggih untuk menyalin pesan dari link Telegram (publik/privat). Mendukung penyalinan tunggal, ganda, dan rentang, dengan penanganan `FloodWait` otomatis. Media akan diunduh dan dikirim ulang lengkap dengan metadata.
@@ -689,7 +796,7 @@ Modul canggih untuk menyalin pesan dari link Telegram (publik/privat). Mendukung
 ```python
 COPY_HELP_TEXT = """
 **Fitur Penyalin Pesan**
-Saya bisa menyalin pesan dari mana pun, cukup berikan linknya.
+Saya bisa menyalin pesan dari channel/grup mana pun, cukup berikan linknya.
 • **Satu Pesan**: `/copy <link>`
 • **Beberapa Pesan**: `/copy <link1> <link2>`
 • **Rentang Pesan**: `/copy <link_awal> | <link_akhir>`
