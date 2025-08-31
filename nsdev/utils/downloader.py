@@ -7,7 +7,7 @@ from yt_dlp import YoutubeDL
 
 
 class MediaDownloader:
-    def __init__(self, download_path: str = "downloads", cookies_file_path: str = None):
+    def __init__(self, cookies_file_path: str = None, download_path: str = "downloads"):
         self.download_path = download_path
         self.cookies_file_path = cookies_file_path
         if not os.path.exists(self.download_path):
@@ -33,7 +33,9 @@ class MediaDownloader:
         if progress_callback:
             ydl_opts['progress_hooks'] = [_hook]
 
-        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
+        if self.cookies_file_path:
+            if not os.path.exists(self.cookies_file_path):
+                raise FileNotFoundError(f"File cookie yang ditentukan tidak ditemukan: {self.cookies_file_path}")
             ydl_opts["cookiefile"] = self.cookies_file_path
         
         if audio_only:
@@ -71,7 +73,7 @@ class MediaDownloader:
 
             return {
                 "path": filename,
-                "title": info.get("title", "N/A"),
+                "title": info.get("fulltitle", "N/A"),
                 "duration": info.get("duration", 0),
                 "thumbnail_data": thumbnail_data,
             }
