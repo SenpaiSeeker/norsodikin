@@ -78,7 +78,7 @@ class VideoFX(FontManager):
             current_y = (canvas_h - total_h) / 2
 
             for i, line in enumerate(text_lines):
-                line_w, line_h = dummy_draw.textsize(line, font=font)
+                line_w, line_h = dummy_draw.textbbox((0, 0), line, font=font)[2:4]
                 position = ((canvas_w - line_w) / 2, current_y)
                 draw_base.text(position, line, font=font, fill=(rr, gg, bb))
                 current_y += line_h + 20
