@@ -7,7 +7,7 @@ class ChatbotGemini:
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
-        self.model_name = "gemini-2.0-flash-exp"
+        self.model_name = "gemini-2.5-flash"
         self.generation_config = {
             "temperature": 1,
             "top_p": 0.95,
