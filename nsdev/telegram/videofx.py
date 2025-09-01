@@ -129,7 +129,7 @@ class VideoFX(FontManager):
         else:
             resized_clip = trimmed_clip.resized(height=512)
         
-        final_clip = resized_clip.set_fps(fps).set_position(("center", "center"))
+        final_clip = resized_clip.with_fps(fps).with_position(("center", "center"))
         ffmpeg_params = ["-pix_fmt", "yuv420p", "-crf", "30", "-b:v", "0"]
         
         final_clip.write_videofile(
