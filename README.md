@@ -132,8 +132,9 @@ Integrasi dengan Google Gemini API untuk fungsionalitas chatbot.
 
 **Contoh Penggunaan:**
 ```python
+# Fungsi ini harus dijalankan dalam konteks asynchronous (misal: di dalam fungsi async def)
 chatbot = client.ns.ai.gemini(api_key="API_KEY_GEMINI_ANDA")
-jawaban = chatbot.send_chat_message(
+jawaban = await chatbot.send_chat_message(
     message="jelaskan apa itu relativitas umum dengan bahasa sederhana", 
     user_id="sesi_user_123", # Untuk menjaga histori percakapan
     bot_name="Bot Cerdas"
@@ -296,15 +297,14 @@ async def analyze_image(client, message):
 ### `web`
 Alat AI untuk melakukan *scraping* konten teks dari URL dan merangkumnya.
 
-**Inisialisasi:** `summarizer = client.ns.ai.web(gemini_instance)`
+**Inisialisasi:** `summarizer = client.ns.ai.web(api_key)`
 
 **Contoh Penggunaan:**
 ```python
 # @app.on_message(filters.command("summarize"))
 async def summarize_url(client, message):
     url = message.command[1]
-    gemini_bot = client.ns.ai.gemini(api_key="GEMINI_API_KEY_ANDA")
-    web_summarizer = client.ns.ai.web(gemini_instance=gemini_bot)
+    web_summarizer = client.ns.ai.web(api_key="GEMINI_API_KEY_ANDA")
     
     status = await message.reply(f"Merangkum konten dari {url}...")
     rangkuman = await web_summarizer.summarize(url)
