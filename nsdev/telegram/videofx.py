@@ -37,7 +37,7 @@ class VideoFX(FontManager):
             text_lines = [" "]
             
         font = self._get_font(font_size)
-        mode = "RGBA"  # ubah dari rgb
+        mode = "RGB"
         dummy_img = Image.new(mode, (1, 1))
         dummy_draw = ImageDraw.Draw(dummy_img)
         text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
@@ -58,7 +58,7 @@ class VideoFX(FontManager):
             on_duration = None
 
         def make_frame(t):
-            base = Image.new(mode, (canvas_w, canvas_h), (0, 0, 0, 0))  # transparan
+            base = Image.new(mode, (canvas_w, canvas_h), (255, 255, 255, 0))
             draw_base = ImageDraw.Draw(base)
             r = int(127 * (1 + math.sin(t * 5 + 0))) + 64
             g = int(127 * (1 + math.sin(t * 5 + 2))) + 64
