@@ -69,9 +69,12 @@ video = [
     "numpy",
     "Pillow"
 ]
+schedule = [
+    "aiocron",
+]
 
 all = [
-    "norsodikin[pyrogram,ai,server,database,cli,payment,media,video]",
+    "norsodikin[ai,cli,database,media,payment,pyrogram,schedule,server,video]",
 ]
 
 [tool.setuptools]
