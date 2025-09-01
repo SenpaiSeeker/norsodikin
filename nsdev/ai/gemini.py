@@ -1,6 +1,5 @@
+import httpx
 import json
-
-import requests
 
 
 class ChatbotGemini:
@@ -58,42 +57,54 @@ class ChatbotGemini:
             )
         return ""
 
-    def _send_request(self, messages: list, instruction: str) -> str:
-        url = f"{self.base_url}/{self.model_name}:generateContent?key={self.api_key}"
-
+    async def _send_request(self, model_override: str = None, **payload) -> str:
+        model_to_use = model_override or self.model_name
+        url = f"{self.base_url}/{model_to_use}:generateContent?key={self.api_key}"
         headers = {"Content-Type": "application/json"}
-        payload = {
-            "contents": messages,
-            "generationConfig": self.generation_config,
-            "systemInstruction": {"parts": [{"text": instruction}]},
-        }
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(url, headers=headers, json=payload, timeout=60)
+                response.raise_for_status()
+                data = response.json()
+                return data["candidates"][0]["content"]["parts"][0]["text"]
+            except (httpx.HTTPStatusError, KeyError, IndexError) as e:
+                error_text = ""
+                try:
+                    error_text = response.text
+                except Exception:
+                    pass
+                raise Exception(f"API request failed: {e}\nResponse: {error_text}")
+            except Exception as e:
+                raise Exception(f"An unexpected error occurred: {e}")
 
-        response = requests.post(url, headers=headers, data=json.dumps(payload))
-        if response.status_code != 200:
-            raise Exception(f"API Error {response.status_code}: {response.text}")
-
-        data = response.json()
-        try:
-            return data["candidates"][0]["content"]["parts"][0]["text"]
-        except Exception:
-            return "⚠️ Gagal mengambil respon dari API."
-
-    def send_chat_message(self, message: str, user_id: str, bot_name: str) -> str:
+    async def send_chat_message(self, message: str, user_id: str, bot_name: str) -> str:
         history = self.chat_history.setdefault(user_id, [])
         history.append({"role": "user", "parts": [{"text": message}]})
 
         instruction = self._build_instruction("chatbot", bot_name)
-        reply = self._send_request(history, instruction)
+        payload = {
+            "contents": history,
+            "generationConfig": self.generation_config,
+            "systemInstruction": {"parts": [{"text": instruction}]},
+        }
 
-        history.append({"role": "assistant", "parts": [{"text": reply}]})
+        reply = await self._send_request(**payload)
+
+        history.append({"role": "model", "parts": [{"text": reply}]})
         return reply
 
-    def send_khodam_message(self, name: str, user_id: str) -> str:
+    async def send_khodam_message(self, name: str, user_id: str) -> str:
         history = self.khodam_history.setdefault(user_id, [])
         history.append({"role": "user", "parts": [{"text": name}]})
 
         instruction = self._build_instruction("khodam")
-        reply = self._send_request(history, instruction)
+        payload = {
+            "contents": history,
+            "generationConfig": self.generation_config,
+            "systemInstruction": {"parts": [{"text": instruction}]},
+        }
 
-        history.append({"role": "assistant", "parts": [{"text": reply}]})
+        reply = await self._send_request(**payload)
+
+        history.append({"role": "model", "parts": [{"text": reply}]})
         return reply
