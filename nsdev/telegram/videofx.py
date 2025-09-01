@@ -80,7 +80,7 @@ class VideoFX(FontManager):
             for i, line in enumerate(text_lines):
                 line_w = text_widths[i]
                 line_h = text_heights[i]
-                position = ((canvas_w - line_w) / 2, current_y))
+                position = ((canvas_w - line_w) / 2, current_y)
                 draw_base.text(position, line, font=font, fill=(rr, gg, bb, 255))
                 current_y += line_h + 20
                 
