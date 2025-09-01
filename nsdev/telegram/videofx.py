@@ -120,21 +120,26 @@ class VideoFX(FontManager):
         return output_path
 
     def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30):
-        with VideoFileClip(video_path) as clip:
-            max_duration = min(clip.duration, 2.95)
-            with clip.subclip(0, max_duration) as trimmed_clip:
-                if trimmed_clip.w >= trimmed_clip.h:
-                    resized_clip = trimmed_clip.resize(width=512)
-                else:
-                    resized_clip = trimmed_clip.resize(height=512)
-                
-                with resized_clip:
-                    final_clip = resized_clip.set_fps(fps).set_position(("center", "center"))
-                    ffmpeg_params = ["-pix_fmt", "yuv420p", "-crf", "30", "-b:v", "0"]
-                    final_clip.write_videofile(
-                        output_path, codec="libvpx-vp9", audio=False, logger=None, ffmpeg_params=ffmpeg_params
-                    )
-                    final_clip.close()
+        clip = VideoFileClip(video_path)
+        max_duration = min(clip.duration, 2.95)
+        trimmed_clip = clip.subclipped(0, max_duration)
+        
+        if trimmed_clip.w >= trimmed_clip.h:
+            resized_clip = trimmed_clip.resize(width=512)
+        else:
+            resized_clip = trimmed_clip.resize(height=512)
+        
+        final_clip = resized_clip.set_fps(fps).set_position(("center", "center"))
+        ffmpeg_params = ["-pix_fmt", "yuv420p", "-crf", "30", "-b:v", "0"]
+        
+        final_clip.write_videofile(
+            output_path, codec="libvpx-vp9", audio=False, logger=None, ffmpeg_params=ffmpeg_params
+        )
+        
+        clip.close()
+        trimmed_clip.close()
+        resized_clip.close()
+        final_clip.close()
 
     async def video_to_sticker(self, video_path: str, output_path: str, fps: int = 30):
         await self._run_in_executor(self._convert_to_sticker, video_path, output_path, fps=fps)
