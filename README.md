@@ -24,7 +24,7 @@ Gunakan "extras" untuk menambahkan dependensi bagi fitur-fitur spesifik.
     ```bash
     pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[pyrogram]"
     ```
-*   **Untuk semua fitur AI (TTS, Web Summarizer, Bing, Translate, QR Code, Vision, STT, Ollama):**
+*   **Untuk semua fitur AI (TTS, Web Summarizer, Bing, Translate, QR Code, Vision, STT, Ollama, Search):**
     ```bash
     pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[ai]"
     ```
@@ -48,6 +48,10 @@ Gunakan "extras" untuk menambahkan dependensi bagi fitur-fitur spesifik.
     ```bash
     pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[cli]"
     ```
+*   **Untuk penjadwalan tugas (Scheduler):**
+    ```bash
+    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[schedule]"
+    ```
 *   **Instal Semua Fitur (Sakti Penuh):**
     ```bash
     pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[all]"
@@ -59,9 +63,12 @@ Keajaiban `norsodikin` terletak pada integrasi `monkey-patching` yang mulus deng
 
 Semua modul dikelompokkan secara logis:
 - `client.ns.ai`: Semua yang berhubungan dengan Kecerdasan Buatan.
+- `client.ns.analytics`: Analitik dan pelacakan penggunaan bot.
+- `client.ns.auth`: Manajemen pengguna dan hak akses (peran).
 - `client.ns.telegram`: Utilitas spesifik untuk Telegram (tombol, format teks, dll.).
 - `client.ns.data`: Manajemen data (database, file config YAML).
-- `client.ns.utils`: Perkakas umum (logger, downloader, shell).
+- `client.ns.utils`: Perkakas umum (logger, downloader, shell, cache, file).
+- `client.ns.schedule`: Penjadwalan tugas otomatis (cron).
 - `client.ns.server`: Manajemen server Linux (proses, pengguna, monitor).
 - `client.ns.code`: Enkripsi dan dekripsi.
 - `client.ns.payment`: Integrasi payment gateway.
@@ -224,6 +231,40 @@ qr_bytes = await qr_manager.generate(data="https://github.com/SenpaiSeeker/norso
 #         await message.reply(f"Isi QR Code: {decoded_text}")
 ```
 ---
+### `search`
+Modul AI untuk melakukan pencarian di internet secara *real-time* menggunakan DuckDuckGo. Berguna untuk memberdayakan model AI (terutama lokal/Ollama) dengan informasi terkini.
+
+**Inisialisasi:**
+`web_search = client.ns.ai.search(timeout=10)`
+
+**Metode Utama:**
+- `query(query, num_results=5)`: Melakukan pencarian dan mengembalikan daftar hasil.
+
+**Contoh Penggunaan (Memberi 'mata' pada AI Lokal):**
+```python
+@app.on_message(filters.command("asknet"))
+async def ask_with_internet(client, message):
+    pertanyaan = " ".join(message.command[1:])
+    if not pertanyaan: return await message.reply("Sintaks: /asknet <pertanyaan>")
+
+    status = await message.reply("🌐 Mencari informasi di internet...")
+    try:
+        search = client.ns.ai.search()
+        results = await search.query(pertanyaan)
+        if not results:
+            return await status.edit("Tidak menemukan hasil yang relevan.")
+        
+        await status.edit("📰 Membaca hasil pertama dan merangkum...")
+        # Gunakan client.ns.ai.web untuk merangkum konten dari link hasil pencarian
+        web = client.ns.ai.web(api_key="GEMINI_API_KEY_ANDA")
+        rangkuman = await web.summarize(results[0].url)
+        
+        await status.edit(f"**Hasil Pencarian Teratas:**\n_{results[0].title}_\n\n**Rangkuman:**\n{rangkuman}")
+
+    except Exception as e:
+        await status.edit(f"❌ Gagal melakukan pencarian: {e}")
+```
+---
 ### `stt`
 Modul AI untuk Transkripsi Audio ke Teks (Speech-to-Text) menggunakan model Whisper.
 
@@ -309,6 +350,98 @@ async def summarize_url(client, message):
     status = await message.reply(f"Merangkum konten dari {url}...")
     rangkuman = await web_summarizer.summarize(url)
     await status.edit(f"**Rangkuman Artikel:**\n\n{rangkuman}")
+```
+
+</details>
+
+<details>
+<summary><strong>📊 Analitik (`client.ns.analytics`)</strong></summary>
+
+### `manager`
+Modul untuk melacak penggunaan bot, seperti perintah yang paling sering digunakan dan pengguna paling aktif. Memberikan wawasan berharga untuk pengembangan lebih lanjut.
+
+**Penting:** Modul ini memerlukan instance database.
+**Inisialisasi:**
+`analytics = client.ns.analytics(database=db_instance)`
+
+**Metode Utama:**
+- `@analytics.track_usage`: Decorator yang ditambahkan ke *handler* untuk secara otomatis mencatat penggunaannya.
+- `get_top_commands(limit=10)`: Mengambil daftar perintah yang paling sering digunakan.
+- `get_active_users(limit=10)`: Mengambil daftar pengguna paling aktif.
+
+**Contoh Penggunaan:**
+```python
+# Inisialisasi (asumsikan 'db' sudah ada)
+# db = client.ns.data.db(storage_type="sqlite")
+# analytics = client.ns.analytics(database=db)
+# ADMIN_ID = 123456789
+
+# Tambahkan decorator ke handler yang ingin dilacak
+@app.on_message(filters.command("ytdl"))
+@analytics.track_usage
+async def download_media(client, message):
+    # ... (logika download media)
+    await message.reply("Download selesai.")
+
+# Handler untuk admin melihat statistik
+@app.on_message(filters.command("botstats") & filters.user(ADMIN_ID))
+async def show_bot_stats(client, message):
+    top_cmds = await analytics.get_top_commands(limit=5)
+    
+    fmt = client.ns.telegram.formatter("markdown")
+    fmt.bold("📊 Statistik Perintah Teratas").new_line(2)
+    if top_cmds:
+        for cmd, count in top_cmds:
+            fmt.mono(f"/{cmd}").text(f": {count} kali").new_line()
+    else:
+        fmt.text("Belum ada data.")
+    
+    await message.reply(fmt.to_string())
+
+```
+
+</details>
+
+<details>
+<summary><strong>🔐 Autentikasi (`client.ns.auth`)</strong></summary>
+
+### `manager`
+Manajer peran pengguna untuk membatasi akses ke fitur-fitur tertentu dalam bot. Ini memungkinkan Anda membuat sistem hak akses (misal: admin, premium, user biasa) dengan mudah.
+
+**Penting:** Modul ini memerlukan instance database.
+**Inisialisasi:**
+`auth = client.ns.auth(database=db_instance)`
+
+**Metode Utama:**
+- `set_role(user_id, role)`: Memberikan peran kepada pengguna.
+- `remove_role(user_id, role)`: Menghapus peran dari pengguna.
+- `get_roles(user_id)`: Mendapatkan daftar peran seorang pengguna.
+- `@auth.requires_role("role_name")`: Decorator untuk membatasi akses handler.
+
+**Contoh Penggunaan:**
+```python
+# Inisialisasi (asumsikan 'db' sudah ada)
+# db = client.ns.data.db()
+# auth = client.ns.auth(database=db)
+# ADMIN_ID = 123456789
+
+# Berikan peran admin kepada diri sendiri via perintah
+@app.on_message(filters.command("getadmin") & filters.me)
+async def grant_admin(client, message):
+    await auth.set_role(message.from_user.id, "admin")
+    await message.reply("Anda sekarang adalah admin.")
+
+# Handler ini hanya bisa diakses oleh pengguna dengan peran "admin"
+@app.on_message(filters.command("adminpanel"))
+@auth.requires_role("admin")
+async def admin_panel(client, message):
+    await message.reply("Selamat datang di panel admin!")
+
+# Handler ini memerlukan peran "premium"
+@app.on_message(filters.command("premiumfeature"))
+@auth.requires_role("premium")
+async def premium_feature(client, message):
+    await message.reply("Ini adalah fitur khusus premium.")
 ```
 
 </details>
@@ -569,6 +702,52 @@ async def buat_pembayaran_violet(client):
 ```
 
 </details>
+
+<details>
+<summary><strong>🗓️ Penjadwalan (`client.ns.schedule`)</strong></summary>
+
+### `scheduler`
+Modul untuk menjalankan tugas-tugas secara otomatis pada waktu atau interval tertentu, menggunakan sintaks cron. Sangat berguna untuk laporan harian, pembersihan data, pengiriman pengingat, dll.
+
+**Penting:** Fitur ini memerlukan dependensi `aiocron`. Instal dengan "extra" `[schedule]`.
+**Inisialisasi:**
+`scheduler = client.ns.schedule`
+(Instance sudah siap pakai, tidak perlu inisialisasi manual).
+
+**Metode Utama:**
+- `@scheduler.cron("cron_expression")`: Decorator untuk mendaftarkan fungsi asinkron agar berjalan sesuai jadwal.
+- `scheduler.start()`: Memulai *event loop* penjadwal. Panggil ini sekali di akhir skrip Anda, sebelum `app.run()`.
+
+**Contoh Penggunaan:**
+```python
+# scheduler = client.ns.schedule
+
+# Fungsi ini akan dijalankan setiap hari pada pukul 08:00
+@scheduler.cron("0 8 * * *")
+async def send_daily_server_status():
+    client.ns.utils.log.info("Menjalankan tugas laporan server harian...")
+    stats = client.ns.server.monitor.get_stats()
+    report = (
+        f"☀️ **Laporan Server Pagi**\n"
+        f"▫️ CPU: `{stats.cpu_percent}%`\n"
+        f"▫️ RAM: `{stats.ram_percent}%`"
+    )
+    # Kirim ke channel log
+    # await client.send_message(LOG_CHANNEL_ID, report)
+
+# Di bagian bawah file utama Anda
+# async def main():
+#     ...
+#     scheduler.start() # Aktifkan penjadwal
+#     await client.start()
+#     await pyrogram.idle()
+#     await client.stop()
+
+# loop.run_until_complete(main())
+```
+
+</details>
+
 
 <details>
 <summary><strong>🖥️ Server (`client.ns.server`)</strong></summary>
@@ -992,6 +1171,37 @@ async def animated_sticker_handler(client, message):
 <details>
 <summary><strong>🛠️ Utilitas (`client.ns.utils`)</strong></summary>
 
+### `cache`
+Decorator untuk menyimpan hasil dari sebuah fungsi ke dalam memori (*caching*) untuk jangka waktu tertentu. Sangat berguna untuk mempercepat respon dan mengurangi beban pada API eksternal yang sering dipanggil dengan argumen yang sama.
+
+**Metode:**
+- `@client.ns.utils.cache(ttl=seconds)`
+
+| Parameter | Tipe Data | Deskripsi                                                       |
+|-----------|-----------|-----------------------------------------------------------------|
+| `ttl`     | `int`     | *Time-to-live* dalam detik. Hasil fungsi akan disimpan selama ini. |
+
+**Contoh Penggunaan:**
+```python
+# Fungsi ini melakukan panggilan API yang mungkin lambat atau berbayar.
+# Hasilnya akan di-cache selama 1 jam (3600 detik).
+@client.ns.utils.cache(ttl=3600)
+async def get_webpage_summary(url):
+    client.ns.utils.log.info(f"Melakukan summarize untuk {url} (tidak dari cache)")
+    summarizer = client.ns.ai.web(api_key="GEMINI_KEY")
+    return await summarizer.summarize(url)
+
+@app.on_message(filters.command("cachesum"))
+async def cached_summarize_handler(client, message):
+    url = message.command[1]
+    
+    # Panggilan pertama akan menjalankan fungsi, mencetak log, dan butuh waktu.
+    # Panggilan kedua (dengan URL yang sama dalam 1 jam) akan langsung
+    # mengembalikan hasil dari cache tanpa menjalankan fungsi lagi.
+    summary = await get_webpage_summary(url)
+    await message.reply(summary)
+```
+---
 ### `downloader`
 Utilitas untuk mengunduh video atau audio dari berbagai platform (YouTube, dll) menggunakan `yt-dlp`, kini dengan dukungan progress bar dan thumbnail dalam memori.
 
@@ -1045,6 +1255,45 @@ async def download_media(client, message):
             progress=progress.update
         )
         await status.delete()
+    except Exception as e:
+        await status.edit(f"❌ Gagal: {e}")
+```
+---
+### `files`
+Manajer file yang aman untuk menangani file dan direktori temporer. Menjamin pembersihan otomatis setelah selesai digunakan, bahkan jika terjadi error, untuk mencegah penumpukan file di server.
+
+**Metode Utama:**
+- `async with client.ns.utils.files.temp_dir() as tmpdir:`: Membuat sebuah direktori temporer yang aman.
+
+**Contoh Penggunaan:**
+```python
+# Handler ini mengunduh video, mengubahnya, dan mengirimkannya.
+# Semua file yang dihasilkan akan dihapus secara otomatis.
+@app.on_message(filters.video)
+async def process_video_safely(client, message):
+    status = await message.reply("Memproses video...")
+    try:
+        # 'tmpdir' adalah path ke direktori sementara yang baru dibuat.
+        async with client.ns.utils.files.temp_dir() as tmpdir:
+            client.ns.utils.log.info(f"Direktori sementara dibuat di: {tmpdir}")
+
+            # Unduh video ke dalam direktori sementara
+            video_path = await client.download_media(
+                message, 
+                file_name=os.path.join(tmpdir, "original.mp4")
+            )
+
+            # Lakukan operasi lain, misalnya membuat stiker
+            sticker_path = os.path.join(tmpdir, "sticker.webm")
+            await client.ns.telegram.videofx.video_to_sticker(video_path, sticker_path)
+            
+            await client.send_sticker(message.chat.id, sticker_path)
+            await status.delete()
+
+        # Setelah blok 'with' ini selesai, direktori 'tmpdir' beserta semua
+        # isinya ('original.mp4' dan 'sticker.webm') secara otomatis dihapus.
+        client.ns.utils.log.info("Direktori sementara telah dibersihkan.")
+
     except Exception as e:
         await status.edit(f"❌ Gagal: {e}")
 ```
