@@ -10,6 +10,8 @@ from .ai.translate import Translator
 from .ai.tts import TextToSpeech
 from .ai.vision import VisionAnalyzer
 from .ai.web_summarizer import WebSummarizer
+from .ai.search import WebSearch
+from .auth.manager import AuthManager
 from .code.encrypt import AsciiManager, CipherHandler
 from .data.database import DataBase
 from .data.storekey import KeyManager
@@ -35,8 +37,9 @@ from .utils.progress import TelegramProgressBar
 from .utils.ratelimit import RateLimiter
 from .utils.shell import ShellExecutor
 from .utils.url import UrlUtils
+from .utils.cache import memoize
 
-__version__ = "1.8.0"
+__version__ = "1.9.0"
 __author__ = "@NorSodikin"
 
 
@@ -54,6 +57,7 @@ class NsDev:
             vision=VisionAnalyzer,
             stt=SpeechToText,
             local=OllamaClient,
+            search=WebSearch,
         )
         self.telegram = SimpleNamespace(
             arg=Argument(self._client),
@@ -80,6 +84,7 @@ class NsDev:
             downloader=MediaDownloader,
             ratelimit=RateLimiter(self._client),
             image=ImageManipulator(),
+            cache=memoize,
         )
         self.server = SimpleNamespace(
             user=SSHUserManager,
@@ -94,6 +99,9 @@ class NsDev:
             Midtrans=PaymentMidtrans,
             Tripay=PaymentTripay,
             Violet=VioletMediaPayClient,
+        )
+        self.auth = SimpleNamespace(
+            Manager=AuthManager,
         )
 
 
