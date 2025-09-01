@@ -20,6 +20,32 @@ class VideoFX(FontManager):
         call = functools.partial(func, *args, **kwargs)
         return await loop.run_in_executor(None, call)
 
+    def _measure_text(self, draw: ImageDraw.ImageDraw, text: str, font) -> (int, int):
+        try:
+            bbox = draw.textbbox((0, 0), text, font=font)
+            w = bbox[2] - bbox[0]
+            h = bbox[3] - bbox[1]
+            if w > 0 and h > 0:
+                return int(w), int(h)
+        except Exception:
+            pass
+
+        try:
+            w, h = draw.textsize(text, font=font)
+            if w > 0 and h > 0:
+                return int(w), int(h)
+        except Exception:
+            pass
+
+        try:
+            mask = font.getmask(text)
+            return int(mask.size[0]), int(mask.size[1])
+        except Exception:
+            avg_char_w = max(6, int(font.size * 0.6)) if hasattr(font, "size") else 8
+            w = avg_char_w * max(1, len(text))
+            h = getattr(font, "size", 16) + 4
+            return int(w), int(h)
+
     def _create_rgb_video(
         self,
         text_lines: List[str],
@@ -41,18 +67,19 @@ class VideoFX(FontManager):
 
         mode = "RGBA" if transparent else "RGB"
         dummy_bg = (0, 0, 0, 0) if mode == "RGBA" else (0, 0, 0)
-        dummy_img = Image.new(mode, (1, 1), dummy_bg)
+        dummy_img = Image.new(mode, (10, 10), dummy_bg)
         dummy_draw = ImageDraw.Draw(dummy_img)
 
-        text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
-        text_heights = [dummy_draw.textbbox((0, 0), line, font=font)[3] for line in text_lines]
+        text_metrics = [self._measure_text(dummy_draw, line, font) for line in text_lines]
+        text_widths = [w for w, h in text_metrics]
+        text_heights = [h for w, h in text_metrics]
 
         base_w = max(max(text_widths) + 40, 512)
-        canvas_w = base_w - (base_w % 2)
+        canvas_w = int(base_w - (base_w % 2))
 
         total_h = sum(text_heights) + (len(text_lines) * 20)
         base_h = max(total_h, 512)
-        canvas_h = base_h - (base_h % 2)
+        canvas_h = int(base_h - (base_h % 2))
 
         if blink and blink_rate > 0:
             period = 1.0 / blink_rate
@@ -80,21 +107,18 @@ class VideoFX(FontManager):
                     intensity = 1.0 if phase < on_duration else 0.0
 
             alpha_byte = int(255 * intensity) if mode == "RGBA" else 255
-            rr = int(r * (1.0))
-            gg = int(g * (1.0))
-            bb = int(b * (1.0))
+            rr, gg, bb = rr_val, gg_val, bb_val = r, g, b
 
             current_y = (canvas_h - total_h) / 2
-
             for i, line in enumerate(text_lines):
                 line_w = text_widths[i]
                 line_h = text_heights[i]
-                position = ((canvas_w - line_w) / 2, current_y)
+                pos = ((canvas_w - line_w) / 2, current_y)
                 if mode == "RGBA":
                     fill = (rr, gg, bb, alpha_byte)
                 else:
                     fill = (rr, gg, bb)
-                draw_base.text(position, line, font=font, fill=fill)
+                draw_base.text(pos, line, font=font, fill=fill)
                 current_y += line_h + 20
 
             arr = np.array(base, dtype=np.uint8)
@@ -142,33 +166,7 @@ class VideoFX(FontManager):
             transparent=transparent,
         )
         return output_path
-
-    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30, preserve_alpha: bool = True):
-        clip = VideoFileClip(video_path)
-        max_duration = min(clip.duration, 2.95)
-        trimmed_clip = clip.subclipped(0, max_duration)
-
-        if trimmed_clip.w >= trimmed_clip.h:
-            resized_clip = trimmed_clip.resized(width=512)
-        else:
-            resized_clip = trimmed_clip.resized(height=512)
-
-        final_clip = resized_clip.with_fps(fps).with_position(("center", "center"))
-
-        if preserve_alpha:
-            ffmpeg_params = ["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"]
-        else:
-            ffmpeg_params = ["-pix_fmt", "yuv420p", "-crf", "30", "-b:v", "0"]
-
-        final_clip.write_videofile(
-            output_path, codec="libvpx-vp9", audio=False, logger=None, ffmpeg_params=ffmpeg_params
-        )
-
-        clip.close()
-        trimmed_clip.close()
-        resized_clip.close()
-        final_clip.close()
-
+        
     async def video_to_sticker(self, video_path: str, output_path: str, fps: int = 30, preserve_alpha: bool = True):
         await self._run_in_executor(self._convert_to_sticker, video_path, output_path, fps, preserve_alpha)
         return output_path
