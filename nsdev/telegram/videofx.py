@@ -2,118 +2,18 @@ import asyncio
 import functools
 import math
 import os
-import random
-import urllib.request
 from typing import List
 
 import numpy as np
-import requests
 from moviepy import VideoClip, VideoFileClip
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
+
+from ..utils.font_manager import FontManager
 
 
-class VideoFX:
+class VideoFX(FontManager):
     def __init__(self):
-        self.font_cache_dir = ".cache_fonts"
-        os.makedirs(self.font_cache_dir, exist_ok=True)
-
-        try:
-            local_fonts = [
-                os.path.join(self.font_cache_dir, f)
-                for f in os.listdir(self.font_cache_dir)
-                if f.lower().endswith(".ttf") and os.path.isfile(os.path.join(self.font_cache_dir, f))
-            ]
-        except Exception:
-            local_fonts = []
-
-        if local_fonts:
-            self.available_fonts = local_fonts
-        else:
-            font_urls = self._fetch_google_font_urls(limit=15)
-            self.available_fonts = self._ensure_local_fonts(font_urls)
-
-        random.seed(42)
-
-    def _fetch_google_font_urls(self, limit: int = 15) -> List[str]:
-        all_font_families = []
-        base_dirs = ["ofl", "apache"]
-        api_base_url = "https://api.github.com/repos/google/fonts/contents/"
-
-        try:
-            for dir_name in base_dirs:
-                response = requests.get(f"{api_base_url}{dir_name}", timeout=10)
-                response.raise_for_status()
-                for item in response.json():
-                    if isinstance(item, dict) and item.get("type") == "dir":
-                        all_font_families.append(item)
-
-            if not all_font_families:
-                return []
-
-            random.shuffle(all_font_families)
-            selected_families = all_font_families[:limit]
-            font_urls = []
-            for family in selected_families:
-                try:
-                    family_response = requests.get(family["url"], timeout=10)
-                    family_response.raise_for_status()
-                    font_files = family_response.json()
-                    if not isinstance(font_files, list):
-                        continue
-                    regular_match = None
-                    any_ttf_match = None
-                    for font_file in font_files:
-                        if isinstance(font_file, dict) and font_file.get("type") == "file":
-                            name = font_file.get("name", "").lower()
-                            if "regular" in name and name.endswith(".ttf"):
-                                regular_match = font_file
-                                break
-                            if any_ttf_match is None and name.endswith(".ttf"):
-                                any_ttf_match = font_file
-                    best_match = regular_match or any_ttf_match
-                    if best_match and best_match.get("download_url"):
-                        font_urls.append(best_match["download_url"])
-                except requests.RequestException:
-                    continue
-            return font_urls
-        except requests.RequestException:
-            return []
-
-    def _ensure_local_fonts(self, urls: List[str]) -> List[str]:
-        paths: List[str] = []
-        for u in urls:
-            try:
-                name = os.path.basename(u)
-                if not name:
-                    continue
-                local_path = os.path.join(self.font_cache_dir, name)
-                if os.path.isfile(local_path) and os.path.getsize(local_path) > 1024:
-                    paths.append(local_path)
-                    continue
-                try:
-                    urllib.request.urlretrieve(u, local_path)
-                    if os.path.isfile(local_path) and os.path.getsize(local_path) > 1024:
-                        paths.append(local_path)
-                except Exception:
-                    if os.path.isfile(local_path) and os.path.getsize(local_path) > 1024:
-                        paths.append(local_path)
-                    else:
-                        continue
-            except Exception:
-                continue
-        return paths
-
-    def _get_font(self, font_size: int):
-        if hasattr(self, "available_fonts") and self.available_fonts:
-            random_font_path = random.choice(self.available_fonts)
-            try:
-                return ImageFont.truetype(random_font_path, font_size)
-            except Exception:
-                pass
-        try:
-            return ImageFont.load_default()
-        except Exception:
-            return ImageFont.load_default()
+        super().__init__()
 
     async def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
@@ -126,31 +26,30 @@ class VideoFX:
         output_path: str,
         duration: float,
         fps: int,
-        *,
         blink: bool = False,
         blink_rate: float = 2.0,
         blink_duty: float = 0.15,
         blink_smooth: bool = False,
         font_size: int = 90,
-        transparent: bool = True,
     ):
         text_lines = [t.strip() for t in text_lines if t and t.strip()]
         if not text_lines:
             text_lines = [" "]
+            
         font = self._get_font(font_size)
-        mode = "RGBA" if transparent else "RGB"
+        mode = "RGB"
         dummy_img = Image.new(mode, (1, 1))
         dummy_draw = ImageDraw.Draw(dummy_img)
         text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
         text_heights = [dummy_draw.textbbox((0, 0), line, font=font)[3] for line in text_lines]
-
+        
         base_w = max(max(text_widths) + 40, 512)
         canvas_w = base_w - (base_w % 2)
-
+        
         total_h = sum(text_heights) + (len(text_lines) * 20)
         base_h = max(total_h, 512)
         canvas_h = base_h - (base_h % 2)
-
+        
         if blink and blink_rate > 0:
             period = 1.0 / blink_rate
             on_duration = max(0.0, min(1.0, blink_duty)) * period
@@ -159,7 +58,7 @@ class VideoFX:
             on_duration = None
 
         def make_frame(t):
-            base = Image.new(mode, (canvas_w, canvas_h), (0, 0, 0, 0) if transparent else (0, 0, 0, 255))
+            base = Image.new(mode, (canvas_w, canvas_h), (0, 0, 0, 255))
             draw_base = ImageDraw.Draw(base)
             r = int(127 * (1 + math.sin(t * 5 + 0))) + 64
             g = int(127 * (1 + math.sin(t * 5 + 2))) + 64
@@ -176,40 +75,21 @@ class VideoFX:
             gg = int(g * intensity)
             bb = int(b * intensity)
             current_y = (canvas_h - total_h) / 2
-            rects = []
+            
             for i, line in enumerate(text_lines):
                 line_w = text_widths[i]
                 line_h = text_heights[i]
                 position = ((canvas_w - line_w) / 2, current_y)
-                draw_base.text(position, line, font=font, fill=(rr, gg, bb, 255) if transparent else (rr, gg, bb))
-                rect_margin = 12 + int(font_size * 0.12)
-                x0 = position[0] - rect_margin
-                y0 = position[1] - rect_margin
-                x1 = position[0] + line_w + rect_margin
-                y1 = position[1] + line_h + rect_margin
-                rects.append((x0, y0, x1, y1))
+                draw_base.text(position, line, font=font, fill=(rr, gg, bb))
                 current_y += line_h + 20
 
             arr = np.array(base, dtype=np.uint8)
             return arr
 
-        if transparent:
-            animation = VideoClip(make_frame, is_mask=True, duration=duration)
-        else:
-            animation = VideoClip(make_frame, duration=duration)
-
-        if transparent:
-            animation.write_videofile(
-                output_path,
-                fps=fps,
-                codec="libvpx-vp9",
-                logger=None,
-                ffmpeg_params=["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"],
-            )
-        else:
-            animation.write_videofile(
-                output_path, fps=fps, codec="libx264", logger=None, ffmpeg_params=["-pix_fmt", "yuv420p"]
-            )
+        animation = VideoClip(make_frame, duration=duration)
+        animation.write_videofile(
+            output_path, fps=fps, codec="libx264", logger=None, ffmpeg_params=["-pix_fmt", "yuv420p"]
+        )
         animation.close()
 
     async def text_to_video(
@@ -223,12 +103,8 @@ class VideoFX:
         blink_duty: float = 0.15,
         blink_smooth: bool = False,
         font_size: int = 90,
-        transparent: bool = False,
     ):
-        if ";" in text:
-            text_lines = text.split(";")
-        else:
-            text_lines = text.splitlines()
+        text_lines = text.split(";") if ";" in text else text.splitlines()
         await self._run_in_executor(
             self._create_rgb_video,
             text_lines,
@@ -240,31 +116,26 @@ class VideoFX:
             blink_duty=blink_duty,
             blink_smooth=blink_smooth,
             font_size=font_size,
-            transparent=transparent,
         )
         return output_path
 
-    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30, transparent: bool = False):
-        clip = VideoFileClip(video_path)
-        max_duration = min(clip.duration, 2.95)
-        trimmed_clip = clip.subclipped(0, max_duration)
-        if trimmed_clip.w >= trimmed_clip.h:
-            resized_clip = trimmed_clip.resized(width=512)
-        else:
-            resized_clip = trimmed_clip.resized(height=512)
-        final_clip = resized_clip.with_fps(fps).with_position(("center", "center"))
-        if transparent:
-            ffmpeg_params = ["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"]
-        else:
-            ffmpeg_params = ["-pix_fmt", "yuv420p", "-crf", "30", "-b:v", "0"]
-        final_clip.write_videofile(
-            output_path, codec="libvpx-vp9", audio=False, logger=None, ffmpeg_params=ffmpeg_params
-        )
-        clip.close()
-        trimmed_clip.close()
-        resized_clip.close()
-        final_clip.close()
+    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30):
+        with VideoFileClip(video_path) as clip:
+            max_duration = min(clip.duration, 2.95)
+            with clip.subclip(0, max_duration) as trimmed_clip:
+                if trimmed_clip.w >= trimmed_clip.h:
+                    resized_clip = trimmed_clip.resize(width=512)
+                else:
+                    resized_clip = trimmed_clip.resize(height=512)
+                
+                with resized_clip:
+                    final_clip = resized_clip.set_fps(fps).set_position(("center", "center"))
+                    ffmpeg_params = ["-pix_fmt", "yuv420p", "-crf", "30", "-b:v", "0"]
+                    final_clip.write_videofile(
+                        output_path, codec="libvpx-vp9", audio=False, logger=None, ffmpeg_params=ffmpeg_params
+                    )
+                    final_clip.close()
 
-    async def video_to_sticker(self, video_path: str, output_path: str, fps: int = 30, transparent: bool = False):
-        await self._run_in_executor(self._convert_to_sticker, video_path, output_path, fps=fps, transparent=transparent)
+    async def video_to_sticker(self, video_path: str, output_path: str, fps: int = 30):
+        await self._run_in_executor(self._convert_to_sticker, video_path, output_path, fps=fps)
         return output_path
