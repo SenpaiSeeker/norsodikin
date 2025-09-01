@@ -166,6 +166,32 @@ class VideoFX(FontManager):
             transparent=transparent,
         )
         return output_path
+
+    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30, preserve_alpha: bool = True):
+        clip = VideoFileClip(video_path)
+        max_duration = min(clip.duration, 2.95)
+        trimmed_clip = clip.subclipped(0, max_duration)
+
+        if trimmed_clip.w >= trimmed_clip.h:
+            resized_clip = trimmed_clip.resized(width=512)
+        else:
+            resized_clip = trimmed_clip.resized(height=512)
+
+        final_clip = resized_clip.with_fps(fps).with_position(("center", "center"))
+
+        if preserve_alpha:
+            ffmpeg_params = ["-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0"]
+        else:
+            ffmpeg_params = ["-pix_fmt", "yuv420p", "-crf", "30", "-b:v", "0"]
+
+        final_clip.write_videofile(
+            output_path, codec="libvpx-vp9", audio=False, logger=None, ffmpeg_params=ffmpeg_params
+        )
+        clip.close()
+        trimmed_clip.close()
+        resized_clip.close()
+        final_clip.close()
+        
         
     async def video_to_sticker(self, video_path: str, output_path: str, fps: int = 30, preserve_alpha: bool = True):
         await self._run_in_executor(self._convert_to_sticker, video_path, output_path, fps, preserve_alpha)
