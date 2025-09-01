@@ -71,18 +71,18 @@ class VideoFX(FontManager):
                 else:
                     phase = t % period
                     intensity = 1.0 if phase < on_duration else 0.0
+                    
             rr = int(r * intensity)
             gg = int(g * intensity)
             bb = int(b * intensity)
             current_y = (canvas_h - total_h) / 2
-            
+
             for i, line in enumerate(text_lines):
-                line_w = text_widths[i]
-                line_h = text_heights[i]
+                line_w, line_h = dummy_draw.textsize(line, font=font)
                 position = ((canvas_w - line_w) / 2, current_y)
                 draw_base.text(position, line, font=font, fill=(rr, gg, bb))
                 current_y += line_h + 20
-
+                
             arr = np.array(base, dtype=np.uint8)
             return arr
 
