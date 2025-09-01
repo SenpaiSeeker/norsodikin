@@ -29,9 +29,9 @@ class FontManager:
         font_urls = self._fetch_google_font_urls()
         return self._ensure_local_fonts(font_urls)
 
-    def _fetch_google_font_urls(self, limit: int = 15) -> List[str]:
+    def _fetch_google_font_urls(self, limit: int = 30) -> List[str]:
         all_font_families = []
-        base_dirs = ["ofl", "apache"]
+        base_dirs = ["ofl", "apache", "ufl"]
         api_base_url = "https://api.github.com/repos/google/fonts/contents/"
         try:
             for dir_name in base_dirs:
