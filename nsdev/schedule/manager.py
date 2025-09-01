@@ -9,8 +9,6 @@ except ImportError:
 
 class Scheduler:
     def __init__(self):
-        if aiocron is None:
-            raise ImportError("The 'aiocron' library is required. Please install it via 'pip install aiocron'.")
         self.jobs: List[Tuple[str, Callable]] = []
         self._is_started = False
 
