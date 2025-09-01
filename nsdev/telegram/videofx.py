@@ -3,10 +3,13 @@ import functools
 import math
 import os
 from typing import List
+
 import numpy as np
 from moviepy import VideoClip, VideoFileClip
 from PIL import Image, ImageDraw
+
 from ..utils.font_manager import FontManager
+
 
 class VideoFX(FontManager):
     def __init__(self):
@@ -17,7 +20,7 @@ class VideoFX(FontManager):
         call = functools.partial(func, *args, **kwargs)
         return await loop.run_in_executor(None, call)
 
-    def _create_rgba_video(
+    def _create_rgb_video(
         self,
         text_lines: List[str],
         output_path: str,
@@ -32,21 +35,21 @@ class VideoFX(FontManager):
         text_lines = [t.strip() for t in text_lines if t and t.strip()]
         if not text_lines:
             text_lines = [" "]
-
+            
         font = self._get_font(font_size)
-        mode = "RGBA"
+        mode = "RGB"
         dummy_img = Image.new(mode, (1, 1))
         dummy_draw = ImageDraw.Draw(dummy_img)
         text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
         text_heights = [dummy_draw.textbbox((0, 0), line, font=font)[3] for line in text_lines]
-
+        
         base_w = max(max(text_widths) + 40, 512)
         canvas_w = base_w - (base_w % 2)
-
+        
         total_h = sum(text_heights) + (len(text_lines) * 20)
         base_h = max(total_h, 512)
         canvas_h = base_h - (base_h % 2)
-
+        
         if blink and blink_rate > 0:
             period = 1.0 / blink_rate
             on_duration = max(0.0, min(1.0, blink_duty)) * period
@@ -57,11 +60,9 @@ class VideoFX(FontManager):
         def make_frame(t):
             base = Image.new(mode, (canvas_w, canvas_h), (0, 0, 0, 0))
             draw_base = ImageDraw.Draw(base)
-            
             r = int(127 * (1 + math.sin(t * 5 + 0))) + 64
             g = int(127 * (1 + math.sin(t * 5 + 2))) + 64
             b = int(127 * (1 + math.sin(t * 5 + 4))) + 64
-            
             intensity = 1.0
             if blink and period is not None:
                 if blink_smooth:
@@ -70,37 +71,24 @@ class VideoFX(FontManager):
                 else:
                     phase = t % period
                     intensity = 1.0 if phase < on_duration else 0.0
-                    
             rr = int(r * intensity)
             gg = int(g * intensity)
             bb = int(b * intensity)
-            
             current_y = (canvas_h - total_h) / 2
             
             for i, line in enumerate(text_lines):
                 line_w = text_widths[i]
                 line_h = text_heights[i]
                 position = ((canvas_w - line_w) / 2, current_y)
-                draw_base.text(position, line, font=font, fill=(rr, gg, bb, 255))
+                draw_base.text(position, line, font=font, fill=(rr, gg, bb))
                 current_y += line_h + 20
-                
+
             arr = np.array(base, dtype=np.uint8)
             return arr
 
         animation = VideoClip(make_frame, duration=duration)
         animation.write_videofile(
-            output_path, 
-            fps=fps, 
-            codec="libvpx-vp9", 
-            logger=None, 
-            ffmpeg_params=[
-                "-pix_fmt", "yuva420p",
-                "-auto-alt-ref", "0",
-                "-lag-in-frames", "25",
-                "-deadline", "good",
-                "-cpu-used", "5",
-                "-threads", "4"
-            ]
+            output_path, fps=fps, codec="libx264", logger=None, ffmpeg_params=["-pix_fmt", "yuv420p"]
         )
         animation.close()
 
@@ -108,7 +96,7 @@ class VideoFX(FontManager):
         self,
         text: str,
         output_path: str,
-        duration: float = 2.95,
+        duration: float = 5.0,
         fps: int = 24,
         blink: bool = False,
         blink_rate: float = 2.0,
@@ -118,7 +106,7 @@ class VideoFX(FontManager):
     ):
         text_lines = text.split(";") if ";" in text else text.splitlines()
         await self._run_in_executor(
-            self._create_rgba_video,
+            self._create_rgb_video,
             text_lines,
             output_path,
             duration,
