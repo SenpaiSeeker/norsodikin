@@ -125,9 +125,9 @@ class VideoFX(FontManager):
         trimmed_clip = clip.subclipped(0, max_duration)
         
         if trimmed_clip.w >= trimmed_clip.h:
-            resized_clip = trimmed_clip.resize(width=512)
+            resized_clip = trimmed_clip.resized(width=512)
         else:
-            resized_clip = trimmed_clip.resize(height=512)
+            resized_clip = trimmed_clip.resized(height=512)
         
         final_clip = resized_clip.set_fps(fps).set_position(("center", "center"))
         ffmpeg_params = ["-pix_fmt", "yuv420p", "-crf", "30", "-b:v", "0"]
