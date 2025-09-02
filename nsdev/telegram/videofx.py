@@ -28,66 +28,67 @@ class VideoFX(FontManager):
             progress = i / segments
             base_x = start_pos[0] + dx * progress
             base_y = start_pos[1] + dy * progress
-            offset = random.uniform(-max_offset, max_offset)
+            offset = random.uniform(-max_offset, max_offset) * (1 - abs(progress - 0.5) * 2)
             points.append((base_x + offset * (-dy / length), base_y + offset * (dx / length)))
         points.append(end_pos)
         return points
 
-    def _draw_cinematic_lightning(self, canvas_img: Image.Image, text_bbox: Tuple) -> Image.Image:
-        canvas_size = canvas_img.size
-        
-        core_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+    def _get_text_boundary_points(
+        self, text_lines, font, text_widths, text_heights, canvas_w, canvas_h, total_text_h
+    ) -> List[Tuple[int, int]]:
+        mask_img = Image.new("L", (canvas_w, canvas_h), 0)
+        draw_mask = ImageDraw.Draw(mask_img)
+
+        current_y = (canvas_h - total_text_h) / 2
+        for i, line in enumerate(text_lines):
+            line_w = text_widths[i]
+            position = ((canvas_w - line_w) / 2, current_y)
+            draw_mask.text(position, line, font=font, fill=255)
+            current_y += text_heights[i] + 20
+
+        pixels = mask_img.load()
+        boundary_points = []
+        for y in range(1, canvas_h - 1):
+            for x in range(1, canvas_w - 1):
+                if pixels[x, y] == 255:
+                    if (
+                        pixels[x + 1, y] == 0
+                        or pixels[x - 1, y] == 0
+                        or pixels[x, y + 1] == 0
+                        or pixels[x, y - 1] == 0
+                    ):
+                        boundary_points.append((x, y))
+        return boundary_points
+
+    def _draw_electric_aura(
+        self, canvas_img: Image.Image, boundary_points: List[Tuple[int, int]]
+    ) -> Image.Image:
+        if not boundary_points:
+            return canvas_img
+
+        core_layer = Image.new("RGBA", canvas_img.size, (0, 0, 0, 0))
         draw_core = ImageDraw.Draw(core_layer)
-        spark_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
-        draw_sparks = ImageDraw.Draw(spark_layer)
 
-        start_x = random.uniform(text_bbox[0] - 50, text_bbox[2] + 50)
-        start_y = random.uniform(text_bbox[1] - 50, text_bbox[3] + 50)
-        end_x = random.choice([random.uniform(-100, 0), random.uniform(canvas_size[0], canvas_size[0] + 100)])
-        end_y = random.choice([random.uniform(-100, 0), random.uniform(canvas_size[1], canvas_size[1] + 100)])
-        
-        main_path = self._generate_lightning_path((start_x, start_y), (end_x, end_y), 45, 18)
-        
-        draw_core.line(main_path, fill=(200, 220, 255, 230), width=8, joint="round")
-        draw_core.line(main_path, fill=(255, 255, 255, 255), width=4, joint="round")
-        draw_core.line(main_path, fill=(255, 255, 240, 255), width=2, joint="round")
-        
-        all_points = list(main_path)
+        num_tendrils = max(15, int(len(boundary_points) * 0.15))
+        selected_points = random.sample(boundary_points, min(num_tendrils, len(boundary_points)))
 
-        for _ in range(random.randint(2, 4)):
-            if len(main_path) < 7: continue
-            branch_start_index = random.randint(3, len(main_path) - 4)
-            branch_start_point = main_path[branch_start_index]
-            branch_end_x = branch_start_point[0] + random.uniform(-250, 250)
-            branch_end_y = branch_start_point[1] + random.uniform(-250, 250)
-            branch_path = self._generate_lightning_path(branch_start_point, (branch_end_x, branch_end_y), 30, 15)
-            
-            draw_core.line(branch_path, fill=(200, 220, 255, 180), width=5, joint="round")
-            draw_core.line(branch_path, fill=(255, 255, 255, 255), width=2, joint="round")
-            all_points.extend(branch_path)
+        for point in selected_points:
+            angle = random.uniform(0, 2 * math.pi)
+            length = random.uniform(15, 40)
+            end_point = (point[0] + length * math.cos(angle), point[1] + length * math.sin(angle))
+            path = self._generate_lightning_path(point, end_point, 8, 5)
 
-        for point in all_points:
-            if random.random() < 0.1:
-                radius = random.uniform(1, 3)
-                draw_sparks.ellipse(
-                    (point[0]-radius, point[1]-radius, point[0]+radius, point[1]+radius),
-                    fill=(255, 255, 255, 255)
-                )
+            draw_core.line(path, fill=(255, 255, 220, 180), width=3, joint="round")
+            draw_core.line(path, fill=(255, 255, 255, 255), width=1, joint="round")
 
-        aura_purple = core_layer.filter(ImageFilter.GaussianBlur(radius=20))
-        solid_aura_purple = Image.new("RGBA", canvas_size, (180, 120, 255, 0))
-        solid_aura_purple.putalpha(aura_purple.getchannel("A"))
+        aura_layer = core_layer.filter(ImageFilter.GaussianBlur(radius=5))
+        aura_color_layer = Image.new("RGBA", canvas_img.size, (170, 220, 255, 0))
+        aura_mask = aura_layer.getchannel("A")
+        aura_color_layer.putalpha(aura_mask)
 
-        aura_blue = core_layer.filter(ImageFilter.GaussianBlur(radius=8))
-        solid_aura_blue = Image.new("RGBA", canvas_size, (170, 200, 255, 0))
-        solid_aura_blue.putalpha(aura_blue.getchannel("A"))
-
-        final_effect = Image.alpha_composite(canvas_img, solid_aura_purple)
-        final_effect = Image.alpha_composite(final_effect, solid_aura_blue)
-        final_effect = Image.alpha_composite(final_effect, core_layer)
-        final_effect = Image.alpha_composite(final_effect, spark_layer)
-
-        return final_effect
+        final_img = Image.alpha_composite(canvas_img, aura_color_layer)
+        final_img = Image.alpha_composite(final_img, core_layer)
+        return final_img
 
     async def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
@@ -104,7 +105,7 @@ class VideoFX(FontManager):
         canvas_h: int,
         total_text_h: float,
         font,
-        dummy_draw,
+        boundary_points: List[Tuple[int, int]],
         blink: bool,
         blink_rate: float,
         blink_duty: float,
@@ -112,15 +113,10 @@ class VideoFX(FontManager):
     ) -> Image.Image:
         base = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
         
-        text_block_w = max(text_widths) if text_widths else 0
-        text_block_x = (canvas_w - text_block_w) / 2
-        text_block_y = (canvas_h - total_text_h) / 2
-        text_bbox = (text_block_x, text_block_y, text_block_x + text_block_w, text_block_y + total_text_h)
-
-        base = self._draw_cinematic_lightning(base, text_bbox)
+        base = self._draw_electric_aura(base, boundary_points)
 
         draw_base = ImageDraw.Draw(base)
-        
+
         r = int(127 * (1 + math.sin(t * 5 + 0))) + 64
         g = int(127 * (1 + math.sin(t * 5 + 2))) + 64
         b = int(127 * (1 + math.sin(t * 5 + 4))) + 64
@@ -138,7 +134,7 @@ class VideoFX(FontManager):
 
         fill_color = (int(r * intensity), int(g * intensity), int(b * intensity), int(255 * intensity))
 
-        current_y = text_block_y
+        current_y = (canvas_h - total_text_h) / 2
         for i, line in enumerate(text_lines):
             line_w = text_widths[i]
             position = ((canvas_w - line_w) / 2, current_y)
@@ -171,12 +167,16 @@ class VideoFX(FontManager):
         text_widths = [bbox[2] - bbox[0] for bbox in bboxes]
         text_heights = [bbox[3] - bbox[1] for bbox in bboxes]
 
-        base_w = max(max(text_widths) + 40, 512)
+        base_w = max(max(text_widths) + 80, 512)
         canvas_w = base_w - (base_w % 2)
 
         total_text_h = sum(text_heights) + (len(text_lines) - 1) * 20
-        base_h = max(total_text_h, 512)
+        base_h = max(total_text_h + 80, 512)
         canvas_h = base_h - (base_h % 2)
+
+        boundary_points = self._get_text_boundary_points(
+            text_lines, font, text_widths, text_heights, canvas_w, canvas_h, total_text_h
+        )
 
         cmd = [
             "ffmpeg", "-y", "-f", "rawvideo", "-vcodec", "rawvideo",
@@ -192,7 +192,7 @@ class VideoFX(FontManager):
             t = i / float(fps)
             frame_img = self._make_frame_pil(
                 t, text_lines, text_widths, text_heights,
-                canvas_w, canvas_h, total_text_h, font, dummy_draw,
+                canvas_w, canvas_h, total_text_h, font, boundary_points,
                 blink, blink_rate, blink_duty, blink_smooth,
             )
             proc.stdin.write(frame_img.tobytes())
