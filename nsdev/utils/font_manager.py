@@ -15,10 +15,11 @@ class FontManager:
 
     def _load_or_fetch_fonts(self) -> List[str]:
         try:
+            font_extensions = (".ttf", ".otf")
             local_fonts = [
                 os.path.join(self.font_cache_dir, f)
                 for f in os.listdir(self.font_cache_dir)
-                if f.lower().endswith((".ttf", ".otf")) and os.path.isfile(os.path.join(self.font_cache_dir, f))
+                if f.lower().endswith(font_extensions) and os.path.isfile(os.path.join(self.font_cache_dir, f))
             ]
             if local_fonts:
                 return local_fonts
@@ -38,32 +39,37 @@ class FontManager:
                 all_font_families.extend(
                     [item for item in response.json() if isinstance(item, dict) and item.get("type") == "dir"]
                 )
+
             if not all_font_families:
                 return []
-            
-            sample_size = min(limit, len(all_font_families))
-            selected_families = random.sample(all_font_families, sample_size)
+
+            num_to_select = min(limit, len(all_font_families))
+            selected_families = random.sample(all_font_families, k=num_to_select)
 
             font_urls = []
+            font_extensions = (".ttf", ".otf")
+
             for family in selected_families:
                 try:
                     family_response = requests.get(family["url"], timeout=10)
                     family_response.raise_for_status()
-                    font_files = family_response.json()
-                    if not isinstance(font_files, list):
+                    font_files_data = family_response.json()
+
+                    if not isinstance(font_files_data, list):
                         continue
-                    regular_match, any_ttf_match = None, None
-                    for font_file in font_files:
-                        if isinstance(font_file, dict) and font_file.get("type") == "file":
-                            name = font_file.get("name", "").lower()
-                            if "regular" in name and name.endswith(".ttf"):
-                                regular_match = font_file
-                                break
-                            if any_ttf_match is None and name.endswith(".ttf"):
-                                any_ttf_match = font_file
-                    best_match = regular_match or any_ttf_match
-                    if best_match and best_match.get("download_url"):
-                        font_urls.append(best_match["download_url"])
+
+                    valid_font_files = [
+                        font_file
+                        for font_file in font_files_data
+                        if isinstance(font_file, dict)
+                        and font_file.get("type") == "file"
+                        and font_file.get("name", "").lower().endswith(font_extensions)
+                    ]
+
+                    if valid_font_files:
+                        chosen_font = random.choice(valid_font_files)
+                        if chosen_font.get("download_url"):
+                            font_urls.append(chosen_font["download_url"])
                 except requests.RequestException:
                     continue
             return font_urls
