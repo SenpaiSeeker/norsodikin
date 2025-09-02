@@ -14,71 +14,41 @@ class VideoFX(FontManager):
     def __init__(self):
         super().__init__()
 
-    def _generate_electric_spark_path(self, start_pos: Tuple) -> List[Tuple]:
-        path = [start_pos]
-        mid_point = (
-            start_pos[0] + random.uniform(-8, 8),
-            start_pos[1] + random.uniform(-8, 8),
-        )
-        end_point = (
-            mid_point[0] + random.uniform(-8, 8),
-            mid_point[1] + random.uniform(-8, 8),
-        )
-        path.extend([mid_point, end_point])
-        return path
+    def _draw_electric_aura(self, base_image: Image.Image, text_mask: Image.Image, t: float) -> Image.Image:
+        edge_mask = text_mask.filter(ImageFilter.FIND_EDGES)
+        outer_glow = edge_mask.filter(ImageFilter.GaussianBlur(radius=12))
+        inner_glow = edge_mask.filter(ImageFilter.GaussianBlur(radius=5))
+        aura_canvas = Image.new("RGBA", base_image.size, (0, 0, 0, 0))
+        draw_aura = ImageDraw.Draw(aura_canvas)
+        
+        outer_glow_pixels = outer_glow.load()
+        inner_glow_pixels = inner_glow.load()
+        aura_pixels = aura_canvas.load()
+        
+        pulse = 0.75 + 0.25 * math.sin(t * 15)
 
-    def _get_text_boundary_points(
-        self, text_lines, font, text_widths, text_heights, canvas_w, canvas_h, total_text_h
-    ) -> List[Tuple[int, int]]:
-        mask_img = Image.new("L", (canvas_w, canvas_h), 0)
-        draw_mask = ImageDraw.Draw(mask_img)
+        for y in range(base_image.height):
+            for x in range(base_image.width):
+                outer_alpha = outer_glow_pixels[x, y][3]
+                inner_alpha = inner_glow_pixels[x, y][3]
+                
+                if outer_alpha > 10:
+                    r, g, b = 120, 160, 255
+                    alpha = int(outer_alpha * 0.6 * pulse)
+                    aura_pixels[x, y] = (r, g, b, alpha)
 
-        current_y = (canvas_h - total_text_h) / 2
-        for i, line in enumerate(text_lines):
-            line_w = text_widths[i]
-            position = ((canvas_w - line_w) / 2, current_y)
-            draw_mask.text(position, line, font=font, fill=255)
-            current_y += text_heights[i] + 20
+                if inner_alpha > 10:
+                    r, g, b = 180, 255, 255
+                    alpha = int(inner_alpha * 0.8 * pulse)
+                    aura_pixels[x, y] = (r, g, b, alpha)
 
-        pixels = mask_img.load()
-        boundary_points = []
-        for y in range(1, canvas_h - 1):
-            for x in range(1, canvas_w - 1):
-                if pixels[x, y] == 255:
-                    if (
-                        pixels[x + 1, y] == 0
-                        or pixels[x - 1, y] == 0
-                        or pixels[x, y + 1] == 0
-                        or pixels[x, y - 1] == 0
-                    ):
-                        boundary_points.append((x, y))
-        return boundary_points
-
-    def _draw_electric_aura(
-        self, canvas_img: Image.Image, boundary_points: List[Tuple[int, int]]
-    ) -> Image.Image:
-        if not boundary_points:
-            return canvas_img
-
-        core_layer = Image.new("RGBA", canvas_img.size, (0, 0, 0, 0))
-        draw_core = ImageDraw.Draw(core_layer)
-
-        num_sparks = int(len(boundary_points) * 0.35)
-        spark_points = random.sample(boundary_points, min(num_sparks, len(boundary_points)))
-
-        for point in spark_points:
-            path = self._generate_electric_spark_path(point)
-            draw_core.line(path, fill=(255, 255, 220, 200), width=2, joint="round")
-            draw_core.line(path, fill=(255, 255, 255, 255), width=1, joint="round")
-
-        aura_layer = core_layer.filter(ImageFilter.GaussianBlur(radius=5))
-        aura_color_layer = Image.new("RGBA", canvas_img.size, (170, 220, 255, 0))
-        aura_mask = aura_layer.getchannel("A")
-        aura_color_layer.putalpha(aura_mask)
-
-        final_img = Image.alpha_composite(canvas_img, aura_color_layer)
-        final_img = Image.alpha_composite(final_img, core_layer)
-        return final_img
+        edge_pixels = edge_mask.load()
+        for y in range(base_image.height):
+            for x in range(base_image.width):
+                if edge_pixels[x, y][3] > 0 and random.random() < 0.1:
+                    draw_aura.point((x, y), fill=(255, 255, 255, 255))
+        
+        return Image.alpha_composite(base_image, aura_canvas)
 
     async def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
@@ -95,18 +65,27 @@ class VideoFX(FontManager):
         canvas_h: int,
         total_text_h: float,
         font,
-        boundary_points: List[Tuple[int, int]],
         blink: bool,
         blink_rate: float,
         blink_duty: float,
         blink_smooth: bool,
     ) -> Image.Image:
         base = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+
+        text_mask_layer = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+        draw_mask = ImageDraw.Draw(text_mask_layer)
         
-        base = self._draw_electric_aura(base, boundary_points)
+        current_y_mask = (canvas_h - total_text_h) / 2
+        for i, line in enumerate(text_lines):
+            line_w = text_widths[i]
+            position = ((canvas_w - line_w) / 2, current_y_mask)
+            draw_mask.text(position, line, font=font, fill=(255, 255, 255, 255))
+            current_y_mask += text_heights[i] + 20
+        
+        base = self._draw_electric_aura(base, text_mask_layer, t)
 
         draw_base = ImageDraw.Draw(base)
-
+        
         r = int(127 * (1 + math.sin(t * 5 + 0))) + 64
         g = int(127 * (1 + math.sin(t * 5 + 2))) + 64
         b = int(127 * (1 + math.sin(t * 5 + 4))) + 64
@@ -124,12 +103,12 @@ class VideoFX(FontManager):
 
         fill_color = (int(r * intensity), int(g * intensity), int(b * intensity), int(255 * intensity))
 
-        current_y = (canvas_h - total_text_h) / 2
+        current_y_text = (canvas_h - total_text_h) / 2
         for i, line in enumerate(text_lines):
             line_w = text_widths[i]
-            position = ((canvas_w - line_w) / 2, current_y)
+            position = ((canvas_w - line_w) / 2, current_y_text)
             draw_base.text(position, line, font=font, fill=fill_color)
-            current_y += text_heights[i] + 20
+            current_y_text += text_heights[i] + 20
 
         return base
 
@@ -157,16 +136,12 @@ class VideoFX(FontManager):
         text_widths = [bbox[2] - bbox[0] for bbox in bboxes]
         text_heights = [bbox[3] - bbox[1] for bbox in bboxes]
 
-        base_w = max(max(text_widths) + 80, 512)
+        base_w = max(max(text_widths) + 40, 512)
         canvas_w = base_w - (base_w % 2)
 
         total_text_h = sum(text_heights) + (len(text_lines) - 1) * 20
-        base_h = max(total_text_h + 80, 512)
+        base_h = max(total_text_h, 512)
         canvas_h = base_h - (base_h % 2)
-
-        boundary_points = self._get_text_boundary_points(
-            text_lines, font, text_widths, text_heights, canvas_w, canvas_h, total_text_h
-        )
 
         cmd = [
             "ffmpeg", "-y", "-f", "rawvideo", "-vcodec", "rawvideo",
@@ -182,7 +157,7 @@ class VideoFX(FontManager):
             t = i / float(fps)
             frame_img = self._make_frame_pil(
                 t, text_lines, text_widths, text_heights,
-                canvas_w, canvas_h, total_text_h, font, boundary_points,
+                canvas_w, canvas_h, total_text_h, font,
                 blink, blink_rate, blink_duty, blink_smooth,
             )
             proc.stdin.write(frame_img.tobytes())
