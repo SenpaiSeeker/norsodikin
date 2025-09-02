@@ -1,8 +1,9 @@
 import asyncio
 import functools
 import math
+import random
 import subprocess
-from typing import List
+from typing import List, Tuple
 
 from PIL import Image, ImageDraw
 
@@ -13,6 +14,53 @@ class VideoFX(FontManager):
     def __init__(self):
         super().__init__()
 
+    def _generate_lightning_path(
+        self, start_pos: Tuple, end_pos: Tuple, max_offset: float, segments: int
+    ) -> List[Tuple]:
+        points = [start_pos]
+        dx = end_pos[0] - start_pos[0]
+        dy = end_pos[1] - start_pos[1]
+        length = math.sqrt(dx * dx + dy * dy)
+        if length == 0:
+            return [start_pos, end_pos]
+
+        for i in range(1, segments):
+            progress = i / segments
+            base_x = start_pos[0] + dx * progress
+            base_y = start_pos[1] + dy * progress
+            offset = random.uniform(-max_offset, max_offset)
+            points.append((base_x + offset * (-dy / length), base_y + offset * (dx / length)))
+        points.append(end_pos)
+        return points
+
+    def _draw_lightning_bolt(self, draw: ImageDraw, text_bbox: Tuple, canvas_size: Tuple):
+        start_x = random.uniform(text_bbox[0] - 20, text_bbox[2] + 20)
+        start_y = random.uniform(text_bbox[1] - 20, text_bbox[3] + 20)
+
+        end_x = random.choice([random.uniform(-50, 0), random.uniform(canvas_size[0], canvas_size[0] + 50)])
+        end_y = random.choice([random.uniform(-50, 0), random.uniform(canvas_size[1], canvas_size[1] + 50)])
+
+        main_path = self._generate_lightning_path((start_x, start_y), (end_x, end_y), 30, 15)
+
+        glow_layers = [
+            {"width": 10, "color": (200, 200, 255, 50)},
+            {"width": 6, "color": (220, 220, 255, 100)},
+            {"width": 2, "color": (255, 255, 255, 200)},
+        ]
+        for layer in glow_layers:
+            draw.line(main_path, fill=layer["color"], width=layer["width"], joint="round")
+
+        if random.random() < 0.4:
+            branch_start_index = random.randint(3, len(main_path) - 5)
+            branch_start_point = main_path[branch_start_index]
+            branch_end_x = branch_start_point[0] + random.uniform(-150, 150)
+            branch_end_y = branch_start_point[1] + random.uniform(-150, 150)
+            branch_path = self._generate_lightning_path(
+                branch_start_point, (branch_end_x, branch_end_y), 15, 10
+            )
+            for layer in glow_layers:
+                draw.line(branch_path, fill=layer["color"], width=int(layer["width"] * 0.6), joint="round")
+
     async def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
         call = functools.partial(func, *args, **kwargs)
@@ -22,6 +70,7 @@ class VideoFX(FontManager):
         self,
         t: float,
         text_lines: List[str],
+        text_widths: List[float],
         text_heights: List[float],
         canvas_w: int,
         canvas_h: int,
@@ -35,6 +84,14 @@ class VideoFX(FontManager):
     ) -> Image.Image:
         base = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
         draw_base = ImageDraw.Draw(base)
+
+        text_block_w = max(text_widths)
+        text_block_x = (canvas_w - text_block_w) / 2
+        text_block_y = (canvas_h - total_text_h) / 2
+        text_bbox = (text_block_x, text_block_y, text_block_x + text_block_w, text_block_y + total_text_h)
+
+        if random.random() < 0.25:
+            self._draw_lightning_bolt(draw_base, text_bbox, (canvas_w, canvas_h))
 
         r = int(127 * (1 + math.sin(t * 5 + 0))) + 64
         g = int(127 * (1 + math.sin(t * 5 + 2))) + 64
@@ -58,10 +115,9 @@ class VideoFX(FontManager):
             int(255 * intensity),
         )
 
-        current_y = (canvas_h - total_text_h) / 2
+        current_y = text_block_y
         for i, line in enumerate(text_lines):
-            bbox = dummy_draw.textbbox((0, 0), line, font=font)
-            line_w = bbox[2] - bbox[0]
+            line_w = text_widths[i]
             position = ((canvas_w - line_w) / 2, current_y)
             draw_base.text(position, line, font=font, fill=fill_color)
             current_y += text_heights[i] + 20
@@ -130,6 +186,7 @@ class VideoFX(FontManager):
             frame_img = self._make_frame_pil(
                 t,
                 text_lines,
+                text_widths,
                 text_heights,
                 canvas_w,
                 canvas_h,
