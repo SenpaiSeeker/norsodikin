@@ -14,24 +14,18 @@ class VideoFX(FontManager):
     def __init__(self):
         super().__init__()
 
-    def _generate_lightning_path(
-        self, start_pos: Tuple, end_pos: Tuple, max_offset: float, segments: int
-    ) -> List[Tuple]:
-        points = [start_pos]
-        dx = end_pos[0] - start_pos[0]
-        dy = end_pos[1] - start_pos[1]
-        length = math.sqrt(dx * dx + dy * dy)
-        if length == 0:
-            return [start_pos, end_pos]
-
-        for i in range(1, segments):
-            progress = i / segments
-            base_x = start_pos[0] + dx * progress
-            base_y = start_pos[1] + dy * progress
-            offset = random.uniform(-max_offset, max_offset) * (1 - abs(progress - 0.5) * 2)
-            points.append((base_x + offset * (-dy / length), base_y + offset * (dx / length)))
-        points.append(end_pos)
-        return points
+    def _generate_electric_spark_path(self, start_pos: Tuple) -> List[Tuple]:
+        path = [start_pos]
+        mid_point = (
+            start_pos[0] + random.uniform(-8, 8),
+            start_pos[1] + random.uniform(-8, 8),
+        )
+        end_point = (
+            mid_point[0] + random.uniform(-8, 8),
+            mid_point[1] + random.uniform(-8, 8),
+        )
+        path.extend([mid_point, end_point])
+        return path
 
     def _get_text_boundary_points(
         self, text_lines, font, text_widths, text_heights, canvas_w, canvas_h, total_text_h
@@ -69,16 +63,12 @@ class VideoFX(FontManager):
         core_layer = Image.new("RGBA", canvas_img.size, (0, 0, 0, 0))
         draw_core = ImageDraw.Draw(core_layer)
 
-        num_tendrils = max(15, int(len(boundary_points) * 0.15))
-        selected_points = random.sample(boundary_points, min(num_tendrils, len(boundary_points)))
+        num_sparks = int(len(boundary_points) * 0.35)
+        spark_points = random.sample(boundary_points, min(num_sparks, len(boundary_points)))
 
-        for point in selected_points:
-            angle = random.uniform(0, 2 * math.pi)
-            length = random.uniform(15, 40)
-            end_point = (point[0] + length * math.cos(angle), point[1] + length * math.sin(angle))
-            path = self._generate_lightning_path(point, end_point, 8, 5)
-
-            draw_core.line(path, fill=(255, 255, 220, 180), width=3, joint="round")
+        for point in spark_points:
+            path = self._generate_electric_spark_path(point)
+            draw_core.line(path, fill=(255, 255, 220, 200), width=2, joint="round")
             draw_core.line(path, fill=(255, 255, 255, 255), width=1, joint="round")
 
         aura_layer = core_layer.filter(ImageFilter.GaussianBlur(radius=5))
