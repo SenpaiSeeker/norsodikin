@@ -5,7 +5,7 @@ import random
 import subprocess
 from typing import List, Tuple
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageFont, ImageDraw, ImageFilter
 
 from ..utils.font_manager import FontManager
 
