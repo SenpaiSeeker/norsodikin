@@ -40,8 +40,10 @@ class FontManager:
                 )
             if not all_font_families:
                 return []
-            random.shuffle(all_font_families)
-            selected_families = all_font_families[:limit]
+            
+            sample_size = min(limit, len(all_font_families))
+            selected_families = random.sample(all_font_families, sample_size)
+
             font_urls = []
             for family in selected_families:
                 try:
