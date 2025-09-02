@@ -5,7 +5,7 @@ import random
 import subprocess
 from typing import List, Tuple
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 from ..utils.font_manager import FontManager
 
@@ -33,33 +33,43 @@ class VideoFX(FontManager):
         points.append(end_pos)
         return points
 
-    def _draw_lightning_bolt(self, draw: ImageDraw, text_bbox: Tuple, canvas_size: Tuple):
-        start_x = random.uniform(text_bbox[0] - 20, text_bbox[2] + 20)
-        start_y = random.uniform(text_bbox[1] - 20, text_bbox[3] + 20)
+    def _draw_lightning_bolt(self, canvas_img: Image.Image, text_bbox: Tuple) -> Image.Image:
+        canvas_size = canvas_img.size
+        
+        core_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+        draw_core = ImageDraw.Draw(core_layer)
 
+        start_x = random.uniform(text_bbox[0] - 30, text_bbox[2] + 30)
+        start_y = random.uniform(text_bbox[1] - 30, text_bbox[3] + 30)
         end_x = random.choice([random.uniform(-50, 0), random.uniform(canvas_size[0], canvas_size[0] + 50)])
         end_y = random.choice([random.uniform(-50, 0), random.uniform(canvas_size[1], canvas_size[1] + 50)])
+        
+        main_path = self._generate_lightning_path((start_x, start_y), (end_x, end_y), 35, 15)
 
-        main_path = self._generate_lightning_path((start_x, start_y), (end_x, end_y), 30, 15)
+        draw_core.line(main_path, fill=(255, 255, 255, 220), width=4, joint="round")
+        draw_core.line(main_path, fill=(255, 255, 238, 255), width=2, joint="round")
 
-        glow_layers = [
-            {"width": 10, "color": (200, 200, 255, 50)},
-            {"width": 6, "color": (220, 220, 255, 100)},
-            {"width": 2, "color": (255, 255, 255, 200)},
-        ]
-        for layer in glow_layers:
-            draw.line(main_path, fill=layer["color"], width=layer["width"], joint="round")
-
-        if random.random() < 0.4:
+        if random.random() < 0.5:
             branch_start_index = random.randint(3, len(main_path) - 5)
             branch_start_point = main_path[branch_start_index]
-            branch_end_x = branch_start_point[0] + random.uniform(-150, 150)
-            branch_end_y = branch_start_point[1] + random.uniform(-150, 150)
-            branch_path = self._generate_lightning_path(
-                branch_start_point, (branch_end_x, branch_end_y), 15, 10
-            )
-            for layer in glow_layers:
-                draw.line(branch_path, fill=layer["color"], width=int(layer["width"] * 0.6), joint="round")
+            branch_end_x = branch_start_point[0] + random.uniform(-180, 180)
+            branch_end_y = branch_start_point[1] + random.uniform(-180, 180)
+            branch_path = self._generate_lightning_path(branch_start_point, (branch_end_x, branch_end_y), 20, 10)
+            draw_core.line(branch_path, fill=(255, 255, 255, 180), width=3, joint="round")
+            draw_core.line(branch_path, fill=(255, 255, 238, 255), width=1, joint="round")
+            
+        aura_layer = core_layer.filter(ImageFilter.GaussianBlur(radius=8))
+
+        aura_color = (150, 180, 255) 
+        solid_color_aura = Image.new("RGBA", canvas_size, aura_color + (0,))
+        
+        aura_mask = aura_layer.getchannel("A")
+        solid_color_aura.putalpha(aura_mask)
+
+        final_img = Image.alpha_composite(canvas_img, solid_color_aura)
+        final_img = Image.alpha_composite(final_img, core_layer)
+        
+        return final_img
 
     async def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
@@ -83,16 +93,17 @@ class VideoFX(FontManager):
         blink_smooth: bool,
     ) -> Image.Image:
         base = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-        draw_base = ImageDraw.Draw(base)
-
+        
         text_block_w = max(text_widths)
         text_block_x = (canvas_w - text_block_w) / 2
         text_block_y = (canvas_h - total_text_h) / 2
         text_bbox = (text_block_x, text_block_y, text_block_x + text_block_w, text_block_y + total_text_h)
 
-        if random.random() < 0.25:
-            self._draw_lightning_bolt(draw_base, text_bbox, (canvas_w, canvas_h))
+        if random.random() < 0.3:
+            base = self._draw_lightning_bolt(base, text_bbox)
 
+        draw_base = ImageDraw.Draw(base)
+        
         r = int(127 * (1 + math.sin(t * 5 + 0))) + 64
         g = int(127 * (1 + math.sin(t * 5 + 2))) + 64
         b = int(127 * (1 + math.sin(t * 5 + 4))) + 64
@@ -108,12 +119,7 @@ class VideoFX(FontManager):
                 phase = t % period
                 intensity = 1.0 if phase < on_duration else 0.0
 
-        fill_color = (
-            int(r * intensity),
-            int(g * intensity),
-            int(b * intensity),
-            int(255 * intensity),
-        )
+        fill_color = (int(r * intensity), int(g * intensity), int(b * intensity), int(255 * intensity))
 
         current_y = text_block_y
         for i, line in enumerate(text_lines):
@@ -156,26 +162,10 @@ class VideoFX(FontManager):
         canvas_h = base_h - (base_h % 2)
 
         cmd = [
-            "ffmpeg",
-            "-y",
-            "-f",
-            "rawvideo",
-            "-vcodec",
-            "rawvideo",
-            "-s",
-            f"{canvas_w}x{canvas_h}",
-            "-pix_fmt",
-            "rgba",
-            "-r",
-            str(fps),
-            "-i",
-            "-",
-            "-an",
-            "-c:v",
-            "png",
-            "-preset",
-            "fast",
-            output_path,
+            "ffmpeg", "-y", "-f", "rawvideo", "-vcodec", "rawvideo",
+            "-s", f"{canvas_w}x{canvas_h}", "-pix_fmt", "rgba",
+            "-r", str(fps), "-i", "-", "-an", "-c:v", "png",
+            "-preset", "fast", output_path,
         ]
 
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
@@ -184,19 +174,9 @@ class VideoFX(FontManager):
         for i in range(num_frames):
             t = i / float(fps)
             frame_img = self._make_frame_pil(
-                t,
-                text_lines,
-                text_widths,
-                text_heights,
-                canvas_w,
-                canvas_h,
-                total_text_h,
-                font,
-                dummy_draw,
-                blink,
-                blink_rate,
-                blink_duty,
-                blink_smooth,
+                t, text_lines, text_widths, text_heights,
+                canvas_w, canvas_h, total_text_h, font, dummy_draw,
+                blink, blink_rate, blink_duty, blink_smooth,
             )
             proc.stdin.write(frame_img.tobytes())
 
@@ -220,29 +200,17 @@ class VideoFX(FontManager):
         text_lines = text.split(";") if ";" in text else text.splitlines()
         await self._run_in_executor(
             self._create_rgb_video,
-            text_lines,
-            output_path,
-            duration,
-            fps,
-            blink=blink,
-            blink_rate=blink_rate,
-            blink_duty=blink_duty,
-            blink_smooth=blink_smooth,
-            font_size=font_size,
+            text_lines, output_path, duration, fps,
+            blink=blink, blink_rate=blink_rate, blink_duty=blink_duty,
+            blink_smooth=blink_smooth, font_size=font_size,
         )
         return output_path
 
     def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30):
         try:
             ffprobe_cmd = [
-                "ffprobe",
-                "-v",
-                "error",
-                "-show_entries",
-                "format=duration",
-                "-of",
-                "default=noprint_wrappers=1:nokey=1",
-                video_path,
+                "ffprobe", "-v", "error", "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1", video_path,
             ]
             result = subprocess.run(ffprobe_cmd, capture_output=True, text=True, check=True)
             duration = float(result.stdout.strip())
@@ -250,28 +218,12 @@ class VideoFX(FontManager):
             duration = 3.0
 
         trim_duration = min(duration, 2.95)
-
         scale_filter = "scale='if(gt(a,1),512,-2)':'if(gt(a,1),-2,512)'"
 
         ffmpeg_cmd = [
-            "ffmpeg",
-            "-y",
-            "-i",
-            video_path,
-            "-t",
-            str(trim_duration),
-            "-vf",
-            f"{scale_filter},fps={fps}",
-            "-c:v",
-            "libvpx-vp9",
-            "-pix_fmt",
-            "yuva420p",
-            "-crf",
-            "30",
-            "-b:v",
-            "0",
-            "-an",
-            output_path,
+            "ffmpeg", "-y", "-i", video_path, "-t", str(trim_duration),
+            "-vf", f"{scale_filter},fps={fps}", "-c:v", "libvpx-vp9",
+            "-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0", "-an", output_path,
         ]
 
         result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
