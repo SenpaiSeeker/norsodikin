@@ -3,6 +3,7 @@ import random
 import urllib.parse
 import urllib.request
 from typing import List
+
 import requests
 from PIL import ImageFont
 

@@ -4,6 +4,7 @@ import shutil
 import tempfile
 from contextlib import asynccontextmanager
 
+
 class FileManager:
     def _safe_rmtree(self, path):
         if os.path.isdir(path):

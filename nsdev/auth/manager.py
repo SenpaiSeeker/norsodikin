@@ -5,6 +5,7 @@ from pyrogram.types import CallbackQuery, Message
 
 from ..data.database import DataBase
 
+
 class AuthManager:
     def __init__(self, database: DataBase, var_key: str = "auth_roles"):
         self.db = database
@@ -15,14 +16,14 @@ class AuthManager:
 
     async def remove_role(self, user_id: int, role: str) -> None:
         self.db.removeListVars(user_id, "roles", role.lower(), var_key=self.var_key)
-        
+
     async def get_roles(self, user_id: int) -> List[str]:
         return self.db.getListVars(user_id, "roles", var_key=self.var_key)
 
     def requires_role(self, required_roles: Union[str, List[str]]):
         if isinstance(required_roles, str):
             required_roles = [required_roles]
-        
+
         required_set = {role.lower() for role in required_roles}
 
         def decorator(func):
@@ -44,5 +45,7 @@ class AuthManager:
                     return
 
                 return await func(client, update, *args, **kwargs)
+
             return wrapped
+
         return decorator

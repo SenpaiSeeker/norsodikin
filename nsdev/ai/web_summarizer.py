@@ -31,7 +31,7 @@ class WebSummarizer(ChatbotGemini):
             scraped_text = await self._scrape_text(url)
             if not scraped_text.strip():
                 return "Tidak dapat menemukan konten teks yang bisa dirangkum dari URL ini."
-            
+
             prompt = (
                 "Anda adalah seorang ahli dalam meringkas artikel. "
                 "Tugas Anda adalah membaca teks berikut yang diambil dari sebuah halaman web dan membuat rangkuman yang jelas, padat, dan informatif dalam bahasa Indonesia. "

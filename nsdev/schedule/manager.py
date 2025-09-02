@@ -7,6 +7,7 @@ try:
 except ImportError:
     aiocron = None
 
+
 class Scheduler:
     def __init__(self):
         self.jobs: List[Tuple[str, Callable]] = []
@@ -18,18 +19,21 @@ class Scheduler:
     def cron(self, spec: str):
         def decorator(func):
             self.add_job(spec, func)
+
             @wraps(func)
             def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
+
             return wrapper
+
         return decorator
 
     def start(self):
         if self._is_started:
             return
-        
+
         loop = asyncio.get_event_loop()
         for spec, func in self.jobs:
             aiocron.crontab(spec, func=func, loop=loop)
-        
+
         self._is_started = True
