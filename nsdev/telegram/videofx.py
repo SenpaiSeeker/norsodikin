@@ -39,34 +39,37 @@ class VideoFX(FontManager):
         core_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
         draw_core = ImageDraw.Draw(core_layer)
 
-        start_x = random.uniform(text_bbox[0] - 30, text_bbox[2] + 30)
-        start_y = random.uniform(text_bbox[1] - 30, text_bbox[3] + 30)
-        end_x = random.choice([random.uniform(-50, 0), random.uniform(canvas_size[0], canvas_size[0] + 50)])
-        end_y = random.choice([random.uniform(-50, 0), random.uniform(canvas_size[1], canvas_size[1] + 50)])
+        start_x = random.uniform(text_bbox[0] - 40, text_bbox[2] + 40)
+        start_y = random.uniform(text_bbox[1] - 40, text_bbox[3] + 40)
+        end_x = random.choice([random.uniform(-70, 0), random.uniform(canvas_size[0], canvas_size[0] + 70)])
+        end_y = random.choice([random.uniform(-70, 0), random.uniform(canvas_size[1], canvas_size[1] + 70)])
         
-        main_path = self._generate_lightning_path((start_x, start_y), (end_x, end_y), 35, 15)
+        main_path = self._generate_lightning_path((start_x, start_y), (end_x, end_y), 40, 15)
 
-        draw_core.line(main_path, fill=(255, 255, 255, 220), width=4, joint="round")
-        draw_core.line(main_path, fill=(255, 255, 238, 255), width=2, joint="round")
+        draw_core.line(main_path, fill=(230, 230, 255, 230), width=6, joint="round")
+        draw_core.line(main_path, fill=(255, 255, 255, 255), width=3, joint="round")
+        draw_core.line(main_path, fill=(255, 255, 245, 255), width=1, joint="round")
 
-        if random.random() < 0.5:
-            branch_start_index = random.randint(3, len(main_path) - 5)
-            branch_start_point = main_path[branch_start_index]
-            branch_end_x = branch_start_point[0] + random.uniform(-180, 180)
-            branch_end_y = branch_start_point[1] + random.uniform(-180, 180)
-            branch_path = self._generate_lightning_path(branch_start_point, (branch_end_x, branch_end_y), 20, 10)
-            draw_core.line(branch_path, fill=(255, 255, 255, 180), width=3, joint="round")
-            draw_core.line(branch_path, fill=(255, 255, 238, 255), width=1, joint="round")
-            
-        aura_layer = core_layer.filter(ImageFilter.GaussianBlur(radius=8))
+        if random.random() < 0.6:
+            for _ in range(random.randint(1, 2)):
+                branch_start_index = random.randint(2, len(main_path) - 4)
+                branch_start_point = main_path[branch_start_index]
+                branch_end_x = branch_start_point[0] + random.uniform(-200, 200)
+                branch_end_y = branch_start_point[1] + random.uniform(-200, 200)
+                branch_path = self._generate_lightning_path(branch_start_point, (branch_end_x, branch_end_y), 25, 12)
+                draw_core.line(branch_path, fill=(230, 230, 255, 180), width=4, joint="round")
+                draw_core.line(branch_path, fill=(255, 255, 255, 255), width=2, joint="round")
 
-        aura_color = (150, 180, 255) 
-        solid_color_aura = Image.new("RGBA", canvas_size, aura_color + (0,))
-        
-        aura_mask = aura_layer.getchannel("A")
-        solid_color_aura.putalpha(aura_mask)
+        aura_wide = core_layer.filter(ImageFilter.GaussianBlur(radius=15))
+        solid_aura_wide = Image.new("RGBA", canvas_size, (100, 120, 255, 0))
+        solid_aura_wide.putalpha(aura_wide.getchannel("A"))
 
-        final_img = Image.alpha_composite(canvas_img, solid_color_aura)
+        aura_tight = core_layer.filter(ImageFilter.GaussianBlur(radius=6))
+        solid_aura_tight = Image.new("RGBA", canvas_size, (180, 200, 255, 0))
+        solid_aura_tight.putalpha(aura_tight.getchannel("A"))
+
+        final_img = Image.alpha_composite(canvas_img, solid_aura_wide)
+        final_img = Image.alpha_composite(final_img, solid_aura_tight)
         final_img = Image.alpha_composite(final_img, core_layer)
         
         return final_img
@@ -94,12 +97,12 @@ class VideoFX(FontManager):
     ) -> Image.Image:
         base = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
         
-        text_block_w = max(text_widths)
+        text_block_w = max(text_widths) if text_widths else 0
         text_block_x = (canvas_w - text_block_w) / 2
         text_block_y = (canvas_h - total_text_h) / 2
         text_bbox = (text_block_x, text_block_y, text_block_x + text_block_w, text_block_y + total_text_h)
 
-        if random.random() < 0.3:
+        if random.random() < 0.35:
             base = self._draw_lightning_bolt(base, text_bbox)
 
         draw_base = ImageDraw.Draw(base)
