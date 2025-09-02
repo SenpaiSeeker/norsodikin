@@ -33,47 +33,61 @@ class VideoFX(FontManager):
         points.append(end_pos)
         return points
 
-    def _draw_fiery_lightning(self, canvas_img: Image.Image, text_bbox: Tuple) -> Image.Image:
+    def _draw_cinematic_lightning(self, canvas_img: Image.Image, text_bbox: Tuple) -> Image.Image:
         canvas_size = canvas_img.size
         
         core_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
         draw_core = ImageDraw.Draw(core_layer)
+        spark_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+        draw_sparks = ImageDraw.Draw(spark_layer)
 
         start_x = random.uniform(text_bbox[0] - 50, text_bbox[2] + 50)
         start_y = random.uniform(text_bbox[1] - 50, text_bbox[3] + 50)
-        end_x = random.choice([random.uniform(-80, 0), random.uniform(canvas_size[0], canvas_size[0] + 80)])
-        end_y = random.choice([random.uniform(-80, 0), random.uniform(canvas_size[1], canvas_size[1] + 80)])
+        end_x = random.choice([random.uniform(-100, 0), random.uniform(canvas_size[0], canvas_size[0] + 100)])
+        end_y = random.choice([random.uniform(-100, 0), random.uniform(canvas_size[1], canvas_size[1] + 100)])
         
-        main_path = self._generate_lightning_path((start_x, start_y), (end_x, end_y), 45, 20)
-
-        draw_core.line(main_path, fill=(255, 180, 50, 200), width=8, joint="round")
-        draw_core.line(main_path, fill=(255, 230, 180, 220), width=4, joint="round")
-        draw_core.line(main_path, fill=(255, 255, 255, 255), width=2, joint="round")
-
-        if random.random() < 0.7:
-            for _ in range(random.randint(1, 3)):
-                branch_start_index = random.randint(3, len(main_path) - 6)
-                branch_start_point = main_path[branch_start_index]
-                branch_end_x = branch_start_point[0] + random.uniform(-250, 250)
-                branch_end_y = branch_start_point[1] + random.uniform(-250, 250)
-                branch_path = self._generate_lightning_path(branch_start_point, (branch_end_x, branch_end_y), 30, 15)
-                draw_core.line(branch_path, fill=(255, 180, 50, 180), width=6, joint="round")
-                draw_core.line(branch_path, fill=(255, 230, 180, 220), width=3, joint="round")
-
-        aura_wide_blur = core_layer.filter(ImageFilter.GaussianBlur(radius=25))
-        aura_tight_blur = core_layer.filter(ImageFilter.GaussianBlur(radius=10))
-
-        solid_aura_wide_color = Image.new("RGBA", canvas_size, (200, 0, 0, 0))
-        solid_aura_wide_color.putalpha(aura_wide_blur.getchannel("A"))
-
-        solid_aura_tight_color = Image.new("RGBA", canvas_size, (255, 80, 0, 0))
-        solid_aura_tight_color.putalpha(aura_tight_blur.getchannel("A"))
-
-        final_img = Image.alpha_composite(canvas_img, solid_aura_wide_color)
-        final_img = Image.alpha_composite(final_img, solid_aura_tight_color)
-        final_img = Image.alpha_composite(final_img, core_layer)
+        main_path = self._generate_lightning_path((start_x, start_y), (end_x, end_y), 45, 18)
         
-        return final_img
+        draw_core.line(main_path, fill=(200, 220, 255, 230), width=8, joint="round")
+        draw_core.line(main_path, fill=(255, 255, 255, 255), width=4, joint="round")
+        draw_core.line(main_path, fill=(255, 255, 240, 255), width=2, joint="round")
+        
+        all_points = list(main_path)
+
+        for _ in range(random.randint(2, 4)):
+            if len(main_path) < 7: continue
+            branch_start_index = random.randint(3, len(main_path) - 4)
+            branch_start_point = main_path[branch_start_index]
+            branch_end_x = branch_start_point[0] + random.uniform(-250, 250)
+            branch_end_y = branch_start_point[1] + random.uniform(-250, 250)
+            branch_path = self._generate_lightning_path(branch_start_point, (branch_end_x, branch_end_y), 30, 15)
+            
+            draw_core.line(branch_path, fill=(200, 220, 255, 180), width=5, joint="round")
+            draw_core.line(branch_path, fill=(255, 255, 255, 255), width=2, joint="round")
+            all_points.extend(branch_path)
+
+        for point in all_points:
+            if random.random() < 0.1:
+                radius = random.uniform(1, 3)
+                draw_sparks.ellipse(
+                    (point[0]-radius, point[1]-radius, point[0]+radius, point[1]+radius),
+                    fill=(255, 255, 255, 255)
+                )
+
+        aura_purple = core_layer.filter(ImageFilter.GaussianBlur(radius=20))
+        solid_aura_purple = Image.new("RGBA", canvas_size, (180, 120, 255, 0))
+        solid_aura_purple.putalpha(aura_purple.getchannel("A"))
+
+        aura_blue = core_layer.filter(ImageFilter.GaussianBlur(radius=8))
+        solid_aura_blue = Image.new("RGBA", canvas_size, (170, 200, 255, 0))
+        solid_aura_blue.putalpha(aura_blue.getchannel("A"))
+
+        final_effect = Image.alpha_composite(canvas_img, solid_aura_purple)
+        final_effect = Image.alpha_composite(final_effect, solid_aura_blue)
+        final_effect = Image.alpha_composite(final_effect, core_layer)
+        final_effect = Image.alpha_composite(final_effect, spark_layer)
+
+        return final_effect
 
     async def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
@@ -103,8 +117,7 @@ class VideoFX(FontManager):
         text_block_y = (canvas_h - total_text_h) / 2
         text_bbox = (text_block_x, text_block_y, text_block_x + text_block_w, text_block_y + total_text_h)
 
-        if random.random() < 0.4:
-            base = self._draw_fiery_lightning(base, text_bbox)
+        base = self._draw_cinematic_lightning(base, text_bbox)
 
         draw_base = ImageDraw.Draw(base)
         
