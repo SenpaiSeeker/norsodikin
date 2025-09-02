@@ -37,7 +37,7 @@ class VideoFX(FontManager):
             text_lines = [" "]
             
         font = self._get_font(font_size)
-        mode = "RGB"
+        mode = "RGBA"
         dummy_img = Image.new(mode, (1, 1))
         dummy_draw = ImageDraw.Draw(dummy_img)
         text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
@@ -58,7 +58,7 @@ class VideoFX(FontManager):
             on_duration = None
 
         def make_frame(t):
-            base = Image.new(mode, (canvas_w, canvas_h), (255, 255, 255, 0))
+            base = Image.new(mode, (canvas_w, canvas_h), (0, 0, 0, 0))
             draw_base = ImageDraw.Draw(base)
             r = int(127 * (1 + math.sin(t * 5 + 0))) + 64
             g = int(127 * (1 + math.sin(t * 5 + 2))) + 64
@@ -75,12 +75,13 @@ class VideoFX(FontManager):
             rr = int(r * intensity)
             gg = int(g * intensity)
             bb = int(b * intensity)
+            aa = int(255 * intensity)
             current_y = (canvas_h - total_h) / 2
 
             for i, line in enumerate(text_lines):
                 line_w, line_h = dummy_draw.textbbox((0, 0), line, font=font)[2:4]
                 position = ((canvas_w - line_w) / 2, current_y)
-                draw_base.text(position, line, font=font, fill=(rr, gg, bb))
+                draw_base.text(position, line, font=font, fill=(rr, gg, bb, aa))
                 current_y += line_h + 20
                 
             arr = np.array(base, dtype=np.uint8)
@@ -88,7 +89,7 @@ class VideoFX(FontManager):
 
         animation = VideoClip(make_frame, duration=duration)
         animation.write_videofile(
-            output_path, fps=fps, codec="libx264", logger=None, ffmpeg_params=["-pix_fmt", "yuv420p"]
+            output_path, fps=fps, codec="libx264", logger=None, ffmpeg_params=["-pix_fmt", "yuva420p"]
         )
         animation.close()
 
@@ -130,7 +131,14 @@ class VideoFX(FontManager):
             resized_clip = trimmed_clip.resized(height=512)
         
         final_clip = resized_clip.with_fps(fps).with_position(("center", "center"))
-        ffmpeg_params = ["-pix_fmt", "yuv420p", "-crf", "30", "-b:v", "0"]
+        ffmpeg_params = [
+            "-c:v", "libvpx-vp9",
+            "-pix_fmt", "yuva420p",
+            "-crf", "30",
+            "-b:v", "0",
+            "-auto-alt-ref", "0",
+            "-f", "webm"
+        ]
         
         final_clip.write_videofile(
             output_path, codec="libvpx-vp9", audio=False, logger=None, ffmpeg_params=ffmpeg_params
