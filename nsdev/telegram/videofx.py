@@ -120,32 +120,30 @@ class VideoFX(FontManager):
                 phase = t % period
                 intensity = 1.0 if phase < on_duration else 0.0
         
-        text_layer = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-        draw_text = ImageDraw.Draw(text_layer)
-        
-        glow_base_color = (r, g, b, int(255 * intensity))
+        aura_color = (r, g, b, int(255 * intensity))
+        core_text_color = (255, 255, 240, int(255 * intensity))
+
+        text_mask_layer = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+        draw_text_mask = ImageDraw.Draw(text_mask_layer)
         
         current_y = text_block_y
         for i, line in enumerate(text_lines):
             line_w = text_widths[i]
             position = ((canvas_w - line_w) / 2, current_y)
-            draw_text.text(position, line, font=font, fill=glow_base_color)
+            draw_text_mask.text(position, line, font=font, fill=(255, 255, 255, 255))
             current_y += text_heights[i] + 20
 
-        glow_layer = text_layer.filter(ImageFilter.GaussianBlur(radius=6))
+        glow_layer = text_mask_layer.filter(ImageFilter.GaussianBlur(radius=8))
         
-        base = Image.alpha_composite(base, glow_layer)
+        colored_glow_layer = Image.new("RGBA", (canvas_w, canvas_h), aura_color)
+        colored_glow_layer.putalpha(glow_layer.getchannel("A"))
 
-        draw_final_text = ImageDraw.Draw(base)
-        core_color = (255, 255, 240, int(255 * intensity))
-        
-        current_y = text_block_y
-        for i, line in enumerate(text_lines):
-            line_w = text_widths[i]
-            position = ((canvas_w - line_w) / 2, current_y)
-            draw_final_text.text(position, line, font=font, fill=core_color)
-            current_y += text_heights[i] + 20
-            
+        core_text_layer = Image.new("RGBA", (canvas_w, canvas_h), core_text_color)
+        core_text_layer.putalpha(text_mask_layer.getchannel("A"))
+
+        base = Image.alpha_composite(base, colored_glow_layer)
+        base = Image.alpha_composite(base, core_text_layer)
+
         return base
 
     def _create_rgb_video(
@@ -179,78 +177,6 @@ class VideoFX(FontManager):
         base_h = max(total_text_h, 512)
         canvas_h = base_h - (base_h % 2)
 
-        cmd = [
-            "ffmpeg", "-y", "-f", "rawvideo", "-vcodec", "rawvideo",
-            "-s", f"{canvas_w}x{canvas_h}", "-pix_fmt", "rgba",
-            "-r", str(fps), "-i", "-", "-an", "-c:v", "png",
-            "-preset", "fast", output_path,
-        ]
-
-        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-
-        num_frames = int(duration * fps)
-        for i in range(num_frames):
-            t = i / float(fps)
-            frame_img = self._make_frame_pil(
-                t, text_lines, text_widths, text_heights,
-                canvas_w, canvas_h, total_text_h, font, dummy_draw,
-                blink, blink_rate, blink_duty, blink_smooth,
-            )
-            proc.stdin.write(frame_img.tobytes())
-
-        _, stderr = proc.communicate()
-
-        if proc.returncode != 0:
-            raise RuntimeError(f"FFmpeg failed during video creation: {stderr.decode(errors='ignore')}")
-
-    async def text_to_video(
-        self,
-        text: str,
-        output_path: str,
-        duration: float = 5.0,
-        fps: int = 24,
-        blink: bool = False,
-        blink_rate: float = 2.0,
-        blink_duty: float = 0.15,
-        blink_smooth: bool = False,
-        font_size: int = 90,
-    ):
-        text_lines = text.split(";") if ";" in text else text.splitlines()
-        await self._run_in_executor(
-            self._create_rgb_video,
-            text_lines, output_path, duration, fps,
-            blink=blink, blink_rate=blink_rate, blink_duty=blink_duty,
-            blink_smooth=blink_smooth, font_size=font_size,
-        )
-        return output_path
-
-    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30):
-        try:
-            ffprobe_cmd = [
-                "ffprobe", "-v", "error", "-show_entries", "format=duration",
-                "-of", "default=noprint_wrappers=1:nokey=1", video_path,
-            ]
-            result = subprocess.run(ffprobe_cmd, capture_output=True, text=True, check=True)
-            duration = float(result.stdout.strip())
-        except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
-            duration = 3.0
-
-        trim_duration = min(duration, 2.95)
-        scale_filter = "scale='if(gt(a,1),512,-2)':'if(gt(a,1),-2,512)'"
-
-        ffmpeg_cmd = [
-            "ffmpeg", "-y", "-i", video_path, "-t", str(trim_duration),
-            "-vf", f"{scale_filter},fps={fps}", "-c:v", "libvpx-vp9",
-            "-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0", "-an", output_path,
-        ]
-
-        result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"FFmpeg failed during sticker conversion: {result.stderr}")
-
-    async def video_to_sticker(self, video_path: str, output_path: str, fps: int = 30):
-        await self._run_in_executor(self._convert_to_sticker, video_path, output_path, fps=fps)
-        return output_path
         cmd = [
             "ffmpeg", "-y", "-f", "rawvideo", "-vcodec", "rawvideo",
             "-s", f"{canvas_w}x{canvas_h}", "-pix_fmt", "rgba",
