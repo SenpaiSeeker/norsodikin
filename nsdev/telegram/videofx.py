@@ -105,6 +105,8 @@ class VideoFX(FontManager):
         if random.random() < 0.35:
             base = self._draw_lightning_bolt(base, text_bbox)
 
+        draw_base = ImageDraw.Draw(base)
+        
         r = int(127 * (1 + math.sin(t * 5 + 0))) + 64
         g = int(127 * (1 + math.sin(t * 5 + 2))) + 64
         b = int(127 * (1 + math.sin(t * 5 + 4))) + 64
@@ -119,30 +121,15 @@ class VideoFX(FontManager):
             else:
                 phase = t % period
                 intensity = 1.0 if phase < on_duration else 0.0
-        
-        aura_color = (r, g, b, int(255 * intensity))
-        core_text_color = (255, 255, 240, int(255 * intensity))
 
-        text_mask_layer = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-        draw_text_mask = ImageDraw.Draw(text_mask_layer)
-        
+        fill_color = (int(r * intensity), int(g * intensity), int(b * intensity), int(255 * intensity))
+
         current_y = text_block_y
         for i, line in enumerate(text_lines):
             line_w = text_widths[i]
             position = ((canvas_w - line_w) / 2, current_y)
-            draw_text_mask.text(position, line, font=font, fill=(255, 255, 255, 255))
+            draw_base.text(position, line, font=font, fill=fill_color)
             current_y += text_heights[i] + 20
-
-        glow_layer = text_mask_layer.filter(ImageFilter.GaussianBlur(radius=8))
-        
-        colored_glow_layer = Image.new("RGBA", (canvas_w, canvas_h), aura_color)
-        colored_glow_layer.putalpha(glow_layer.getchannel("A"))
-
-        core_text_layer = Image.new("RGBA", (canvas_w, canvas_h), core_text_color)
-        core_text_layer.putalpha(text_mask_layer.getchannel("A"))
-
-        base = Image.alpha_composite(base, colored_glow_layer)
-        base = Image.alpha_composite(base, core_text_layer)
 
         return base
 
