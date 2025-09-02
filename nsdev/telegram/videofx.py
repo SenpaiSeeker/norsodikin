@@ -37,7 +37,7 @@ class VideoFX(FontManager):
             text_lines = [" "]
             
         font = self._get_font(font_size)
-        mode = "RGBA"
+        mode = "RGB"
         dummy_img = Image.new(mode, (1, 1))
         dummy_draw = ImageDraw.Draw(dummy_img)
         text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
