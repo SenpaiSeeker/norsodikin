@@ -64,11 +64,6 @@ media = [
     "yt-dlp",
     "ffmpeg-python",
 ]
-video = [
-    "moviepy",
-    "numpy",
-    "Pillow"
-]
 schedule = [
     "aiocron",
 ]
