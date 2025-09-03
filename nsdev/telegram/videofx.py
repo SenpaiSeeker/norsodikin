@@ -33,34 +33,32 @@ class VideoFX(FontManager):
         points.append(end_pos)
         return points
 
-    def _draw_lightning_bolt(self, canvas_size: Tuple, text_bbox: Tuple) -> Image.Image:
-        effect_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
-        draw_effect = ImageDraw.Draw(effect_layer)
+    def _draw_energy_cracks(self, canvas_size: Tuple, text_bbox: Tuple) -> Image.Image:
+        core_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+        draw_core = ImageDraw.Draw(core_layer)
 
-        start_x = random.uniform(text_bbox[0] - 20, text_bbox[2] + 20)
-        start_y = random.uniform(text_bbox[1] - 20, text_bbox[3] + 20)
-        end_x = random.choice([random.uniform(-50, 0), random.uniform(canvas_size[0], canvas_size[0] + 50)])
-        end_y = random.choice([random.uniform(0, canvas_size[1])])
+        num_cracks = random.randint(3, 5)
+        for _ in range(num_cracks):
+            start_x = random.uniform(text_bbox[0], text_bbox[2])
+            start_y = random.uniform(text_bbox[1], text_bbox[3])
+            angle = random.uniform(0, 2 * math.pi)
+            length = random.uniform(80, 150)
+            end_x = start_x + length * math.cos(angle)
+            end_y = start_y + length * math.sin(angle)
 
-        main_path = self._generate_jagged_path((start_x, start_y), (end_x, end_y), 25, 12)
-        draw_effect.line(main_path, fill=(200, 255, 255, 180), width=4, joint="round")
-        draw_effect.line(main_path, fill=(255, 255, 255, 255), width=2, joint="round")
+            path = self._generate_jagged_path((start_x, start_y), (end_x, end_y), 15, 10)
+            draw_core.line(path, fill=(255, 255, 255, 200), width=3, joint="round")
+            draw_core.line(path, fill=(220, 255, 255, 255), width=1, joint="round")
 
-        if random.random() < 0.7:
-            branch_start_index = random.randint(3, len(main_path) - 4)
-            branch_start_point = main_path[branch_start_index]
-            branch_end_x = branch_start_point[0] + random.uniform(-150, 150)
-            branch_end_y = branch_start_point[1] + random.uniform(-150, 150)
-            branch_path = self._generate_jagged_path(branch_start_point, (branch_end_x, branch_end_y), 15, 8)
-            draw_effect.line(branch_path, fill=(200, 255, 255, 150), width=3, joint="round")
-
-        aura_layer = effect_layer.filter(ImageFilter.GaussianBlur(radius=8))
+        aura_layer = core_layer.filter(ImageFilter.GaussianBlur(radius=12))
         aura_color = (100, 200, 255)
         solid_color_aura = Image.new("RGBA", canvas_size, aura_color + (0,))
         aura_mask = aura_layer.getchannel("A")
         solid_color_aura.putalpha(aura_mask)
-        
-        final_effect_layer = Image.alpha_composite(solid_color_aura, effect_layer)
+
+        final_effect_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+        final_effect_layer = Image.alpha_composite(final_effect_layer, solid_color_aura)
+        final_effect_layer = Image.alpha_composite(final_effect_layer, core_layer)
         return final_effect_layer
 
     async def _run_in_executor(self, func, *args, **kwargs):
@@ -72,14 +70,16 @@ class VideoFX(FontManager):
         canvas_w, canvas_h = state["canvas_size"]
         base = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
 
-        if random.random() < 0.08 and state["flash_intensity"] <= 0.1:
-            state["flash_intensity"] = 200.0
-            state["lightning_layer"] = self._draw_lightning_bolt(base.size, state["text_bbox"])
-        else:
-            state["lightning_layer"] = None
+        if state.get("flash_frames_left", 0) > 0:
+            flash_opacity = int(80 * (state["flash_frames_left"] / 3.0))
+            flash_layer = Image.new("RGBA", base.size, (200, 220, 255, flash_opacity))
+            base = Image.alpha_composite(base, flash_layer)
+            state["flash_frames_left"] -= 1
 
-        if state["lightning_layer"]:
-            base = Image.alpha_composite(base, state["lightning_layer"])
+        if random.random() < 0.20:
+            state["flash_frames_left"] = 3
+            crack_layer = self._draw_energy_cracks(base.size, state["text_bbox"])
+            base = Image.alpha_composite(base, crack_layer)
 
         draw_base = ImageDraw.Draw(base)
         font = state["font"]
@@ -95,15 +95,10 @@ class VideoFX(FontManager):
             line_w = state["text_widths"][i]
             pos_x = (canvas_w - line_w) / 2
             pos_y = current_y
+
             draw_base.text((pos_x + 3, pos_y + 3), line, font=font, fill=shadow_color)
             draw_base.text((pos_x, pos_y), line, font=font, fill=text_color)
             current_y += state["text_heights"][i] + 20
-
-        if state["flash_intensity"] > 0:
-            flash_alpha = int(state["flash_intensity"])
-            flash_layer = Image.new("RGBA", base.size, (255, 255, 255, flash_alpha))
-            base = Image.alpha_composite(base, flash_layer)
-            state["flash_intensity"] *= 0.6
 
         return base
 
@@ -142,8 +137,7 @@ class VideoFX(FontManager):
                 (canvas_w + max(text_widths)) / 2,
                 (canvas_h + total_text_h) / 2,
             ),
-            "flash_intensity": 0.0,
-            "lightning_layer": None,
+            "flash_frames_left": 0,
         }
 
         cmd = [
