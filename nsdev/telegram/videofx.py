@@ -1,5 +1,4 @@
 import asyncio
-import colorsys
 import functools
 import math
 import random
@@ -83,8 +82,12 @@ class VideoFX(FontManager):
 
         draw_base = ImageDraw.Draw(base)
         font = state["font"]
-        text_color = state["text_color"]
-        shadow_color = state["shadow_color"]
+
+        r = int(127 * (1 + math.sin(t * 5 + 0))) + 128
+        g = int(127 * (1 + math.sin(t * 5 + 2))) + 128
+        b = int(127 * (1 + math.sin(t * 5 + 4))) + 128
+        text_color = (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
+        shadow_color = tuple(int(c * 0.4) for c in text_color)
 
         current_y = state["text_bbox"][1]
         for i, line in enumerate(state["text_lines"]):
@@ -121,19 +124,12 @@ class VideoFX(FontManager):
         base_h = max(total_text_h, 512)
         canvas_h = base_h - (base_h % 2)
 
-        hue = random.random()
-        rgb_float = colorsys.hsv_to_rgb(hue, 0.9, 1.0)
-        text_color = tuple(int(c * 255) for c in rgb_float)
-        shadow_color = tuple(int(c * 0.4) for c in text_color)
-
         state = {
             "canvas_size": (canvas_w, canvas_h),
             "font": font,
             "text_lines": text_lines,
             "text_widths": text_widths,
             "text_heights": text_heights,
-            "text_color": text_color,
-            "shadow_color": shadow_color,
             "text_bbox": (
                 (canvas_w - max(text_widths)) / 2,
                 (canvas_h - total_text_h) / 2,
@@ -167,9 +163,8 @@ class VideoFX(FontManager):
         text: str,
         output_path: str,
         duration: float = 5.0,
-        fps: int = 24,
+        fps: int = 60,
         font_size: int = 90,
-        **kwargs,
     ):
         text_lines = text.split(";") if ";" in text else text.splitlines()
         await self._run_in_executor(
@@ -178,7 +173,7 @@ class VideoFX(FontManager):
         )
         return output_path
 
-    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30):
+    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 60):
         try:
             ffprobe_cmd = [
                 "ffprobe", "-v", "error", "-show_entries", "format=duration",
