@@ -33,24 +33,34 @@ class VideoFX(FontManager):
         points.append(end_pos)
         return points
 
-    def _draw_arcing_lightning(self, canvas_img: Image.Image, text_bbox: Tuple) -> Image.Image:
+    def _draw_external_lightning(self, canvas_img: Image.Image, shield_bbox: Tuple) -> Image.Image:
         core_layer = Image.new("RGBA", canvas_img.size, (0, 0, 0, 0))
         draw_core = ImageDraw.Draw(core_layer)
+        canvas_size = canvas_img.size
 
-        start_x = random.uniform(text_bbox[0], text_bbox[2])
-        start_y = random.uniform(text_bbox[1], text_bbox[3])
-        end_x = random.uniform(text_bbox[0], text_bbox[2])
-        end_y = random.uniform(text_bbox[1], text_bbox[3])
+        start_x = random.uniform(shield_bbox[0], shield_bbox[2])
+        start_y = random.uniform(shield_bbox[1], shield_bbox[3])
+        end_x = random.choice([random.uniform(-50, 0), random.uniform(canvas_size[0], canvas_size[0] + 50)])
+        end_y = random.choice([random.uniform(-50, 0), random.uniform(canvas_size[1], canvas_size[1] + 50)])
 
-        path = self._generate_lightning_path((start_x, start_y), (end_x, end_y), 15, 10)
+        main_path = self._generate_lightning_path((start_x, start_y), (end_x, end_y), 35, 15)
 
-        draw_core.line(path, fill=(200, 255, 255, 220), width=4, joint="round")
-        draw_core.line(path, fill=(255, 255, 255, 255), width=2, joint="round")
+        draw_core.line(main_path, fill=(255, 255, 255, 220), width=4, joint="round")
+        draw_core.line(main_path, fill=(255, 255, 238, 255), width=2, joint="round")
 
-        aura_layer = core_layer.filter(ImageFilter.GaussianBlur(radius=6))
-        aura_color = (120, 220, 255)
-        solid_color_aura = Image.new("RGBA", canvas_img.size, aura_color + (0,))
-        aura_mask = aura_layer.getchannel("A").point(lambda i: i * 0.7)
+        if random.random() < 0.5:
+            branch_start_index = random.randint(3, len(main_path) - 5)
+            branch_start_point = main_path[branch_start_index]
+            branch_end_x = branch_start_point[0] + random.uniform(-180, 180)
+            branch_end_y = branch_start_point[1] + random.uniform(-180, 180)
+            branch_path = self._generate_lightning_path(branch_start_point, (branch_end_x, branch_end_y), 20, 10)
+            draw_core.line(branch_path, fill=(255, 255, 255, 180), width=3, joint="round")
+            draw_core.line(branch_path, fill=(255, 255, 238, 255), width=1, joint="round")
+
+        aura_layer = core_layer.filter(ImageFilter.GaussianBlur(radius=8))
+        aura_color = (150, 180, 255)
+        solid_color_aura = Image.new("RGBA", canvas_size, aura_color + (0,))
+        aura_mask = aura_layer.getchannel("A")
         solid_color_aura.putalpha(aura_mask)
 
         final_img = Image.alpha_composite(canvas_img, solid_color_aura)
@@ -85,42 +95,47 @@ class VideoFX(FontManager):
             alpha = int(brightness * 150) + 50
             draw.ellipse([x, y, x + size, y + size], fill=(180, 220, 255, alpha))
 
-        text_block_bboxes = [draw.textbbox((0, 0), line, font=font) for line in text_lines]
-        text_block_widths = [bbox[2] - bbox[0] for bbox in text_block_bboxes]
-        text_block_heights = [bbox[3] - bbox[1] for bbox in text_block_bboxes]
-        total_text_height = sum(text_block_heights) + max(0, len(text_lines) - 1) * 20
-        max_text_width = max(text_block_widths) if text_block_widths else 0
+        text_bboxes = [draw.textbbox((0, 0), line, font=font) for line in text_lines]
+        text_widths = [bbox[2] - bbox[0] for bbox in text_bboxes]
+        text_heights = [bbox[3] - bbox[1] for bbox in text_bboxes]
+        max_text_width = max(text_widths) if text_widths else 0
+        total_text_height = sum(text_heights) + max(0, len(text_lines) - 1) * 20
+
+        h_padding = max_text_width * 0.2
+        v_padding = total_text_height * 0.4
+        shield_w = max_text_width + h_padding
+        shield_h = total_text_height + v_padding
 
         center_x, center_y = canvas_w / 2, canvas_h / 2
-        current_y = center_y - total_text_height / 2
-
-        shield_width = max_text_width * 1.2
-        shield_height = total_text_height * 1.8
+        
         shield_points = [
-            (center_x - shield_width / 2, center_y - shield_height / 3),
-            (center_x, center_y - shield_height / 2),
-            (center_x + shield_width / 2, center_y - shield_height / 3),
-            (center_x + shield_width / 2 * 0.8, center_y + shield_height / 2 * 0.8),
-            (center_x, center_y + shield_height / 2),
-            (center_x - shield_width / 2 * 0.8, center_y + shield_height / 2 * 0.8),
+            (center_x - shield_w / 2, center_y - shield_h / 2.5),
+            (center_x, center_y - shield_h / 2),
+            (center_x + shield_w / 2, center_y - shield_h / 2.5),
+            (center_x + shield_w / 2 * 0.9, center_y + shield_h / 2),
+            (center_x, center_y + shield_h / 2 * 0.8),
+            (center_x - shield_w / 2 * 0.9, center_y + shield_h / 2),
         ]
-        draw.polygon(shield_points, fill=(30, 30, 30, 255), outline=(200, 50, 50, 255), width=5)
+        
+        r_outline = int(127 * (1 + math.sin(t * 4 + 2))) + 128
+        g_outline = int(127 * (1 + math.sin(t * 4 + 4))) + 128
+        b_outline = int(127 * (1 + math.sin(t * 4 + 0))) + 128
+        shield_outline_color = (r_outline, g_outline, b_outline, 255)
 
-        full_text_bbox = [canvas_w, canvas_h, 0, 0]
+        draw.polygon(shield_points, fill=(30, 30, 30, 255), outline=shield_outline_color, width=5)
+
+        current_y = center_y - total_text_height / 2
         for i, line in enumerate(text_lines):
-            line_w = text_block_widths[i]
+            line_w = text_widths[i]
             pos_x = center_x - line_w / 2
             self._draw_extruded_text(
                 draw, line, (pos_x, current_y), font, (255, 200, 0), (180, 120, 0), depth=6
             )
-            full_text_bbox[0] = min(full_text_bbox[0], pos_x)
-            full_text_bbox[1] = min(full_text_bbox[1], current_y)
-            full_text_bbox[2] = max(full_text_bbox[2], pos_x + line_w)
-            full_text_bbox[3] = max(full_text_bbox[3], current_y + text_block_heights[i])
-            current_y += text_block_heights[i] + 20
+            current_y += text_heights[i] + 20
 
-        if random.random() < 0.4:
-            base = self._draw_arcing_lightning(base, tuple(full_text_bbox))
+        shield_bbox = (shield_points[0][0], shield_points[1][1], shield_points[2][0], shield_points[3][1])
+        if random.random() < 0.3:
+            base = self._draw_external_lightning(base, shield_bbox)
 
         return base
 
@@ -137,13 +152,7 @@ class VideoFX(FontManager):
             text_lines = [" "]
 
         font = self._get_font(font_size)
-        dummy_img = Image.new("RGBA", (1, 1))
-        dummy_draw = ImageDraw.Draw(dummy_img)
-
-        text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
-        base_w = max(max(text_widths) + 100, 512) if text_widths else 512
-        canvas_w = base_w - (base_w % 2)
-        canvas_h = 512
+        canvas_w, canvas_h = 512, 512
 
         stars = [
             (
@@ -183,7 +192,6 @@ class VideoFX(FontManager):
         duration: float = 5.0,
         fps: int = 24,
         font_size: int = 90,
-        **kwargs,
     ):
         text_lines = text.split(";") if ";" in text else text.splitlines()
         await self._run_in_executor(
