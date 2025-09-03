@@ -107,15 +107,15 @@ class ImageManipulator(FontManager):
         if filter_name == "grayscale":
             processed_img = ImageOps.grayscale(img)
         elif filter_name == "sepia":
-            sepia_img = ImageOps.grayscale(img).convert("RGB")
+            grayscale_img = ImageOps.grayscale(img)
             sepia_palette = []
             for i in range(256):
                 r = int(min(255, i * 1.2))
                 g = int(min(255, i * 1.0))
                 b = int(min(255, i * 0.8))
                 sepia_palette.extend((r, g, b))
-            sepia_img.putpalette(sepia_palette * 3)
-            processed_img = sepia_img.convert("RGB")
+            grayscale_img.putpalette(sepia_palette)
+            processed_img = grayscale_img.convert("RGB")
         elif filter_name == "invert":
             processed_img = ImageOps.invert(img)
         elif filter_name == "blur":
