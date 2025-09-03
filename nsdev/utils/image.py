@@ -3,7 +3,7 @@ from functools import partial
 from io import BytesIO
 from typing import Tuple
 
-from PIL import Image, ImageDraw, ImageFilter, ImageOps
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
 from .font_manager import FontManager
 
@@ -122,6 +122,11 @@ class ImageManipulator(FontManager):
             processed_img = img.filter(ImageFilter.GaussianBlur(radius=5))
         elif filter_name == "sharpen":
             processed_img = img.filter(ImageFilter.SHARPEN)
+        elif filter_name == "hell":
+            enhancer = ImageEnhance.Contrast(img)
+            img_contrasted = enhancer.enhance(1.5)
+            img_gray = ImageOps.grayscale(img_contrasted)
+            processed_img = ImageOps.colorize(img_gray, black=(20, 0, 0), mid=(200, 50, 0), white=(255, 220, 50))
         else:
             raise ValueError(f"Filter '{filter_name}' tidak dikenal.")
 
