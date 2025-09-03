@@ -1,11 +1,9 @@
 import asyncio
 import functools
-import math
-import random
 import subprocess
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
 from ..utils.font_manager import FontManager
 
@@ -14,95 +12,12 @@ class VideoFX(FontManager):
     def __init__(self):
         super().__init__()
 
-    def _generate_jagged_path(
-        self, start_pos: Tuple, end_pos: Tuple, max_offset: float, segments: int
-    ) -> List[Tuple]:
-        points = [start_pos]
-        dx = end_pos[0] - start_pos[0]
-        dy = end_pos[1] - start_pos[1]
-        length = math.sqrt(dx * dx + dy * dy)
-        if length == 0:
-            return [start_pos, end_pos]
-
-        for i in range(1, segments):
-            progress = i / segments
-            base_x = start_pos[0] + dx * progress
-            base_y = start_pos[1] + dy * progress
-            offset = random.uniform(-max_offset, max_offset)
-            points.append((base_x + offset * (-dy / length), base_y + offset * (dx / length)))
-        points.append(end_pos)
-        return points
-
-    def _draw_energy_cracks(self, canvas_size: Tuple, text_bbox: Tuple) -> Image.Image:
-        core_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
-        draw_core = ImageDraw.Draw(core_layer)
-
-        num_cracks = random.randint(3, 5)
-        for _ in range(num_cracks):
-            start_x = random.uniform(text_bbox[0], text_bbox[2])
-            start_y = random.uniform(text_bbox[1], text_bbox[3])
-            angle = random.uniform(0, 2 * math.pi)
-            length = random.uniform(80, 150)
-            end_x = start_x + length * math.cos(angle)
-            end_y = start_y + length * math.sin(angle)
-
-            path = self._generate_jagged_path((start_x, start_y), (end_x, end_y), 15, 10)
-            draw_core.line(path, fill=(255, 255, 255, 200), width=3, joint="round")
-            draw_core.line(path, fill=(220, 255, 255, 255), width=1, joint="round")
-
-        aura_layer = core_layer.filter(ImageFilter.GaussianBlur(radius=12))
-        aura_color = (100, 200, 255)
-        solid_color_aura = Image.new("RGBA", canvas_size, aura_color + (0,))
-        aura_mask = aura_layer.getchannel("A")
-        solid_color_aura.putalpha(aura_mask)
-
-        final_effect_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
-        final_effect_layer = Image.alpha_composite(final_effect_layer, solid_color_aura)
-        final_effect_layer = Image.alpha_composite(final_effect_layer, core_layer)
-        return final_effect_layer
-
     async def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
         call = functools.partial(func, *args, **kwargs)
         return await loop.run_in_executor(None, call)
 
-    def _make_frame_pil(self, t: float, state: Dict) -> Image.Image:
-        canvas_w, canvas_h = state["canvas_size"]
-        base = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-
-        if state.get("flash_frames_left", 0) > 0:
-            flash_opacity = int(80 * (state["flash_frames_left"] / 3.0))
-            flash_layer = Image.new("RGBA", base.size, (200, 220, 255, flash_opacity))
-            base = Image.alpha_composite(base, flash_layer)
-            state["flash_frames_left"] -= 1
-
-        if random.random() < 0.20:
-            state["flash_frames_left"] = 3
-            crack_layer = self._draw_energy_cracks(base.size, state["text_bbox"])
-            base = Image.alpha_composite(base, crack_layer)
-
-        draw_base = ImageDraw.Draw(base)
-        font = state["font"]
-
-        r = int(127 * (1 + math.sin(t * 5 + 0))) + 128
-        g = int(127 * (1 + math.sin(t * 5 + 2))) + 128
-        b = int(127 * (1 + math.sin(t * 5 + 4))) + 128
-        text_color = (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
-        shadow_color = tuple(int(c * 0.4) for c in text_color)
-
-        current_y = state["text_bbox"][1]
-        for i, line in enumerate(state["text_lines"]):
-            line_w = state["text_widths"][i]
-            pos_x = (canvas_w - line_w) / 2
-            pos_y = current_y
-
-            draw_base.text((pos_x + 3, pos_y + 3), line, font=font, fill=shadow_color)
-            draw_base.text((pos_x, pos_y), line, font=font, fill=text_color)
-            current_y += state["text_heights"][i] + 20
-
-        return base
-
-    def _create_animated_video(
+    def _create_static_video_from_text(
         self,
         text_lines: List[str],
         output_path: str,
@@ -125,20 +40,23 @@ class VideoFX(FontManager):
         base_h = max(total_text_h, 512)
         canvas_h = base_h - (base_h % 2)
 
-        state = {
-            "canvas_size": (canvas_w, canvas_h),
-            "font": font,
-            "text_lines": text_lines,
-            "text_widths": text_widths,
-            "text_heights": text_heights,
-            "text_bbox": (
-                (canvas_w - max(text_widths)) / 2,
-                (canvas_h - total_text_h) / 2,
-                (canvas_w + max(text_widths)) / 2,
-                (canvas_h + total_text_h) / 2,
-            ),
-            "flash_frames_left": 0,
-        }
+        static_frame = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(static_frame)
+
+        text_color = (255, 255, 0)
+        shadow_color = (50, 50, 0)
+
+        current_y = (canvas_h - total_text_h) / 2
+        for i, line in enumerate(text_lines):
+            line_w = text_widths[i]
+            pos_x = (canvas_w - line_w) / 2
+            pos_y = current_y
+
+            draw.text((pos_x + 4, pos_y + 4), line, font=font, fill=shadow_color)
+            draw.text((pos_x, pos_y), line, font=font, fill=text_color)
+            current_y += text_heights[i] + 20
+
+        static_frame_bytes = static_frame.tobytes()
 
         cmd = [
             "ffmpeg", "-y", "-f", "rawvideo", "-vcodec", "rawvideo",
@@ -149,10 +67,8 @@ class VideoFX(FontManager):
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
 
         num_frames = int(duration * fps)
-        for i in range(num_frames):
-            t = i / float(fps)
-            frame_img = self._make_frame_pil(t, state)
-            proc.stdin.write(frame_img.tobytes())
+        for _ in range(num_frames):
+            proc.stdin.write(static_frame_bytes)
 
         _, stderr = proc.communicate()
         if proc.returncode != 0:
@@ -162,14 +78,13 @@ class VideoFX(FontManager):
         self,
         text: str,
         output_path: str,
-        duration: float = 2.95,
-        fps: int = 30,
+        duration: float = 0.1,
+        fps: int = 10,
         font_size: int = 90,
-        **kwargs,
     ):
         text_lines = text.split(";") if ";" in text else text.splitlines()
         await self._run_in_executor(
-            self._create_animated_video,
+            self._create_static_video_from_text,
             text_lines, output_path, duration, fps, font_size
         )
         return output_path
