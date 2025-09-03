@@ -70,15 +70,17 @@ class VideoFX(FontManager):
         canvas_w, canvas_h = state["canvas_size"]
         base = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
 
-        shake_intensity = state.get("shake_intensity", 0.0)
-        shake_offset_x = random.uniform(-shake_intensity, shake_intensity)
-        shake_offset_y = random.uniform(-shake_intensity, shake_intensity)
-        state["shake_intensity"] *= state.get("shake_decay", 0.9)
-
         if random.random() < 0.15:
-            state["shake_intensity"] = 10.0
+            state["flash_intensity"] = 1.0
             crack_layer = self._draw_energy_cracks(base.size, state["text_bbox"])
             base = Image.alpha_composite(base, crack_layer)
+
+        flash_intensity = state.get("flash_intensity", 0.0)
+        if flash_intensity > 0:
+            flash_alpha = int(150 * flash_intensity)
+            flash_layer = Image.new("RGBA", base.size, (200, 220, 255, flash_alpha))
+            base = Image.alpha_composite(base, flash_layer)
+            state["flash_intensity"] *= 0.6
 
         draw_base = ImageDraw.Draw(base)
         font = state["font"]
@@ -92,8 +94,8 @@ class VideoFX(FontManager):
         current_y = state["text_bbox"][1]
         for i, line in enumerate(state["text_lines"]):
             line_w = state["text_widths"][i]
-            pos_x = ((canvas_w - line_w) / 2) + shake_offset_x
-            pos_y = current_y + shake_offset_y
+            pos_x = (canvas_w - line_w) / 2
+            pos_y = current_y
 
             draw_base.text((pos_x + 3, pos_y + 3), line, font=font, fill=shadow_color)
             draw_base.text((pos_x, pos_y), line, font=font, fill=text_color)
@@ -136,8 +138,7 @@ class VideoFX(FontManager):
                 (canvas_w + max(text_widths)) / 2,
                 (canvas_h + total_text_h) / 2,
             ),
-            "shake_intensity": 0.0,
-            "shake_decay": 0.92,
+            "flash_intensity": 0.0,
         }
 
         cmd = [
@@ -162,8 +163,8 @@ class VideoFX(FontManager):
         self,
         text: str,
         output_path: str,
-        duration: float = 5.0,
-        fps: int = 60,
+        duration: float = 2.95,
+        fps: int = 30,
         font_size: int = 90,
     ):
         text_lines = text.split(";") if ";" in text else text.splitlines()
@@ -173,7 +174,7 @@ class VideoFX(FontManager):
         )
         return output_path
 
-    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 60):
+    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30):
         try:
             ffprobe_cmd = [
                 "ffprobe", "-v", "error", "-show_entries", "format=duration",
