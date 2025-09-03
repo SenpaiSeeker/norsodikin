@@ -33,47 +33,35 @@ class VideoFX(FontManager):
         points.append(end_pos)
         return points
 
-    def _draw_lightning_bolt(self, canvas_size: Tuple, text_bbox: Tuple) -> Image.Image:
-        core_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+    def _draw_arcing_lightning(self, canvas_img: Image.Image, text_bbox: Tuple) -> Image.Image:
+        core_layer = Image.new("RGBA", canvas_img.size, (0, 0, 0, 0))
         draw_core = ImageDraw.Draw(core_layer)
 
-        start_x = random.uniform(text_bbox[0] - 40, text_bbox[2] + 40)
-        start_y = random.uniform(text_bbox[1] - 40, text_bbox[3] + 40)
-        end_x = random.choice([random.uniform(-100, 0), random.uniform(canvas_size[0], canvas_size[0] + 100)])
-        end_y = random.choice([random.uniform(-100, 0), random.uniform(canvas_size[1], canvas_size[1] + 100)])
+        start_x = random.uniform(text_bbox[0], text_bbox[2])
+        start_y = random.uniform(text_bbox[1], text_bbox[3])
+        end_x = random.uniform(text_bbox[0], text_bbox[2])
+        end_y = random.uniform(text_bbox[1], text_bbox[3])
 
-        main_path = self._generate_lightning_path((start_x, start_y), (end_x, end_y), 40, 15)
+        path = self._generate_lightning_path((start_x, start_y), (end_x, end_y), 15, 10)
 
-        core_color_inner = (255, 220, 220, 255)
-        core_color_outer = (255, 150, 150, 220)
-        aura_color = (255, 20, 20)
+        draw_core.line(path, fill=(200, 255, 255, 220), width=4, joint="round")
+        draw_core.line(path, fill=(255, 255, 255, 255), width=2, joint="round")
 
-        draw_core.line(main_path, fill=core_color_outer, width=5, joint="round")
-        draw_core.line(main_path, fill=core_color_inner, width=2, joint="round")
-
-        for _ in range(random.randint(2, 4)):
-            if len(main_path) < 10:
-                continue
-            branch_start_index = random.randint(3, len(main_path) - 5)
-            branch_start_point = main_path[branch_start_index]
-            branch_end_x = branch_start_point[0] + random.uniform(-200, 200)
-            branch_end_y = branch_start_point[1] + random.uniform(-200, 200)
-            branch_path = self._generate_lightning_path(
-                branch_start_point, (branch_end_x, branch_end_y), 25, 12
-            )
-            draw_core.line(branch_path, fill=core_color_outer, width=3, joint="round")
-            draw_core.line(branch_path, fill=core_color_inner, width=1, joint="round")
-
-        aura_layer = core_layer.filter(ImageFilter.GaussianBlur(radius=15))
-        solid_color_aura = Image.new("RGBA", canvas_size, aura_color + (0,))
-        aura_mask = aura_layer.getchannel("A")
+        aura_layer = core_layer.filter(ImageFilter.GaussianBlur(radius=6))
+        aura_color = (120, 220, 255)
+        solid_color_aura = Image.new("RGBA", canvas_img.size, aura_color + (0,))
+        aura_mask = aura_layer.getchannel("A").point(lambda i: i * 0.7)
         solid_color_aura.putalpha(aura_mask)
-        
-        final_lightning_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
-        final_lightning_layer = Image.alpha_composite(final_lightning_layer, solid_color_aura)
-        final_lightning_layer = Image.alpha_composite(final_lightning_layer, core_layer)
-        
-        return final_lightning_layer
+
+        final_img = Image.alpha_composite(canvas_img, solid_color_aura)
+        final_img = Image.alpha_composite(final_img, core_layer)
+        return final_img
+
+    def _draw_extruded_text(self, draw, text, pos, font, fill_color, shadow_color, depth):
+        x, y = pos
+        for i in range(depth, 0, -1):
+            draw.text((x + i, y + i), text, font=font, fill=shadow_color)
+        draw.text(pos, text, font=font, fill=fill_color)
 
     async def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
@@ -84,54 +72,55 @@ class VideoFX(FontManager):
         self,
         t: float,
         text_lines: List[str],
-        text_widths: List[float],
-        text_heights: List[float],
         canvas_w: int,
         canvas_h: int,
-        total_text_h: float,
         font,
-        dummy_draw,
-        blink: bool,
-        blink_rate: float,
-        blink_duty: float,
-        blink_smooth: bool,
+        stars: List,
     ) -> Image.Image:
-        base = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-        
-        text_block_w = max(text_widths) if text_widths else 0
-        text_block_x = (canvas_w - text_block_w) / 2
-        text_block_y = (canvas_h - total_text_h) / 2
-        text_bbox = (text_block_x, text_block_y, text_block_x + text_block_w, text_block_y + total_text_h)
+        base = Image.new("RGBA", (canvas_w, canvas_h), (20, 25, 40, 255))
+        draw = ImageDraw.Draw(base)
 
-        if random.random() < 0.7:
-            lightning_layer = self._draw_lightning_bolt(base.size, text_bbox)
-            base = Image.alpha_composite(base, lightning_layer)
+        for x, y, size, phase, speed in stars:
+            brightness = 0.5 * (1 + math.sin(t * speed + phase))
+            alpha = int(brightness * 150) + 50
+            draw.ellipse([x, y, x + size, y + size], fill=(180, 220, 255, alpha))
 
-        draw_base = ImageDraw.Draw(base)
-        
-        r = int(127 * (1 + math.sin(t * 5 + 0))) + 128
-        g = int(127 * (1 + math.sin(t * 5 + 2))) + 128
-        b = int(127 * (1 + math.sin(t * 5 + 4))) + 128
+        text_block_bboxes = [draw.textbbox((0, 0), line, font=font) for line in text_lines]
+        text_block_widths = [bbox[2] - bbox[0] for bbox in text_block_bboxes]
+        text_block_heights = [bbox[3] - bbox[1] for bbox in text_block_bboxes]
+        total_text_height = sum(text_block_heights) + max(0, len(text_lines) - 1) * 20
+        max_text_width = max(text_block_widths) if text_block_widths else 0
 
-        intensity = 1.0
-        if blink and blink_rate > 0:
-            period = 1.0 / blink_rate
-            on_duration = max(0.0, min(1.0, blink_duty)) * period
-            if blink_smooth:
-                intensity = 0.5 * (1 + math.sin(2 * math.pi * blink_rate * t - math.pi / 2))
-                intensity = max(0.0, min(1.0, intensity))
-            else:
-                phase = t % period
-                intensity = 1.0 if phase < on_duration else 0.0
+        center_x, center_y = canvas_w / 2, canvas_h / 2
+        current_y = center_y - total_text_height / 2
 
-        fill_color = (int(r * intensity), int(g * intensity), int(b * intensity), int(255 * intensity))
+        shield_width = max_text_width * 1.2
+        shield_height = total_text_height * 1.8
+        shield_points = [
+            (center_x - shield_width / 2, center_y - shield_height / 3),
+            (center_x, center_y - shield_height / 2),
+            (center_x + shield_width / 2, center_y - shield_height / 3),
+            (center_x + shield_width / 2 * 0.8, center_y + shield_height / 2 * 0.8),
+            (center_x, center_y + shield_height / 2),
+            (center_x - shield_width / 2 * 0.8, center_y + shield_height / 2 * 0.8),
+        ]
+        draw.polygon(shield_points, fill=(30, 30, 30, 255), outline=(200, 50, 50, 255), width=5)
 
-        current_y = text_block_y
+        full_text_bbox = [canvas_w, canvas_h, 0, 0]
         for i, line in enumerate(text_lines):
-            line_w = text_widths[i]
-            position = ((canvas_w - line_w) / 2, current_y)
-            draw_base.text(position, line, font=font, fill=fill_color)
-            current_y += text_heights[i] + 20
+            line_w = text_block_widths[i]
+            pos_x = center_x - line_w / 2
+            self._draw_extruded_text(
+                draw, line, (pos_x, current_y), font, (255, 200, 0), (180, 120, 0), depth=6
+            )
+            full_text_bbox[0] = min(full_text_bbox[0], pos_x)
+            full_text_bbox[1] = min(full_text_bbox[1], current_y)
+            full_text_bbox[2] = max(full_text_bbox[2], pos_x + line_w)
+            full_text_bbox[3] = max(full_text_bbox[3], current_y + text_block_heights[i])
+            current_y += text_block_heights[i] + 20
+
+        if random.random() < 0.4:
+            base = self._draw_arcing_lightning(base, tuple(full_text_bbox))
 
         return base
 
@@ -141,10 +130,6 @@ class VideoFX(FontManager):
         output_path: str,
         duration: float,
         fps: int,
-        blink: bool = False,
-        blink_rate: float = 2.0,
-        blink_duty: float = 0.15,
-        blink_smooth: bool = False,
         font_size: int = 90,
     ):
         text_lines = [t.strip() for t in text_lines if t and t.strip()]
@@ -155,16 +140,21 @@ class VideoFX(FontManager):
         dummy_img = Image.new("RGBA", (1, 1))
         dummy_draw = ImageDraw.Draw(dummy_img)
 
-        bboxes = [dummy_draw.textbbox((0, 0), line, font=font) for line in text_lines]
-        text_widths = [bbox[2] - bbox[0] for bbox in bboxes]
-        text_heights = [bbox[3] - bbox[1] for bbox in bboxes]
-
-        base_w = max(max(text_widths) + 80, 512) if text_widths else 512
+        text_widths = [dummy_draw.textbbox((0, 0), line, font=font)[2] for line in text_lines]
+        base_w = max(max(text_widths) + 100, 512) if text_widths else 512
         canvas_w = base_w - (base_w % 2)
+        canvas_h = 512
 
-        total_text_h = sum(text_heights) + (len(text_lines) - 1) * 20
-        base_h = max(total_text_h, 512)
-        canvas_h = base_h - (base_h % 2)
+        stars = [
+            (
+                random.randint(0, canvas_w),
+                random.randint(0, canvas_h),
+                random.randint(1, 3),
+                random.uniform(0, 2 * math.pi),
+                random.uniform(2, 5),
+            )
+            for _ in range(100)
+        ]
 
         cmd = [
             "ffmpeg", "-y", "-f", "rawvideo", "-vcodec", "rawvideo",
@@ -178,11 +168,7 @@ class VideoFX(FontManager):
         num_frames = int(duration * fps)
         for i in range(num_frames):
             t = i / float(fps)
-            frame_img = self._make_frame_pil(
-                t, text_lines, text_widths, text_heights,
-                canvas_w, canvas_h, total_text_h, font, dummy_draw,
-                blink, blink_rate, blink_duty, blink_smooth,
-            )
+            frame_img = self._make_frame_pil(t, text_lines, canvas_w, canvas_h, font, stars)
             proc.stdin.write(frame_img.tobytes())
 
         _, stderr = proc.communicate()
@@ -196,18 +182,12 @@ class VideoFX(FontManager):
         output_path: str,
         duration: float = 5.0,
         fps: int = 24,
-        blink: bool = False,
-        blink_rate: float = 2.0,
-        blink_duty: float = 0.15,
-        blink_smooth: bool = False,
         font_size: int = 90,
+        **kwargs,
     ):
         text_lines = text.split(";") if ";" in text else text.splitlines()
         await self._run_in_executor(
-            self._create_rgb_video,
-            text_lines, output_path, duration, fps,
-            blink=blink, blink_rate=blink_rate, blink_duty=blink_duty,
-            blink_smooth=blink_smooth, font_size=font_size,
+            self._create_rgb_video, text_lines, output_path, duration, fps, font_size=font_size
         )
         return output_path
 
