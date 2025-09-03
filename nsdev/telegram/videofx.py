@@ -70,17 +70,10 @@ class VideoFX(FontManager):
         canvas_w, canvas_h = state["canvas_size"]
         base = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
 
-        if random.random() < 0.15:
+        if random.random() < 0.20:
             state["flash_intensity"] = 1.0
             crack_layer = self._draw_energy_cracks(base.size, state["text_bbox"])
             base = Image.alpha_composite(base, crack_layer)
-
-        flash_intensity = state.get("flash_intensity", 0.0)
-        if flash_intensity > 0:
-            flash_alpha = int(150 * flash_intensity)
-            flash_layer = Image.new("RGBA", base.size, (200, 220, 255, flash_alpha))
-            base = Image.alpha_composite(base, flash_layer)
-            state["flash_intensity"] *= 0.6
 
         draw_base = ImageDraw.Draw(base)
         font = state["font"]
@@ -100,6 +93,16 @@ class VideoFX(FontManager):
             draw_base.text((pos_x + 3, pos_y + 3), line, font=font, fill=shadow_color)
             draw_base.text((pos_x, pos_y), line, font=font, fill=text_color)
             current_y += state["text_heights"][i] + 20
+
+        flash_intensity = state.get("flash_intensity", 0.0)
+        if flash_intensity > 0:
+            flash_layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+            draw_flash = ImageDraw.Draw(flash_layer)
+            alpha = int(180 * flash_intensity)
+            flash_color = (200, 230, 255, alpha)
+            draw_flash.rectangle([(0, 0), base.size], fill=flash_color)
+            base = Image.alpha_composite(base, flash_layer)
+            state["flash_intensity"] = max(0, flash_intensity - 0.4)
 
         return base
 
@@ -166,6 +169,7 @@ class VideoFX(FontManager):
         duration: float = 2.95,
         fps: int = 30,
         font_size: int = 90,
+        **kwargs,
     ):
         text_lines = text.split(";") if ";" in text else text.splitlines()
         await self._run_in_executor(
