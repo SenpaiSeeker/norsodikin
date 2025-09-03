@@ -123,10 +123,30 @@ class ImageManipulator(FontManager):
         elif filter_name == "sharpen":
             processed_img = img.filter(ImageFilter.SHARPEN)
         elif filter_name == "hell":
-            enhancer = ImageEnhance.Contrast(img)
-            img_contrasted = enhancer.enhance(1.5)
-            img_gray = ImageOps.grayscale(img_contrasted)
-            processed_img = ImageOps.colorize(img_gray, black=(20, 0, 0), mid=(200, 50, 0), white=(255, 220, 50))
+            img_gray = ImageOps.grayscale(img)
+
+            black_threshold = 85
+            red_threshold = 170
+            
+            black_color = (0, 0, 0)
+            red_color = (255, 0, 0)
+            white_color = (255, 255, 255)
+
+            processed_img = Image.new("RGB", img.size)
+
+            gray_pixels = img_gray.load()
+            processed_pixels = processed_img.load()
+            
+            width, height = img.size
+            for x in range(width):
+                for y in range(height):
+                    brightness = gray_pixels[x, y]
+                    if brightness < black_threshold:
+                        processed_pixels[x, y] = black_color
+                    elif brightness < red_threshold:
+                        processed_pixels[x, y] = red_color
+                    else:
+                        processed_pixels[x, y] = white_color
         else:
             raise ValueError(f"Filter '{filter_name}' tidak dikenal.")
 
