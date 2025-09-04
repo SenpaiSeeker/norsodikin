@@ -95,11 +95,6 @@ client.ns.utils.log.info("Logger canggih siap mencatat progres bot!")
 ---
 
 <details>
-<summary><strong>📚 Referensi API Lengkap (Klik untuk Buka/Tutup)</strong></summary>
-
-Berikut adalah panduan mendalam untuk setiap modul yang tersedia, diorganisir sesuai dengan struktur folder dan namespace.
-
-<details>
 <summary><strong>🤖 AI (`client.ns.ai`)</strong></summary>
 
 ### `bing`
@@ -232,7 +227,7 @@ qr_bytes = await qr_manager.generate(data="https://github.com/SenpaiSeeker/norso
 ```
 ---
 ### `search`
-Modul AI untuk melakukan pencarian di internet secara *real-time* menggunakan DuckDuckGo. Berguna untuk memberdayakan model AI (terutama lokal/Ollama) dengan informasi terkini.
+Modul untuk melakukan pencarian di internet secara *real-time* menggunakan DuckDuckGo.
 
 **Inisialisasi:**
 `web_search = client.ns.ai.search(timeout=10)`
@@ -240,26 +235,35 @@ Modul AI untuk melakukan pencarian di internet secara *real-time* menggunakan Du
 **Metode Utama:**
 - `query(query, num_results=5)`: Melakukan pencarian dan mengembalikan daftar hasil.
 
-**Contoh Penggunaan (Memberi 'mata' pada AI Lokal):**
+**Contoh Penggunaan (Menampilkan Hasil Pencarian):**
 ```python
+from pyrogram.types import LinkPreviewOptions
+
 @app.on_message(filters.command("asknet"))
 async def ask_with_internet(client, message):
     pertanyaan = " ".join(message.command[1:])
-    if not pertanyaan: return await message.reply("Sintaks: /asknet <pertanyaan>")
+    if not pertanyaan:
+        return await message.reply("Sintaks: /asknet <pertanyaan>")
 
     status = await message.reply("🌐 Mencari informasi di internet...")
     try:
         search = client.ns.ai.search()
         results = await search.query(pertanyaan)
+        
         if not results:
             return await status.edit("Tidak menemukan hasil yang relevan.")
         
-        await status.edit("📰 Membaca hasil pertama dan merangkum...")
-        # Gunakan client.ns.ai.web untuk merangkum konten dari link hasil pencarian
-        web = client.ns.ai.web(api_key="GEMINI_API_KEY_ANDA")
-        rangkuman = await web.summarize(results.url)
+        fmt = client.ns.telegram.formatter("markdown")
+        fmt.bold("🔎 Hasil Pencarian untuk:").text(f" `{pertanyaan}`").new_line(2)
+
+        for i, res in enumerate(results):
+            fmt.bold(f"{i+1}. ").link(res.title, res.url).new_line()
+            fmt.italic(res.snippet).new_line(2)
         
-        await status.edit(f"**Hasil Pencarian Teratas:**\n_{results.title}_\n\n**Rangkuman:**\n{rangkuman}")
+        await status.edit(
+            fmt.to_string(),
+            link_preview_options=LinkPreviewOptions(is_disabled=True)
+        )
 
     except Exception as e:
         await status.edit(f"❌ Gagal melakukan pencarian: {e}")
@@ -283,7 +287,8 @@ async def voice_to_text(client, message):
         
         await status.edit(f"**Anda Mengatakan:**\n\n_{hasil}_")
     except Exception as e:
-        await status.edit(f"❌ Error: {e}")```
+        await status.edit(f"❌ Error: {e}")
+```
 ---
 ### `translate`
 Modul AI untuk menerjemahkan teks menggunakan Google Translate API.
@@ -314,7 +319,8 @@ Modul AI untuk "melihat" dan memahami konten gambar menggunakan model Gemini Vis
 
 **Inisialisasi:** `vision = client.ns.ai.vision(api_key)`
 
-**Contoh Penggunaan:**```python
+**Contoh Penggunaan:**
+```python
 # @app.on_message(filters.photo)
 async def analyze_image(client, message):
     status = await message.reply("👀 Menganalisis gambar...")
@@ -519,7 +525,8 @@ Manajer untuk menangani kunci rahasia dari argumen terminal, mencegah *hardcodin
 
 **Cara Menjalankan di Terminal:**
 ```bash
-python3 main.py --key kunci-rahasia-anda --env config.env```
+python3 main.py --key kunci-rahasia-anda --env config.env
+```
 
 **Contoh Kode di Python:**
 ```python
@@ -673,7 +680,7 @@ async def buat_pembayaran_violet(client):
         )
 
         if payment_info.success:
-            print("URL QR:", payment_info.data.target)
+            print("URL QR:", payment_info.data.qrcode)
             print("Reference ID:", payment_info.data.ref_kode)
             print("Reference Kode:", payment_info.data.id_reference)
 
@@ -1205,8 +1212,7 @@ Utilitas untuk mengunduh video atau audio dari berbagai platform (YouTube, dll) 
 | `progress_callback` | `callable` | `None`  | Fungsi `async` yang akan dipanggil saat progress download (menerima `current`, `total`). |
 | **Return**          | `dict`     | -       | Dictionary berisi `path`, `title`, `duration`, dan `thumbnail_data` (`bytes` atau `None`). |
 
-**Contoh Penggunaan Lengkap:**
-```python
+**Contoh Penggunaan Lengkap:**```python
 from io import BytesIO
 
 @app.on_message(filters.command("ytdl"))
@@ -1306,6 +1312,8 @@ Kumpulan alat untuk memanipulasi gambar dengan mudah. Menggunakan font yang di-c
 
 **Contoh Penggunaan (`apply_filter` dan `remove_background`):**
 ```python
+from io import BytesIO
+
 # Handler untuk perintah /filter
 @app.on_message(filters.command("filter") & filters.reply)
 async def filter_handler(client, message):
@@ -1434,7 +1442,6 @@ async def register(client, message):
 ```
 
 </details>
-</details>
 
 ## Lisensi
 
@@ -1443,3 +1450,4 @@ Pustaka ini dirilis di bawah [Lisensi MIT](https://opensource.org/licenses/MIT).
 ---
 
 Semoga dokumentasi yang komprehensif ini membuat pengalaman pengembangan Anda menjadi lebih mudah dan menyenangkan. Selamat mencoba dan berkreasi dengan `norsodikin`! Jika ada pertanyaan atau butuh bantuan, jangan ragu untuk kontak di [Telegram](https://t.me/NorSodikin).
+```
