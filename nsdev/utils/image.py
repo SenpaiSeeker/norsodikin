@@ -123,19 +123,10 @@ class ImageManipulator(FontManager):
         elif filter_name == "sharpen":
             processed_img = img.filter(ImageFilter.SHARPEN)
         elif filter_name == "hell":
-            grayscale_img = ImageOps.grayscale(img)
-            
-            hell_palette = []
-            for i in range(256):
-                if i < 85:
-                    hell_palette.extend((0, 0, 0))
-                elif i < 180:
-                    hell_palette.extend((255, 0, 0))
-                else:
-                    hell_palette.extend((230, 230, 230))
-            
-            grayscale_img.putpalette(hell_palette)
-            processed_img = grayscale_img.convert("RGB")
+            enhancer = ImageEnhance.Contrast(img)
+            img_contrasted = enhancer.enhance(1.5)
+            img_gray = ImageOps.grayscale(img_contrasted)
+            processed_img = ImageOps.colorize(img_gray, black=(20, 0, 0), mid=(200, 50, 0), white=(255, 220, 50))
         else:
             raise ValueError(f"Filter '{filter_name}' tidak dikenal.")
 
