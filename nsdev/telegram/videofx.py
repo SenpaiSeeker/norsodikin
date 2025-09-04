@@ -15,9 +15,7 @@ class VideoFX(FontManager):
     def __init__(self):
         super().__init__()
 
-    def _generate_jagged_path(
-        self, start_pos: Tuple, end_pos: Tuple, max_offset: float, segments: int
-    ) -> List[Tuple]:
+    def _generate_jagged_path(self, start_pos: Tuple, end_pos: Tuple, max_offset: float, segments: int) -> List[Tuple]:
         points = [start_pos]
         dx = end_pos[0] - start_pos[0]
         dy = end_pos[1] - start_pos[1]
@@ -145,10 +143,26 @@ class VideoFX(FontManager):
         }
 
         cmd = [
-            "ffmpeg", "-y", "-f", "rawvideo", "-vcodec", "rawvideo",
-            "-s", f"{canvas_w}x{canvas_h}", "-pix_fmt", "rgba",
-            "-r", str(fps), "-i", "-", "-an", "-c:v", "png",
-            "-preset", "fast", output_path,
+            "ffmpeg",
+            "-y",
+            "-f",
+            "rawvideo",
+            "-vcodec",
+            "rawvideo",
+            "-s",
+            f"{canvas_w}x{canvas_h}",
+            "-pix_fmt",
+            "rgba",
+            "-r",
+            str(fps),
+            "-i",
+            "-",
+            "-an",
+            "-c:v",
+            "png",
+            "-preset",
+            "fast",
+            output_path,
         ]
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
 
@@ -171,17 +185,20 @@ class VideoFX(FontManager):
         font_size: int = 90,
     ):
         text_lines = text.split(";") if ";" in text else text.splitlines()
-        await self._run_in_executor(
-            self._create_animated_video,
-            text_lines, output_path, duration, fps, font_size
-        )
+        await self._run_in_executor(self._create_animated_video, text_lines, output_path, duration, fps, font_size)
         return output_path
 
     def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 60):
         try:
             ffprobe_cmd = [
-                "ffprobe", "-v", "error", "-show_entries", "format=duration",
-                "-of", "default=noprint_wrappers=1:nokey=1", video_path,
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                video_path,
             ]
             result = subprocess.run(ffprobe_cmd, capture_output=True, text=True, check=True)
             duration = float(result.stdout.strip())
@@ -192,9 +209,24 @@ class VideoFX(FontManager):
         scale_filter = "scale='if(gt(a,1),512,-2)':'if(gt(a,1),-2,512)'"
 
         ffmpeg_cmd = [
-            "ffmpeg", "-y", "-i", video_path, "-t", str(trim_duration),
-            "-vf", f"{scale_filter},fps={fps}", "-c:v", "libvpx-vp9",
-            "-pix_fmt", "yuva420p", "-crf", "30", "-b:v", "0", "-an", output_path,
+            "ffmpeg",
+            "-y",
+            "-i",
+            video_path,
+            "-t",
+            str(trim_duration),
+            "-vf",
+            f"{scale_filter},fps={fps}",
+            "-c:v",
+            "libvpx-vp9",
+            "-pix_fmt",
+            "yuva420p",
+            "-crf",
+            "30",
+            "-b:v",
+            "0",
+            "-an",
+            output_path,
         ]
         result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
         if result.returncode != 0:

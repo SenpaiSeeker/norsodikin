@@ -22,7 +22,12 @@ class ImageManipulator(FontManager):
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
 
     def _sync_add_watermark(
-        self, image_bytes: bytes, text: str, position: Tuple[int, int] = (10, 10), font_size: int = 30, opacity: int = 128
+        self,
+        image_bytes: bytes,
+        text: str,
+        position: Tuple[int, int] = (10, 10),
+        font_size: int = 30,
+        opacity: int = 128,
     ) -> bytes:
         img = Image.open(BytesIO(image_bytes)).convert("RGBA")
         txt_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
@@ -35,7 +40,12 @@ class ImageManipulator(FontManager):
         return output_buffer.getvalue()
 
     async def add_watermark(
-        self, image_bytes: bytes, text: str, position: Tuple[int, int] = (10, 10), font_size: int = 30, opacity: int = 128
+        self,
+        image_bytes: bytes,
+        text: str,
+        position: Tuple[int, int] = (10, 10),
+        font_size: int = 30,
+        opacity: int = 128,
     ) -> bytes:
         return await self._run_in_executor(self._sync_add_watermark, image_bytes, text, position, font_size, opacity)
 
@@ -117,9 +127,7 @@ class ImageManipulator(FontManager):
             enhancer = ImageEnhance.Contrast(img)
             img_contrasted = enhancer.enhance(1.5)
             img_gray = ImageOps.grayscale(img_contrasted)
-            processed_img = ImageOps.colorize(
-                img_gray, black=(20, 0, 0), mid=(200, 50, 0), white=(255, 220, 50)
-            )
+            processed_img = ImageOps.colorize(img_gray, black=(20, 0, 0), mid=(200, 50, 0), white=(255, 220, 50))
         else:
             raise ValueError(f"Filter '{filter_name}' tidak dikenal.")
         output_buffer = BytesIO()
