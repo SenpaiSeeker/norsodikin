@@ -24,13 +24,13 @@ Gunakan "extras" untuk menambahkan dependensi bagi fitur-fitur spesifik.
     ```bash
     pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[pyrogram]"
     ```
-*   **Untuk semua fitur AI (TTS, Web Summarizer, Bing, Translate, QR Code, Vision, STT, Ollama, Search):**
+*   **Untuk semua fitur AI (TTS, Vision, STT, Ollama, Search, Manipulasi Gambar, dll.):**
     ```bash
     pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[ai]"
     ```
-    > **Catatan Penting untuk Pembaca QR Code:**
-    > Fitur `qrcode.read()` memerlukan library `zbar`. Pada sistem berbasis Debian/Ubuntu, instal dengan:
-    > `sudo apt-get update && sudo apt-get install -y libzbar0`
+    > **Catatan Penting untuk Fitur AI:**
+    > - **Pembaca QR Code (`qrcode.read`)** memerlukan library `zbar`. Pada Debian/Ubuntu, instal dengan: `sudo apt-get update && sudo apt-get install -y libzbar0`.
+    > - **Penghapus Background (`image.remove_background`)** memerlukan `onnxruntime`. Jika tidak terinstal otomatis, jalankan: `pip3 install onnxruntime`.
 
 *   **Untuk pengunduh media (YouTube, dll.):**
     ```bash
@@ -123,7 +123,7 @@ try:
     prompt = "kucing astronot di bulan, lukisan cat minyak"
     list_url = await bing_generator.generate(prompt)
     if list_url:
-        await message.reply_photo(list_url[0], caption=prompt)
+        await message.reply_photo(list_url, caption=prompt)
 except Exception as e:
     await message.reply(f"Gagal membuat gambar: {e}")
 ```
@@ -173,7 +173,7 @@ prompt = "foto seorang astronot bersantai di pantai mars"
 gambar_bytes_list = await hf_generator.generate(prompt)
 
 if gambar_bytes_list:
-    file_gambar = BytesIO(gambar_bytes_list[0])
+    file_gambar = BytesIO(gambar_bytes_list)
     # await message.reply_photo(file_gambar, caption=prompt)
 ```
 ---
@@ -257,9 +257,9 @@ async def ask_with_internet(client, message):
         await status.edit("📰 Membaca hasil pertama dan merangkum...")
         # Gunakan client.ns.ai.web untuk merangkum konten dari link hasil pencarian
         web = client.ns.ai.web(api_key="GEMINI_API_KEY_ANDA")
-        rangkuman = await web.summarize(results[0].url)
+        rangkuman = await web.summarize(results.url)
         
-        await status.edit(f"**Hasil Pencarian Teratas:**\n_{results[0].title}_\n\n**Rangkuman:**\n{rangkuman}")
+        await status.edit(f"**Hasil Pencarian Teratas:**\n_{results.title}_\n\n**Rangkuman:**\n{rangkuman}")
 
     except Exception as e:
         await status.edit(f"❌ Gagal melakukan pencarian: {e}")
@@ -283,8 +283,7 @@ async def voice_to_text(client, message):
         
         await status.edit(f"**Anda Mengatakan:**\n\n_{hasil}_")
     except Exception as e:
-        await status.edit(f"❌ Error: {e}")
-```
+        await status.edit(f"❌ Error: {e}")```
 ---
 ### `translate`
 Modul AI untuk menerjemahkan teks menggunakan Google Translate API.
@@ -315,8 +314,7 @@ Modul AI untuk "melihat" dan memahami konten gambar menggunakan model Gemini Vis
 
 **Inisialisasi:** `vision = client.ns.ai.vision(api_key)`
 
-**Contoh Penggunaan:**
-```python
+**Contoh Penggunaan:**```python
 # @app.on_message(filters.photo)
 async def analyze_image(client, message):
     status = await message.reply("👀 Menganalisis gambar...")
@@ -344,7 +342,7 @@ Alat AI untuk melakukan *scraping* konten teks dari URL dan merangkumnya.
 ```python
 # @app.on_message(filters.command("summarize"))
 async def summarize_url(client, message):
-    url = message.command[1]
+    url = message.command
     web_summarizer = client.ns.ai.web(api_key="GEMINI_API_KEY_ANDA")
     
     status = await message.reply(f"Merangkum konten dari {url}...")
@@ -521,8 +519,7 @@ Manajer untuk menangani kunci rahasia dari argumen terminal, mencegah *hardcodin
 
 **Cara Menjalankan di Terminal:**
 ```bash
-python3 main.py --key kunci-rahasia-anda --env config.env
-```
+python3 main.py --key kunci-rahasia-anda --env config.env```
 
 **Contoh Kode di Python:**
 ```python
@@ -676,7 +673,7 @@ async def buat_pembayaran_violet(client):
         )
 
         if payment_info.success:
-            print("URL QR:", payment_info.data.qrcode)
+            print("URL QR:", payment_info.data.target)
             print("Reference ID:", payment_info.data.ref_kode)
             print("Reference Kode:", payment_info.data.id_reference)
 
@@ -984,7 +981,7 @@ Saya bisa menyalin pesan dari channel/grup mana pun, cukup berikan linknya.
 async def copy_message_handler(client, message):
     if len(message.command) < 2:
         return await message.reply_text(COPY_HELP_TEXT, quote=True)
-    links_text = message.text.split(None, 1)[1]
+    links_text = message.text.split(None, 1)
     status_msg = await message.reply_text("⏳ `Memvalidasi link...`", quote=True)
     try:
         await client.ns.telegram.copier.copy_from_links(
@@ -1068,7 +1065,7 @@ async def get_user_stories_handler(client, message):
     if len(message.command) < 2:
         return await message.edit_text("Sintaks: `.getstory @username`")
 
-    username = message.command[1]
+    username = message.command
     # Mengedit pesan perintah itu sendiri sebagai pesan status
     status_msg = await message.edit_text(f"Memulai proses untuk `{username}`...")
 
@@ -1088,10 +1085,10 @@ async def get_user_stories_handler(client, message):
         await status_msg.edit_text(f"❌ **Error Kritis:** {e}")
 ```
 ### `videofx` -> `client.ns.telegram.videofx`
-Modul untuk manipulasi video, seperti membuat video dari teks (dengan efek RGB berkedip) atau mengubah video biasa menjadi stiker video `.webm` yang sesuai untuk Telegram. Modul ini secara otomatis mengunduh dan menyimpan *cache* font untuk menghasilkan teks yang menarik secara visual.
+Modul canggih untuk manipulasi video, seperti membuat **animasi teks dinamis** dengan efek retakan energi, guncangan, dan warna acak, atau mengubah video biasa menjadi stiker video `.webm` yang sesuai untuk Telegram. Modul ini secara otomatis mengunduh dan menyimpan *cache* font untuk menghasilkan teks yang menarik secara visual.
 
 #### **Metode Utama: `text_to_video()`**
-Mengubah satu atau beberapa baris teks menjadi file video `.mp4`.
+Mengubah satu atau beberapa baris teks menjadi file video animasi `.mp4`.
 
 | Parameter       | Tipe Data | Default  | Deskripsi                                                                 |
 |-----------------|-----------|----------|---------------------------------------------------------------------------|
@@ -1111,57 +1108,49 @@ Mengonversi file video menjadi stiker video `.webm` dengan resolusi 512px yang s
 | `fps`         | `int`     | `30`     | FPS untuk stiker. Nilai yang lebih tinggi mungkin ditolak Telegram. |
 
 ---
-#### **Contoh Penggunaan:**
+#### **Contoh Penggunaan (Animasi Teks Dinamis):**
 
-Berikut adalah contoh *handler* lengkap yang membuat stiker animasi dari teks yang diberikan pengguna. Stiker yang dihasilkan akan memiliki latar belakang hitam.
+Berikut adalah contoh *handler* lengkap yang membuat stiker animasi dari teks yang diberikan pengguna, lengkap dengan efek guncangan dan energi.
 
 ```python
 import os
 import uuid
 
-# Contoh Handler untuk perintah /stickerfx
-@app.on_message(filters.command("stickerfx"))
+# Contoh Handler untuk perintah /animatetext
+@app.on_message(filters.command("animatetext"))
 async def animated_sticker_handler(client, message):
     text_input = client.ns.telegram.arg.getMessage(message, is_arg=True)
     if not text_input:
-        return await message.reply("Gunakan: `/stickerfx Teks Anda;Baris baru`")
+        return await message.reply("Gunakan: `/animatetext Teks Anda;Baris baru`")
 
-    status_msg = await message.reply("🎨 Membuat animasi dari teks...")
+    status_msg = await message.reply("🎨 Menciptakan animasi teks...")
 
-    # Buat nama file sementara yang unik
-    video_path = f"{uuid.uuid4()}.mp4"
-    sticker_path = f"{uuid.uuid4()}.webm"
+    # Gunakan manajer file aman untuk membersihkan file secara otomatis
+    async with client.ns.utils.files.temp_dir() as tmpdir:
+        video_path = os.path.join(tmpdir, f"{uuid.uuid4()}.mp4")
+        sticker_path = os.path.join(tmpdir, f"{uuid.uuid4()}.webm")
 
-    try:
-        # Langkah 1: Buat video dari teks dengan efek kedip
-        await client.ns.telegram.videofx.text_to_video(
-            text=text_input,
-            output_path=video_path,
-            blink=True,
-            blink_smooth=True
-        )
+        try:
+            # Langkah 1: Buat video animasi dari teks
+            await client.ns.telegram.videofx.text_to_video(
+                text=text_input,
+                output_path=video_path
+            )
 
-        await status_msg.edit("✨ Mengonversi video menjadi stiker...")
+            await status_msg.edit("✨ Mengonversi video menjadi stiker...")
 
-        # Langkah 2: Konversi video yang baru dibuat menjadi stiker .webm
-        await client.ns.telegram.videofx.video_to_sticker(
-            video_path=video_path,
-            output_path=sticker_path
-        )
+            # Langkah 2: Konversi video yang baru dibuat menjadi stiker .webm
+            await client.ns.telegram.videofx.video_to_sticker(
+                video_path=video_path,
+                output_path=sticker_path
+            )
 
-        # Langkah 3: Kirim stiker dan hapus pesan status
-        await client.send_sticker(message.chat.id, sticker_path)
-        await status_msg.delete()
+            # Langkah 3: Kirim stiker dan hapus pesan status
+            await client.send_sticker(message.chat.id, sticker_path)
+            await status_msg.delete()
 
-    except Exception as e:
-        await status_msg.edit(f"❌ Terjadi kesalahan: {e}")
-    finally:
-        # Selalu bersihkan file sementara
-        if os.path.exists(video_path):
-            os.remove(video_path)
-        if os.path.exists(sticker_path):
-            os.remove(sticker_path)
-
+        except Exception as e:
+            await status_msg.edit(f"❌ Terjadi kesalahan: {e}")
 ```
 
 </details>
@@ -1191,7 +1180,7 @@ async def get_webpage_summary(url):
 
 @app.on_message(filters.command("cachesum"))
 async def cached_summarize_handler(client, message):
-    url = message.command[1]
+    url = message.command
     
     # Panggilan pertama akan menjalankan fungsi, mencetak log, dan butuh waktu.
     # Panggilan kedua (dengan URL yang sama dalam 1 jam) akan langsung
@@ -1225,7 +1214,7 @@ async def download_media(client, message):
     if len(message.command) < 2:
         return await message.reply("Sintaks: /ytdl [URL]")
     
-    url = message.command[1]
+    url = message.command
     status = await message.reply("🚀 Mempersiapkan...")
 
     try:
@@ -1304,42 +1293,42 @@ Mempercantik output terminal dengan teks bergradien dan timer countdown.
 - `countdown(seconds)`
 ---
 ### `image`
-Kumpulan alat untuk memanipulasi gambar dengan mudah. Menggunakan font yang di-cache secara otomatis.
+Kumpulan alat untuk memanipulasi gambar dengan mudah. Menggunakan font yang di-cache secara otomatis untuk fitur seperti meme dan watermark.
 
 **Metode Utama:**
 - `add_watermark(image_bytes, text, **kwargs)`: Menambahkan watermark teks.
-- `resize(image_bytes, size, keep_aspect_ratio=True)`: Mengubah ukuran gambar.
+- `resize(image_bytes, size, **kwargs)`: Mengubah ukuran gambar.
 - `convert_format(image_bytes, output_format="PNG")`: Mengubah format gambar.
+- `create_meme(image_bytes, top_text, bottom_text)`: Menghasilkan gambar meme klasik.
+- `apply_filter(image_bytes, filter_name)`: Menerapkan filter visual (`grayscale`, `sepia`, `invert`, `blur`, `sharpen`, `hell`).
+- `remove_background(image_bytes)`: Menghapus background dari sebuah gambar.
+    > **Catatan Penting:** Fitur `remove_background` memerlukan `rembg` dan `onnxruntime`. Pastikan Anda menginstal extra `[ai]` dengan benar: `pip3 install "norsodikin[ai]"`.
 
-**Contoh Penggunaan (`add_watermark`):**
+**Contoh Penggunaan (`apply_filter` dan `remove_background`):**
 ```python
-# Handler untuk perintah /wmark
-# Pengguna harus membalas (reply) ke sebuah foto
-@app.on_message(filters.command("wmark"))
-async def watermark_handler(client, message):
-    if not message.reply_to_message or not message.reply_to_message.photo:
-        return await message.reply("Balas ke foto untuk menambahkan watermark.")
+# Handler untuk perintah /filter
+@app.on_message(filters.command("filter") & filters.reply)
+async def filter_handler(client, message):
+    filter_name = message.command if len(message.command) > 1 else None
+    if not filter_name:
+        return await message.reply("Sintaks: /filter <nama_filter>")
 
-    text = " ".join(message.command[1:]) or "© norsodikin"
-    status = await message.reply("Memproses gambar...")
+    photo_bytes = await client.download_media(message.reply_to_message, in_memory=True)
+    filtered_bytes = await client.ns.utils.image.apply_filter(photo_bytes.getvalue(), filter_name)
+    await message.reply_photo(BytesIO(filtered_bytes), caption=f"Filter: `{filter_name}`")
 
-    try:
-        photo_bytes = await client.download_media(message.reply_to_message, in_memory=True)
-        
-        watermarked_bytes = await client.ns.utils.image.add_watermark(
-            image_bytes=photo_bytes.getvalue(),
-            text=text,
-            font_size=50,
-            opacity=150
-        )
-        
-        final_image = BytesIO(watermarked_bytes)
-        final_image.name = "watermarked.png"
-        
-        await client.send_photo(message.chat.id, final_image, caption=f"Watermark: `{text}`")
-        await status.delete()
-    except Exception as e:
-        await status.edit(f"Gagal: {e}")
+# Handler untuk perintah /rmbg
+@app.on_message(filters.command("rmbg") & filters.reply)
+async def remove_bg_handler(client, message):
+    status = await message.reply("🧠 Memproses penghapusan background...")
+    photo_bytes = await client.download_media(message.reply_to_message, in_memory=True)
+    no_bg_bytes = await client.ns.utils.image.remove_background(photo_bytes.getvalue())
+    
+    # Kirim sebagai file untuk menjaga transparansi
+    file_io = BytesIO(no_bg_bytes)
+    file_io.name = "no_bg.png"
+    await message.reply_document(file_io)
+    await status.delete()
 ```
 ---
 ### `log`
