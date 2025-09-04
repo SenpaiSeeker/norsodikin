@@ -7,6 +7,11 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
 from .font_manager import FontManager
 
+try:
+    from rembg import remove as remove_bg
+except ImportError:
+    remove_bg = None
+
 
 class ImageManipulator(FontManager):
     def __init__(self):
@@ -21,14 +26,10 @@ class ImageManipulator(FontManager):
     ) -> bytes:
         img = Image.open(BytesIO(image_bytes)).convert("RGBA")
         txt_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
-
         font = self._get_font(font_size)
-
         draw = ImageDraw.Draw(txt_layer)
         draw.text(position, text, font=font, fill=(255, 255, 255, opacity))
-
         watermarked_img = Image.alpha_composite(img, txt_layer)
-
         output_buffer = BytesIO()
         watermarked_img.save(output_buffer, format="PNG")
         return output_buffer.getvalue()
@@ -40,12 +41,10 @@ class ImageManipulator(FontManager):
 
     def _sync_resize(self, image_bytes: bytes, size: Tuple[int, int], keep_aspect_ratio: bool = True) -> bytes:
         img = Image.open(BytesIO(image_bytes))
-
         if keep_aspect_ratio:
             img.thumbnail(size, Image.LANCZOS)
         else:
             img = img.resize(size, Image.LANCZOS)
-
         output_buffer = BytesIO()
         output_format = img.format if img.format in ["JPEG", "PNG", "WEBP"] else "PNG"
         img.save(output_buffer, format=output_format)
@@ -56,10 +55,8 @@ class ImageManipulator(FontManager):
 
     def _sync_convert_format(self, image_bytes: bytes, output_format: str = "PNG") -> bytes:
         img = Image.open(BytesIO(image_bytes))
-
         if img.mode == "RGBA" and output_format.upper() == "JPEG":
             img = img.convert("RGB")
-
         output_buffer = BytesIO()
         img.save(output_buffer, format=output_format.upper())
         return output_buffer.getvalue()
@@ -70,25 +67,21 @@ class ImageManipulator(FontManager):
     def _sync_create_meme(self, image_bytes: bytes, top_text: str, bottom_text: str) -> bytes:
         img = Image.open(BytesIO(image_bytes)).convert("RGBA")
         draw = ImageDraw.Draw(img)
-
         font_size = int(img.width / 10)
         font = self._get_font(font_size)
 
         def draw_text_with_outline(text, x, y):
-            outline_color = "black"
-            text_color = "white"
+            outline_color, text_color = "black", "white"
             for offset in [(-2, -2), (2, -2), (-2, 2), (2, 2)]:
                 draw.text((x + offset[0], y + offset[1]), text, font=font, fill=outline_color)
             draw.text((x, y), text, font=font, fill=text_color)
 
-        top_text = top_text.upper()
-        bottom_text = bottom_text.upper()
+        top_text, bottom_text = top_text.upper(), bottom_text.upper()
 
         if top_text:
             bbox = draw.textbbox((0, 0), top_text, font=font)
-            top_w, top_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+            top_w = bbox[2] - bbox[0]
             draw_text_with_outline(top_text, (img.width - top_w) / 2, 10)
-
         if bottom_text:
             bbox = draw.textbbox((0, 0), bottom_text, font=font)
             bottom_w, bottom_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
@@ -103,17 +96,15 @@ class ImageManipulator(FontManager):
 
     def _sync_apply_filter(self, image_bytes: bytes, filter_name: str) -> bytes:
         img = Image.open(BytesIO(image_bytes)).convert("RGB")
-
         if filter_name == "grayscale":
             processed_img = ImageOps.grayscale(img)
         elif filter_name == "sepia":
             grayscale_img = ImageOps.grayscale(img)
-            sepia_palette = []
-            for i in range(256):
-                r = int(min(255, i * 1.2))
-                g = int(min(255, i * 1.0))
-                b = int(min(255, i * 0.8))
-                sepia_palette.extend((r, g, b))
+            sepia_palette = [
+                component
+                for i in range(256)
+                for component in (int(min(255, i * 1.2)), int(min(255, i * 1.0)), int(min(255, i * 0.8)))
+            ]
             grayscale_img.putpalette(sepia_palette)
             processed_img = grayscale_img.convert("RGB")
         elif filter_name == "invert":
@@ -126,13 +117,22 @@ class ImageManipulator(FontManager):
             enhancer = ImageEnhance.Contrast(img)
             img_contrasted = enhancer.enhance(1.5)
             img_gray = ImageOps.grayscale(img_contrasted)
-            processed_img = ImageOps.colorize(img_gray, black=(20, 0, 0), mid=(200, 50, 0), white=(255, 220, 50))
+            processed_img = ImageOps.colorize(
+                img_gray, black=(20, 0, 0), mid=(200, 50, 0), white=(255, 220, 50)
+            )
         else:
             raise ValueError(f"Filter '{filter_name}' tidak dikenal.")
-
         output_buffer = BytesIO()
         processed_img.save(output_buffer, format="JPEG")
         return output_buffer.getvalue()
 
     async def apply_filter(self, image_bytes: bytes, filter_name: str) -> bytes:
         return await self._run_in_executor(self._sync_apply_filter, image_bytes, filter_name)
+
+    def _sync_remove_background(self, image_bytes: bytes) -> bytes:
+        if not remove_bg:
+            raise ImportError("Pustaka 'rembg' tidak terinstal. Silakan instal dengan `pip install norsodikin[ai]`")
+        return remove_bg(image_bytes)
+
+    async def remove_background(self, image_bytes: bytes) -> bytes:
+        return await self._run_in_executor(self._sync_remove_background, image_bytes)
