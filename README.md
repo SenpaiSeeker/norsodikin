@@ -1099,8 +1099,6 @@ Mengubah satu atau beberapa baris teks menjadi file video `.mp4`.
 | `output_path`   | `str`     | -        | Path file tujuan untuk menyimpan video (misal: `"hasil.mp4"`).              |
 | `duration`      | `float`   | `5.0`    | Durasi video dalam detik.                                                 |
 | `fps`           | `int`     | `24`     | *Frames per second* untuk video.                                            |
-| `blink`         | `bool`    | `False`  | Aktifkan efek berkedip untuk teks.                                        |
-| `blink_smooth`  | `bool`    | `False`  | Jika `blink` aktif, `True` akan membuat kedipan halus (fade in/out).       |
 | `font_size`     | `int`     | `90`     | Ukuran font teks.                                                         |
 
 #### **Metode Utama: `video_to_sticker()`**
