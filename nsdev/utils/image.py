@@ -3,7 +3,7 @@ from functools import partial
 from io import BytesIO
 from typing import Tuple
 
-from PIL import Image, ImageDraw, ImageFilter, ImageOps
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
 from .font_manager import FontManager
 
@@ -123,23 +123,19 @@ class ImageManipulator(FontManager):
         elif filter_name == "sharpen":
             processed_img = img.filter(ImageFilter.SHARPEN)
         elif filter_name == "hell":
-            black_threshold = 85
-            white_threshold = 170
+            grayscale_img = ImageOps.grayscale(img)
             
-            hell_red = (255, 9, 9)
-            hell_black = (0, 0, 0)
-            hell_white = (250, 250, 250)
+            hell_palette = []
+            for i in range(256):
+                if i < 85:
+                    hell_palette.extend((0, 0, 0))
+                elif i < 180:
+                    hell_palette.extend((255, 0, 0))
+                else:
+                    hell_palette.extend((230, 230, 230))
             
-            img_gray = ImageOps.grayscale(img)
-            
-            processed_img = Image.new("RGB", img.size, hell_red)
-            
-            black_mask = img_gray.point(lambda p: 255 if p < black_threshold else 0, mode="1")
-            white_mask = img_gray.point(lambda p: 255 if p > white_threshold else 0, mode="1")
-            
-            processed_img.paste(hell_black, mask=black_mask)
-            processed_img.paste(hell_white, mask=white_mask)
-
+            grayscale_img.putpalette(hell_palette)
+            processed_img = grayscale_img.convert("RGB")
         else:
             raise ValueError(f"Filter '{filter_name}' tidak dikenal.")
 
