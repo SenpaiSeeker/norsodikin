@@ -1212,7 +1212,8 @@ Utilitas untuk mengunduh video atau audio dari berbagai platform (YouTube, dll) 
 | `progress_callback` | `callable` | `None`  | Fungsi `async` yang akan dipanggil saat progress download (menerima `current`, `total`). |
 | **Return**          | `dict`     | -       | Dictionary berisi `path`, `title`, `duration`, dan `thumbnail_data` (`bytes` atau `None`). |
 
-**Contoh Penggunaan Lengkap:**```python
+**Contoh Penggunaan Lengkap:**
+```python
 from io import BytesIO
 
 @app.on_message(filters.command("ytdl"))
@@ -1450,4 +1451,3 @@ Pustaka ini dirilis di bawah [Lisensi MIT](https://opensource.org/licenses/MIT).
 ---
 
 Semoga dokumentasi yang komprehensif ini membuat pengalaman pengembangan Anda menjadi lebih mudah dan menyenangkan. Selamat mencoba dan berkreasi dengan `norsodikin`! Jika ada pertanyaan atau butuh bantuan, jangan ragu untuk kontak di [Telegram](https://t.me/NorSodikin).
-```
