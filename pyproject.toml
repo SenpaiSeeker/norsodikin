@@ -47,7 +47,7 @@ ai = [
     "pyzbar",
     "google-generativeai",
     "ollama",
-    "rembg",
+    "rembg[cpu]",
 ]
 server = [
     "psutil",
