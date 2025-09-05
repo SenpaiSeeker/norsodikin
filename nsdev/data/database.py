@@ -320,36 +320,6 @@ class DataBase:
                 else:
                     self._save_data(data)
 
-    def setExp(self, user_id, exp=30):
-        user_id_str = str(user_id)
-        have_exp = self.getVars(user_id_str, "EXPIRED_DATE")
-        now = datetime.datetime.now(zoneinfo.ZoneInfo("Asia/Jakarta"))
-        if have_exp:
-            now = datetime.datetime.strptime(have_exp, "%Y-%m-%d %H:%M:%S").astimezone(
-                zoneinfo.ZoneInfo("Asia/Jakarta")
-            )
-        expire_date = now + datetime.timedelta(days=exp)
-        self.setVars(user_id_str, "EXPIRED_DATE", expire_date.strftime("%Y-%m-%d %H:%M:%S"))
-
-    def daysLeft(self, user_id):
-        user_id_str = str(user_id)
-        expired_date = self.getVars(user_id_str, "EXPIRED_DATE")
-        if expired_date:
-            exp_datetime = datetime.datetime.strptime(expired_date, "%Y-%m-%d %H:%M:%S").astimezone(
-                zoneinfo.ZoneInfo("Asia/Jakarta")
-            )
-            return (exp_datetime - datetime.datetime.now(zoneinfo.ZoneInfo("Asia/Jakarta"))).days
-        return None
-
-    def checkAndDeleteIfExpired(self, user_id):
-        user_id_str = str(user_id)
-        days_left = self.daysLeft(user_id_str)
-        if days_left is not None and days_left < 0:
-            self.removeAllVars(user_id_str)
-            self.removeBot(user_id_str)
-            return True
-        return False
-
     def saveBot(self, user_id, api_id, api_hash, value, is_token=False):
         user_id_str = str(user_id)
         field = "bot_token" if is_token else "session_string"
