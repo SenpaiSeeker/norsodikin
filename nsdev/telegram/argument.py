@@ -33,17 +33,19 @@ class Argument:
             return str(error)
 
     def getMessage(self, message, is_arg=False):
+        command = getattr(message, "command", None)
+
         if is_arg:
-            if message.reply_to_message and len(message.command) < 2:
+            if message.reply_to_message and (not command or len(command) < 2):
                 return message.reply_to_message.text or message.reply_to_message.caption
-            elif len(message.command) > 1:
+            elif command and len(command) > 1:
                 return message.text.split(None, 1)[1]
             else:
                 return ""
         else:
             if message.reply_to_message:
                 return message.reply_to_message
-            elif len(message.command) > 1:
+            elif command and len(command) > 1:
                 return message.text.split(None, 1)[1]
             else:
                 return ""
