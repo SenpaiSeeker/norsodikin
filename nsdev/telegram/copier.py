@@ -1,7 +1,9 @@
 import asyncio
+import os
 import re
 from typing import Tuple
 
+from pyrogram.raw import functions, types
 from pyrogram.errors import FloodWait, RPCError
 from pyrogram.types import Message
 
@@ -13,6 +15,7 @@ class MessageCopier:
     def __init__(self, client):
         self._client = client
         self._log = LoggerHandler()
+        self._peer_cache = {}
 
     def _parse_link(self, link: str) -> Tuple[int, int] or Tuple[None, None]:
         public_match = re.match(r"https://t\.me/(\w+)/(\d+)", link)
@@ -28,24 +31,31 @@ class MessageCopier:
 
         return None, None
 
-    async def _force_get_peer(self, chat_id_to_find: int):
-        if not isinstance(chat_id_to_find, int) or chat_id_to_find > 0:
-            return await self._client.resolve_peer(chat_id_to_find)
-
-        async for dialog in self._client.get_dialogs():
-            if dialog.chat.id == chat_id_to_find:
-                return await self._client.resolve_peer(dialog.chat.id)
+    async def _get_peer_from_cache_or_api(self, chat_id):
+        if chat_id in self._peer_cache:
+            return self._peer_cache[chat_id]
         
-        try:
-            chat = await self._client.get_chat(chat_id_to_find)
-            return await self._client.resolve_peer(chat.id)
-        except Exception as e:
-            raise RPCError(f"Tidak dapat menemukan atau mengakses chat {chat_id_to_find}. Pastikan Anda adalah anggota. Detail: {e}")
+        peer = await self._client.resolve_peer(chat_id)
+        self._peer_cache[chat_id] = peer
+        return peer
 
     async def _get_and_verify_message(self, chat_id, msg_id):
-        peer = await self._force_get_peer(chat_id)
-        message = await self._client.get_messages(peer, msg_id)
-        return message
+        peer = await self._get_peer_from_cache_or_api(chat_id)
+
+        if isinstance(peer, types.InputPeerChannel):
+            raw_result = await self._client.invoke(
+                functions.channels.GetMessages(
+                    channel=types.InputChannel(channel_id=peer.channel_id, access_hash=peer.access_hash),
+                    id=[types.InputMessageID(id=msg_id)]
+                )
+            )
+            if not raw_result.messages:
+                raise RPCError(f"Pesan dengan ID {msg_id} tidak ditemukan di channel.")
+            
+            return await Message._parse(self._client, raw_result.messages[0], {u.id: u for u in raw_result.users}, {c.id: c for c in raw_result.chats})
+        else:
+            return await self._client.get_messages(chat_id, msg_id)
+
 
     async def _process_single_message(self, message: Message, user_chat_id: int, status_message: Message):
         thumb_path = None
@@ -67,22 +77,17 @@ class MessageCopier:
                 }
                 if message.media.value in sender_map:
                     send_func = sender_map[message.media.value]
-                    kwargs = {
-                        "chat_id": user_chat_id, "caption": message.caption.html if message.caption else "",
-                        "progress": upload_progress.update
-                    }
+                    kwargs = {"chat_id": user_chat_id, "caption": (message.caption or ""), "progress": upload_progress.update}
                     media_attr = getattr(message, message.media.value, None)
                     if hasattr(media_attr, "duration"): kwargs["duration"] = media_attr.duration
                     if thumb_path: kwargs["thumb"] = thumb_path
                     kwargs[message.media.value] = file_path
                     await send_func(**kwargs)
-                else:
-                    await message.copy(user_chat_id)
-            else:
-                await message.copy(user_chat_id)
+                else: await message.copy(user_chat_id)
+            else: await message.copy(user_chat_id)
         finally:
-            if file_path: os.remove(file_path)
-            if thumb_path: os.remove(thumb_path)
+            if file_path and os.path.exists(file_path): os.remove(file_path)
+            if thumb_path and os.path.exists(thumb_path): os.remove(thumb_path)
     
     async def copy_from_links(self, user_chat_id: int, links_text: str, status_message: Message):
         links_to_process = []
@@ -92,8 +97,7 @@ class MessageCopier:
             chat_id1, msg_id1 = self._parse_link(parts[0])
             chat_id2, msg_id2 = self._parse_link(parts[1])
             if not (chat_id1 and chat_id2) or chat_id1 != chat_id2: raise ValueError("Link tidak valid atau bukan dari chat yang sama.")
-            for msg_id in range(min(msg_id1, msg_id2), max(msg_id1, msg_id2) + 1):
-                links_to_process.append((chat_id1, msg_id))
+            for msg_id in range(min(msg_id1, msg_id2), max(msg_id1, msg_id2) + 1): links_to_process.append((chat_id1, msg_id))
         else:
             for link in links_text.split():
                 chat_id, msg_id = self._parse_link(link)
@@ -116,10 +120,8 @@ class MessageCopier:
                 wait_time = e.value + 2
                 self._log.print(f"{self._log.YELLOW}Terkena FloodWait. Menunggu {wait_time} detik...{self._log.RESET}")
                 await asyncio.sleep(wait_time)
-            except RPCError as e:
-                self._log.error(f"Gagal memproses pesan {msg_id}: {e}")
             except Exception as e:
-                self._log.error(f"Kesalahan tak terduga pada pesan {msg_id}: {e}")
+                self._log.error(f"Gagal memproses link ({chat_id}/{msg_id}): {e}")
 
         await status_message.edit("✅ **Semua proses selesai!**")
         await asyncio.sleep(3)
