@@ -84,6 +84,15 @@ class MessageCopier:
             if thumb_path and os.path.exists(thumb_path):
                 os.remove(thumb_path)
 
+    async def _get_and_verify_message(self, chat_id, msg_id):
+        try:
+            await self._client.get_chat(chat_id)
+        except Exception as e:
+            raise RPCError(f"Gagal mengakses chat {chat_id}. Anda mungkin bukan anggota atau di-ban. Detail: {e}")
+
+        message = await self._client.get_messages(chat_id, msg_id)
+        return message
+
     async def copy_from_links(self, user_chat_id: int, links_text: str, status_message: Message):
         if "|" in links_text:
             parts = [part.strip() for part in links_text.split("|")]
@@ -110,7 +119,8 @@ class MessageCopier:
                 msg_id = message_ids[i]
                 try:
                     await status_message.edit(f"Memproses pesan {i+1}/{total} (ID: {msg_id})...")
-                    message = await self._client.get_messages(chat_id_to_process, msg_id)
+                    message = await self._get_and_verify_message(chat_id_to_process, msg_id)
+                    
                     if message.empty:
                         i += 1
                         continue
@@ -125,12 +135,11 @@ class MessageCopier:
                         f"{self._log.YELLOW}[FloodWait] Terkena batasan Telegram. Menunggu {wait_time} detik...{self._log.RESET}"
                     )
                     await asyncio.sleep(wait_time)
-
                 except RPCError as e:
-                    await self._client.send_message(user_chat_id, f"Gagal mengambil pesan ID {msg_id}: `{e}`")
+                    self._log.error(f"Gagal memproses pesan {msg_id}: {e}")
                     i += 1
                 except Exception as e:
-                    await self._client.send_message(user_chat_id, f"Terjadi kesalahan pada pesan ID {msg_id}: `{e}`")
+                    self._log.error(f"Kesalahan tak terduga pada pesan {msg_id}: {e}")
                     i += 1
         else:
             links = links_text.split()
@@ -141,16 +150,13 @@ class MessageCopier:
                 try:
                     chat_id, msg_id = self._parse_link(link)
                     if not chat_id:
-                        await self._client.send_message(user_chat_id, f"Link tidak valid: `{link}`")
                         i += 1
                         continue
 
                     await status_message.edit(f"Memproses link {i+1}/{total}...")
-                    message = await self._client.get_messages(chat_id, msg_id)
+                    message = await self._get_and_verify_message(chat_id, msg_id)
+                    
                     if message.empty:
-                        await self._client.send_message(
-                            user_chat_id, f"Pesan di link ini kosong atau telah dihapus:\n`{link}`"
-                        )
                         i += 1
                         continue
 
@@ -164,12 +170,11 @@ class MessageCopier:
                         f"{self._log.YELLOW}[FloodWait] Terkena batasan Telegram. Menunggu {wait_time} detik...{self._log.RESET}"
                     )
                     await asyncio.sleep(wait_time)
-
                 except RPCError as e:
-                    await self._client.send_message(user_chat_id, f"Gagal mengambil pesan dari link `{link}`: `{e}`")
+                    self._log.error(f"Gagal memproses link {link}: {e}")
                     i += 1
                 except Exception as e:
-                    await self._client.send_message(user_chat_id, f"Terjadi kesalahan pada link `{link}`: `{e}`")
+                    self._log.error(f"Kesalahan tak terduga pada link {link}: {e}")
                     i += 1
 
         await status_message.edit("✅ **Semua proses selesai!**")
