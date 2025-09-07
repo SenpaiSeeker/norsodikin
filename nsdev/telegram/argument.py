@@ -48,40 +48,36 @@ class Argument:
             else:
                 return ""
 
-    async def getUserId(self, message, username):
-        if message.entities:
-            entity_index = 1 if message.text.startswith("/") else 0
-            entity = message.entities[entity_index]
-            if entity.type == pyrogram.enums.MessageEntityType.MENTION:
-                return (await self.client.get_chat(username)).id
-            elif entity.type == pyrogram.enums.MessageEntityType.TEXT_MENTION:
-                return entity.user.id
-        return username
-
-    async def userId(self, message, text):
-        return int(text) if text.isdigit() else await self.getUserId(message, text)
-
     async def getReasonAndId(self, message, sender_chat=False):
-        text = message.text.strip()
-        args = text.split()
+        args = message.text.strip().split()
         reply = message.reply_to_message
+        user_id = None
+        reason = None
 
         if reply:
             if reply.from_user:
                 user_id = reply.from_user.id
             elif sender_chat and reply.sender_chat:
                 user_id = reply.sender_chat.id
-            else:
-                user_id = None
-            reason = text.split(None, 1)[1] if len(args) > 1 else None
-            return (user_id, reason) if user_id else (None, None)
+            
+            if len(args) > 1:
+                reason = " ".join(args[1:])
+            
+            return user_id, reason
 
-        if len(args) == 2:
-            return (await self.userId(message, args[1]), None)
-        elif len(args) > 2:
-            return (await self.userId(message, args[1]), " ".join(args[2:]))
-        else:
-            return (None, None)
+        if len(args) > 1:
+            try:
+                user = await self.client.get_users(args[1])
+                user_id = user.id
+            except Exception:
+                return None, None
+            
+            if len(args) > 2:
+                reason = " ".join(args[2:])
+            
+            return user_id, reason
+            
+        return None, None
 
     async def getAdmin(self, message):
         member = await self.client.get_chat_member(message.chat.id, message.from_user.id)
