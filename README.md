@@ -253,7 +253,7 @@ async def ask_with_internet(client, message):
         if not results:
             return await status.edit("Tidak menemukan hasil yang relevan.")
         
-        fmt = client.ns.telegram.formatter("markdown")
+        fmt = client.ns.telegram.formatter(mode="html")
         fmt.bold("🔎 Hasil Pencarian untuk:").text(f" `{pertanyaan}`").new_line(2)
 
         for i, res in enumerate(results):
@@ -261,7 +261,7 @@ async def ask_with_internet(client, message):
             fmt.italic(res.snippet).new_line(2)
         
         await status.edit(
-            fmt.to_string(),
+            fmt,
             link_preview_options=LinkPreviewOptions(is_disabled=True)
         )
 
@@ -392,7 +392,7 @@ async def download_media(client, message):
 async def show_bot_stats(client, message):
     top_cmds = await analytics.get_top_commands(limit=5)
     
-    fmt = client.ns.telegram.formatter("markdown")
+    fmt = client.ns.telegram.formatter(mode="html")
     fmt.bold("📊 Statistik Perintah Teratas").new_line(2)
     if top_cmds:
         for cmd, count in top_cmds:
@@ -400,7 +400,7 @@ async def show_bot_stats(client, message):
     else:
         fmt.text("Belum ada data.")
     
-    await message.reply(fmt.to_string())
+    await message.reply(fmt)
 
 ```
 
@@ -785,13 +785,13 @@ async def top_processes(client, message):
     try:
         top_procs = await client.ns.server.process.list(limit=5, sort_by='memory_percent')
         
-        fmt = client.ns.telegram.formatter("markdown")
+        fmt = client.ns.telegram.formatter(mode="html")
         fmt.bold("🔥 Top 5 Proses Berdasarkan Memori").new_line(2)
         
         for p in top_procs:
             fmt.mono(f"PID: {p.pid:<5}").text(f" | RAM: {p.memory_percent:.2f}% | ").bold(p.name).new_line()
         
-        await message.reply(fmt.to_string())
+        await message.reply(fmt)
     except Exception as e:
         await message.reply(f"Gagal mengambil daftar proses: {e}")
 ```
@@ -841,7 +841,7 @@ async def long_process_handler(client, message):
 ```
 ---
 ### `argument`
-Toolkit untuk mem-parsing dan mengekstrak informasi dari objek `message` Pyrogram dengan mudah.
+Toolkit untuk mem-parsing dan mengekstrak informasi dari objek `message` Pyrogram dengan mudah. Kini lebih andal untuk menangani ID pengguna, username, maupun balasan.
 
 **Metode Utama:**
 - `getMessage(message, is_arg=False)`: Mengambil teks dari pesan balasan atau dari argumen perintah.
@@ -970,7 +970,7 @@ async def change_page(client, callback_query):
 ```
 ---
 ### `copier`
-Modul canggih untuk menyalin pesan dari link Telegram (publik/privat). Mendukung penyalinan tunggal, ganda, dan rentang, dengan penanganan `FloodWait` otomatis. Media akan diunduh dan dikirim ulang lengkap dengan metadata.
+Modul canggih untuk menyalin pesan dari link Telegram. Mendukung penyalinan tunggal, ganda, dan rentang, dengan penanganan `FloodWait` otomatis dan metode canggih untuk menangani link channel/grup privat secara andal. Media akan diunduh dan dikirim ulang lengkap dengan metadata.
 
 **Metode Utama:**
 `copy_from_links(user_chat_id, links_text, status_message)`
@@ -988,7 +988,7 @@ Saya bisa menyalin pesan dari channel/grup mana pun, cukup berikan linknya.
 async def copy_message_handler(client, message):
     if len(message.command) < 2:
         return await message.reply_text(COPY_HELP_TEXT, quote=True)
-    links_text = message.text.split(None, 1)
+    links_text = message.text.split(None, 1)[1]
     status_msg = await message.reply_text("⏳ `Memvalidasi link...`", quote=True)
     try:
         await client.ns.telegram.copier.copy_from_links(
@@ -1035,19 +1035,22 @@ async def divide_by_zero_safe(client, message):
 ```
 ---
 ### `formatter`
-Builder canggih untuk menyusun pesan berformat dengan sintaks yang fasih.
+Builder canggih untuk menyusun pesan berformat dengan sintaks yang fasih. **Pembaruan Penting:** Objek `formatter` kini berfungsi persis seperti string Python biasa (`str`), sehingga Anda **tidak perlu lagi memanggil `.to_string()`** di akhir. Ini membuat integrasi dengan fungsi Pyrogram seperti `message.reply()` menjadi mulus.
 
 **Inisialisasi:**
-`fmt = client.ns.telegram.formatter(mode)`
+`fmt = client.ns.telegram.formatter(mode="html")`
 
 **Contoh Penggunaan:**
 ```python
-fmt = client.ns.telegram.formatter("markdown")
+fmt = client.ns.telegram.formatter(mode="html")
+
 pesan = (
     fmt.bold("🔥 Update Sistem").new_line(2)
     .text("Layanan telah kembali normal.").new_line()
-    .italic("Terima kasih atas kesabaran Anda.").to_string()
+    .italic("Terima kasih atas kesabaran Anda.")
 )
+
+# 'pesan' sekarang adalah objek string yang bisa langsung digunakan:
 # await message.reply(pesan)
 ```
 ### `story`
@@ -1072,7 +1075,7 @@ async def get_user_stories_handler(client, message):
     if len(message.command) < 2:
         return await message.edit_text("Sintaks: `.getstory @username`")
 
-    username = message.command
+    username = message.command[1]
     # Mengedit pesan perintah itu sendiri sebagai pesan status
     status_msg = await message.edit_text(f"Memulai proses untuk `{username}`...")
 
@@ -1451,3 +1454,4 @@ Pustaka ini dirilis di bawah [Lisensi MIT](https://opensource.org/licenses/MIT).
 ---
 
 Semoga dokumentasi yang komprehensif ini membuat pengalaman pengembangan Anda menjadi lebih mudah dan menyenangkan. Selamat mencoba dan berkreasi dengan `norsodikin`! Jika ada pertanyaan atau butuh bantuan, jangan ragu untuk kontak di [Telegram](https://t.me/NorSodikin).
+```
