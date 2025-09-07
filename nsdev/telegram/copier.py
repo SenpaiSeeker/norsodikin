@@ -3,7 +3,6 @@ import os
 import re
 from typing import Tuple
 
-from pyrogram.raw import functions, types
 from pyrogram.errors import FloodWait, RPCError
 from pyrogram.types import Message
 
@@ -31,30 +30,31 @@ class MessageCopier:
 
         return None, None
 
-    async def _get_peer_from_cache_or_api(self, chat_id):
-        if chat_id in self._peer_cache:
-            return self._peer_cache[chat_id]
-        
-        peer = await self._client.resolve_peer(chat_id)
-        self._peer_cache[chat_id] = peer
-        return peer
+    async def _force_get_peer_for_private_chat(self, chat_id_to_find: int):
+        if chat_id_to_find in self._peer_cache:
+            return self._peer_cache[chat_id_to_find]
+
+        is_private_channel_id = isinstance(chat_id_to_find, int) and str(chat_id_to_find).startswith("-100")
+
+        if not is_private_channel_id:
+            try:
+                peer = await self._client.resolve_peer(chat_id_to_find)
+                self._peer_cache[chat_id_to_find] = peer
+                return peer
+            except Exception as e:
+                raise RPCError(f"Gagal me-resolve peer untuk {chat_id_to_find}. Detail: {e}")
+
+        async for dialog in self._client.get_dialogs(limit=None):
+            if dialog.chat.id == chat_id_to_find:
+                peer = await self._client.resolve_peer(dialog.chat.id)
+                self._peer_cache[chat_id_to_find] = peer
+                return peer
+
+        raise RPCError(f"Tidak dapat menemukan chat {chat_id_to_find} di dalam daftar dialog Anda. Pastikan Anda adalah anggota.")
 
     async def _get_and_verify_message(self, chat_id, msg_id):
-        peer = await self._get_peer_from_cache_or_api(chat_id)
-
-        if isinstance(peer, types.InputPeerChannel):
-            raw_result = await self._client.invoke(
-                functions.channels.GetMessages(
-                    channel=types.InputChannel(channel_id=peer.channel_id, access_hash=peer.access_hash),
-                    id=[types.InputMessageID(id=msg_id)]
-                )
-            )
-            if not raw_result.messages:
-                raise RPCError(f"Pesan dengan ID {msg_id} tidak ditemukan di channel.")
-            
-            return await Message._parse(self._client, raw_result.messages[0], {u.id: u for u in raw_result.users}, {c.id: c for c in raw_result.chats})
-        else:
-            return await self._client.get_messages(chat_id, msg_id)
+        peer = await self._force_get_peer_for_private_chat(chat_id)
+        return await self._client.get_messages(peer, msg_id)
 
 
     async def _process_single_message(self, message: Message, user_chat_id: int, status_message: Message):
