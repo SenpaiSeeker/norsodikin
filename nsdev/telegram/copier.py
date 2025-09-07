@@ -1,7 +1,7 @@
 import asyncio
 import os
 import re
-from typing import Tuple
+from typing import Tuple, Union
 
 from pyrogram.errors import FloodWait, RPCError
 from pyrogram.types import Message
@@ -16,17 +16,21 @@ class MessageCopier:
         self._log = LoggerHandler()
         self._peer_cache = {}
 
-    def _parse_link(self, link: str) -> Tuple[int, int] or Tuple[None, None]:
-        public_match = re.match(r"https://t\.me/(\w+)/(\d+)", link)
+    def _parse_link(self, link: str) -> Tuple[Union[str, int], int] or Tuple[None, None]:
+        link = link.strip()
+        public_match = re.match(r"https?://t\.me/([a-zA-Z0-9_]{5,32})/(\d+)", link)
         if public_match:
             username, msg_id = public_match.groups()
             return username, int(msg_id)
 
-        private_match = re.match(r"https://t\.me/c/(\d+)/(\d+)", link)
+        private_match = re.match(r"https?://t\.me/c/(\d+)/(\d+)", link)
         if private_match:
             chat_id_str, msg_id = private_match.groups()
-            chat_id = int(f"-100{chat_id_str}")
-            return chat_id, int(msg_id)
+            try:
+                chat_id = int(f"-100{chat_id_str}")
+                return chat_id, int(msg_id)
+            except ValueError:
+                return None, None
 
         return None, None
 
@@ -55,6 +59,10 @@ class MessageCopier:
         )
 
     async def _get_and_verify_message(self, chat_id, msg_id):
+        if chat_id == "c":
+            raise RPCError("Invalid chat_id: received 'c'. Link parsing failed.")
+        if isinstance(chat_id, str) and chat_id.isdigit():
+            chat_id = int(chat_id)
         peer = await self._force_get_peer_for_private_chat(chat_id)
         return await self._client.get_messages(peer, msg_id)
 
@@ -118,8 +126,13 @@ class MessageCopier:
         else:
             for link in links_text.split():
                 chat_id, msg_id = self._parse_link(link)
-                if chat_id:
-                    links_to_process.append((chat_id, msg_id))
+                if chat_id is None:
+                    self._log.error(f"Link tidak valid: {link}")
+                    continue
+                if chat_id == "c":
+                    self._log.error(f"Parsing gagal untuk link: {link}")
+                    continue
+                links_to_process.append((chat_id, msg_id))
 
         if not links_to_process:
             raise ValueError("Tidak ada link valid yang ditemukan.")
