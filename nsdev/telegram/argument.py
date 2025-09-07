@@ -59,10 +59,10 @@ class Argument:
                 user_id = reply.from_user.id
             elif sender_chat and reply.sender_chat:
                 user_id = reply.sender_chat.id
-            
+
             if len(args) > 1:
                 reason = " ".join(args[1:])
-            
+
             return user_id, reason
 
         if len(args) > 1:
@@ -71,12 +71,12 @@ class Argument:
                 user_id = user.id
             except Exception:
                 return None, None
-            
+
             if len(args) > 2:
                 reason = " ".join(args[2:])
-            
+
             return user_id, reason
-            
+
         return None, None
 
     async def getAdmin(self, message):

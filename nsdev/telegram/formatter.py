@@ -11,6 +11,7 @@ class MarkdownDelimiters:
     BLOCKQUOTE_EXPANDABLE = "**>"
     BLOCKQUOTE_EXPANDABLE_END = "<**"
 
+
 class TextFormatter(str, MarkdownDelimiters):
     def __new__(cls, value="", mode="html"):
         return super().__new__(cls, value)
@@ -54,29 +55,33 @@ class TextFormatter(str, MarkdownDelimiters):
 
     def pre(self, text_content: str, language: str = ""):
         if self.mode == "html":
-            return TextFormatter(self + f"<pre><code class='language-{language}'>{text_content}</code></pre>", mode=self.mode)
+            return TextFormatter(
+                self + f"<pre><code class='language-{language}'>{text_content}</code></pre>", mode=self.mode
+            )
         return TextFormatter(self + f"{self.PRE}{language}\n{text_content}\n{self.PRE}", mode=self.mode)
 
     def blockquote(self, text_content: str):
-        if self.mode == 'html':
+        if self.mode == "html":
             return TextFormatter(self + f"<blockquote>{text_content}</blockquote>", mode=self.mode)
-        
-        lines = str(text_content).strip().split('\n')
-        quoted_lines = '\n'.join(f'{self.BLOCKQUOTE}{line}' for line in lines)
+
+        lines = str(text_content).strip().split("\n")
+        quoted_lines = "\n".join(f"{self.BLOCKQUOTE}{line}" for line in lines)
         return TextFormatter(self + quoted_lines, mode=self.mode)
-    
+
     def escaped_blockquote(self, text_content: str):
-        if self.mode == 'html':
+        if self.mode == "html":
             return self.blockquote(text_content)
-            
-        lines = str(text_content).strip().split('\n')
-        quoted_lines = '\n'.join(f'{self.BLOCKQUOTE_ESCAPE}{line}' for line in lines)
+
+        lines = str(text_content).strip().split("\n")
+        quoted_lines = "\n".join(f"{self.BLOCKQUOTE_ESCAPE}{line}" for line in lines)
         return TextFormatter(self + quoted_lines, mode=self.mode)
-        
+
     def expandable_blockquote(self, text_content: str):
-        if self.mode == 'html':
+        if self.mode == "html":
             return TextFormatter(self + f"<blockquote expandable>{text_content}</blockquote>", mode=self.mode)
-        return TextFormatter(self + f"{self.BLOCKQUOTE_EXPANDABLE}{text_content}{self.BLOCKQUOTE_EXPANDABLE_END}", mode=self.mode)
+        return TextFormatter(
+            self + f"{self.BLOCKQUOTE_EXPANDABLE}{text_content}{self.BLOCKQUOTE_EXPANDABLE_END}", mode=self.mode
+        )
 
     def link(self, text_content: str, url: str):
         if self.mode == "html":

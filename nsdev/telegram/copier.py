@@ -50,12 +50,13 @@ class MessageCopier:
                 self._peer_cache[chat_id_to_find] = peer
                 return peer
 
-        raise RPCError(f"Tidak dapat menemukan chat {chat_id_to_find} di dalam daftar dialog Anda. Pastikan Anda adalah anggota.")
+        raise RPCError(
+            f"Tidak dapat menemukan chat {chat_id_to_find} di dalam daftar dialog Anda. Pastikan Anda adalah anggota."
+        )
 
     async def _get_and_verify_message(self, chat_id, msg_id):
         peer = await self._force_get_peer_for_private_chat(chat_id)
         return await self._client.get_messages(peer, msg_id)
-
 
     async def _process_single_message(self, message: Message, user_chat_id: int, status_message: Message):
         thumb_path = None
@@ -70,44 +71,62 @@ class MessageCopier:
 
                 upload_progress = TelegramProgressBar(self._client, status_message, task_name="Uploading")
                 sender_map = {
-                    "video": self._client.send_video, "audio": self._client.send_audio,
-                    "document": self._client.send_document, "photo": self._client.send_photo,
-                    "voice": self._client.send_voice, "animation": self._client.send_animation,
+                    "video": self._client.send_video,
+                    "audio": self._client.send_audio,
+                    "document": self._client.send_document,
+                    "photo": self._client.send_photo,
+                    "voice": self._client.send_voice,
+                    "animation": self._client.send_animation,
                     "sticker": self._client.send_sticker,
                 }
                 if message.media.value in sender_map:
                     send_func = sender_map[message.media.value]
-                    kwargs = {"chat_id": user_chat_id, "caption": (message.caption or ""), "progress": upload_progress.update}
+                    kwargs = {
+                        "chat_id": user_chat_id,
+                        "caption": (message.caption or ""),
+                        "progress": upload_progress.update,
+                    }
                     media_attr = getattr(message, message.media.value, None)
-                    if hasattr(media_attr, "duration"): kwargs["duration"] = media_attr.duration
-                    if thumb_path: kwargs["thumb"] = thumb_path
+                    if hasattr(media_attr, "duration"):
+                        kwargs["duration"] = media_attr.duration
+                    if thumb_path:
+                        kwargs["thumb"] = thumb_path
                     kwargs[message.media.value] = file_path
                     await send_func(**kwargs)
-                else: await message.copy(user_chat_id)
-            else: await message.copy(user_chat_id)
+                else:
+                    await message.copy(user_chat_id)
+            else:
+                await message.copy(user_chat_id)
         finally:
-            if file_path and os.path.exists(file_path): os.remove(file_path)
-            if thumb_path and os.path.exists(thumb_path): os.remove(thumb_path)
-    
+            if file_path and os.path.exists(file_path):
+                os.remove(file_path)
+            if thumb_path and os.path.exists(thumb_path):
+                os.remove(thumb_path)
+
     async def copy_from_links(self, user_chat_id: int, links_text: str, status_message: Message):
         links_to_process = []
         if "|" in links_text:
             parts = [part.strip() for part in links_text.split("|")]
-            if len(parts) != 2: raise ValueError("Format rentang tidak valid.")
+            if len(parts) != 2:
+                raise ValueError("Format rentang tidak valid.")
             chat_id1, msg_id1 = self._parse_link(parts[0])
             chat_id2, msg_id2 = self._parse_link(parts[1])
-            if not (chat_id1 and chat_id2) or chat_id1 != chat_id2: raise ValueError("Link tidak valid atau bukan dari chat yang sama.")
-            for msg_id in range(min(msg_id1, msg_id2), max(msg_id1, msg_id2) + 1): links_to_process.append((chat_id1, msg_id))
+            if not (chat_id1 and chat_id2) or chat_id1 != chat_id2:
+                raise ValueError("Link tidak valid atau bukan dari chat yang sama.")
+            for msg_id in range(min(msg_id1, msg_id2), max(msg_id1, msg_id2) + 1):
+                links_to_process.append((chat_id1, msg_id))
         else:
             for link in links_text.split():
                 chat_id, msg_id = self._parse_link(link)
-                if chat_id: links_to_process.append((chat_id, msg_id))
-        
-        if not links_to_process: raise ValueError("Tidak ada link valid yang ditemukan.")
-            
+                if chat_id:
+                    links_to_process.append((chat_id, msg_id))
+
+        if not links_to_process:
+            raise ValueError("Tidak ada link valid yang ditemukan.")
+
         await status_message.edit(f"Siap menyalin {len(links_to_process)} pesan...")
         await asyncio.sleep(2)
-        
+
         total = len(links_to_process)
         for i, (chat_id, msg_id) in enumerate(links_to_process):
             try:
