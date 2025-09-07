@@ -1,5 +1,4 @@
 import asyncio
-import os
 import re
 from typing import Tuple
 
@@ -29,153 +28,98 @@ class MessageCopier:
 
         return None, None
 
+    async def _force_get_peer(self, chat_id_to_find: int):
+        if not isinstance(chat_id_to_find, int) or chat_id_to_find > 0:
+            return await self._client.resolve_peer(chat_id_to_find)
+
+        async for dialog in self._client.get_dialogs():
+            if dialog.chat.id == chat_id_to_find:
+                return await self._client.resolve_peer(dialog.chat.id)
+        
+        try:
+            chat = await self._client.get_chat(chat_id_to_find)
+            return await self._client.resolve_peer(chat.id)
+        except Exception as e:
+            raise RPCError(f"Tidak dapat menemukan atau mengakses chat {chat_id_to_find}. Pastikan Anda adalah anggota. Detail: {e}")
+
+    async def _get_and_verify_message(self, chat_id, msg_id):
+        peer = await self._force_get_peer(chat_id)
+        message = await self._client.get_messages(peer, msg_id)
+        return message
+
     async def _process_single_message(self, message: Message, user_chat_id: int, status_message: Message):
         thumb_path = None
         file_path = None
-
         try:
             if message.media:
                 download_progress = TelegramProgressBar(self._client, status_message, task_name="Downloads")
                 file_path = await self._client.download_media(message, progress=download_progress.update)
-
                 media_obj = message.video or message.audio
                 if media_obj and hasattr(media_obj, "thumbs") and media_obj.thumbs:
                     thumb_path = await self._client.download_media(media_obj.thumbs[-1].file_id)
 
                 upload_progress = TelegramProgressBar(self._client, status_message, task_name="Uploading")
-                media_type = message.media.value
-
                 sender_map = {
-                    "video": self._client.send_video,
-                    "audio": self._client.send_audio,
-                    "document": self._client.send_document,
-                    "photo": self._client.send_photo,
-                    "voice": self._client.send_voice,
-                    "animation": self._client.send_animation,
+                    "video": self._client.send_video, "audio": self._client.send_audio,
+                    "document": self._client.send_document, "photo": self._client.send_photo,
+                    "voice": self._client.send_voice, "animation": self._client.send_animation,
                     "sticker": self._client.send_sticker,
                 }
-
-                if media_type in sender_map:
-                    send_func = sender_map[media_type]
-
+                if message.media.value in sender_map:
+                    send_func = sender_map[message.media.value]
                     kwargs = {
-                        "chat_id": user_chat_id,
-                        media_type: file_path,
-                        "caption": message.caption.html if message.caption else "",
-                        "progress": upload_progress.update,
+                        "chat_id": user_chat_id, "caption": message.caption.html if message.caption else "",
+                        "progress": upload_progress.update
                     }
-
-                    media_attributes = getattr(message, media_type, None)
-                    if media_attributes:
-                        if hasattr(media_attributes, "duration") and media_attributes.duration:
-                            kwargs["duration"] = media_attributes.duration
-
-                        if thumb_path and media_type in ["video", "audio"]:
-                            kwargs["thumb"] = thumb_path
-
+                    media_attr = getattr(message, message.media.value, None)
+                    if hasattr(media_attr, "duration"): kwargs["duration"] = media_attr.duration
+                    if thumb_path: kwargs["thumb"] = thumb_path
+                    kwargs[message.media.value] = file_path
                     await send_func(**kwargs)
                 else:
                     await message.copy(user_chat_id)
             else:
                 await message.copy(user_chat_id)
         finally:
-            if file_path and os.path.exists(file_path):
-                os.remove(file_path)
-            if thumb_path and os.path.exists(thumb_path):
-                os.remove(thumb_path)
-
-    async def _get_and_verify_message(self, chat_id, msg_id):
-        try:
-            await self._client.get_chat(chat_id)
-        except Exception as e:
-            raise RPCError(f"Gagal mengakses chat {chat_id}. Anda mungkin bukan anggota atau di-ban. Detail: {e}")
-
-        message = await self._client.get_messages(chat_id, msg_id)
-        return message
-
+            if file_path: os.remove(file_path)
+            if thumb_path: os.remove(thumb_path)
+    
     async def copy_from_links(self, user_chat_id: int, links_text: str, status_message: Message):
+        links_to_process = []
         if "|" in links_text:
             parts = [part.strip() for part in links_text.split("|")]
-            if len(parts) != 2:
-                raise ValueError("Format rentang tidak valid. Gunakan: `link_awal | link_akhir`")
-
+            if len(parts) != 2: raise ValueError("Format rentang tidak valid.")
             chat_id1, msg_id1 = self._parse_link(parts[0])
             chat_id2, msg_id2 = self._parse_link(parts[1])
-
-            if not (chat_id1 and chat_id2) or chat_id1 != chat_id2:
-                raise ValueError("Link tidak valid atau tidak berasal dari chat yang sama untuk rentang.")
-
-            start_id = min(msg_id1, msg_id2)
-            end_id = max(msg_id1, msg_id2)
-            message_ids = list(range(start_id, end_id + 1))
-            chat_id_to_process = chat_id1
-
-            await status_message.edit(f"Siap menyalin {len(message_ids)} pesan dari `{chat_id_to_process}`...")
-            await asyncio.sleep(2)
-
-            total = len(message_ids)
-            i = 0
-            while i < total:
-                msg_id = message_ids[i]
-                try:
-                    await status_message.edit(f"Memproses pesan {i+1}/{total} (ID: {msg_id})...")
-                    message = await self._get_and_verify_message(chat_id_to_process, msg_id)
-                    
-                    if message.empty:
-                        i += 1
-                        continue
-
-                    await self._process_single_message(message, user_chat_id, status_message)
-                    await asyncio.sleep(1.5)
-                    i += 1
-
-                except FloodWait as e:
-                    wait_time = e.value + 2
-                    self._log.print(
-                        f"{self._log.YELLOW}[FloodWait] Terkena batasan Telegram. Menunggu {wait_time} detik...{self._log.RESET}"
-                    )
-                    await asyncio.sleep(wait_time)
-                except RPCError as e:
-                    self._log.error(f"Gagal memproses pesan {msg_id}: {e}")
-                    i += 1
-                except Exception as e:
-                    self._log.error(f"Kesalahan tak terduga pada pesan {msg_id}: {e}")
-                    i += 1
+            if not (chat_id1 and chat_id2) or chat_id1 != chat_id2: raise ValueError("Link tidak valid atau bukan dari chat yang sama.")
+            for msg_id in range(min(msg_id1, msg_id2), max(msg_id1, msg_id2) + 1):
+                links_to_process.append((chat_id1, msg_id))
         else:
-            links = links_text.split()
-            total = len(links)
-            i = 0
-            while i < total:
-                link = links[i]
-                try:
-                    chat_id, msg_id = self._parse_link(link)
-                    if not chat_id:
-                        i += 1
-                        continue
-
-                    await status_message.edit(f"Memproses link {i+1}/{total}...")
-                    message = await self._get_and_verify_message(chat_id, msg_id)
-                    
-                    if message.empty:
-                        i += 1
-                        continue
-
+            for link in links_text.split():
+                chat_id, msg_id = self._parse_link(link)
+                if chat_id: links_to_process.append((chat_id, msg_id))
+        
+        if not links_to_process: raise ValueError("Tidak ada link valid yang ditemukan.")
+            
+        await status_message.edit(f"Siap menyalin {len(links_to_process)} pesan...")
+        await asyncio.sleep(2)
+        
+        total = len(links_to_process)
+        for i, (chat_id, msg_id) in enumerate(links_to_process):
+            try:
+                await status_message.edit(f"Memproses pesan {i+1}/{total} (ID: {msg_id})...")
+                message = await self._get_and_verify_message(chat_id, msg_id)
+                if not message.empty:
                     await self._process_single_message(message, user_chat_id, status_message)
                     await asyncio.sleep(1.5)
-                    i += 1
-
-                except FloodWait as e:
-                    wait_time = e.value + 2
-                    self._log.print(
-                        f"{self._log.YELLOW}[FloodWait] Terkena batasan Telegram. Menunggu {wait_time} detik...{self._log.RESET}"
-                    )
-                    await asyncio.sleep(wait_time)
-                except RPCError as e:
-                    self._log.error(f"Gagal memproses link {link}: {e}")
-                    i += 1
-                except Exception as e:
-                    self._log.error(f"Kesalahan tak terduga pada link {link}: {e}")
-                    i += 1
+            except FloodWait as e:
+                wait_time = e.value + 2
+                self._log.print(f"{self._log.YELLOW}Terkena FloodWait. Menunggu {wait_time} detik...{self._log.RESET}")
+                await asyncio.sleep(wait_time)
+            except RPCError as e:
+                self._log.error(f"Gagal memproses pesan {msg_id}: {e}")
+            except Exception as e:
+                self._log.error(f"Kesalahan tak terduga pada pesan {msg_id}: {e}")
 
         await status_message.edit("✅ **Semua proses selesai!**")
         await asyncio.sleep(3)
