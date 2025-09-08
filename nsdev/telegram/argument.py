@@ -20,7 +20,7 @@ class Argument:
         )
 
     def getNamebot(self, bot_token):
-        url = f"https://api.telegram.org/bot{bot_token}/getMe"
+        url = f"https://api.telegram.org/bot  {bot_token}/getMe"
         try:
             response = requests.get(url)
             data = response.json()
@@ -31,37 +31,35 @@ class Argument:
             return str(error)
 
     def getMessage(self, message, is_arg=False, is_tuple=False):
+        cmd = getattr(message, "command", []) or []
+        replied = getattr(message, "reply_to_message", None)
+
+        def _text_of(msg):
+            return getattr(msg, "text", None) or getattr(msg, "caption", None) or ""
+
         if is_tuple:
-            args = message.command[1:] if hasattr(message, "command") and message.command else []
-            replied = message.reply_to_message
-            part1 = None
-            part2 = None
-            
-            if args:
-                part1 = args[0]
-                if len(args) > 1:
-                    part2 = " ".join(args[1:])
-                elif replied and (replied.text or replied.caption):
-                    part2 = replied.text or replied.caption
-            elif replied and (replied.text or replied.caption):
-                part2 = replied.text or replied.caption
-            
+            args = cmd[1:] if cmd else []
+            part1 = args[0] if args else None
+            if len(args) > 1:
+                part2 = " ".join(args[1:])
+            else:
+                part2 = _text_of(replied) if replied else None
             return part1, part2
-            
+
         if is_arg:
-            if message.reply_to_message and (not hasattr(message, "command") or len(message.command) < 2):
-                return message.reply_to_message.text or message.reply_to_message.caption
-            elif hasattr(message, "command") and len(message.command) > 1:
-                return message.text.split(None, 1)[1]
-            else:
-                return ""
-        else:
-            if message.reply_to_message:
-                return message.reply_to_message
-            elif hasattr(message, "command") and len(message.command) > 1:
-                return message.text.split(None, 1)[1]
-            else:
-                return ""
+            if replied and len(cmd) < 2:
+                return _text_of(replied)
+            if len(cmd) > 1:
+                rest = _text_of(message)
+                return rest.split(None, 1)[1] if rest and len(rest.split(None, 1)) > 1 else ""
+            return ""
+
+        if replied:
+            return replied
+        if len(cmd) > 1:
+            rest = _text_of(message)
+            return rest.split(None, 1)[1] if rest and len(rest.split(None, 1)) > 1 else ""
+        return ""
 
     async def getReasonAndId(self, message, sender_chat=False):
         args = message.text.strip().split()
@@ -74,7 +72,7 @@ class Argument:
                 user_id = reply.from_user.id
             elif sender_chat and reply.sender_chat:
                 user_id = reply.sender_chat.id
-            
+
             if len(args) > 1:
                 reason = " ".join(args[1:])
             return user_id, reason
@@ -85,11 +83,11 @@ class Argument:
                 user_id = user.id
             except Exception:
                 return None, None
-            
+
             if len(args) > 2:
                 reason = " ".join(args[2:])
             return user_id, reason
-            
+
         return None, None
 
     async def getAdmin(self, message):
