@@ -1,8 +1,6 @@
 import asyncio
-
 import pyrogram
 import requests
-
 
 class Argument:
     def __init__(self, client):
@@ -32,18 +30,35 @@ class Argument:
         except requests.exceptions.RequestException as error:
             return str(error)
 
-    def getMessage(self, message, is_arg=False):
+    def getMessage(self, message, is_arg=False, is_tuple=False):
+        if is_tuple:
+            args = message.command[1:] if hasattr(message, "command") and message.command else []
+            replied = message.reply_to_message
+            part1 = None
+            part2 = None
+            
+            if args:
+                part1 = args[0]
+                if len(args) > 1:
+                    part2 = " ".join(args[1:])
+                elif replied and (replied.text or replied.caption):
+                    part2 = replied.text or replied.caption
+            elif replied and (replied.text or replied.caption):
+                part2 = replied.text or replied.caption
+            
+            return part1, part2
+            
         if is_arg:
-            if message.reply_to_message and len(message.command) < 2:
+            if message.reply_to_message and (not hasattr(message, "command") or len(message.command) < 2):
                 return message.reply_to_message.text or message.reply_to_message.caption
-            elif len(message.command) > 1:
+            elif hasattr(message, "command") and len(message.command) > 1:
                 return message.text.split(None, 1)[1]
             else:
                 return ""
         else:
             if message.reply_to_message:
                 return message.reply_to_message
-            elif len(message.command) > 1:
+            elif hasattr(message, "command") and len(message.command) > 1:
                 return message.text.split(None, 1)[1]
             else:
                 return ""
@@ -59,10 +74,9 @@ class Argument:
                 user_id = reply.from_user.id
             elif sender_chat and reply.sender_chat:
                 user_id = reply.sender_chat.id
-
+            
             if len(args) > 1:
                 reason = " ".join(args[1:])
-
             return user_id, reason
 
         if len(args) > 1:
@@ -71,12 +85,11 @@ class Argument:
                 user_id = user.id
             except Exception:
                 return None, None
-
+            
             if len(args) > 2:
                 reason = " ".join(args[2:])
-
             return user_id, reason
-
+            
         return None, None
 
     async def getAdmin(self, message):
