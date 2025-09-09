@@ -19,7 +19,7 @@ class DataBase:
         :param options:
             - storage_type (str): 'local' (default), 'mongo', atau 'sqlite'.
             - file_name (str): Nama file untuk database lokal/SQLite (default: 'database').
-            - binary_keys (str | int): Kunci enkripsi untuk CipherHandler.
+            - keys_encrypt (str | int): Kunci enkripsi untuk CipherHandler.
             - method_encrypt (str): Metode enkripsi untuk CipherHandler (default: 'bytes').
             - mongo_url (str): URL MongoDB (wajib jika storage_type='mongo').
             - auto_backup (bool): Mengaktifkan backup otomatis ke Telegram (default: False).
@@ -319,6 +319,52 @@ class DataBase:
                     self._sqlite_set_vars(user_id_str, data)
                 else:
                     self._save_data(data)
+
+    def removeAllVars(self, user_id, var_key="variabel"):
+        user_id_str = str(user_id)
+        if self.storage_type == "mongo":
+            self.data.vars.update_one({"_id": user_id_str}, {"$unset": {var_key: ""}})
+        elif self.storage_type == "sqlite":
+            data = self._sqlite_get_vars(user_id_str)
+            if data.get("vars", {}).get(user_id_str):
+                del data["vars"][user_id_str]
+            self._sqlite_set_vars(user_id_str, data)
+        else:
+            data = self._load_data()
+            if data.get("vars") and data["vars"].get(user_id_str):
+                data["vars"].pop(user_id_str, None)
+            self._save_data(data)
+
+    def allVars(self, user_id, var_key="variabel", no_decrypt=False):
+        user_id_str = str(user_id)
+        if self.storage_type == "mongo":
+            encrypted_data = self._mongo_get_vars(user_id_str).get(var_key, {})
+        elif self.storage_type == "sqlite":
+            encrypted_data = self._sqlite_get_vars(user_id_str).get("vars", {}).get(user_id_str, {}).get(var_key, {})
+        else:
+            encrypted_data = self._load_data().get("vars", {}).get(user_id_str, {}).get(var_key, {})
+        if no_decrypt:
+            return json.dumps(encrypted_data, indent=4)
+        decrypted = {}
+        for key, value in encrypted_data.items():
+            if isinstance(value, list):
+                temp_list = []
+                for v in value:
+                    decrypted_v_str = self.cipher.decrypt(v)
+                    try:
+                        temp_list.append(json.loads(decrypted_v_str))
+                    except (json.JSONDecodeError, TypeError):
+                        temp_list.append(decrypted_v_str)
+                decrypted[key] = temp_list
+            elif isinstance(value, str):
+                decrypted_v_str = self.cipher.decrypt(value)
+                try:
+                    decrypted[key] = json.loads(decrypted_v_str)
+                except (json.JSONDecodeError, TypeError):
+                    decrypted[key] = decrypted_v_str
+            else:
+                decrypted[key] = value
+        return json.dumps(decrypted, indent=4)
 
     def saveBot(self, user_id, api_id, api_hash, value, is_token=False):
         user_id_str = str(user_id)
