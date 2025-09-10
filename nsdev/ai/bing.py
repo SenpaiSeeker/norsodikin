@@ -20,13 +20,13 @@ class ImageGenerator:
             cookies={"_U": auth_cookie_u},
             headers={
                 "User-Agent": fake_useragent.UserAgent().random,
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept": "application/json, text/plain, */*",
                 "Accept-Language": "en-US,en;q=0.9",
                 "Referer": f"{self.base_url}/images/create",
-                "DNT": "1",
+                "Origin": self.base_url,
                 "Connection": "keep-alive",
             },
-            follow_redirects=False,
+            follow_redirects=True,
             timeout=200,
         )
         self.logging_enabled = logging_enabled
@@ -64,20 +64,24 @@ class ImageGenerator:
         except httpx.RequestError as e:
             raise Exception(f"Gagal mengirim permintaan pembuatan gambar: {e}")
 
-        if response.status_code != 302:
+        if response.status_code not in (200, 302):
             self.__log(f"{self.log.RED}Status code tidak valid: {response.status_code}")
-            self.__log(f"{self.log.RED}Response: {response.text[:250]}...")
             raise Exception("Permintaan gagal. Pastikan cookie _U valid dan tidak kadaluarsa.")
 
-        redirect_url = response.headers.get("Location")
+        redirect_url = response.headers.get("Location", "")
         if not redirect_url or "id=" not in redirect_url:
-            raise Exception("Gagal mendapatkan ID permintaan dari redirect.")
+            html_id = re.search(r"\"id\":\"([^\"]+)\"", response.text)
+            if not html_id:
+                raise Exception("Gagal mendapatkan ID permintaan.")
+            request_id = html_id.group(1)
+        else:
+            request_id = re.search(r"id=([^&]+)", redirect_url).group(1)
 
-        request_id = re.search(r"id=([^&]+)", redirect_url).group(1)
         self.__log(f"{self.log.GREEN}Permintaan berhasil dikirim. ID: {request_id}")
         polling_url = f"/images/create/async/results/{request_id}?q={encoded_prompt}"
-
+        self.__log(f"{self.log.GREEN}Menunggu hasil gambar...")
         wait_start_time = time.time()
+
         while True:
             if time.time() - wait_start_time > max_wait_seconds:
                 raise Exception(f"Waktu tunggu habis ({max_wait_seconds} detik).")
@@ -94,11 +98,11 @@ class ImageGenerator:
                 continue
 
             if "errorMessage" in poll_response.text:
-                error_message = re.search(r'<div id="gil_err_msg">([^<]+)</div>', poll_response.text)
-                raise Exception(f"Bing error: {error_message.group(1) if error_message else 'unknown'}")
+                error_message = re.search(r'"errorMessage":"([^"]+)"', poll_response.text)
+                raise Exception(f"Bing error: {error_message.group(1) if error_message else 'Unknown error'}")
 
-            image_urls = re.findall(r'src="([^"]+)"', poll_response.text)
-            processed_urls = list(set([u.split("?w=")[0] for u in image_urls if "tse" in u]))
+            image_urls = re.findall(r'"(https:\/\/th\.bing\.com\/th\?id=OIP\.[^"]+)"', poll_response.text)
+            processed_urls = list(set([url.split("&w=")[0] for url in image_urls]))
 
             if processed_urls:
                 self.__log(
