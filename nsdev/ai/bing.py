@@ -68,14 +68,31 @@ class ImageGenerator:
             self.__log(f"{self.log.RED}Status code tidak valid: {response.status_code}")
             raise Exception("Permintaan gagal. Pastikan cookie _U valid dan tidak kadaluarsa.")
 
+        request_id = None
+
         redirect_url = response.headers.get("Location", "")
-        if not redirect_url or "id=" not in redirect_url:
-            html_id = re.search(r"\"id\":\"([^\"]+)\"", response.text)
-            if not html_id:
-                raise Exception("Gagal mendapatkan ID permintaan.")
-            request_id = html_id.group(1)
-        else:
-            request_id = re.search(r"id=([^&]+)", redirect_url).group(1)
+        if redirect_url and "id=" in redirect_url:
+            match = re.search(r"id=([^&]+)", redirect_url)
+            if match:
+                request_id = match.group(1)
+
+        if not request_id:
+            match = re.search(r'"requestId":"([^"]+)"', response.text)
+            if match:
+                request_id = match.group(1)
+
+        if not request_id:
+            match = re.search(r'"id":"([^"]+)"', response.text)
+            if match:
+                request_id = match.group(1)
+
+        if not request_id:
+            match = re.search(r"/images/create/async/results/([^?\"']+)", response.text)
+            if match:
+                request_id = match.group(1)
+
+        if not request_id:
+            raise Exception("Gagal mendapatkan ID permintaan dari respons Bing.")
 
         self.__log(f"{self.log.GREEN}Permintaan berhasil dikirim. ID: {request_id}")
         polling_url = f"/images/create/async/results/{request_id}?q={encoded_prompt}"
