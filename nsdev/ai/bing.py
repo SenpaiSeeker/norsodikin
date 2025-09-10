@@ -81,6 +81,13 @@ class ImageGenerator:
                 request_id = match.group(1)
 
         if not request_id:
+            match = re.search(r'"requestId":"([^"]+)"', response.text)
+            if match:
+                request_id = match.group(1)
+
+        if not request_id:
+            snippet = response.text.replace("\n", " ")
+            self.__log(f"{self.log.YELLOW}DEBUG: gagal parsing ID, cuplikan respons: {snippet}")
             raise Exception("Gagal mendapatkan ID permintaan dari respons Bing.")
 
         self.__log(f"{self.log.GREEN}Permintaan berhasil dikirim. ID: {request_id}")
