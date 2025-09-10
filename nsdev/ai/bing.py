@@ -20,17 +20,15 @@ class ImageGenerator:
             cookies={"_U": auth_cookie_u},
             headers={
                 "User-Agent": fake_useragent.UserAgent().random,
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept": "application/json, text/plain, */*",
                 "Accept-Language": "en-US,en;q=0.9",
                 "Referer": f"{self.base_url}/images/create",
+                "Content-Type": "application/json",
+                "Origin": self.base_url,
                 "DNT": "1",
                 "Connection": "keep-alive",
-                "Upgrade-Insecure-Requests": "1",
-                "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not.A/Brand";v="99"',
-                "Sec-Ch-Ua-Mobile": "?0",
-                "Sec-Ch-Ua-Platform": '"Windows"',
             },
-            follow_redirects=False,
+            follow_redirects=True,
             timeout=200,
         )
         self.logging_enabled = logging_enabled
@@ -44,7 +42,6 @@ class ImageGenerator:
             for line in f:
                 if line.strip().startswith("#") or line.strip() == "":
                     continue
-
                 parts = line.strip().split("\t")
                 if len(parts) == 7 and "bing.com" in parts[0] and parts[5] == "_U":
                     return parts[6]
@@ -60,27 +57,27 @@ class ImageGenerator:
             raise ValueError("Prompt tidak boleh kosong.")
 
         start_time = time.time()
-        self.__log(f"{self.log.GREEN}Memulai pembuatan gambar untuk prompt: '{prompt}'")
-        encoded_prompt = urllib.parse.quote(prompt)
-        url = f"/images/create?q={encoded_prompt}&rt=4&FORM=GENCRE"
+        self.__log(f"{self.log.GREEN}Memulai pembuatan gambar GPT-4.0 untuk prompt: '{prompt}'")
 
+        url = "/images/create"
+        payload = {"prompt": prompt, "gptVersion": "4.0"}
         try:
-            response = await self.client.post(url)
+            response = await self.client.post(url, json=payload)
         except httpx.RequestError as e:
             raise Exception(f"Gagal mengirim permintaan pembuatan gambar: {e}")
 
-        if response.status_code != 302:
-            self.__log(f"{self.log.RED}Status code tidak valid: {response.status_code}. Mungkin cookie tidak valid.")
+        if response.status_code not in (200, 202):
+            self.__log(f"{self.log.RED}Status code tidak valid: {response.status_code}")
             self.__log(f"{self.log.RED}Response: {response.text[:250]}...")
             raise Exception("Permintaan gagal. Pastikan cookie _U valid dan tidak kadaluarsa.")
 
-        redirect_url = response.headers.get("Location")
-        if not redirect_url or "id=" not in redirect_url:
-            raise Exception("Gagal mendapatkan ID permintaan dari redirect. Prompt mungkin diblokir.")
+        data = response.json()
+        request_id = data.get("id")
+        if not request_id:
+            raise Exception("Gagal mendapatkan ID permintaan dari response.")
 
-        request_id = re.search(r"id=([^&]+)", redirect_url).group(1)
         self.__log(f"{self.log.GREEN}Permintaan berhasil dikirim. ID: {request_id}")
-        polling_url = f"/images/create/async/results/{request_id}?q={encoded_prompt}"
+        polling_url = f"/images/create/async/results/{request_id}"
         self.__log(f"{self.log.GREEN}Menunggu hasil gambar...")
 
         wait_start_time = time.time()
@@ -96,23 +93,19 @@ class ImageGenerator:
                 continue
 
             if poll_response.status_code != 200:
-                self.__log(f"{self.log.YELLOW}Status polling {poll_response.status_code}, mencoba lagi...")
+                self.__log(f"{self.log.YELLOW}Status polling tidak 200, mencoba lagi...")
                 await asyncio.sleep(2)
                 continue
 
-            if "errorMessage" in poll_response.text:
-                error_message = re.search(r'<div id="gil_err_msg">([^<]+)</div>', poll_response.text)
-                if error_message:
-                    raise Exception(f"Bing error: {error_message.group(1)}")
-                raise Exception("Terjadi error dari Bing (tidak jelas).")
+            result_data = poll_response.json()
+            if "error" in result_data:
+                raise Exception(f"Bing error: {result_data['error']}")
 
-            image_urls = re.findall(r'https://(?:th|thfvnext)\.bing\.com[^\s"]+', poll_response.text)
-            processed_urls = list(set([u.split("?")[0] for u in image_urls]))
-
-            if processed_urls:
+            image_urls = result_data.get("images", [])
+            if image_urls:
                 self.__log(
-                    f"{self.log.GREEN}Ditemukan {len(processed_urls)} gambar. Total waktu: {round(time.time() - start_time, 2)}s."
+                    f"{self.log.GREEN}Ditemukan {len(image_urls)} gambar. Total waktu: {round(time.time() - start_time, 2)}s."
                 )
-                return processed_urls
+                return image_urls
 
             await asyncio.sleep(3)
