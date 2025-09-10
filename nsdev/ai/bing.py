@@ -49,7 +49,6 @@ class ImageGenerator:
     def __log(self, message: str):
         if self.logging_enabled:
             self.log.print(message)
-
     async def generate(self, prompt: str, max_wait_seconds: int = 300):
         if not prompt:
             raise ValueError("Prompt tidak boleh kosong.")
@@ -71,23 +70,13 @@ class ImageGenerator:
         request_id = None
 
         redirect_url = response.headers.get("Location", "")
-        if redirect_url and "id=" in redirect_url:
+        if redirect_url:
             match = re.search(r"id=([^&]+)", redirect_url)
             if match:
                 request_id = match.group(1)
 
         if not request_id:
-            match = re.search(r'"requestId":"([^"]+)"', response.text)
-            if match:
-                request_id = match.group(1)
-
-        if not request_id:
-            match = re.search(r'"id":"([^"]+)"', response.text)
-            if match:
-                request_id = match.group(1)
-
-        if not request_id:
-            match = re.search(r"/images/create/async/results/([^?\"']+)", response.text)
+            match = re.search(r'/images/create/detail/async/([^?"/]+)', response.text)
             if match:
                 request_id = match.group(1)
 
@@ -95,7 +84,7 @@ class ImageGenerator:
             raise Exception("Gagal mendapatkan ID permintaan dari respons Bing.")
 
         self.__log(f"{self.log.GREEN}Permintaan berhasil dikirim. ID: {request_id}")
-        polling_url = f"/images/create/async/results/{request_id}?q={encoded_prompt}"
+        polling_url = f"/images/create/detail/async/{request_id}?q={encoded_prompt}"
         self.__log(f"{self.log.GREEN}Menunggu hasil gambar...")
         wait_start_time = time.time()
 
