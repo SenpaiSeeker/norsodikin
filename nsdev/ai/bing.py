@@ -106,7 +106,7 @@ class ImageGenerator:
                 raise Exception(f"Bing error: {error_message.group(1)}")
 
             image_urls = re.findall(r'src="([^"]+)"', poll_response.text)
-            processed_urls = list(set([url.split("?w=")[0] for url in image_urls if "tse" in url]))
+            processed_urls = list(set([url.split("?w=")[0] for url in image_urls if "thfvnext" in url]))
 
             if processed_urls:
                 self.__log(
