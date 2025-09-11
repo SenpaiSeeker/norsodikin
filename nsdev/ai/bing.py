@@ -62,7 +62,7 @@ class ImageGenerator:
             raise ValueError(f"Could not find the '_U' cookie for bing.com in {file_path}")
 
         if "SRCHHPGUSR" not in result:
-            result["SRCHHPGUSR"] = "HV=bing_default;"
+            result["SRCHHPGUSR"] = "HV=bing_default"
 
         return result
 
