@@ -6,6 +6,7 @@ import urllib.parse
 
 import fake_useragent
 import httpx
+from bs4 import BeautifulSoup
 
 from ..utils.logger import LoggerHandler
 
@@ -104,17 +105,20 @@ class ImageGenerator:
                 error_message = re.search(r'<div id="gil_err_msg">([^<]+)</div>', poll_response.text)
                 raise Exception(f"Bing error: {error_message.group(1)}")
 
-            image_urls = re.findall(r'src="([^"]+)"', poll_response.text)
-            final_urls = [
-                url.split("?w=")[0]
-                for url in image_urls
-                if "th.bing.com" in url and "pid=ImgGn" in url
-            ]
+            soup = BeautifulSoup(poll_response.text, "lxml")
+            img_tags = soup.find_all("img")
+
+            final_urls = []
+            for tag in img_tags:
+                src = tag.get("src")
+                if src and "th.bing.com" in src and "pid=ImgGn" in src:
+                    clean_url = src.split("?w=")[0]
+                    final_urls.append(clean_url)
 
             if final_urls:
                 self.__log(
                     f"{self.log.GREEN}Ditemukan {len(final_urls)} gambar final. Total waktu: {round(time.time() - start_time, 2)}s."
                 )
-                return final_urls
+                return list(set(final_urls))
 
             await asyncio.sleep(3)
