@@ -3,7 +3,7 @@ import os
 import re
 import time
 import urllib.parse
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import fake_useragent
 import httpx
@@ -25,45 +25,46 @@ class ImageGenerator:
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
                 "Accept-Language": "en-US,en;q=0.5",
                 "Referer": f"{self.base_url}/images/create",
-                "DNT": "1",
-                "Upgrade-Insecure-Requests": "1",
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "same-origin",
-                "TE": "trailers",
-                "Connection": "keep-alive",
             },
-            cookies={"_U": self._auth_cookie},
+            cookies=self._auth_cookie,
             follow_redirects=False,
-            timeout=200,
+            timeout=httpx.Timeout(200.0),
         )
 
-    def _parse_cookie_file(self, file_path: str) -> str:
+    def _parse_cookie_file(self, file_path: str) -> Dict[str, str]:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Cookie file not found: {file_path}")
+
+        result = {}
         with open(file_path, "r", encoding="utf-8") as f:
             for line in f:
                 raw = line.strip()
                 if not raw or raw.startswith("#"):
                     continue
+
                 if "\t" in raw:
                     parts = raw.split("\t")
                     if len(parts) >= 7:
                         domain = parts[0]
                         name = parts[5]
                         value = parts[6]
-                        if name == "_U" and ("bing.com" in domain or domain.endswith("bing.com")):
-                            return value
-                if "=" in raw:
-                    if raw.startswith("_U="):
-                        return raw.split("=", 1)[1]
-                    try:
-                        kv = dict(part.split("=", 1) for part in raw.split(";") if "=" in part)
-                        if "_U" in kv:
-                            return kv["_U"]
-                    except Exception:
-                        pass
-        raise ValueError(f"Could not find the '_U' cookie for bing.com in {file_path}")
+                        if domain.endswith("bing.com") or "bing.com" in domain:
+                            if name in ("_U", "SRCHHPGUSR"):
+                                result[name] = value
+
+                elif "=" in raw:
+                    kv = dict(part.split("=", 1) for part in raw.split(";") if "=" in part)
+                    for key in ("_U", "SRCHHPGUSR"):
+                        if key in kv:
+                            result[key] = kv[key]
+
+        if "_U" not in result:
+            raise ValueError(f"Could not find the '_U' cookie for bing.com in {file_path}")
+
+        if "SRCHHPGUSR" not in result:
+            result["SRCHHPGUSR"] = "HV=bing_default;"
+
+        return result
 
     def __log(self, message: str):
         if self.logging_enabled:
@@ -140,7 +141,7 @@ class ImageGenerator:
         start_time = time.time()
         self.__log(f"{self.log.GREEN}Memulai pembuatan gambar untuk prompt: '{prompt}'")
         encoded_prompt = urllib.parse.quote(prompt)
-        post_url = f"/images/create?q={encoded_prompt}&rt=4&FORM=GENCRE"
+        post_url = f"/images/create?q={encoded_prompt}&rt=4&mdl=0&FORM=GENCRE"
         try:
             response = await self.client.post(post_url)
         except httpx.RequestError as e:
