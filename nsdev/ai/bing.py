@@ -43,7 +43,7 @@ class ImageGenerator:
 
         with open(file_path, "r", encoding="utf-8") as f:
             for line in f:
-                if line.strip().startswith("") or line.strip() == "":
+                if line.strip().startswith("#") or line.strip() == "":
                     continue
                 parts = line.strip().split("\t")
                 if len(parts) == 7 and "bing.com" in parts[0] and parts[5] == "_U":
