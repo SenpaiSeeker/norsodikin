@@ -3,7 +3,7 @@ import os
 import re
 import time
 import urllib.parse
-from typing import Optional, List, Dict
+from typing import List, Optional
 
 import fake_useragent
 import httpx
@@ -25,46 +25,45 @@ class ImageGenerator:
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
                 "Accept-Language": "en-US,en;q=0.5",
                 "Referer": f"{self.base_url}/images/create",
+                "DNT": "1",
+                "Upgrade-Insecure-Requests": "1",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "same-origin",
+                "TE": "trailers",
+                "Connection": "keep-alive",
             },
-            cookies=self._auth_cookie,
+            cookies={"_U": self._auth_cookie},
             follow_redirects=False,
-            timeout=httpx.Timeout(200.0),
+            timeout=200,
         )
 
-    def _parse_cookie_file(self, file_path: str) -> Dict[str, str]:
+    def _parse_cookie_file(self, file_path: str) -> str:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Cookie file not found: {file_path}")
-
-        result = {}
         with open(file_path, "r", encoding="utf-8") as f:
             for line in f:
                 raw = line.strip()
                 if not raw or raw.startswith("#"):
                     continue
-
                 if "\t" in raw:
                     parts = raw.split("\t")
                     if len(parts) >= 7:
                         domain = parts[0]
                         name = parts[5]
                         value = parts[6]
-                        if domain.endswith("bing.com") or "bing.com" in domain:
-                            if name in ("_U", "SRCHHPGUSR"):
-                                result[name] = value
-
-                elif "=" in raw:
-                    kv = dict(part.split("=", 1) for part in raw.split(";") if "=" in part)
-                    for key in ("_U", "SRCHHPGUSR"):
-                        if key in kv:
-                            result[key] = kv[key]
-
-        if "_U" not in result:
-            raise ValueError(f"Could not find the '_U' cookie for bing.com in {file_path}")
-
-        if "SRCHHPGUSR" not in result:
-            result["SRCHHPGUSR"] = "HV=bing_default"
-
-        return result
+                        if name == "_U" and ("bing.com" in domain or domain.endswith("bing.com")):
+                            return value
+                if "=" in raw:
+                    if raw.startswith("_U="):
+                        return raw.split("=", 1)[1]
+                    try:
+                        kv = dict(part.split("=", 1) for part in raw.split(";") if "=" in part)
+                        if "_U" in kv:
+                            return kv["_U"]
+                    except Exception:
+                        pass
+        raise ValueError(f"Could not find the '_U' cookie for bing.com in {file_path}")
 
     def __log(self, message: str):
         if self.logging_enabled:
@@ -104,12 +103,14 @@ class ImageGenerator:
         urls: List[str] = []
         if not isinstance(j, dict):
             return urls
+
         def add(u: Optional[str]):
             if not u:
                 return
             u = u.split("?w=")[0]
             if u not in urls:
                 urls.append(u)
+
         if "images" in j and isinstance(j["images"], list):
             for it in j["images"]:
                 if isinstance(it, dict):
@@ -122,6 +123,7 @@ class ImageGenerator:
                 for it in r["images"]:
                     if isinstance(it, dict):
                         add(it.get("src") or it.get("url"))
+
         def walk(obj):
             if isinstance(obj, dict):
                 for v in obj.values():
@@ -130,8 +132,9 @@ class ImageGenerator:
                 for v in obj:
                     walk(v)
             elif isinstance(obj, str):
-                if obj.startswith("http") and ("tse" in obj or "th?id=" in obj or obj.endswith(('.jpg', '.png'))):
+                if obj.startswith("http") and "bing.com" in obj and "OIG" in obj:
                     add(obj)
+
         walk(j)
         return urls
 
@@ -141,7 +144,7 @@ class ImageGenerator:
         start_time = time.time()
         self.__log(f"{self.log.GREEN}Memulai pembuatan gambar untuk prompt: '{prompt}'")
         encoded_prompt = urllib.parse.quote(prompt)
-        post_url = f"/images/create?q={encoded_prompt}&rt=4&mdl=0&FORM=GENCRE"
+        post_url = f"/images/create?q={encoded_prompt}&rt=4&FORM=GENCRE"
         try:
             response = await self.client.post(post_url)
         except httpx.RequestError as e:
@@ -160,7 +163,9 @@ class ImageGenerator:
                 if not request_id:
                     imgs = await self._extract_images_from_json(j)
                     if imgs:
-                        self.__log(f"{self.log.GREEN}Ditemukan {len(imgs)} gambar langsung dari respons JSON. Total waktu: {round(time.time() - start_time, 2)}s.")
+                        self.__log(
+                            f"{self.log.GREEN}Ditemukan {len(imgs)} gambar langsung dari respons JSON. Total waktu: {round(time.time() - start_time, 2)}s."
+                        )
                         return imgs
             if not request_id:
                 html = response.text
@@ -169,16 +174,20 @@ class ImageGenerator:
                     images = re.findall(r'src="([^\"]+)"', html)
                     processed = []
                     for u in images:
-                        if isinstance(u, str) and ("tse" in u or "th?id=" in u or u.endswith(('.jpg', '.png'))):
-                            processed.append(u.split('?w=')[0])
+                        if isinstance(u, str) and "bing.com" in u and "OIG" in u:
+                            processed.append(u.split("?")[0])
                     processed = list(dict.fromkeys(processed))
                     if processed:
-                        self.__log(f"{self.log.GREEN}Ditemukan {len(processed)} gambar langsung dari HTML. Total waktu: {round(time.time() - start_time, 2)}s.")
+                        self.__log(
+                            f"{self.log.GREEN}Ditemukan {len(processed)} gambar langsung dari HTML. Total waktu: {round(time.time() - start_time, 2)}s."
+                        )
                         return processed
         else:
             raise Exception("Permintaan gagal. Pastikan cookie _U valid dan tidak kadaluarsa.")
         if not request_id:
-            raise Exception("Gagal mendapatkan ID permintaan dari respons. Prompt mungkin diblokir atau format respons baru belum dikenali.")
+            raise Exception(
+                "Gagal mendapatkan ID permintaan dari respons. Prompt mungkin diblokir atau format respons baru belum dikenali."
+            )
         self.__log(f"{self.log.GREEN}Permintaan berhasil dikirim. ID: {request_id}")
         polling_url = f"/images/create/async/results/{request_id}?q={encoded_prompt}"
         self.__log(f"{self.log.GREEN}Menunggu hasil gambar...")
@@ -217,15 +226,19 @@ class ImageGenerator:
             if isinstance(j, dict):
                 imgs = await self._extract_images_from_json(j)
                 if imgs:
-                    self.__log(f"{self.log.GREEN}Ditemukan {len(imgs)} gambar. Total waktu: {round(time.time() - start_time, 2)}s.")
+                    self.__log(
+                        f"{self.log.GREEN}Ditemukan {len(imgs)} gambar. Total waktu: {round(time.time() - start_time, 2)}s."
+                    )
                     return imgs
             images = re.findall(r'src="([^\"]+)"', text)
             processed_urls = []
             for u in images:
-                if isinstance(u, str) and ("tse" in u or "th?id=" in u or u.endswith(('.jpg', '.png'))):
-                    processed_urls.append(u.split('?w=')[0])
+                if isinstance(u, str) and "bing.com" in u and "OIG" in u:
+                    processed_urls.append(u.split("?")[0])
             processed_urls = list(dict.fromkeys(processed_urls))
             if processed_urls:
-                self.__log(f"{self.log.GREEN}Ditemukan {len(processed_urls)} gambar. Total waktu: {round(time.time() - start_time, 2)}s.")
+                self.__log(
+                    f"{self.log.GREEN}Ditemukan {len(processed_urls)} gambar. Total waktu: {round(time.time() - start_time, 2)}s."
+                )
                 return processed_urls
             await asyncio.sleep(poll_interval)
