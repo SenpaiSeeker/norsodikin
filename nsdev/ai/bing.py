@@ -108,10 +108,18 @@ class ImageGenerator:
             image_urls = re.findall(r'src="([^"]+)"', poll_response.text)
             processed_urls = list(set([url.split("?w=")[0] for url in image_urls if "tse" in url]))
 
-            if processed_urls:
+            final_urls = []
+            for img_url in processed_urls:
+                if "pid=ImgGn" in img_url:
+                    continue
+                if "r=0" in img_url or "thid=" in img_url:
+                    continue
+                final_urls.append(img_url)
+
+            if final_urls:
                 self.__log(
-                    f"{self.log.GREEN}Ditemukan {len(processed_urls)} gambar. Total waktu: {round(time.time() - start_time, 2)}s."
+                    f"{self.log.GREEN}Ditemukan {len(final_urls)} gambar final. Total waktu: {round(time.time() - start_time, 2)}s."
                 )
-                return processed_urls
+                return final_urls
 
             await asyncio.sleep(3)
