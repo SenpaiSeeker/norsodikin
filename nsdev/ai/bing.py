@@ -43,9 +43,8 @@ class ImageGenerator:
 
         with open(file_path, "r", encoding="utf-8") as f:
             for line in f:
-                if line.strip().startswith("#") or line.strip() == "":
+                if line.strip().startswith("") or line.strip() == "":
                     continue
-
                 parts = line.strip().split("\t")
                 if len(parts) == 7 and "bing.com" in parts[0] and parts[5] == "_U":
                     return parts[6]
@@ -106,15 +105,11 @@ class ImageGenerator:
                 raise Exception(f"Bing error: {error_message.group(1)}")
 
             image_urls = re.findall(r'src="([^"]+)"', poll_response.text)
-            processed_urls = list(set([url.split("?w=")[0] for url in image_urls if "tse" in url]))
-
-            final_urls = []
-            for img_url in processed_urls:
-                if "pid=ImgGn" in img_url:
-                    continue
-                if "r=0" in img_url or "thid=" in img_url:
-                    continue
-                final_urls.append(img_url)
+            final_urls = [
+                url.split("?w=")[0]
+                for url in image_urls
+                if "th.bing.com" in url and "pid=ImgGn" in url
+            ]
 
             if final_urls:
                 self.__log(
