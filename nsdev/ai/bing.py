@@ -73,15 +73,20 @@ class ImageGenerator:
         if response.status_code != 302:
             self.__log(f"{self.log.RED}Status code tidak valid: {response.status_code}. Mungkin cookie tidak valid.")
             self.__log(f"{self.log.RED}Response: {response.text[:500]}...")
+            
             if "Unsupported prompt" in response.text or "This prompt may result in an image that is inappropriate." in response.text:
                  raise Exception("Permintaan gagal: Prompt diblokir oleh Bing (Unsupported/Inappropriate prompt).")
             if "The content you provided was in violation" in response.text:
                 raise Exception("Permintaan gagal: Prompt diblokir oleh Bing karena pelanggaran konten.")
-            raise Exception("Permintaan gagal. Pastikan cookie _U valid dan tidak kadaluarsa, atau coba prompt yang berbeda.")
+            if response.status_code == 200:
+                if any(phrase in response.text.lower() for phrase in ["sign in", "log in", "microsoft account", "authenticating", "session expired", "please refresh"]):
+                    raise Exception("Permintaan gagal: Bing membutuhkan autentikasi ulang (cookie _U tidak valid atau kadaluarsa). Harap perbarui cookie.")
+            
+            raise Exception(f"Permintaan gagal. Status code {response.status_code} tidak 302 yang diharapkan. Pastikan cookie _U valid dan tidak kadaluarsa, atau coba prompt yang berbeda.")
 
         redirect_url = response.headers.get("Location")
         if not redirect_url:
-            raise Exception("Gagal mendapatkan redirect URL. Pastikan cookie _U valid dan prompt tidak diblokir.")
+            raise Exception("Gagal mendapatkan redirect URL dari status 302. Headers tidak valid atau ada masalah internal Bing.")
         
         request_id_match = re.search(r"id=([^&]+)", redirect_url)
         if not request_id_match:
