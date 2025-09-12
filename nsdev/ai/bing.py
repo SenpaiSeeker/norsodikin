@@ -63,7 +63,7 @@ class ImageGenerator:
         start_time = time.time()
         self.__log(f"{self.log.GREEN}Memulai pembuatan gambar untuk prompt: '{prompt}'")
         encoded_prompt = urllib.parse.quote(prompt)
-        url = f"/images/create?q={encoded_prompt}&rt=4&FORM=GENCRE"
+        url = f"/images/create?q={encoded_prompt}&rt=3&FORM=GENCRE"
 
         try:
             response = await self.client.post(url)
