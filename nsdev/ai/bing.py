@@ -63,7 +63,8 @@ class ImageGenerator:
         start_time = time.time()
         self.__log(f"{self.log.GREEN}Memulai pembuatan gambar untuk prompt: '{prompt}'")
         encoded_prompt = urllib.parse.quote(prompt)
-        url = f"/images/create?q={encoded_prompt}&rt=3&FORM=GENCRE"
+
+        url = f"/images/create?q={encoded_prompt}&rt=3&FORM=GENCRE&qft=+model:DALL-E3"
 
         try:
             response = await self.client.post(url)
@@ -81,11 +82,12 @@ class ImageGenerator:
 
         request_id = re.search(r"id=([^&]+)", redirect_url).group(1)
         self.__log(f"{self.log.GREEN}Permintaan berhasil dikirim. ID: {request_id}")
-        polling_url = f"/images/create/async/results/{request_id}?q={encoded_prompt}"
+        polling_url = f"/images/create/async/results/{request_id}?q={encoded_prompt}&qft=+model:DALL-E3"
         self.__log(f"{self.log.GREEN}Menunggu hasil gambar...")
-        wait_start_time = time.time()
 
+        wait_start_time = time.time()
         rendered_urls = set()
+
         while True:
             if time.time() - wait_start_time > max_wait_seconds:
                 raise Exception(f"Waktu tunggu habis ({max_wait_seconds} detik).")
