@@ -54,7 +54,6 @@ class NsDev:
             gemini=ChatbotGemini,
             hf=HuggingFaceGenerator,
             local=OllamaClient,
-            pinterest=PinterestClient,
             qrcode=QrCodeGenerator,
             search=WebSearch,
             stt=SpeechToText,
