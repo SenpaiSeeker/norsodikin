@@ -73,26 +73,17 @@ class ImageGenerator:
         if response.status_code != 302:
             self.__log(f"{self.log.RED}Status code tidak valid: {response.status_code}. Mungkin cookie tidak valid.")
             self.__log(f"{self.log.RED}Response: {response.text[:500]}...")
-            
-            if "Unsupported prompt" in response.text or "This prompt may result in an image that is inappropriate." in response.text:
-                 raise Exception("Permintaan gagal: Prompt diblokir oleh Bing (Unsupported/Inappropriate prompt).")
-            if "The content you provided was in violation" in response.text:
-                raise Exception("Permintaan gagal: Prompt diblokir oleh Bing karena pelanggaran konten.")
-            if response.status_code == 200:
-                if any(phrase in response.text.lower() for phrase in ["sign in", "log in", "microsoft account", "authenticating", "session expired", "please refresh"]):
-                    raise Exception("Permintaan gagal: Bing membutuhkan autentikasi ulang (cookie _U tidak valid atau kadaluarsa). Harap perbarui cookie.")
-            
-            raise Exception(f"Permintaan gagal. Status code {response.status_code} tidak 302 yang diharapkan. Pastikan cookie _U valid dan tidak kadaluarsa, atau coba prompt yang berbeda.")
+            raise Exception("Permintaan gagal. Pastikan cookie _U valid dan tidak kadaluarsa.")
 
         redirect_url = response.headers.get("Location")
-        if not redirect_url:
-            raise Exception("Gagal mendapatkan redirect URL dari status 302. Headers tidak valid atau ada masalah internal Bing.")
-        
+        if not redirect_url or "id=" not in redirect_url:
+            self.__log(f"{self.log.RED}Redirect URL: {redirect_url}")
+            raise Exception("Gagal mendapatkan ID permintaan dari redirect. Prompt mungkin diblokir.")
+
         request_id_match = re.search(r"id=([^&]+)", redirect_url)
         if not request_id_match:
-            self.__log(f"{self.log.RED}Redirect URL tidak mengandung ID: {redirect_url}. Mungkin prompt diblokir atau ada masalah lain.")
-            raise Exception("Gagal mendapatkan ID permintaan dari redirect. Prompt mungkin diblokir atau ada masalah tak terduga.")
-
+             raise Exception("Gagal mendapatkan ID permintaan dari redirect. Prompt mungkin diblokir.")
+        
         request_id = request_id_match.group(1)
         self.__log(f"{self.log.GREEN}Permintaan berhasil dikirim. ID: {request_id}")
         polling_url = f"/images/create/async/results/{request_id}?q={encoded_prompt}"
@@ -111,20 +102,54 @@ class ImageGenerator:
                 continue
 
             if poll_response.status_code != 200:
-                self.__log(f"{self.log.YELLOW}Status polling tidak 200 ({poll_response.status_code}), mencoba lagi...")
+                self.__log(f"{self.log.YELLOW}Status polling tidak 200, mencoba lagi...")
                 await asyncio.sleep(2)
                 continue
-
+            
             if "errorMessage" in poll_response.text:
                 error_message_match = re.search(r'<div id="gil_err_msg">([^<]+)</div>', poll_response.text)
                 if error_message_match:
                     raise Exception(f"Bing error: {error_message_match.group(1).strip()}")
                 else:
-                    raise Exception(f"Bing error: Unknown error in async response: {poll_response.text[:250]}...")
+                    raise Exception(f"Bing error (unknown details): {poll_response.text[:250]}...")
             
-            blob_urls = re.findall(r'href="(https://[^"]*bing.com/images/blob\?bcid=[^"]*)"', poll_response.text)
+            if re.search(r'data-preloader="true"', poll_response.text) or \
+               re.search(r'Your images are being created', poll_response.text, re.IGNORECASE) or \
+               re.search(r'<div[^>]*class="img_sugg_info"[^>]*>We are working on your request', poll_response.text, re.IGNORECASE) or \
+               re.search(r'<div[^>]*class="gil_items_status"[^>]*>([^<]+?)</div>', poll_response.text, re.IGNORECASE):
+                self.__log(f"{self.log.YELLOW}Gambar masih dalam proses rendering. Menunggu...")
+                await asyncio.sleep(3)
+                continue
             
-            processed_urls = list(set(blob_urls))
+            image_urls_raw = re.findall(
+                r'(?:<a[^>]+href="[^"]+"[^>]*>)?<img[^>]*src="(https?://th.bing.com/th/id/OIP.[^"]+)"[^>]*>', 
+                poll_response.text
+            )
+            
+            processed_urls = []
+            
+            for group in image_urls_raw:
+                img_src_url = group[1]
+
+                parsed_url = urllib.parse.urlparse(img_src_url)
+                query_params = urllib.parse.parse_qs(parsed_url.query)
+                
+                query_params["w"] = ["1024"]
+                query_params["h"] = ["1024"]
+                query_params["qlt"] = ["90"]
+                query_params["dpr"] = ["1"]
+                
+                reconstructed_query = urllib.parse.urlencode(query_params, doseq=True)
+                high_res_url = urllib.parse.urlunparse(parsed_url._replace(query=reconstructed_query))
+                
+                processed_urls.append(high_res_url)
+
+            processed_urls = list(set(processed_urls))
+
+            if len(processed_urls) < 4:
+                self.__log(f"{self.log.YELLOW}Ditemukan {len(processed_urls)} gambar, menunggu {4 - len(processed_urls)} gambar lainnya.")
+                await asyncio.sleep(3)
+                continue
 
             if processed_urls:
                 self.__log(
@@ -132,5 +157,4 @@ class ImageGenerator:
                 )
                 return processed_urls
             
-            self.__log(f"{self.log.CYAN}Gambar masih dalam proses rendering atau belum siap. Menunggu... ({round(time.time() - wait_start_time)}s)")
             await asyncio.sleep(3)
