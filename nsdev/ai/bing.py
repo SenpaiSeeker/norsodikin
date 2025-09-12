@@ -6,7 +6,6 @@ import urllib.parse
 
 import fake_useragent
 import httpx
-from bs4 import BeautifulSoup
 
 from ..utils.logger import LoggerHandler
 
@@ -46,6 +45,7 @@ class ImageGenerator:
             for line in f:
                 if line.strip().startswith("#") or line.strip() == "":
                     continue
+
                 parts = line.strip().split("\t")
                 if len(parts) == 7 and "bing.com" in parts[0] and parts[5] == "_U":
                     return parts[6]
@@ -85,6 +85,7 @@ class ImageGenerator:
         self.__log(f"{self.log.GREEN}Menunggu hasil gambar...")
         wait_start_time = time.time()
 
+        rendered_urls = set()
         while True:
             if time.time() - wait_start_time > max_wait_seconds:
                 raise Exception(f"Waktu tunggu habis ({max_wait_seconds} detik).")
@@ -105,20 +106,22 @@ class ImageGenerator:
                 error_message = re.search(r'<div id="gil_err_msg">([^<]+)</div>', poll_response.text)
                 raise Exception(f"Bing error: {error_message.group(1)}")
 
-            soup = BeautifulSoup(poll_response.text, "lxml")
-            img_tags = soup.find_all("img")
+            image_urls = re.findall(r'src="([^"]+)"', poll_response.text)
+            processed_urls = [url.split("?w=")[0] for url in image_urls if "tse" in url]
 
-            final_urls = []
-            for tag in img_tags:
-                src = tag.get("src")
-                if src and "th.bing.com" in src and "pid=ImgGn" in src:
-                    clean_url = src.split("?w=")[0]
-                    final_urls.append(clean_url)
+            for img_url in processed_urls:
+                if img_url not in rendered_urls:
+                    try:
+                        img_resp = await self.client.get(img_url)
+                        if img_resp.status_code == 200 and b"blur" not in img_resp.content[:200]:
+                            rendered_urls.add(img_url)
+                    except Exception:
+                        continue
 
-            if final_urls:
+            if rendered_urls:
                 self.__log(
-                    f"{self.log.GREEN}Ditemukan {len(final_urls)} gambar final. Total waktu: {round(time.time() - start_time, 2)}s."
+                    f"{self.log.GREEN}Ditemukan {len(rendered_urls)} gambar final. Total waktu: {round(time.time() - start_time, 2)}s."
                 )
-                return list(set(final_urls))
+                return list(rendered_urls)
 
             await asyncio.sleep(3)
