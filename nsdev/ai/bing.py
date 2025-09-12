@@ -13,6 +13,9 @@ from ..utils.logger import LoggerHandler
 
 class ImageGenerator:
     def __init__(self, cookies_file_path: str = "cookies.txt", logging_enabled: bool = True):
+        self.logging_enabled = logging_enabled
+        self.log = LoggerHandler()
+
         self.cookies: httpx.Cookies = self._parse_netscape_cookies(cookies_file_path)
 
         self.base_url = "https://www.bing.com"
@@ -36,8 +39,7 @@ class ImageGenerator:
             follow_redirects=False,
             timeout=200,
         )
-        self.logging_enabled = logging_enabled
-        self.log = LoggerHandler()
+
 
     def _parse_netscape_cookies(self, file_path: str) -> httpx.Cookies:
         if not os.path.exists(file_path):
@@ -57,12 +59,11 @@ class ImageGenerator:
                         value = parts[6]
                         cookies[name] = value
                     except (IndexError, ValueError) as e:
-                        self.log.print(f"Failed to parse cookie line: '{line}'. Error: {e}", color=self.log.YELLOW)
+                        self.log.print(f"{self.log.YELLOW}Failed to parse cookie line: '{line}'. Error: {e}")
                         continue
                 else:
                     self.log.print(
-                        f"Skipping malformed cookie line: '{line}' (expected 7 parts, got {len(parts)})",
-                        color=self.log.YELLOW,
+                        f"{self.log.YELLOW}Skipping malformed cookie line: '{line}' (expected 7 parts, got {len(parts)})",
                     )
 
         if not cookies:
