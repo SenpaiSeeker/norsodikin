@@ -128,7 +128,8 @@ class ImageGenerator:
                 except httpx.RequestError as e:
                     self.__log(f"{self.log.YELLOW}Gagal memeriksa header gambar, mencoba lagi. Error: {e}")
                 
-            await asyncio.sleep(3)        redirect_url = response.headers.get("Location")
+            await asyncio.sleep(3)
+            redirect_url = response.headers.get("Location")
         if not redirect_url or "id=" not in redirect_url:
             raise Exception("Gagal mendapatkan ID permintaan dari redirect. Prompt mungkin diblokir.")
 
