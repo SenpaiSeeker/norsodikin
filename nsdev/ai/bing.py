@@ -20,7 +20,7 @@ class ImageGenerator:
             cookies=self.all_cookies,
             headers={
                 "User-Agent": fake_useragent.UserAgent().random,
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,/;q=0.8",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
                 "Accept-Language": "en-US,en;q=0.5",
                 "Referer": f"{self.base_url}/images/create",
                 "DNT": "1",
@@ -48,7 +48,7 @@ class ImageGenerator:
                     continue
 
                 parts = line.strip().split("\t")
-                if len(parts) == 7 and "bing.com" in parts[0]:
+                if len(parts) == 7:
                     cookie_name = parts[5]
                     cookie_value = parts[6]
                     cookies_dict[cookie_name] = cookie_value
