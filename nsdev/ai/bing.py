@@ -75,7 +75,7 @@ class ImageGenerator:
 
         if response.status_code != 302:
             self.__log(f"{self.log.RED}Status code tidak valid: {response.status_code}. Mungkin cookie tidak valid.")
-            self.__log(f"{self.log.RED}Response: {response.text[:500]}...")
+            self.__log(f"{self.log.RED}Response: {response.text}...")
             raise Exception("Permintaan gagal. Pastikan cookie _U valid dan tidak kadaluarsa.")
 
         redirect_url = response.headers.get("Location")
