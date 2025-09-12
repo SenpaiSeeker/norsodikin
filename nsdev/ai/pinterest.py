@@ -18,10 +18,27 @@ class PinterestClient:
             raise ValueError("File cookie kosong atau tidak valid.")
 
         self.base_url = "https://www.pinterest.com"
+        self.headers = {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Cache-Control": "max-age=0",
+            "DNT": "1",
+            "Sec-CH-UA": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            "Sec-CH-UA-Mobile": "?0",
+            "Sec-CH-UA-Platform": '"Linux"',
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
+            "User-Agent": fake_useragent.UserAgent().chrome,
+        }
+
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
             cookies=self.all_cookies,
-            headers={"User-Agent": fake_useragent.UserAgent().random},
+            headers=self.headers,
             follow_redirects=True,
             timeout=30,
         )
@@ -55,30 +72,24 @@ class PinterestClient:
             res_responses = data.get("resourceResponses", [])
             if not res_responses:
                 return []
-
             pins_data = res_responses[0].get("response", {}).get("data", {})
             pins_list = pins_data.get("results", [])
             if not pins_list:
-                 pins_list = pins_data.get("data", [])
-
+                pins_list = pins_data.get("data", [])
 
             for pin_data in pins_list[:limit]:
                 if not isinstance(pin_data, dict) or pin_data.get("type") != "pin":
                     continue
-
                 images = pin_data.get("images", {})
                 if not images:
                     continue
-
                 image_url = (
                     images.get("orig", {}).get("url")
                     or images.get("736x", {}).get("url")
                     or (list(images.values())[0].get("url") if images else None)
                 )
-
                 if not image_url:
                     continue
-
                 pin_id = pin_data.get("id", "")
                 description = pin_data.get("description", "") or pin_data.get("grid_title", "")
                 pin_url = f"{self.base_url}/pin/{pin_id}/" if pin_id else self.base_url
@@ -94,25 +105,33 @@ class PinterestClient:
             response = await self.client.get(url)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "lxml")
-            
             script_tag = soup.find("script", {"id": "initial-state"})
+
             if not script_tag:
-                raise Exception("Tidak dapat menemukan data 'initial-state'. Halaman mungkin berubah atau cookie tidak valid.")
-                
+                if "login" in response.text.lower() or "log in" in response.text.lower():
+                    raise Exception(
+                        "Otentikasi Gagal: Halaman login terdeteksi. Pastikan file cookie Anda terbaru dan valid."
+                    )
+                with open("pinterest_debug.html", "w", encoding="utf-8") as f:
+                    f.write(response.text)
+                raise Exception(
+                    "Struktur Halaman Berubah: Tidak dapat menemukan data 'initial-state'. File 'pinterest_debug.html' telah dibuat untuk inspeksi."
+                )
+
             json_data = json.loads(script_tag.string)
             return self._extract_pins_from_initial_state(json_data, limit)
         except httpx.HTTPStatusError as e:
-             raise Exception(f"Pinterest merespons dengan error {e.response.status_code}. Cookie Anda mungkin sudah kedaluwarsa.")
+            raise Exception(f"Pinterest merespons dengan error {e.response.status_code}. Cookie mungkin kedaluwarsa.")
         except Exception as e:
             raise e
 
     async def search_pins(self, query: str, limit: int = 10) -> List[SimpleNamespace]:
         if not query:
             raise ValueError("Query tidak boleh kosong.")
-        
+
         self.__log(f"Mencari pin di Pinterest untuk: '{query}'")
         search_url = f"/search/pins/?q={urllib.parse.quote(query)}&rs=typed"
-        
+
         pins = await self._fetch_and_extract_pins_from_html(search_url, limit)
         self.__log(f"Menemukan {len(pins)} pin untuk query '{query}'.")
         return pins
@@ -124,7 +143,7 @@ class PinterestClient:
         clean_username = username.lstrip("@")
         self.__log(f"Mengambil pin untuk pengguna: '{clean_username}'")
         profile_url = f"/{clean_username}/_created/"
-        
+
         pins = await self._fetch_and_extract_pins_from_html(profile_url, limit)
         self.__log(f"Menemukan {len(pins)} pin untuk pengguna '{clean_username}'.")
         return pins
