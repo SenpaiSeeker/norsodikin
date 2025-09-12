@@ -20,7 +20,7 @@ class ImageGenerator:
             cookies=self.all_cookies,
             headers={
                 "User-Agent": fake_useragent.UserAgent().random,
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,/;q=0.8",
                 "Accept-Language": "en-US,en;q=0.5",
                 "Referer": f"{self.base_url}/images/create",
                 "DNT": "1",
