@@ -205,54 +205,6 @@ async def local_ai_handler(client, message):
         await status_msg.edit(f"❌ Gagal terhubung ke Ollama: {e}")
 ```
 ---
-### `pinterest`
-Modul untuk melakukan scraping di Pinterest menggunakan sesi login dari cookies. Berguna untuk mencari pin atau mengambil pin dari profil pengguna tertentu.
-
-**Penting:** Fitur ini memerlukan file `cookies.txt` (format Netscape) dari akun Pinterest yang sudah login.
-
-**Inisialisasi:**
-`pinterest = client.ns.ai.pinterest(cookies_file_path)`
-
-| Parameter           | Tipe Data | Default                 | Deskripsi                                   |
-|---------------------|-----------|-------------------------|---------------------------------------------|
-| `cookies_file_path` | `str`     | `"pinterest_cookies.txt"` | Path ke file `cookies.txt` Pinterest Anda. |
-
-**Metode Utama:**
-- `search_pins(query, limit=10)`: Mencari pin berdasarkan query.
-- `get_user_pins(username, limit=10)`: Mengambil pin terbaru dari profil pengguna.
-
-**Contoh Penggunaan:**
-```python
-from pyrogram.types import InputMediaPhoto
-
-# @app.on_message(filters.command("pin"))
-# async def pinterest_search_handler(client, message):
-#     query = " ".join(message.command[1:])
-#     if not query:
-#         return await message.reply("Sintaks: /pin <query>")
-
-#     status_msg = await message.reply("🔍 Mencari pin di Pinterest...")
-#     try:
-#         # Pastikan file "pinterest_cookies.txt" ada di direktori yang sama
-#         pinterest = client.ns.ai.pinterest()
-#         pins = await pinterest.search_pins(query, limit=5)
-        
-#         if not pins:
-#             return await status_msg.edit("Tidak menemukan pin yang cocok.")
-            
-#         media_group = []
-#         for pin in pins:
-#             # Batasi caption agar tidak terlalu panjang
-#             caption = (pin.description[:200] + '...') if len(pin.description) > 200 else pin.description
-#             media_group.append(InputMediaPhoto(media=pin.image_url, caption=f"📌 {caption}"))
-        
-#         await client.send_media_group(message.chat.id, media_group)
-#         await status_msg.delete()
-
-#     except Exception as e:
-#         await status_msg.edit(f"❌ Gagal: {e}")
-```
----
 ### `qrcode`
 Modul AI untuk membuat dan membaca gambar QR Code.
 
