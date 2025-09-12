@@ -14,13 +14,8 @@ from ..utils.logger import LoggerHandler
 class PinterestClient:
     def __init__(self, cookies_file_path: str = "pinterest.txt", logging_enabled: bool = True):
         self.all_cookies = self._parse_cookie_file(cookies_file_path)
-        self.csrf_token = self.all_cookies.get("csrftoken")
-        self.app_version = None
-
-        if not self.csrf_token:
-            raise ValueError(
-                "File cookie tidak memiliki 'csrftoken'. Pastikan Anda login dan mengekspor cookie dengan benar."
-            )
+        if not self.all_cookies:
+            raise ValueError("File cookie kosong atau tidak valid.")
 
         self.base_url = "https://www.pinterest.com"
         self.client = httpx.AsyncClient(
@@ -36,7 +31,7 @@ class PinterestClient:
     def _parse_cookie_file(self, file_path: str) -> dict:
         if not os.path.exists(file_path):
             raise FileNotFoundError(
-                f"File cookie tidak ditemukan: {file_path}. Sediakan file cookie Netscape yang valid untuk Pinterest."
+                f"File cookie tidak ditemukan: {file_path}. Sediakan file cookie Netscape yang valid."
             )
         cookies_dict = {}
         with open(file_path, "r", encoding="utf-8") as f:
@@ -54,94 +49,71 @@ class PinterestClient:
             color_attr = getattr(self.log, color.upper(), self.log.GREEN)
             self.log.print(f"{color_attr}{message}")
 
-    async def _ensure_app_version(self):
-        if self.app_version:
-            return
-        try:
-            self.__log("Mengambil versi aplikasi Pinterest...", color="YELLOW")
-            response = await self.client.get(self.base_url)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, "lxml")
-            script_tag = soup.find("script", {"id": "initial-state"})
-            if not script_tag:
-                raise Exception("Tidak dapat menemukan JSON state awal untuk mengambil app version.")
-            initial_data = json.loads(script_tag.string)
-            self.app_version = initial_data.get("context", {}).get("appVersion")
-            if not self.app_version:
-                raise Exception("Key 'appVersion' tidak ditemukan dalam JSON state awal.")
-            self.__log(f"Berhasil mendapatkan App Version: {self.app_version}")
-        except Exception as e:
-            raise Exception(f"Gagal mengambil App Version dinamis dari Pinterest: {e}")
-
-    async def _call_api(self, resource_name: str, source_url: str, data_payload: dict):
-        await self._ensure_app_version()
-
-        data_json = json.dumps(data_payload)
-        api_url = f"/resource/{resource_name}/get/?source_url={urllib.parse.quote(source_url)}&data={urllib.parse.quote(data_json)}"
-
-        headers = {
-            "Accept": "application/json, text/javascript, */*, q=0.01",
-            "X-Requested-With": "XMLHttpRequest",
-            "X-CSRFToken": self.csrf_token,
-            "X-App-Version": self.app_version,
-            "Referer": f"{self.base_url}{source_url}",
-        }
-
-        try:
-            response = await self.client.get(api_url, headers=headers)
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            error_details = f"Server merespons dengan status {e.response.status_code}."
-            if "authentication failed" in e.response.text.lower():
-                error_details += " Otentikasi gagal, cookie mungkin tidak valid atau sudah kedaluwarsa."
-            raise Exception(f"Gagal mengambil data dari API Pinterest: {error_details}")
-        except json.JSONDecodeError:
-            raise Exception("Gagal mem-parsing respons JSON dari API. Cookie mungkin tidak valid.")
-        except Exception as e:
-            raise e
-
-    def _extract_pins_from_json(self, json_data, limit: int) -> List[SimpleNamespace]:
+    def _extract_pins_from_initial_state(self, data: dict, limit: int) -> List[SimpleNamespace]:
         results = []
         try:
-            resource_response = json_data.get("resource_response", {})
-            pins_data = resource_response.get("data", {})
-            pins = pins_data.get("results", [])
-            if not pins:
-                pins = pins_data.get("data", [])
+            res_responses = data.get("resourceResponses", [])
+            if not res_responses:
+                return []
 
-            for pin_data in pins[:limit]:
+            pins_data = res_responses[0].get("response", {}).get("data", {})
+            pins_list = pins_data.get("results", [])
+            if not pins_list:
+                 pins_list = pins_data.get("data", [])
+
+
+            for pin_data in pins_list[:limit]:
                 if not isinstance(pin_data, dict) or pin_data.get("type") != "pin":
                     continue
-                images = pin_data.get("images")
+
+                images = pin_data.get("images", {})
                 if not images:
                     continue
+
                 image_url = (
                     images.get("orig", {}).get("url")
                     or images.get("736x", {}).get("url")
                     or (list(images.values())[0].get("url") if images else None)
                 )
+
                 if not image_url:
                     continue
 
                 pin_id = pin_data.get("id", "")
                 description = pin_data.get("description", "") or pin_data.get("grid_title", "")
                 pin_url = f"{self.base_url}/pin/{pin_id}/" if pin_id else self.base_url
-                results.append(SimpleNamespace(id=pin_id, url=pin_url, image_url=image_url, description=description))
+                results.append(
+                    SimpleNamespace(id=pin_id, url=pin_url, image_url=image_url, description=description)
+                )
         except (KeyError, IndexError, TypeError) as e:
-            self.__log(f"Error saat parsing data pin: {e}", color="YELLOW")
+            self.__log(f"Error saat mem-parsing data pin dari initial state: {e}", color="YELLOW")
         return results
+
+    async def _fetch_and_extract_pins_from_html(self, url: str, limit: int) -> List[SimpleNamespace]:
+        try:
+            response = await self.client.get(url)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "lxml")
+            
+            script_tag = soup.find("script", {"id": "initial-state"})
+            if not script_tag:
+                raise Exception("Tidak dapat menemukan data 'initial-state'. Halaman mungkin berubah atau cookie tidak valid.")
+                
+            json_data = json.loads(script_tag.string)
+            return self._extract_pins_from_initial_state(json_data, limit)
+        except httpx.HTTPStatusError as e:
+             raise Exception(f"Pinterest merespons dengan error {e.response.status_code}. Cookie Anda mungkin sudah kedaluwarsa.")
+        except Exception as e:
+            raise e
 
     async def search_pins(self, query: str, limit: int = 10) -> List[SimpleNamespace]:
         if not query:
             raise ValueError("Query tidak boleh kosong.")
-
+        
         self.__log(f"Mencari pin di Pinterest untuk: '{query}'")
-        source_url = f"/search/pins/?q={urllib.parse.quote(query)}&rs=typed"
-        data_payload = {"options": {"q": query, "scope": "pins"}, "context": {}}
-
-        json_data = await self._call_api("BaseSearchResource", source_url, data_payload)
-        pins = self._extract_pins_from_json(json_data, limit)
+        search_url = f"/search/pins/?q={urllib.parse.quote(query)}&rs=typed"
+        
+        pins = await self._fetch_and_extract_pins_from_html(search_url, limit)
         self.__log(f"Menemukan {len(pins)} pin untuk query '{query}'.")
         return pins
 
@@ -151,10 +123,8 @@ class PinterestClient:
 
         clean_username = username.lstrip("@")
         self.__log(f"Mengambil pin untuk pengguna: '{clean_username}'")
-        source_url = f"/{clean_username}/_created/"
-        data_payload = {"options": {"username": clean_username}, "context": {}}
-
-        json_data = await self._call_api("UserResource", source_url, data_payload)
-        pins = self._extract_pins_from_json(json_data, limit)
+        profile_url = f"/{clean_username}/_created/"
+        
+        pins = await self._fetch_and_extract_pins_from_html(profile_url, limit)
         self.__log(f"Menemukan {len(pins)} pin untuk pengguna '{clean_username}'.")
         return pins
