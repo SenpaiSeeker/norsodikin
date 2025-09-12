@@ -13,17 +13,26 @@ from ..utils.logger import LoggerHandler
 class PinterestClient:
     def __init__(self, cookies_file_path: str = "pinterest.txt", logging_enabled: bool = True):
         self.all_cookies = self._parse_cookie_file(cookies_file_path)
+
+        self.csrf_token = self.all_cookies.get("csrftoken")
+        if not self.csrf_token:
+            raise ValueError(
+                "File cookie tidak memiliki 'csrftoken'. Pastikan Anda login dan mengekspor cookie dengan benar."
+            )
+
         self.base_url = "https://www.pinterest.com"
+        headers = {
+            "User-Agent": fake_useragent.UserAgent().random,
+            "Accept": "application/json, text/javascript, */*, q=0.01",
+            "Accept-Language": "en-US,en;q=0.5",
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": self.csrf_token,
+        }
+
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
             cookies=self.all_cookies,
-            headers={
-                "User-Agent": fake_useragent.UserAgent().random,
-                "Accept": "application/json, text/javascript, */*, q=0.01",
-                "Accept-Language": "en-US,en;q=0.5",
-                "X-Requested-With": "XMLHttpRequest",
-                "Referer": self.base_url,
-            },
+            headers=headers,
             follow_redirects=True,
             timeout=30,
         )
@@ -59,12 +68,18 @@ class PinterestClient:
         data_json = json.dumps(data_payload)
         api_url = f"/resource/{resource_name}/get/?source_url={urllib.parse.quote(source_url)}&data={urllib.parse.quote(data_json)}"
 
+        dynamic_headers = self.client.headers.copy()
+        dynamic_headers["Referer"] = f"{self.base_url}{source_url}"
+
         try:
-            response = await self.client.get(api_url)
+            response = await self.client.get(api_url, headers=dynamic_headers)
             response.raise_for_status()
             return response.json()
-        except httpx.RequestError as e:
-            raise Exception(f"Gagal mengambil data dari API Pinterest: {e}")
+        except httpx.HTTPStatusError as e:
+            error_details = f"Server merespons dengan status {e.response.status_code}."
+            if "authentication failed" in e.response.text.lower():
+                error_details += " Otentikasi gagal, cookie mungkin tidak valid atau sudah kedaluwarsa."
+            raise Exception(f"Gagal mengambil data dari API Pinterest: {error_details}")
         except json.JSONDecodeError:
             raise Exception("Gagal mem-parsing respons JSON dari API. Cookie mungkin tidak valid.")
         except Exception as e:
@@ -124,8 +139,8 @@ class PinterestClient:
     async def get_user_pins(self, username: str, limit: int = 10) -> List[SimpleNamespace]:
         if not username:
             raise ValueError("Username tidak boleh kosong.")
-        
-        clean_username = username.lstrip('@')
+
+        clean_username = username.lstrip("@")
         self.__log(f"Mengambil pin untuk pengguna: '{clean_username}'")
         source_url = f"/{clean_username}/_created/"
         data_payload = {"options": {"username": clean_username}, "context": {}}
