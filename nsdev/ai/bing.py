@@ -45,6 +45,7 @@ class ImageGenerator:
             for line in f:
                 if line.strip().startswith("#") or line.strip() == "":
                     continue
+
                 parts = line.strip().split("\t")
                 if len(parts) == 7 and "bing.com" in parts[0] and parts[5] == "_U":
                     return parts[6]
@@ -63,7 +64,7 @@ class ImageGenerator:
         self.__log(f"{self.log.GREEN}Memulai pembuatan gambar untuk prompt: '{prompt}'")
         encoded_prompt = urllib.parse.quote(prompt)
 
-        url = f"/images/create?q={encoded_prompt}&rt=4&FORM=GENCRE&aid=DALL-E3"
+        url = f"/images/create?q={encoded_prompt}&rt=4&FORM=GENCRE"
 
         try:
             response = await self.client.post(url)
@@ -85,6 +86,8 @@ class ImageGenerator:
         self.__log(f"{self.log.GREEN}Menunggu hasil gambar...")
 
         wait_start_time = time.time()
+        rendered_urls = set()
+
         while True:
             if time.time() - wait_start_time > max_wait_seconds:
                 raise Exception(f"Waktu tunggu habis ({max_wait_seconds} detik).")
@@ -106,15 +109,12 @@ class ImageGenerator:
                 raise Exception(f"Bing error: {error_message.group(1)}")
 
             image_urls = re.findall(r'src="([^"]+)"', poll_response.text)
-            processed_urls = list(set([
-                url.split("?w=")[0] for url in image_urls
-                if "bing.net" in url and "OIG" not in url
-            ]))
+            processed_urls = [url.split("?w=")[0] for url in image_urls if "tse" in url]
 
-            if processed_urls:
+            if rendered_urls:
                 self.__log(
-                    f"{self.log.GREEN}Ditemukan {len(processed_urls)} gambar final. Total waktu: {round(time.time() - start_time, 2)}s."
+                    f"{self.log.GREEN}Ditemukan {len(rendered_urls)} gambar final. Total waktu: {round(time.time() - start_time, 2)}s."
                 )
-                return processed_urls
+                return list(rendered_urls)
 
             await asyncio.sleep(3)
