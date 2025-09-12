@@ -12,12 +12,12 @@ from ..utils.logger import LoggerHandler
 
 class ImageGenerator:
     def __init__(self, cookies_file_path: str = "cookies.txt", logging_enabled: bool = True):
-        auth_cookie_u = self._parse_cookie_file(cookies_file_path)
+        self.all_cookies = self._parse_cookie_file(cookies_file_path)
 
         self.base_url = "https://www.bing.com"
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
-            cookies={"_U": auth_cookie_u},
+            cookies=self.all_cookies,
             headers={
                 "User-Agent": fake_useragent.UserAgent().random,
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
@@ -37,20 +37,23 @@ class ImageGenerator:
         self.logging_enabled = logging_enabled
         self.log = LoggerHandler()
 
-    def _parse_cookie_file(self, file_path: str) -> str:
+    def _parse_cookie_file(self, file_path: str) -> dict:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Cookie file not found: {file_path}")
 
+        cookies_dict = {}
         with open(file_path, "r", encoding="utf-8") as f:
             for line in f:
                 if line.strip().startswith("#") or line.strip() == "":
                     continue
 
                 parts = line.strip().split("\t")
-                if len(parts) == 7 and "bing.com" in parts[0] and parts[5] == "_U":
-                    return parts[6]
-
-        raise ValueError(f"Could not find the '_U' cookie for bing.com in {file_path}")
+                if len(parts) == 7 and "bing.com" in parts[0]:
+                    cookie_name = parts[5]
+                    cookie_value = parts[6]
+                    cookies_dict[cookie_name] = cookie_value
+        
+        return cookies_dict
 
     def __log(self, message: str):
         if self.logging_enabled:
@@ -128,8 +131,8 @@ class ImageGenerator:
             
             processed_urls = []
             
-            for group in image_urls_raw:
-                img_src_url = group[1]
+            for url_group in image_urls_raw:
+                img_src_url = url_group 
 
                 parsed_url = urllib.parse.urlparse(img_src_url)
                 query_params = urllib.parse.parse_qs(parsed_url.query)
