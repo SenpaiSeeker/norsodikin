@@ -6,13 +6,12 @@ from typing import List
 
 import fake_useragent
 import httpx
-from bs4 import BeautifulSoup
 
 from ..utils.logger import LoggerHandler
 
 
 class PinterestClient:
-    def __init__(self, cookies_file_path: str = "pinterest_cookies.txt", logging_enabled: bool = True):
+    def __init__(self, cookies_file_path: str = "pinterest.txt", logging_enabled: bool = True):
         self.all_cookies = self._parse_cookie_file(cookies_file_path)
         self.base_url = "https://www.pinterest.com"
         self.client = httpx.AsyncClient(
@@ -20,10 +19,10 @@ class PinterestClient:
             cookies=self.all_cookies,
             headers={
                 "User-Agent": fake_useragent.UserAgent().random,
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept": "application/json, text/javascript, */*, q=0.01",
                 "Accept-Language": "en-US,en;q=0.5",
-                "DNT": "1",
-                "Upgrade-Insecure-Requests": "1",
+                "X-Requested-With": "XMLHttpRequest",
+                "Referer": self.base_url,
             },
             follow_redirects=True,
             timeout=30,
@@ -56,28 +55,26 @@ class PinterestClient:
             color_attr = getattr(self.log, color.upper(), self.log.GREEN)
             self.log.print(f"{color_attr}{message}")
 
-    async def _fetch_and_parse_json(self, url: str):
+    async def _call_api(self, resource_name: str, source_url: str, data_payload: dict):
+        data_json = json.dumps(data_payload)
+        api_url = f"/resource/{resource_name}/get/?source_url={urllib.parse.quote(source_url)}&data={urllib.parse.quote(data_json)}"
+
         try:
-            response = await self.client.get(url)
+            response = await self.client.get(api_url)
             response.raise_for_status()
-            soup = BeautifulSoup(response.text, "lxml")
-            script_tag = soup.find("script", {"id": "initial-state"})
-            if not script_tag:
-                raise Exception(
-                    "Tidak dapat menemukan JSON state awal. Cookie mungkin tidak valid atau struktur halaman telah berubah."
-                )
-            return json.loads(script_tag.string)
+            return response.json()
         except httpx.RequestError as e:
-            raise Exception(f"Gagal mengambil data dari Pinterest: {e}")
+            raise Exception(f"Gagal mengambil data dari API Pinterest: {e}")
         except json.JSONDecodeError:
-            raise Exception("Gagal mem-parsing data JSON dari halaman Pinterest.")
+            raise Exception("Gagal mem-parsing respons JSON dari API. Cookie mungkin tidak valid.")
         except Exception as e:
             raise e
 
     def _extract_pins_from_json(self, json_data, limit: int) -> List[SimpleNamespace]:
         results = []
         try:
-            pins_data = json_data.get("resourceResponses", [{}])[0].get("response", {}).get("data", {})
+            resource_response = json_data.get("resource_response", {})
+            pins_data = resource_response.get("data", {})
             pins = pins_data.get("results", [])
             if not pins:
                 pins = pins_data.get("data", [])
@@ -91,8 +88,8 @@ class PinterestClient:
                     continue
 
                 image_url = (
-                    image_versions.get("736x", {}).get("url")
-                    or image_versions.get("originals", {}).get("url")
+                    image_versions.get("originals", {}).get("url")
+                    or image_versions.get("736x", {}).get("url")
                     or (list(image_versions.values())[0].get("url") if image_versions else None)
                 )
 
@@ -115,10 +112,10 @@ class PinterestClient:
             raise ValueError("Query tidak boleh kosong.")
 
         self.__log(f"Mencari pin di Pinterest untuk: '{query}'")
-        encoded_query = urllib.parse.quote(query)
-        search_url = f"/search/pins/?q={encoded_query}&rs=typed"
+        source_url = f"/search/pins/?q={urllib.parse.quote(query)}&rs=typed"
+        data_payload = {"options": {"q": query, "scope": "pins"}, "context": {}}
 
-        json_data = await self._fetch_and_parse_json(search_url)
+        json_data = await self._call_api("BaseSearchResource", source_url, data_payload)
         pins = self._extract_pins_from_json(json_data, limit)
 
         self.__log(f"Menemukan {len(pins)} pin untuk query '{query}'.")
@@ -127,12 +124,14 @@ class PinterestClient:
     async def get_user_pins(self, username: str, limit: int = 10) -> List[SimpleNamespace]:
         if not username:
             raise ValueError("Username tidak boleh kosong.")
+        
+        clean_username = username.lstrip('@')
+        self.__log(f"Mengambil pin untuk pengguna: '{clean_username}'")
+        source_url = f"/{clean_username}/_created/"
+        data_payload = {"options": {"username": clean_username}, "context": {}}
 
-        self.__log(f"Mengambil pin untuk pengguna: '{username}'")
-        profile_url = f"/{username.lstrip('@')}/_created/"
-
-        json_data = await self._fetch_and_parse_json(profile_url)
+        json_data = await self._call_api("UserResource", source_url, data_payload)
         pins = self._extract_pins_from_json(json_data, limit)
 
-        self.__log(f"Menemukan {len(pins)} pin untuk pengguna '{username}'.")
+        self.__log(f"Menemukan {len(pins)} pin untuk pengguna '{clean_username}'.")
         return pins
