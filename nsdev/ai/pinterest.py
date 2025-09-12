@@ -12,7 +12,7 @@ from ..utils.logger import LoggerHandler
 
 
 class PinterestClient:
-    def __init__(self, cookies_file_path: str = "pinterest.txt", logging_enabled: bool = True):
+    def __init__(self, cookies_file_path: str = "cookies/Pinterest.txt", logging_enabled: bool = True):
         self.all_cookies = self._parse_cookie_file(cookies_file_path)
         if not self.all_cookies:
             raise ValueError("File cookie kosong atau tidak valid.")
@@ -69,9 +69,11 @@ class PinterestClient:
     def _extract_pins_from_initial_state(self, data: dict, limit: int) -> List[SimpleNamespace]:
         results = []
         try:
-            res_responses = data.get("resourceResponses", [])
+            initial_state = data.get("props", {}).get("initialReduxState", {})
+            res_responses = initial_state.get("resourceResponses", [])
             if not res_responses:
                 return []
+
             pins_data = res_responses[0].get("response", {}).get("data", {})
             pins_list = pins_data.get("results", [])
             if not pins_list:
@@ -97,7 +99,7 @@ class PinterestClient:
                     SimpleNamespace(id=pin_id, url=pin_url, image_url=image_url, description=description)
                 )
         except (KeyError, IndexError, TypeError) as e:
-            self.__log(f"Error saat mem-parsing data pin dari initial state: {e}", color="YELLOW")
+            self.__log(f"Error saat mem-parsing data pin dari initial props: {e}", color="YELLOW")
         return results
 
     async def _fetch_and_extract_pins_from_html(self, url: str, limit: int) -> List[SimpleNamespace]:
@@ -105,17 +107,16 @@ class PinterestClient:
             response = await self.client.get(url)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "lxml")
-            script_tag = soup.find("script", {"id": "initial-state"})
+            
+            script_tag = soup.find("script", {"data-test-id": "initial-props"})
 
             if not script_tag:
                 if "login" in response.text.lower() or "log in" in response.text.lower():
                     raise Exception(
                         "Otentikasi Gagal: Halaman login terdeteksi. Pastikan file cookie Anda terbaru dan valid."
                     )
-                with open("pinterest_debug.html", "w", encoding="utf-8") as f:
-                    f.write(response.text)
                 raise Exception(
-                    "Struktur Halaman Berubah: Tidak dapat menemukan data 'initial-state'. File 'pinterest_debug.html' telah dibuat untuk inspeksi."
+                    "Struktur Halaman Berubah: Tidak dapat menemukan data 'initial-props'. Pastikan cookie valid."
                 )
 
             json_data = json.loads(script_tag.string)
