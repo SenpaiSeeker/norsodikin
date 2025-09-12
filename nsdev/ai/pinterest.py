@@ -66,7 +66,7 @@ class PinterestClient:
 
             if not pins_list:
                 self.__log("API mengembalikan data pin kosong. Query mungkin tidak menghasilkan apa-apa.", color="YELLOW")
-                return []
+                raise Exception(json_data)
 
             for pin in pins_list[:limit]:
                 if not isinstance(pin, dict) or pin.get("type") != "pin":
