@@ -52,7 +52,7 @@ class ImageGenerator:
                     cookie_name = parts[5]
                     cookie_value = parts[6]
                     cookies_dict[cookie_name] = cookie_value
-        
+
         return cookies_dict
 
     def __log(self, message: str):
@@ -85,8 +85,8 @@ class ImageGenerator:
 
         request_id_match = re.search(r"id=([^&]+)", redirect_url)
         if not request_id_match:
-             raise Exception("Gagal mendapatkan ID permintaan dari redirect. Prompt mungkin diblokir.")
-        
+            raise Exception("Gagal mendapatkan ID permintaan dari redirect. Prompt mungkin diblokir.")
+
         request_id = request_id_match.group(1)
         self.__log(f"{self.log.GREEN}Permintaan berhasil dikirim. ID: {request_id}")
         polling_url = f"/images/create/async/results/{request_id}?q={encoded_prompt}"
@@ -108,49 +108,59 @@ class ImageGenerator:
                 self.__log(f"{self.log.YELLOW}Status polling tidak 200, mencoba lagi...")
                 await asyncio.sleep(2)
                 continue
-            
+
             if "errorMessage" in poll_response.text:
                 error_message_match = re.search(r'<div id="gil_err_msg">([^<]+)</div>', poll_response.text)
                 if error_message_match:
                     raise Exception(f"Bing error: {error_message_match.group(1).strip()}")
                 else:
                     raise Exception(f"Bing error (unknown details): {poll_response.text[:250]}...")
-            
-            if re.search(r'data-preloader="true"', poll_response.text) or \
-               re.search(r'Your images are being created', poll_response.text, re.IGNORECASE) or \
-               re.search(r'<div[^>]*class="img_sugg_info"[^>]*>We are working on your request', poll_response.text, re.IGNORECASE) or \
-               re.search(r'<div[^>]*class="gil_items_status"[^>]*>([^<]+?)</div>', poll_response.text, re.IGNORECASE):
+
+            if (
+                re.search(r'data-preloader="true"', poll_response.text)
+                or re.search(r"Your images are being created", poll_response.text, re.IGNORECASE)
+                or re.search(
+                    r'<div[^>]*class="img_sugg_info"[^>]*>We are working on your request',
+                    poll_response.text,
+                    re.IGNORECASE,
+                )
+                or re.search(
+                    r'<div[^>]*class="gil_items_status"[^>]*>([^<]+?)</div>', poll_response.text, re.IGNORECASE
+                )
+            ):
                 self.__log(f"{self.log.YELLOW}Gambar masih dalam proses rendering. Menunggu...")
                 await asyncio.sleep(3)
                 continue
-            
+
             image_urls_raw = re.findall(
-                r'(?:<a[^>]+href="[^"]+"[^>]*>)?<img[^>]*src="(https?://th.bing.com/th/id/OIP.[^"]+)"[^>]*>', 
-                poll_response.text
+                r'(?:<a[^>]+href="[^"]+"[^>]*>)?<img[^>]*src="(https?://th.bing.com/th/id/OIP.[^"]+)"[^>]*>',
+                poll_response.text,
             )
-            
+
             processed_urls = []
-            
+
             for url_group in image_urls_raw:
-                img_src_url = url_group 
+                img_src_url = url_group
 
                 parsed_url = urllib.parse.urlparse(img_src_url)
                 query_params = urllib.parse.parse_qs(parsed_url.query)
-                
+
                 query_params["w"] = ["1024"]
                 query_params["h"] = ["1024"]
                 query_params["qlt"] = ["90"]
                 query_params["dpr"] = ["1"]
-                
+
                 reconstructed_query = urllib.parse.urlencode(query_params, doseq=True)
                 high_res_url = urllib.parse.urlunparse(parsed_url._replace(query=reconstructed_query))
-                
+
                 processed_urls.append(high_res_url)
 
             processed_urls = list(set(processed_urls))
 
             if len(processed_urls) < 4:
-                self.__log(f"{self.log.YELLOW}Ditemukan {len(processed_urls)} gambar, menunggu {4 - len(processed_urls)} gambar lainnya.")
+                self.__log(
+                    f"{self.log.YELLOW}Ditemukan {len(processed_urls)} gambar, menunggu {4 - len(processed_urls)} gambar lainnya."
+                )
                 await asyncio.sleep(3)
                 continue
 
@@ -159,5 +169,5 @@ class ImageGenerator:
                     f"{self.log.GREEN}Ditemukan {len(processed_urls)} gambar final. Total waktu: {round(time.time() - start_time, 2)}s."
                 )
                 return processed_urls
-            
+
             await asyncio.sleep(3)
