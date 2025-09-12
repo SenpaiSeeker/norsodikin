@@ -4,6 +4,7 @@ from .ai.bing import ImageGenerator
 from .ai.gemini import ChatbotGemini
 from .ai.huggingface import HuggingFaceGenerator
 from .ai.local import OllamaClient
+from .ai.pinterest import PinterestClient
 from .ai.qrcode import QrCodeGenerator
 from .ai.search import WebSearch
 from .ai.stt import SpeechToText
@@ -54,6 +55,7 @@ class NsDev:
             gemini=ChatbotGemini,
             hf=HuggingFaceGenerator,
             local=OllamaClient,
+            pinterest=PinterestClient,
             qrcode=QrCodeGenerator,
             search=WebSearch,
             stt=SpeechToText,
