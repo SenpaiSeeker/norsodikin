@@ -1,13 +1,27 @@
+import asyncio
+import socket
 from types import SimpleNamespace
 from typing import List
 
-import asyncio
 import httpx
 
 
 class OsintTools:
     async def get_ip_info(self, ip_or_domain: str) -> SimpleNamespace:
-        api_url = f"https://ipwho.is/{ip_or_domain}"
+        target = ip_or_domain.strip()
+
+        def _is_ip(s):
+            parts = s.split('.')
+            return len(parts) == 4 and all(p.isdigit() and 0 <= int(p) <= 255 for p in parts)
+
+        if not _is_ip(target):
+            try:
+                loop = asyncio.get_running_loop()
+                target = await loop.run_in_executor(None, socket.gethostbyname, target)
+            except socket.gaierror:
+                raise ValueError(f"Could not resolve domain: {ip_or_domain}")
+
+        api_url = f"https://ipwho.is/{target}"
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(api_url, timeout=10)
@@ -15,7 +29,7 @@ class OsintTools:
                 data = response.json()
                 if data.get("success") is False:
                     raise ValueError(data.get("message", "Invalid query"))
-                
+
                 connection_data = data.get("connection", {})
                 timezone_data = data.get("timezone", {})
                 
@@ -55,14 +69,14 @@ class OsintTools:
         async def _check_site(session, url_template, platform_name):
             url = url_template.format(username)
             try:
-                response = await session.head(url, allow_redirects=True, timeout=5)
+                response = await session.head(url, timeout=5)
                 if 200 <= response.status_code < 300:
                     return {"platform": platform_name, "url": str(response.url)}
             except httpx.RequestError:
                 pass
             return None
 
-        async with httpx.AsyncClient() as session:
+        async with httpx.AsyncClient(follow_redirects=True) as session:
             tasks = [
                 _check_site(session, url, platform)
                 for platform, url in PLATFORMS.items()
