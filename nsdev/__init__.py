@@ -31,6 +31,7 @@ from .telegram.formatter import TextFormatter
 from .telegram.story import StoryDownloader
 from .telegram.videofx import VideoFX
 from .utils.cache import memoize
+from .utils.carbon import CarbonClient
 from .utils.colorize import AnsiColors
 from .utils.downloader import MediaDownloader
 from .utils.files import FileManager
@@ -38,10 +39,13 @@ from .utils.github import GitHubInfo
 from .utils.gradient import Gradient
 from .utils.image import ImageManipulator
 from .utils.logger import LoggerHandler
+from .utils.osint import OsintTools
+from .utils.paste import PasteClient
 from .utils.progress import TelegramProgressBar
 from .utils.ratelimit import RateLimiter
 from .utils.shell import ShellExecutor
 from .utils.url import UrlUtils
+from .utils.wikipedia import WikipediaSearch
 
 __version__ = "1.9.0"
 __author__ = "@NorSodikin"
@@ -97,17 +101,21 @@ class NsDev:
         )
         self.utils = SimpleNamespace(
             cache=memoize,
+            carbon=CarbonClient,
             color=AnsiColors(),
             downloader=MediaDownloader,
             files=FileManager(),
             github=GitHubInfo,
             grad=Gradient(),
             image=ImageManipulator(),
-            log=LoggerHandler(),
+            log=LoggerHandler,
+            osint=OsintTools,
+            paste=PasteClient,
             progress=TelegramProgressBar,
             ratelimit=RateLimiter(self._client),
             shell=ShellExecutor(),
             url=UrlUtils(),
+            wikipedia=WikipediaSearch,
         )
 
 
