@@ -7,15 +7,26 @@ import httpx
 
 class OsintTools:
     async def get_ip_info(self, ip_or_domain: str) -> SimpleNamespace:
-        api_url = f"http://ip-api.com/json/{ip_or_domain}"
+        api_url = f"https://ipwho.is/{ip_or_domain}"
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(api_url, timeout=10)
                 response.raise_for_status()
                 data = response.json()
-                if data.get("status") == "fail":
+                if data.get("success") is False:
                     raise ValueError(data.get("message", "Invalid query"))
-                return SimpleNamespace(**data)
+                
+                result_data = {
+                    "ip": data.get("ip"),
+                    "country": data.get("country"),
+                    "country_code": data.get("country_code"),
+                    "city": data.get("city"),
+                    "isp": data.get("isp"),
+                    "org": data.get("org"),
+                    "asn": data.get("asn"),
+                }
+                return SimpleNamespace(**result_data)
+                
             except httpx.RequestError as e:
                 raise Exception(f"Failed to connect to IP API: {e}")
             except (KeyError, ValueError) as e:
