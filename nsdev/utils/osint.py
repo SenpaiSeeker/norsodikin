@@ -16,14 +16,21 @@ class OsintTools:
                 if data.get("success") is False:
                     raise ValueError(data.get("message", "Invalid query"))
                 
+                connection_data = data.get("connection", {})
+                timezone_data = data.get("timezone", {})
+                
                 result_data = {
                     "ip": data.get("ip"),
                     "country": data.get("country"),
                     "country_code": data.get("country_code"),
+                    "region": data.get("region"),
                     "city": data.get("city"),
-                    "isp": data.get("isp"),
-                    "org": data.get("org"),
-                    "asn": data.get("asn"),
+                    "latitude": data.get("latitude"),
+                    "longitude": data.get("longitude"),
+                    "isp": connection_data.get("isp"),
+                    "org": connection_data.get("org"),
+                    "asn": connection_data.get("asn"),
+                    "timezone_utc": timezone_data.get("utc"),
                 }
                 return SimpleNamespace(**result_data)
                 
