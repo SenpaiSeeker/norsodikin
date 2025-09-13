@@ -144,3 +144,12 @@ class ImageManipulator(FontManager):
 
     async def remove_background(self, image_bytes: bytes) -> bytes:
         return await self._run_in_executor(self._sync_remove_background, image_bytes)
+
+    def _sync_convert_sticker_to_png(self, sticker_bytes: bytes) -> bytes:
+        img = Image.open(BytesIO(sticker_bytes))
+        output_buffer = BytesIO()
+        img.save(output_buffer, format="PNG")
+        return output_buffer.getvalue()
+
+    async def convert_sticker_to_png(self, sticker_bytes: bytes) -> bytes:
+        return await self._run_in_executor(self._sync_convert_sticker_to_png, sticker_bytes)
