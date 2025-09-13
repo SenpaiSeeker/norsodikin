@@ -34,6 +34,7 @@ from .utils.cache import memoize
 from .utils.colorize import AnsiColors
 from .utils.downloader import MediaDownloader
 from .utils.files import FileManager
+from .utils.github import GitHubInfo
 from .utils.gradient import Gradient
 from .utils.image import ImageManipulator
 from .utils.logger import LoggerHandler
@@ -42,7 +43,7 @@ from .utils.ratelimit import RateLimiter
 from .utils.shell import ShellExecutor
 from .utils.url import UrlUtils
 
-__version__ = "1.9.1"
+__version__ = "1.9.0"
 __author__ = "@NorSodikin"
 
 
@@ -99,6 +100,7 @@ class NsDev:
             color=AnsiColors(),
             downloader=MediaDownloader,
             files=FileManager(),
+            github=GitHubInfo,
             grad=Gradient(),
             image=ImageManipulator(),
             log=LoggerHandler(),
