@@ -37,7 +37,6 @@ from .utils.files import FileManager
 from .utils.gradient import Gradient
 from .utils.image import ImageManipulator
 from .utils.logger import LoggerHandler
-from .utils.pinterest import PinterestDownloader
 from .utils.progress import TelegramProgressBar
 from .utils.ratelimit import RateLimiter
 from .utils.shell import ShellExecutor
@@ -103,7 +102,6 @@ class NsDev:
             grad=Gradient(),
             image=ImageManipulator(),
             log=LoggerHandler(),
-            pinterest=PinterestDownloader,
             progress=TelegramProgressBar,
             ratelimit=RateLimiter(self._client),
             shell=ShellExecutor(),
