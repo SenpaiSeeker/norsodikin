@@ -235,3 +235,24 @@ class VideoFX(FontManager):
     async def video_to_sticker(self, video_path: str, output_path: str, fps: int = 30):
         await self._run_in_executor(self._convert_to_sticker, video_path, output_path, fps=fps)
         return output_path
+
+    def _convert_video_to_gif(self, video_path: str, output_path: str):
+        vf_filter = "fps=15,scale=512:-1:flags=lanczos"
+        ffmpeg_cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            video_path,
+            "-vf",
+            vf_filter,
+            "-c:v",
+            "gif",
+            output_path,
+        ]
+        result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"FFmpeg failed during GIF conversion: {result.stderr}")
+            
+    async def video_to_gif(self, video_path: str, output_path: str):
+        await self._run_in_executor(self._convert_video_to_gif, video_path, output_path)
+        return output_path
