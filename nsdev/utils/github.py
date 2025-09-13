@@ -53,7 +53,7 @@ class GitHubInfo:
 
             pinned_repos.append(
                 SimpleNamespace(
-                    name=repo_name_tag.get_text(strip=True) if repo_name_tag else "N/A",
+                    name=f"{profile_url}/{repo_name_tag.get_text(strip=True)}" if repo_name_tag else "N/A",
                     description=repo_desc_tag.get_text(strip=True) if repo_desc_tag else "",
                     language=repo_lang_tag.get_text(strip=True) if repo_lang_tag else "N/A",
                     stars=repo_stars_tag.get_text(strip=True).strip() if repo_stars_tag else "0",
