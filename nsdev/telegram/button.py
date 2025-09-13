@@ -93,6 +93,7 @@ class Button:
         callback_prefix: str = "nav",
         item_callback_prefix: str = None,
         extra_params: list = None,
+        extra_callback_data: str = ""
     ):
         if current_page < 1:
             current_page = 1
@@ -112,13 +113,13 @@ class Button:
                 {
                     "text": item.get("text"),
                     "callback_data": (
-                        f"{item_callback_prefix}_{item.get('data')}" if item_callback_prefix else item.get("data")
+                        f"{item_callback_prefix}_{item.get('data')}{extra_callback_data}" if item_callback_prefix else item.get("data")
                     ),
                 }
                 if isinstance(item, dict)
                 else {
                     "text": str(item),
-                    "callback_data": f"{item_callback_prefix}_{item}" if item_callback_prefix else str(item),
+                    "callback_data": f"{item_callback_prefix}_{item}{extra_callback_data}" if item_callback_prefix else str(item),
                 }
             )
             for item in page_items
