@@ -36,39 +36,30 @@ class StoryDownloader:
                 return await status_message.edit_text(f"✅ Pengguna `{username}` tidak memiliki story aktif.")
 
             total = len(active_stories)
-            await status_message.edit_text(f"✅ Ditemukan {total} story aktif. Memulai pengunduhan...")
-
+            await status_message.edit_text(f"✅ Ditemukan {total} story aktif. Memulai pengiriman...")
+            
+            sent_count = 0
             for i, story in enumerate(active_stories):
-                downloaded_path = None
-                media_to_download = None
-
                 try:
-                    await status_message.edit_text(f"📥 Mengunduh story {i + 1}/{total}...")
+                    caption = story.caption or ""
                     
                     if hasattr(story.media, "photo") and isinstance(story.media.photo, types.Photo):
-                        media_to_download = story.media.photo
+                        await self._client.send_photo(chat_id, story.media.photo, caption=caption)
+                        sent_count += 1
                     elif hasattr(story.media, "video") and isinstance(story.media.video, types.Video):
-                        media_to_download = story.media.video
-                    else:
-                        continue
-
-                    downloaded_path = await self._client.download_media(media_to_download)
-
-                    caption = story.caption or ""
-
-                    if isinstance(story.media, types.MessageMediaVideo):
-                        await self._client.send_video(chat_id, downloaded_path, caption=caption)
-                    elif isinstance(story.media, types.MessageMediaPhoto):
-                        await self._client.send_photo(chat_id, downloaded_path, caption=caption)
-
+                        await self._client.send_video(chat_id, story.media.video, caption=caption)
+                        sent_count += 1
+                        
+                    await status_message.edit_text(f"✈️ Mengirim story {i + 1}/{total}...")
                     await asyncio.sleep(1.5)
 
-                finally:
-                    if downloaded_path and os.path.exists(downloaded_path):
-                        os.remove(downloaded_path)
+                except Exception as send_e:
+                    self._log.print(f"{self._log.YELLOW}Gagal mengirim satu story: {send_e}")
+                    continue
 
-            await status_message.edit_text("✅ Semua story berhasil diunduh!")
-            await asyncio.sleep(3)
+            final_message = f"✅ Selesai! Berhasil mengirim {sent_count} dari {total} story."
+            await status_message.edit_text(final_message)
+            await asyncio.sleep(5)
             await status_message.delete()
 
         except Exception as e:
