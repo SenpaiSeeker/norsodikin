@@ -1,6 +1,5 @@
 import asyncio
 import os
-import random
 from functools import partial
 
 import requests
@@ -13,14 +12,6 @@ class MediaDownloader:
         self.cookies_file_path = cookies_file_path
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
-
-    def _get_indonesian_ip(self) -> str:
-        ips = [
-            "180.250.0.1",
-            "202.152.0.1",
-            "118.98.0.1",
-        ]
-        return random.choice(ips)
 
     def _sync_download(
         self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop
@@ -36,16 +27,16 @@ class MediaDownloader:
             "outtmpl": os.path.join(self.download_path, "%(title)s.%(ext)s"),
             "noplaylist": True,
             "quiet": True,
-            "add_header": [
-                f"X-Forwarded-For: {self._get_indonesian_ip()}"
-            ],
             "geo_bypass": True,
+            "geo_bypass_country": "ID",
         }
 
         if progress_callback:
             ydl_opts["progress_hooks"] = [_hook]
 
-        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
+        if self.cookies_file_path:
+            if not os.path.exists(self.cookies_file_path):
+                raise FileNotFoundError(f"File cookie yang ditentukan tidak ditemukan: {self.cookies_file_path}")
             ydl_opts["cookiefile"] = self.cookies_file_path
 
         if audio_only:
