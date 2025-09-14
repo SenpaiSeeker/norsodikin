@@ -1,5 +1,4 @@
 import asyncio
-import os
 
 from pyrogram.errors import PeerIdInvalid, RPCError, UsernameInvalid
 from pyrogram.raw import functions, types
@@ -12,6 +11,24 @@ class StoryDownloader:
     def __init__(self, client):
         self._client = client
         self._log = LoggerHandler()
+    
+    async def _build_fake_message(self, story_item, peer_stories):
+        fake_message = await self._client.build_object(
+            types.Message,
+            props={
+                'id': story_item.id,
+                'peer_id': peer_stories.peer,
+                'date': story_item.date,
+                'message': story_item.caption or "",
+                'media': story_item.media,
+                'entities': story_item.entities,
+                'out': story_item.out,
+                'from_id': peer_stories.peer,
+            },
+            origin="stories.getPeerStories"
+        )
+        return fake_message
+
 
     async def download_user_stories(self, username: str, chat_id: int, status_message: Message):
         if self._client.me.is_bot:
@@ -27,9 +44,7 @@ class StoryDownloader:
 
         try:
             peer = await self._client.resolve_peer(user.id)
-
             peer_stories = await self._client.invoke(functions.stories.GetPeerStories(peer=peer))
-
             active_stories = peer_stories.stories.stories
 
             if not active_stories:
@@ -41,13 +56,10 @@ class StoryDownloader:
             sent_count = 0
             for i, story in enumerate(active_stories):
                 try:
-                    caption = story.caption or ""
+                    fake_message_with_media = await self._build_fake_message(story, peer_stories)
                     
-                    if hasattr(story.media, "photo") and isinstance(story.media.photo, types.Photo):
-                        await self._client.send_photo(chat_id, story.media.photo, caption=caption)
-                        sent_count += 1
-                    elif hasattr(story.media, "video") and isinstance(story.media.video, types.Video):
-                        await self._client.send_video(chat_id, story.media.video, caption=caption)
+                    if fake_message_with_media.media:
+                        await fake_message_with_media.copy(chat_id)
                         sent_count += 1
                         
                     await status_message.edit_text(f"✈️ Mengirim story {i + 1}/{total}...")
