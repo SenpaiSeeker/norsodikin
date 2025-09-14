@@ -14,7 +14,7 @@ class MediaDownloader:
             os.makedirs(self.download_path)
 
     def _sync_download(
-        self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop
+        self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop, ydl_opts_extra: dict = None
     ) -> dict:
 
         def _hook(d):
@@ -27,14 +27,16 @@ class MediaDownloader:
             "outtmpl": os.path.join(self.download_path, "%(title)s.%(ext)s"),
             "noplaylist": True,
             "quiet": True,
+            "geo_bypass": True, 
         }
+
+        if ydl_opts_extra:
+            ydl_opts.update(ydl_opts_extra)
 
         if progress_callback:
             ydl_opts["progress_hooks"] = [_hook]
 
-        if self.cookies_file_path:
-            if not os.path.exists(self.cookies_file_path):
-                raise FileNotFoundError(f"File cookie yang ditentukan tidak ditemukan: {self.cookies_file_path}")
+        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
             ydl_opts["cookiefile"] = self.cookies_file_path
 
         if audio_only:
@@ -77,10 +79,10 @@ class MediaDownloader:
                 "thumbnail_data": thumbnail_data,
             }
 
-    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> dict:
+    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None, ydl_opts_extra: dict = None) -> dict:
         loop = asyncio.get_running_loop()
         try:
-            func_call = partial(self._sync_download, url, audio_only, progress_callback, loop)
+            func_call = partial(self._sync_download, url, audio_only, progress_callback, loop, ydl_opts_extra)
             result = await loop.run_in_executor(None, func_call)
             return result
         except Exception as e:
