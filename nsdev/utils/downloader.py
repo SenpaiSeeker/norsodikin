@@ -29,6 +29,10 @@ class MediaDownloader:
             "quiet": True,
             "geo_bypass": True,
             "geo_bypass_country": "ID",
+            "http_headers": {
+                "Accept-Language": "id-ID,id;q=0.9",
+                "X-Forwarded-For": "114.124.218.99",
+            },
         }
 
         if progress_callback:
