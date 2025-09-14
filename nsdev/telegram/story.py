@@ -40,9 +40,19 @@ class StoryDownloader:
 
             for i, story in enumerate(active_stories):
                 downloaded_path = None
+                media_to_download = None
+
                 try:
                     await status_message.edit_text(f"📥 Mengunduh story {i + 1}/{total}...")
-                    downloaded_path = await self._client.download_media(story.media)
+                    
+                    if hasattr(story.media, "photo") and isinstance(story.media.photo, types.Photo):
+                        media_to_download = story.media.photo
+                    elif hasattr(story.media, "video") and isinstance(story.media.video, types.Video):
+                        media_to_download = story.media.video
+                    else:
+                        continue
+
+                    downloaded_path = await self._client.download_media(media_to_download)
 
                     caption = story.caption or ""
 
