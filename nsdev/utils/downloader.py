@@ -29,6 +29,7 @@ class MediaDownloader:
             "quiet": True,
             "geo_bypass": True,
             "geo_bypass_country": "ID",
+            "geo_verify": True,
         }
 
         if progress_callback:
