@@ -1,5 +1,6 @@
 import asyncio
 import os
+import random
 from functools import partial
 
 import requests
@@ -13,8 +14,16 @@ class MediaDownloader:
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
 
+    def _get_indonesian_ip(self) -> str:
+        ips = [
+            "180.250.0.1",
+            "202.152.0.1",
+            "118.98.0.1",
+        ]
+        return random.choice(ips)
+
     def _sync_download(
-        self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop, ydl_opts_extra: dict = None
+        self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop
     ) -> dict:
 
         def _hook(d):
@@ -27,11 +36,11 @@ class MediaDownloader:
             "outtmpl": os.path.join(self.download_path, "%(title)s.%(ext)s"),
             "noplaylist": True,
             "quiet": True,
-            "geo_bypass": True, 
+            "add_header": [
+                f"X-Forwarded-For: {self._get_indonesian_ip()}"
+            ],
+            "geo_bypass": True,
         }
-
-        if ydl_opts_extra:
-            ydl_opts.update(ydl_opts_extra)
 
         if progress_callback:
             ydl_opts["progress_hooks"] = [_hook]
@@ -79,10 +88,10 @@ class MediaDownloader:
                 "thumbnail_data": thumbnail_data,
             }
 
-    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None, ydl_opts_extra: dict = None) -> dict:
+    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> dict:
         loop = asyncio.get_running_loop()
         try:
-            func_call = partial(self._sync_download, url, audio_only, progress_callback, loop, ydl_opts_extra)
+            func_call = partial(self._sync_download, url, audio_only, progress_callback, loop)
             result = await loop.run_in_executor(None, func_call)
             return result
         except Exception as e:
