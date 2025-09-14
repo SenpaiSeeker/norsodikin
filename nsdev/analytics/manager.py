@@ -19,9 +19,10 @@ class AnalyticsManager:
         @wraps(func)
         async def wrapped(client, message, *args, **kwargs):
             if isinstance(message, Message) and message.command:
+                user_id_to_log = message.from_user.id if message.from_user else client.me.id
                 log_entry = {
                     "command": message.command[0],
-                    "user_id": message.from_user.id,
+                    "user_id": user_id_to_log,
                     "timestamp": int(time.time()),
                 }
                 self.db.setListVars(self.db_id, "logs", log_entry, var_key=self.var_key)
