@@ -2,6 +2,7 @@ import asyncio
 
 import pyrogram
 import requests
+from datetime import datetime 
 
 
 class Argument:
@@ -107,3 +108,10 @@ class Argument:
         get_msg = await self.client.get_messages(chatId, msgId)
         await get_msg.copy(chatTarget, protect_content=True)
         await asyncio.sleep(1)
+
+    async def ping(self):
+        start = datetime.now()
+        await self.client.invoke(pyrogram.raw.functions.Ping(ping_id=0))
+        end = datetime.now()
+        delta_ping = (end - start).microseconds / 1000
+        return delta_ping
