@@ -27,16 +27,10 @@ class StoryDownloader:
 
         try:
             peer = await self._client.resolve_peer(user.id)
-            
-            peer_stories_result = await self._client.invoke(functions.stories.GetPeerStories(peer=peer))
 
-            active_stories = []
-            if isinstance(peer_stories_result, types.PeerStories) and peer_stories_result.stories:
-                story_container = peer_stories_result.stories
-                if isinstance(story_container, list) and story_container and hasattr(story_container[0], 'stories'):
-                    active_stories = story_container[0].stories
-                elif hasattr(story_container, 'stories'):
-                    active_stories = story_container.stories
+            peer_stories = await self._client.invoke(functions.stories.GetPeerStories(peer=peer))
+
+            active_stories = peer_stories.stories.stories
 
             if not active_stories:
                 return await status_message.edit_text(f"✅ Pengguna `{username}` tidak memiliki story aktif.")
@@ -45,9 +39,6 @@ class StoryDownloader:
             await status_message.edit_text(f"✅ Ditemukan {total} story aktif. Memulai pengunduhan...")
 
             for i, story in enumerate(active_stories):
-                if not hasattr(story, 'media'):
-                    continue
-                
                 downloaded_path = None
                 try:
                     await status_message.edit_text(f"📥 Mengunduh story {i + 1}/{total}...")
