@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 from pyrogram.errors import PeerIdInvalid, RPCError, UsernameInvalid
 from pyrogram.raw import functions, types
@@ -11,24 +12,6 @@ class StoryDownloader:
     def __init__(self, client):
         self._client = client
         self._log = LoggerHandler()
-    
-    async def _build_fake_message(self, story_item, peer_stories):
-        fake_message = await self._client.build_object(
-            types.Message,
-            props={
-                'id': story_item.id,
-                'peer_id': peer_stories.peer,
-                'date': story_item.date,
-                'message': story_item.caption or "",
-                'media': story_item.media,
-                'entities': story_item.entities,
-                'out': story_item.out,
-                'from_id': peer_stories.peer,
-            },
-            origin="stories.getPeerStories"
-        )
-        return fake_message
-
 
     async def download_user_stories(self, username: str, chat_id: int, status_message: Message):
         if self._client.me.is_bot:
@@ -44,30 +27,51 @@ class StoryDownloader:
 
         try:
             peer = await self._client.resolve_peer(user.id)
+
             peer_stories = await self._client.invoke(functions.stories.GetPeerStories(peer=peer))
+
             active_stories = peer_stories.stories.stories
 
             if not active_stories:
                 return await status_message.edit_text(f"✅ Pengguna `{username}` tidak memiliki story aktif.")
 
             total = len(active_stories)
-            await status_message.edit_text(f"✅ Ditemukan {total} story aktif. Memulai pengiriman...")
+            await status_message.edit_text(f"✅ Ditemukan {total} story aktif. Memulai pengunduhan dan pengiriman...")
             
             sent_count = 0
             for i, story in enumerate(active_stories):
+                downloaded_path = None
                 try:
-                    fake_message_with_media = await self._build_fake_message(story, peer_stories)
+                    media_to_download = None
+                    if hasattr(story.media, "photo") and isinstance(story.media.photo, types.Photo):
+                        media_to_download = story.media.photo
+                    elif hasattr(story.media, "video") and isinstance(story.media.video, types.Video):
+                        media_to_download = story.media.video
+
+                    if not media_to_download:
+                        continue
+
+                    await status_message.edit_text(f"📥 Mengunduh story {i + 1}/{total}...")
+                    downloaded_path = await self._client.download_media(media_to_download, in_memory=True)
                     
-                    if fake_message_with_media.media:
-                        await fake_message_with_media.copy(chat_id)
-                        sent_count += 1
-                        
                     await status_message.edit_text(f"✈️ Mengirim story {i + 1}/{total}...")
+
+                    caption = story.caption or ""
+                    
+                    if isinstance(story.media, types.MessageMediaPhoto):
+                        await self._client.send_photo(chat_id, downloaded_path, caption=caption)
+                    elif isinstance(story.media, types.MessageMediaVideo):
+                        await self._client.send_video(chat_id, downloaded_path, caption=caption)
+
+                    sent_count += 1
                     await asyncio.sleep(1.5)
 
-                except Exception as send_e:
-                    self._log.print(f"{self._log.YELLOW}Gagal mengirim satu story: {send_e}")
+                except Exception as e:
+                    self._log.print(f"{self._log.YELLOW}Gagal memproses satu story: {e}")
                     continue
+                finally:
+                    if downloaded_path and hasattr(downloaded_path, 'close'):
+                        downloaded_path.close()
 
             final_message = f"✅ Selesai! Berhasil mengirim {sent_count} dari {total} story."
             await status_message.edit_text(final_message)
@@ -75,5 +79,5 @@ class StoryDownloader:
             await status_message.delete()
 
         except Exception as e:
-            self._log.print(f"{self._log.RED}Gagal mengunduh story dari {username}: {e}")
-            await status_message.edit_text(f"❌ Terjadi kesalahan saat mengunduh story: `{e}`")
+            self._log.print(f"{self._log.RED}Gagal mendapatkan story dari {username}: {e}")
+            await status_message.edit_text(f"❌ Terjadi kesalahan saat mengambil story: `{e}`")
