@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 from urllib.parse import urljoin, urlparse, urlunparse
+import datetime
 
 import bs4
 import fake_useragent
@@ -24,49 +25,36 @@ class GitHubInfo:
                     raise ValueError(f"User '{username}' not found.")
                 api_response.raise_for_status()
                 user_data = api_response.json()
-
-                html_response = await client.get(profile_url, headers=self.headers, timeout=self.timeout)
-                html_response.raise_for_status()
-
+                
             except httpx.RequestError as e:
-                raise Exception(f"Failed to fetch GitHub data: {e}")
+                raise Exception(f"Failed to fetch GitHub API data: {e}")
 
-        name = user_data.get("name") or username
-        bio = user_data.get("bio") or "No bio available."
-        followers = user_data.get("followers", 0)
-        following = user_data.get("following", 0)
+        created_at_str = user_data.get("created_at", "")
+        created_at_dt = None
+        if created_at_str:
+            try:
+                created_at_dt = datetime.datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+            except ValueError:
+                pass
         
         avatar_url = user_data.get("avatar_url", "")
         if avatar_url:
             parsed_url = urlparse(avatar_url)
             avatar_url = urlunparse(parsed_url._replace(query=""))
 
-        soup = bs4.BeautifulSoup(html_response.text, "lxml")
-        pinned_repos_tags = soup.select("ol.js-pinned-items-reorder-list li")
-        pinned_repos = []
-
-        for repo_tag in pinned_repos_tags:
-            repo_name_tag = repo_tag.select_one("span.repo")
-            repo_desc_tag = repo_tag.select_one("p.pinned-item-desc")
-            repo_lang_tag = repo_tag.select_one("span[itemprop='programmingLanguage']")
-            repo_stars_tag = repo_tag.select_one("a[href$='/stargazers']")
-
-            pinned_repos.append(
-                SimpleNamespace(
-                    name=f"{profile_url}/{repo_name_tag.get_text(strip=True)}" if repo_name_tag else "N/A",
-                    description=repo_desc_tag.get_text(strip=True) if repo_desc_tag else "",
-                    language=repo_lang_tag.get_text(strip=True) if repo_lang_tag else "N/A",
-                    stars=repo_stars_tag.get_text(strip=True).strip() if repo_stars_tag else "0",
-                )
-            )
-
         return SimpleNamespace(
             username=user_data.get("login", username),
-            name=name,
-            bio=bio,
-            followers=str(followers),
-            following=str(following),
-            avatar_url=avatar_url,
+            name=user_data.get("name"),
+            bio=user_data.get("bio"),
+            company=user_data.get("company"),
+            blog=user_data.get("blog"),
+            location=user_data.get("location"),
+            email=user_data.get("email"),
+            twitter=user_data.get("twitter_username"),
+            public_repos=user_data.get("public_repos", 0),
+            followers=user_data.get("followers", 0),
+            following=user_data.get("following", 0),
+            created_at=created_at_dt,
             profile_url=user_data.get("html_url", profile_url),
-            pinned_repos=pinned_repos,
+            avatar_url=avatar_url,
         )
