@@ -16,15 +16,22 @@ class GitHubInfo:
 
     async def get_user_info(self, username: str) -> SimpleNamespace:
         api_url = f"{self.api_base_url}/users/{username}"
+        repos_api_url = f"{self.api_base_url}/users/{username}/repos?per_page=100"
         profile_url = urljoin(self.base_url, username)
 
         async with httpx.AsyncClient(follow_redirects=True) as client:
             try:
-                api_response = await client.get(api_url, headers=self.headers, timeout=self.timeout)
-                if api_response.status_code == 404:
+                user_res = await client.get(api_url, headers=self.headers, timeout=self.timeout)
+                if user_res.status_code == 404:
                     raise ValueError(f"User '{username}' not found.")
-                api_response.raise_for_status()
-                user_data = api_response.json()
+                user_res.raise_for_status()
+                user_data = user_res.json()
+
+                repos_res = await client.get(repos_api_url, headers=self.headers, timeout=self.timeout)
+                total_stars = 0
+                if repos_res.status_code == 200:
+                    repos_data = repos_res.json()
+                    total_stars = sum(repo.get("stargazers_count", 0) for repo in repos_data)
                 
             except httpx.RequestError as e:
                 raise Exception(f"Failed to fetch GitHub API data: {e}")
@@ -52,6 +59,7 @@ class GitHubInfo:
             email=user_data.get("email"),
             twitter=user_data.get("twitter_username"),
             public_repos=user_data.get("public_repos", 0),
+            total_stars=total_stars,
             followers=user_data.get("followers", 0),
             following=user_data.get("following", 0),
             created_at=created_at_dt,
