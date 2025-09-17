@@ -63,11 +63,11 @@ Keajaiban `norsodikin` terletak pada integrasi `monkey-patching` yang mulus deng
 
 Semua modul dikelompokkan secara logis:
 - `client.ns.ai`: Semua yang berhubungan dengan Kecerdasan Buatan.
-- `client.ns.analytics`: Analitik dan pelacakan penggunaan bot.
+- `client.ns.analytics`: Analitik penggunaan bot dan statistik chat.
 - `client.ns.auth`: Manajemen pengguna dan hak akses (peran).
 - `client.ns.telegram`: Utilitas spesifik untuk Telegram (tombol, format teks, dll.).
 - `client.ns.data`: Manajemen data (database, file config YAML).
-- `client.ns.utils`: Perkakas umum (logger, downloader, shell, cache, file).
+- `client.ns.utils`: Perkakas umum (logger, downloader, OSINT, pastebin, dll.).
 - `client.ns.schedule`: Penjadwalan tugas otomatis (cron).
 - `client.ns.server`: Manajemen server Linux (proses, pengguna, monitor).
 - `client.ns.code`: Enkripsi dan dekripsi.
@@ -366,7 +366,7 @@ Modul untuk melacak penggunaan bot, seperti perintah yang paling sering digunaka
 
 **Penting:** Modul ini memerlukan instance database.
 **Inisialisasi:**
-`analytics = client.ns.analytics(database=db_instance)`
+`analytics = client.ns.analytics.manager(database=db_instance)`
 
 **Metode Utama:**
 - `@analytics.track_usage`: Decorator yang ditambahkan ke *handler* untuk secara otomatis mencatat penggunaannya.
@@ -377,7 +377,7 @@ Modul untuk melacak penggunaan bot, seperti perintah yang paling sering digunaka
 ```python
 # Inisialisasi (asumsikan 'db' sudah ada)
 # db = client.ns.data.db(storage_type="sqlite")
-# analytics = client.ns.analytics(database=db)
+# analytics = client.ns.analytics.manager(database=db)
 # ADMIN_ID = 123456789
 
 # Tambahkan decorator ke handler yang ingin dilacak
@@ -402,6 +402,38 @@ async def show_bot_stats(client, message):
     
     await message.reply(fmt)
 
+```
+---
+### `chat`
+Menganalisis riwayat pesan dalam sebuah grup untuk memberikan wawasan statistik seperti pengguna paling aktif, kata yang sering digunakan, dan waktu puncak aktivitas.
+
+**Inisialisasi:**
+`analyzer = client.ns.analytics.chat()`
+
+**Metode Utama:**
+- `analyze(messages)`: Menerima daftar objek pesan Pyrogram dan mengembalikan objek `SimpleNamespace` dengan hasil analisis.
+
+**Contoh Penggunaan:**
+```python
+# Handler untuk perintah .statschat di sebuah grup
+# @app.on_message(filters.command("statschat", prefixes=".") & filters.me)
+async def chat_stats_handler(client, message):
+    status_msg = await message.edit("📈 Mengumpulkan pesan...")
+    
+    messages = []
+    # Mengumpulkan hingga 1000 pesan terakhir dari riwayat chat
+    async for msg in client.get_chat_history(message.chat.id, limit=1000):
+        messages.append(msg)
+
+    await status_msg.edit(f"⚙️ Menganalisis {len(messages)} pesan...")
+    
+    analyzer = client.ns.analytics.chat()
+    stats = await analyzer.analyze(messages)
+    
+    fmt = client.ns.telegram.formatter(mode="html")
+    fmt.bold(f"📊 Analisis untuk: {message.chat.title}").new_line(2)
+    # ... (format output seperti top users, top words, etc.)
+    await status_msg.edit(fmt)
 ```
 
 </details>
@@ -862,13 +894,11 @@ async def ban_user(client, message):
 ### `button`
 Perkakas canggih untuk membuat `InlineKeyboardMarkup` dan `ReplyKeyboardMarkup`.
 
-#### `create_inline_keyboard(text)`
+#### `create_inline_keyboard(text, cb_prefix=None)`
 Membuat keyboard inline dari sintaks teks sederhana.
 - **Sintaks:** `| Label Tombol - callback_data |` atau `| Label Tombol - https://url.com |`
 - **Parameter Tambahan (opsional):** Tambahkan `;same`, `;copy`, atau `;user` setelah callback data.
-  - `;same`: Menempatkan tombol di baris yang sama dengan tombol sebelumnya.
-  - `;copy`: Tombol akan menyalin teks (payload) ke clipboard.
-  - `;user`: Tombol akan membuka chat dengan user ID (payload).
+- **`cb_prefix` (str):** Jika diberikan, semua `callback_data` akan secara otomatis diawali dengan `cb_prefix_`. Berguna untuk membuat sistem menu yang terstruktur.
 
 **Contoh `create_inline_keyboard`:**
 ```python
@@ -887,8 +917,6 @@ await message.reply(sisa_teks, reply_markup=keyboard)
 Membuat keyboard balasan (tombol di bawah area input teks).
 - **Sintaks:** `| Label Tombol |`
 - **Parameter Tambahan (opsional):** `| Label;is_contact |` atau `| Label;same |`.
-  - `;is_contact`: Meminta kontak pengguna.
-  - `;same`: Tombol di baris yang sama.
 
 **Contoh `create_button_keyboard`:**
 ```python
@@ -1095,7 +1123,7 @@ async def get_user_stories_handler(client, message):
         await status_msg.edit_text(f"❌ **Error Kritis:** {e}")
 ```
 ### `videofx` -> `client.ns.telegram.videofx`
-Modul canggih untuk manipulasi video, seperti membuat **animasi teks dinamis** dengan efek retakan energi, guncangan, dan warna acak, atau mengubah video biasa menjadi stiker video `.webm` yang sesuai untuk Telegram. Modul ini secara otomatis mengunduh dan menyimpan *cache* font untuk menghasilkan teks yang menarik secara visual.
+Modul canggih untuk manipulasi video, seperti membuat **animasi teks dinamis** atau mengubah video biasa menjadi stiker video `.webm` atau GIF.
 
 #### **Metode Utama: `text_to_video()`**
 Mengubah satu atau beberapa baris teks menjadi file video animasi `.mp4`.
@@ -1105,8 +1133,6 @@ Mengubah satu atau beberapa baris teks menjadi file video animasi `.mp4`.
 | `text`          | `str`     | -        | Teks yang akan dianimasikan. Gunakan `;` untuk membuat baris baru.         |
 | `output_path`   | `str`     | -        | Path file tujuan untuk menyimpan video (misal: `"hasil.mp4"`).              |
 | `duration`      | `float`   | `5.0`    | Durasi video dalam detik.                                                 |
-| `fps`           | `int`     | `24`     | *Frames per second* untuk video.                                            |
-| `font_size`     | `int`     | `90`     | Ukuran font teks.                                                         |
 
 #### **Metode Utama: `video_to_sticker()`**
 Mengonversi file video menjadi stiker video `.webm` dengan resolusi 512px yang sesuai standar Telegram.
@@ -1115,12 +1141,18 @@ Mengonversi file video menjadi stiker video `.webm` dengan resolusi 512px yang s
 |-------------|-----------|----------|------------------------------------------------------------------|
 | `video_path`  | `str`     | -        | Path file video sumber yang akan dikonversi.                       |
 | `output_path` | `str`     | -        | Path file tujuan untuk stiker `.webm`.                            |
-| `fps`         | `int`     | `30`     | FPS untuk stiker. Nilai yang lebih tinggi mungkin ditolak Telegram. |
+
+#### **Metode Utama: `video_to_gif()`**
+Mengonversi file video menjadi file animasi GIF.
+
+| Parameter   | Tipe Data | Deskripsi                                  |
+|-------------|-----------|--------------------------------------------|
+| `video_path`  | `str`     | Path file video sumber yang akan dikonversi. |
+| `output_path` | `str`     | Path file tujuan untuk GIF `.gif`.          |
+
 
 ---
 #### **Contoh Penggunaan (Animasi Teks Dinamis):**
-
-Berikut adalah contoh *handler* lengkap yang membuat stiker animasi dari teks yang diberikan pengguna, lengkap dengan efek guncangan dan energi.
 
 ```python
 import os
@@ -1135,30 +1167,15 @@ async def animated_sticker_handler(client, message):
 
     status_msg = await message.reply("🎨 Menciptakan animasi teks...")
 
-    # Gunakan manajer file aman untuk membersihkan file secara otomatis
     async with client.ns.utils.files.temp_dir() as tmpdir:
         video_path = os.path.join(tmpdir, f"{uuid.uuid4()}.mp4")
         sticker_path = os.path.join(tmpdir, f"{uuid.uuid4()}.webm")
-
         try:
-            # Langkah 1: Buat video animasi dari teks
-            await client.ns.telegram.videofx.text_to_video(
-                text=text_input,
-                output_path=video_path
-            )
-
+            await client.ns.telegram.videofx.text_to_video(text=text_input, output_path=video_path)
             await status_msg.edit("✨ Mengonversi video menjadi stiker...")
-
-            # Langkah 2: Konversi video yang baru dibuat menjadi stiker .webm
-            await client.ns.telegram.videofx.video_to_sticker(
-                video_path=video_path,
-                output_path=sticker_path
-            )
-
-            # Langkah 3: Kirim stiker dan hapus pesan status
+            await client.ns.telegram.videofx.video_to_sticker(video_path=video_path, output_path=sticker_path)
             await client.send_sticker(message.chat.id, sticker_path)
             await status_msg.delete()
-
         except Exception as e:
             await status_msg.edit(f"❌ Terjadi kesalahan: {e}")
 ```
@@ -1169,255 +1186,123 @@ async def animated_sticker_handler(client, message):
 <summary><strong>🛠️ Utilitas (`client.ns.utils`)</strong></summary>
 
 ### `cache`
-Decorator untuk menyimpan hasil dari sebuah fungsi ke dalam memori (*caching*) untuk jangka waktu tertentu. Sangat berguna untuk mempercepat respon dan mengurangi beban pada API eksternal yang sering dipanggil dengan argumen yang sama.
+Decorator untuk menyimpan hasil dari sebuah fungsi ke dalam memori (*caching*) untuk jangka waktu tertentu. Sangat berguna untuk mempercepat respon dan mengurangi beban pada API eksternal.
 
-**Metode:**
-- `@client.ns.utils.cache(ttl=seconds)`
+**Metode:** `@client.ns.utils.cache(ttl=seconds)`
 
-| Parameter | Tipe Data | Deskripsi                                                       |
-|-----------|-----------|-----------------------------------------------------------------|
-| `ttl`     | `int`     | *Time-to-live* dalam detik. Hasil fungsi akan disimpan selama ini. |
+---
+### `carbon`
+Menghasilkan gambar potongan kode yang indah (seperti `carbon.now.sh`) secara terprogram.
 
-**Contoh Penggunaan:**
+**Inisialisasi:** `carbon = client.ns.utils.carbon()`
+**Metode Utama:** `generate(code)`
+**Contoh:**
 ```python
-# Fungsi ini melakukan panggilan API yang mungkin lambat atau berbayar.
-# Hasilnya akan di-cache selama 1 jam (3600 detik).
-@client.ns.utils.cache(ttl=3600)
-async def get_webpage_summary(url):
-    client.ns.utils.log.info(f"Melakukan summarize untuk {url} (tidak dari cache)")
-    summarizer = client.ns.ai.web(api_key="GEMINI_KEY")
-    return await summarizer.summarize(url)
-
-@app.on_message(filters.command("cachesum"))
-async def cached_summarize_handler(client, message):
-    url = message.command
-    
-    # Panggilan pertama akan menjalankan fungsi, mencetak log, dan butuh waktu.
-    # Panggilan kedua (dengan URL yang sama dalam 1 jam) akan langsung
-    # mengembalikan hasil dari cache tanpa menjalankan fungsi lagi.
-    summary = await get_webpage_summary(url)
-    await message.reply(summary)
+# @app.on_message(filters.command("carbon") & filters.reply)
+# async def carbon_handler(client, message):
+#     code = message.reply_to_message.text
+#     image_bytes = await client.ns.utils.carbon().generate(code)
+#     # await message.reply_photo(BytesIO(image_bytes))
 ```
 ---
 ### `downloader`
-Utilitas untuk mengunduh video atau audio dari berbagai platform (YouTube, dll) menggunakan `yt-dlp`, kini dengan dukungan progress bar dan thumbnail dalam memori.
+Utilitas untuk mengunduh video atau audio dari berbagai platform (YouTube, dll) menggunakan `yt-dlp`, kini dengan penanganan *geo-restriction* otomatis untuk YouTube.
 
-**Inisialisasi:**
-`downloader = client.ns.utils.downloader(cookies_file_path=None, download_path="downloads")`
+**Inisialisasi:** `downloader = client.ns.utils.downloader(cookies_file_path=None, download_path="downloads")`
 
-**Metode Utama:**
-`download(url, audio_only=False, progress_callback=None)`
+**Metode Utama:** `download(url, audio_only=False, progress_callback=None)`
 
-| Parameter           | Tipe Data  | Default | Deskripsi                                                                 |
-|---------------------|------------|---------|---------------------------------------------------------------------------|
-| `url`               | `str`      | -       | URL media yang akan diunduh.                                              |
-| `audio_only`        | `bool`     | `False` | Jika `True`, hanya akan mengunduh audio (mp3).                              |
-| `progress_callback` | `callable` | `None`  | Fungsi `async` yang akan dipanggil saat progress download (menerima `current`, `total`). |
-| **Return**          | `dict`     | -       | Dictionary berisi `path`, `title`, `duration`, dan `thumbnail_data` (`bytes` atau `None`). |
-
-**Contoh Penggunaan Lengkap:**
-```python
-from io import BytesIO
-
-@app.on_message(filters.command("ytdl"))
-async def download_media(client, message):
-    if len(message.command) < 2:
-        return await message.reply("Sintaks: /ytdl [URL]")
-    
-    url = message.command
-    status = await message.reply("🚀 Mempersiapkan...")
-
-    try:
-        progress = client.ns.utils.progress(client, status)
-        downloader = client.ns.utils.downloader()
-
-        progress.reset(new_task_name="Mengunduh")
-        
-        result = await downloader.download(
-            url, 
-            audio_only=True, 
-            progress_callback=progress.update
-        )
-        
-        progress.reset(new_task_name="Mengunggah")
-        
-        thumb_io = BytesIO(result["thumbnail_data"]) if result.get("thumbnail_data") else None
-        
-        await client.send_audio(
-            chat_id=message.chat.id, 
-            audio=result['path'],
-            title=result['title'], 
-            duration=result['duration'],
-            thumb=thumb_io,
-            progress=progress.update
-        )
-        await status.delete()
-    except Exception as e:
-        await status.edit(f"❌ Gagal: {e}")
-```
 ---
 ### `files`
-Manajer file yang aman untuk menangani file dan direktori temporer. Menjamin pembersihan otomatis setelah selesai digunakan, bahkan jika terjadi error, untuk mencegah penumpukan file di server.
+Manajer file yang aman untuk menangani file dan direktori temporer. Menjamin pembersihan otomatis setelah selesai digunakan, bahkan jika terjadi error.
 
-**Metode Utama:**
-- `async with client.ns.utils.files.temp_dir() as tmpdir:`: Membuat sebuah direktori temporer yang aman.
+**Metode Utama:** `async with client.ns.utils.files.temp_dir() as tmpdir:`
 
-**Contoh Penggunaan:**
+---
+### `github`
+Mengambil informasi profil pengguna dari GitHub menggunakan API resmi untuk data yang andal dan akurat.
+
+**Inisialisasi:** `gh = client.ns.utils.github()`
+**Metode Utama:** `get_user_info(username)`
+**Contoh:**
 ```python
-# Handler ini mengunduh video, mengubahnya, dan mengirimkannya.
-# Semua file yang dihasilkan akan dihapus secara otomatis.
-@app.on_message(filters.video)
-async def process_video_safely(client, message):
-    status = await message.reply("Memproses video...")
-    try:
-        # 'tmpdir' adalah path ke direktori sementara yang baru dibuat.
-        async with client.ns.utils.files.temp_dir() as tmpdir:
-            client.ns.utils.log.info(f"Direktori sementara dibuat di: {tmpdir}")
-
-            # Unduh video ke dalam direktori sementara
-            video_path = await client.download_media(
-                message, 
-                file_name=os.path.join(tmpdir, "original.mp4")
-            )
-
-            # Lakukan operasi lain, misalnya membuat stiker
-            sticker_path = os.path.join(tmpdir, "sticker.webm")
-            await client.ns.telegram.videofx.video_to_sticker(video_path, sticker_path)
-            
-            await client.send_sticker(message.chat.id, sticker_path)
-            await status.delete()
-
-        # Setelah blok 'with' ini selesai, direktori 'tmpdir' beserta semua
-        # isinya ('original.mp4' dan 'sticker.webm') secara otomatis dihapus.
-        client.ns.utils.log.info("Direktori sementara telah dibersihkan.")
-
-    except Exception as e:
-        await status.edit(f"❌ Gagal: {e}")
+# @app.on_message(filters.command("github"))
+# async def github_lookup(client, message):
+#     username = message.command[1]
+#     info = await client.ns.utils.github().get_user_info(username)
+#     await message.reply(f"Nama: {info.name}\nBio: {info.bio}")
 ```
 ---
 ### `grad`
 Mempercantik output terminal dengan teks bergradien dan timer countdown.
 
-**Metode Utama:**
-- `render_text(text)`
-- `countdown(seconds)`
+**Metode Utama:** `render_text(text)`, `countdown(seconds)`, `ping()`
+
 ---
 ### `image`
-Kumpulan alat untuk memanipulasi gambar dengan mudah. Menggunakan font yang di-cache secara otomatis untuk fitur seperti meme dan watermark.
-
+Kumpulan alat untuk memanipulasi gambar.
 **Metode Utama:**
-- `add_watermark(image_bytes, text, **kwargs)`: Menambahkan watermark teks.
-- `resize(image_bytes, size, **kwargs)`: Mengubah ukuran gambar.
-- `convert_format(image_bytes, output_format="PNG")`: Mengubah format gambar.
-- `create_meme(image_bytes, top_text, bottom_text)`: Menghasilkan gambar meme klasik.
-- `apply_filter(image_bytes, filter_name)`: Menerapkan filter visual (`grayscale`, `sepia`, `invert`, `blur`, `sharpen`, `hell`).
-- `remove_background(image_bytes)`: Menghapus background dari sebuah gambar.
-    > **Catatan Penting:** Fitur `remove_background` memerlukan `rembg` dan `onnxruntime`. Pastikan Anda menginstal extra `[ai]` dengan benar: `pip3 install "norsodikin[ai]"`.
+- `add_watermark(image_bytes, text)`
+- `resize(image_bytes, size)`
+- `convert_format(image_bytes, output_format="PNG")`
+- `create_meme(image_bytes, top_text, bottom_text)`
+- `apply_filter(image_bytes, filter_name)`
+- `remove_background(image_bytes)`
+- `convert_sticker_to_png(sticker_bytes)`
 
-**Contoh Penggunaan (`apply_filter` dan `remove_background`):**
-```python
-from io import BytesIO
-
-# Handler untuk perintah /filter
-@app.on_message(filters.command("filter") & filters.reply)
-async def filter_handler(client, message):
-    filter_name = message.command if len(message.command) > 1 else None
-    if not filter_name:
-        return await message.reply("Sintaks: /filter <nama_filter>")
-
-    photo_bytes = await client.download_media(message.reply_to_message, in_memory=True)
-    filtered_bytes = await client.ns.utils.image.apply_filter(photo_bytes.getvalue(), filter_name)
-    await message.reply_photo(BytesIO(filtered_bytes), caption=f"Filter: `{filter_name}`")
-
-# Handler untuk perintah /rmbg
-@app.on_message(filters.command("rmbg") & filters.reply)
-async def remove_bg_handler(client, message):
-    status = await message.reply("🧠 Memproses penghapusan background...")
-    photo_bytes = await client.download_media(message.reply_to_message, in_memory=True)
-    no_bg_bytes = await client.ns.utils.image.remove_background(photo_bytes.getvalue())
-    
-    # Kirim sebagai file untuk menjaga transparansi
-    file_io = BytesIO(no_bg_bytes)
-    file_io.name = "no_bg.png"
-    await message.reply_document(file_io)
-    await status.delete()
-```
 ---
 ### `log`
 Logger canggih pengganti `print()` yang memberikan output berwarna dan informatif ke konsol.
 
-**Contoh Penggunaan:**
+---
+### `osint`
+Toolkit untuk melakukan investigasi sumber terbuka dasar.
+**Inisialisasi:** `osint = client.ns.utils.osint()`
+**Metode Utama:**
+- `get_ip_info(ip_or_domain)`: Mengambil info geolokasi dan ISP.
+- `check_username(username)`: Memeriksa ketersediaan username di berbagai platform.
+
+---
+### `paste`
+Mengunggah teks panjang ke layanan pastebin (seperti spaceb.in) dan mengembalikan URL.
+**Inisialisasi:** `paster = client.ns.utils.paste()`
+**Metode Utama:** `paste(text)`
+**Contoh:**
 ```python
-client.ns.utils.log.info("Memulai proses...")
-try:
-    hasil = 10 / 0
-except Exception as e:
-    client.ns.utils.log.error(f"Terjadi kesalahan: {e}")
+# @app.on_message(filters.command("paste") & filters.reply)
+# async def paste_handler(client, message):
+#     url = await client.ns.utils.paste().paste(message.reply_to_message.text)
+#     await message.reply(f"Teks Anda diunggah ke: {url}")
 ```
 ---
 ### `progress`
 Callback helper untuk menampilkan progress bar dinamis saat mengunggah/mengunduh file dengan Pyrogram.
 
-**Contoh Penggunaan:**
-```python
-@app.on_message(filters.command("upload"))
-async def upload_handler(client, message):
-    status = await message.reply("🚀 Mempersiapkan unggahan...")
-    progress_bar = client.ns.utils.progress(client, status, task_name="Mengunggah Video")
-    await client.send_video(
-        chat_id=message.chat.id, 
-        video="path/ke/video_besar.mp4", 
-        progress=progress_bar.update
-    )
-    await status.delete()
-```
 ---
 ### `ratelimit`
-Decorator untuk membatasi frekuensi penggunaan perintah oleh pengguna. Mencegah spam dan penyalahgunaan.
+Decorator untuk membatasi frekuensi penggunaan perintah oleh pengguna. Mencegah spam.
+**Metode:** `@client.ns.utils.ratelimit(limit=1, per_seconds=60)`
 
-**Parameter Decorator:**
-| Parameter | Tipe Data | Deskripsi |
-|---|---|---|
-| `limit` | `int` | Jumlah maksimum panggilan yang diizinkan. |
-| `per_seconds`| `int` | Jangka waktu dalam detik. |
-
-**Contoh Penggunaan:**
-Decorator ini bekerja untuk `Message` dan `CallbackQuery`.
-
-```python
-# Membatasi /generate hanya bisa digunakan 1 kali setiap 60 detik per pengguna
-@app.on_message(filters.command("generate"))
-@client.ns.utils.ratelimit(limit=1, per_seconds=60)
-async def generate_command(client, message):
-    await message.reply("Gambar Anda sedang dibuat...")
-
-# Membatasi callback query hanya bisa ditekan 1 kali setiap 5 detik per pengguna
-@app.on_callback_query(filters.regex("my_button"))
-@client.ns.utils.ratelimit(limit=1, per_seconds=5)
-async def my_button_callback(client, callback_query):
-    await callback_query.answer("Aksi berhasil!")
-```
 ---
 ### `shell`
 Eksekutor perintah shell/terminal secara asinkron.
 
-**Contoh Penggunaan:**
-```python
-stdout, stderr, code = await client.ns.utils.shell.run("ls -l /home")
-if code == 0:
-    await message.reply(f"```\n{stdout}\n```")
-else:
-    await message.reply(f"Error:\n`{stderr}`")
-```
 ---
 ### `url`
 Utilitas sederhana untuk memendekkan URL menggunakan layanan TinyURL.
 
-**Contoh Penggunaan:**
+---
+### `wikipedia`
+Mencari artikel di Wikipedia dan mengembalikan ringkasan, URL, dan gambar utama.
+**Inisialisasi:** `wiki = client.ns.utils.wikipedia(lang="id")`
+**Metode Utama:** `search(query)`
+**Contoh:**
 ```python
-url_panjang = "https://github.com/SenpaiSeeker/norsodikin"
-url_pendek = await client.ns.utils.url.shorten(url_panjang)
-print(url_pendek)
+# @app.on_message(filters.command("wiki"))
+# async def wiki_search(client, message):
+#     query = message.command[1]
+#     result = await client.ns.utils.wikipedia().search(query)
+#     await message.reply_photo(result.image_url, caption=f"**{result.title}**\n{result.summary}")
 ```
 
 </details>
