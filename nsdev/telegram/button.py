@@ -30,27 +30,33 @@ class Button:
         else:
             raise ValueError("Invalid parse mode. Use 'inline' or 'reply'.")
 
-    def create_inline_keyboard(self, text, inline_cmd=None, is_id=None):
+    def create_inline_keyboard(self, text, inline_cmd=None, is_id=None, cb_prefix=None):
         layout = []
         buttons, remaining_text = self.parse_buttons_and_text(text, mode="inline")
         for label, payload in buttons:
             cb_data, *extra_params = payload.split(";")
-            if not self.get_urls(cb_data):
-                cb_data = (
-                    f"{inline_cmd} {is_id}_{cb_data}"
-                    if inline_cmd and is_id
-                    else f"{inline_cmd} {cb_data}" if inline_cmd else cb_data
-                )
+            
+            is_url = bool(self.get_urls(cb_data))
+
+            if not is_url:
+                if cb_prefix:
+                    cb_data = f"{cb_prefix}_{cb_data}"
+                elif inline_cmd and is_id:
+                    cb_data = f"{inline_cmd} {is_id}_{cb_data}"
+                elif inline_cmd:
+                    cb_data = f"{inline_cmd} {cb_data}"
+
             if "user" in extra_params:
                 button = pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
             elif "copy" in extra_params:
                 button = pyrogram.types.InlineKeyboardButton(
                     label, copy_text=pyrogram.types.CopyTextButton(text=cb_data)
                 )
-            elif self.get_urls(cb_data):
+            elif is_url:
                 button = pyrogram.types.InlineKeyboardButton(label, url=cb_data)
             else:
                 button = pyrogram.types.InlineKeyboardButton(label, callback_data=cb_data)
+
             if "same" in extra_params and layout:
                 layout[-1].append(button)
             else:
