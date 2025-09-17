@@ -33,7 +33,7 @@ class ChatAnalyzer:
                 user_id = msg.from_user.id
                 user_counter[user_id] += 1
                 if user_id not in user_map:
-                    user_map[user_id] = msg._client.ns.telegram.arg.arg.getMention(msg.from_user)
+                    user_map[user_id] = msg._client.ns.telegram.arg.getMention(msg.from_user)
 
                 local_time = msg.date.astimezone(jakarta_tz)
                 hour_counter[local_time.hour] += 1
