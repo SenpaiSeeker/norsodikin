@@ -11,6 +11,7 @@ from .ai.translate import Translator
 from .ai.tts import TextToSpeech
 from .ai.vision import VisionAnalyzer
 from .ai.web_summarizer import WebSummarizer
+from .analytics.chat import ChatAnalyzer
 from .analytics.manager import AnalyticsManager
 from .auth.manager import AuthManager
 from .code.encrypt import AsciiManager, CipherHandler
@@ -67,7 +68,10 @@ class NsDev:
             vision=VisionAnalyzer,
             web=WebSummarizer,
         )
-        self.analytics = AnalyticsManager
+        self.analytics = SimpleNamespace(
+            manager=AnalyticsManager,
+            chat=ChatAnalyzer,
+        )
         self.auth = AuthManager
         self.code = SimpleNamespace(
             Ascii=AsciiManager,
