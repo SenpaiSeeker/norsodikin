@@ -86,6 +86,8 @@ class ImageGenerator:
 
     async def generate(self, prompt: str):
         self.__log(f"{self.log.GREEN}Memulai pembuatan gambar untuk prompt: '{prompt}'")
+
+        await self.client.get("/images/create")
         
         params = {'q': prompt, 'rt': '4', 'FORM': 'GENCRE'}
         encoded_params = urlencode(params)
