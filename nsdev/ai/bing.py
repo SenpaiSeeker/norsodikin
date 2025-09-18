@@ -83,7 +83,7 @@ class ImageGenerator:
         
         if "proccessing" in str(response.url) or "results" in str(response.url):
             polling_url = str(response.url).replace(self.base_url, "")
-        else: # Mencari redirect di body jika tidak ada di URL
+        else:
             redirect_match = re.search(r'id="redirect_url" value="([^"]+)"', response.text)
             if not redirect_match:
                  if 'class="gi_err_msg"' in response.text:
