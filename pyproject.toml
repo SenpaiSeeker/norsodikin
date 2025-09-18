@@ -48,9 +48,6 @@ ai = [
     "google-generativeai",
     "ollama",
     "rembg[cpu]",
-    "selenium==4.16.0",
-    "webdriver-manager",
-    "mtranslate",
 ]
 server = [
     "psutil",
