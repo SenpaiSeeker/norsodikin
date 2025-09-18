@@ -49,7 +49,7 @@ class ImageGenerator:
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--disable-gpu')
             
-            self.__log(f"{self.log.CYAN}Meluncurkan browser headless... (Mungkin perlu mengunduh driver yang sesuai)")
+            self.__log(f"{self.log.CYAN}Meluncurkan browser headless...")
             driver = uc.Chrome(options=options)
             
             self.__log(f"{self.log.CYAN}Menavigasi ke Bing dan memuat cookies...")
@@ -65,29 +65,34 @@ class ImageGenerator:
             encoded_prompt = quote(prompt)
             driver.get(f"{self.base_url}?q={encoded_prompt}&rt=4&FORM=GENCRE")
             
-            self.__log(f"{self.log.GREEN}Menunggu halaman dimuat dan prompt diproses...")
+            self.__log(f"{self.log.GREEN}Menunggu halaman dimuat...")
+            WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.ID, "create_btn_c")))
 
-            WebDriverWait(driver, 120).until(
-                lambda d: d.find_element(By.ID, "gil_cl") or "action-err" in d.page_source
-            )
-            
-            if "prompt has been blocked" in driver.page_source or "action-err" in driver.page_source:
-                 raise Exception("Prompt Anda diblokir oleh kebijakan konten Bing.")
-
-            self.__log(f"{self.log.YELLOW}Menunggu hasil gambar (ini bisa memakan waktu hingga 2 menit)...")
-            
-            WebDriverWait(driver, 240).until(
+            self.__log(f"{self.log.YELLOW}Memulai generasi gambar (ini bisa memakan waktu hingga 3 menit)...")
+            WebDriverWait(driver, 300).until(
                 EC.presence_of_element_located((By.ID, "giric"))
             )
-            
-            WebDriverWait(driver, 60).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'div#giric a.iusc img'))
+
+            try:
+                throttle_element = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.ID, "giloader"))
+                )
+                self.__log(f"{self.log.YELLOW}Pembuatan gambar mungkin lebih lambat, menunggu... ")
+                WebDriverWait(driver, 300).until(
+                    EC.invisibility_of_element_located((By.ID, "giloader"))
+                )
+            except Exception:
+                pass
+
+            self.__log(f"{self.log.GREEN}Menunggu gambar muncul di galeri...")
+            WebDriverWait(driver, 120).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'div#giric .img_cont img.mimg'))
             )
             
             self.__log(f"{self.log.GREEN}Mengambil URL gambar...")
-            image_elements = driver.find_elements(By.CSS_SELECTOR, 'div#giric a.iusc img')
+            image_elements = driver.find_elements(By.CSS_SELECTOR, 'div#giric .img_cont img.mimg')
             
-            image_urls = [re.sub(r'[?&]w=\d+&h=\d+&c=\d+&rs=\d+&qlt=\d+&o=\d+&pid=ImgGn', '', el.get_attribute('src')) for el in image_elements if el.get_attribute('src')]
+            image_urls = [re.sub(r'[?&]w=\d+&h=\d+.*', '', el.get_attribute('src')) for el in image_elements if el.get_attribute('src')]
 
             if not image_urls:
                  raise Exception("Tidak ada URL gambar yang ditemukan setelah generasi selesai.")
