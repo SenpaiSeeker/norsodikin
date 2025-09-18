@@ -25,46 +25,58 @@ class ImageGenerator:
             self.log.print(message)
 
     def _get_cookies(self):
-        with open(self.cookies_file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        try:
+            with open(self.cookies_file_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+             raise ValueError("Format file cookie salah. Harus berupa format JSON yang valid.")
 
-    async def _generate_with_browser(self, prompt: str):
+    def _run_browser_automation(self, prompt: str):
         driver = None
         try:
             options = uc.ChromeOptions()
-            options.add_argument('--headless')
+            options.add_argument('--headless=new')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
+            options.add_argument('--disable-gpu')
             
-            self.__log(f"{self.log.CYAN}Meluncurkan browser headless...")
-            driver = uc.Chrome(options=options, version_main=119)
+            self.__log(f"{self.log.CYAN}Meluncurkan browser headless... (Mungkin perlu mengunduh driver yang sesuai)")
+            driver = uc.Chrome(options=options, use_subprocess=False)
             
-            driver.get(self.base_url)
+            self.__log(f"{self.log.CYAN}Menavigasi ke Bing dan memuat cookies...")
+            driver.get("https://www.bing.com")
             
-            self.__log(f"{self.log.CYAN}Memuat cookies...")
             cookies = self._get_cookies()
             for cookie in cookies:
                 if 'domain' in cookie and 'bing.com' in cookie['domain']:
                     driver.add_cookie(cookie)
             
-            driver.get(f"{self.base_url}?q={prompt}")
+            encoded_prompt = uc.quote(prompt)
+            driver.get(f"{self.base_url}?q={encoded_prompt}&ensearch=1")
             
-            self.__log(f"{self.log.GREEN}Menunggu halaman dimuat dan prompt dikirim...")
-            WebDriverWait(driver, 60).until(
-                EC.presence_of_element_located((By.ID, "create_btn_c"))
-            )
+            self.__log(f"{self.log.GREEN}Menunggu halaman dimuat dan prompt diproses...")
 
-            time.sleep(10)
+            WebDriverWait(driver, 120).until(
+                lambda d: d.find_element(By.ID, "gil_cl") or "action-err" in d.page_source
+            )
+            
+            if "prompt has been blocked" in driver.page_source or "action-err" in driver.page_source:
+                 raise Exception("Prompt Anda diblokir oleh kebijakan konten Bing.")
 
             self.__log(f"{self.log.YELLOW}Menunggu hasil gambar (ini bisa memakan waktu hingga 2 menit)...")
-            WebDriverWait(driver, 200).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "div#gi_cmp_roller.gil_eco_chat.hasspace.gicpr_vrt_sct"))
+            
+            WebDriverWait(driver, 240).until(
+                EC.presence_of_element_located((By.ID, "giric"))
+            )
+            
+            WebDriverWait(driver, 60).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'div#giric a.iusc img'))
             )
             
             self.__log(f"{self.log.GREEN}Mengambil URL gambar...")
-            image_elements = driver.find_elements(By.CSS_SELECTOR, 'div.img_cont a.iusc img')
+            image_elements = driver.find_elements(By.CSS_SELECTOR, 'div#giric a.iusc img')
             
-            image_urls = [re.sub(r'&w=\d+&h=\d+', '&w=1024&h=1024', el.get_attribute('src')) for el in image_elements if el.get_attribute('src')]
+            image_urls = [re.sub(r'[?&]w=\d+&h=\d+&c=\d+&rs=\d+&qlt=\d+&o=\d+&pid=ImgGn', '', el.get_attribute('src')) for el in image_elements if el.get_attribute('src')]
 
             if not image_urls:
                  raise Exception("Tidak ada URL gambar yang ditemukan setelah generasi selesai.")
@@ -77,9 +89,13 @@ class ImageGenerator:
                 self.__log(f"{self.log.YELLOW}Browser headless ditutup.")
 
     async def generate(self, prompt: str):
-        self.__log(f"{self.log.GREEN}Memulai pembuatan gambar untuk prompt: '{prompt}' menggunakan browser automation.")
+        self.__log(f"{self.log.GREEN}Memulai pembuatan gambar untuk prompt: '{prompt}'")
         loop = asyncio.get_running_loop()
-        image_urls = await loop.run_in_executor(
-            None, lambda: asyncio.run(self._generate_with_browser(prompt))
-        )
-        return image_urls
+        try:
+            image_urls = await loop.run_in_executor(
+                None, self._run_browser_automation, prompt
+            )
+            return image_urls
+        except Exception as e:
+            self.__log(f"{self.log.RED}Terjadi kesalahan selama otomasi browser: {e}")
+            raise e
