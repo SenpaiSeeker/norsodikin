@@ -16,10 +16,10 @@ class ImageGenerator:
         self.logging_enabled = logging_enabled
         self.log = LoggerHandler()
         
-        self.cookie_string = self._parse_netscape_to_header_string(cookies_file_path)
+        self.cookie_string = self._parse_netscape_to_dict(cookies_file_path)
         self.client = self._prepare_client()
 
-    def _parse_netscape_to_header_string(self, file_path: str) -> str:
+    def _parse_netscape_to_dict(self, file_path: str) -> dict:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File cookie tidak ditemukan: {file_path}")
         
