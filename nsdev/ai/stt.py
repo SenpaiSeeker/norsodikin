@@ -115,7 +115,7 @@ class SpeechToText:
                     "let reader = new FileReader();"
                     "reader.readAsDataURL(file);"
                     "return new Promise(resolve => { reader.onload = () => resolve(reader.result); });",
-                    webdriver.remote.webelement.WebElement(self._driver, 'file', w3c=True)
+                    webdriver.remote.webelement.WebElement(self._driver, 'file')
                 )
 
 
