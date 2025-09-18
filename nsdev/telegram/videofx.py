@@ -256,3 +256,36 @@ class VideoFX(FontManager):
     async def video_to_gif(self, video_path: str, output_path: str):
         await self._run_in_executor(self._convert_video_to_gif, video_path, output_path)
         return output_path
+    
+    def _add_text_to_video(self, video_path: str, output_path: str, top_text: str, bottom_text: str):
+        font = self._get_font(70)
+        
+        def escape_ffmpeg_text(text):
+            return text.replace("'", "'\\''")
+        
+        top_drawtext = (
+            f"drawtext=fontfile='{font.path}':text='{escape_ffmpeg_text(top_text.upper())}':"
+            "fontcolor=white:fontsize=80:borderw=2:bordercolor=black:"
+            "x=(w-text_w)/2:y=20"
+        )
+        bottom_drawtext = (
+            f"drawtext=fontfile='{font.path}':text='{escape_ffmpeg_text(bottom_text.upper())}':"
+            "fontcolor=white:fontsize=80:borderw=2:bordercolor=black:"
+            "x=(w-text_w)/2:y=h-text_h-20"
+        )
+
+        filters_list = []
+        if top_text: filters_list.append(top_drawtext)
+        if bottom_text: filters_list.append(bottom_drawtext)
+
+        vf_filter = ",".join(filters_list)
+        
+        ffmpeg_cmd = ["ffmpeg", "-y", "-i", video_path, "-vf", vf_filter, "-c:a", "copy", output_path]
+
+        result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"FFmpeg failed during animated meme creation: {result.stderr}")
+
+    async def add_text_to_video(self, video_path: str, output_path: str, top_text: str = "", bottom_text: str = ""):
+        await self._run_in_executor(self._add_text_to_video, video_path, output_path, top_text, bottom_text)
+        return output_path
