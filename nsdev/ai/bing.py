@@ -7,6 +7,7 @@ import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from urllib.parse import quote
 
 from ..utils.logger import LoggerHandler
 
@@ -31,6 +32,14 @@ class ImageGenerator:
         except (json.JSONDecodeError, FileNotFoundError):
              raise ValueError("Format file cookie salah. Harus berupa format JSON yang valid.")
 
+    def _sanitize_cookies(self, cookies):
+        sanitized = []
+        for cookie in cookies:
+            if 'sameSite' in cookie and cookie['sameSite'] not in ["Strict", "Lax", "None"]:
+                del cookie['sameSite']
+            sanitized.append(cookie)
+        return sanitized
+
     def _run_browser_automation(self, prompt: str):
         driver = None
         try:
@@ -41,18 +50,20 @@ class ImageGenerator:
             options.add_argument('--disable-gpu')
             
             self.__log(f"{self.log.CYAN}Meluncurkan browser headless... (Mungkin perlu mengunduh driver yang sesuai)")
-            driver = uc.Chrome(options=options, use_subprocess=False)
+            driver = uc.Chrome(options=options)
             
             self.__log(f"{self.log.CYAN}Menavigasi ke Bing dan memuat cookies...")
-            driver.get("https://www.bing.com")
+            driver.get("https://www.bing.com") 
             
             cookies = self._get_cookies()
-            for cookie in cookies:
+            sanitized_cookies = self._sanitize_cookies(cookies)
+
+            for cookie in sanitized_cookies:
                 if 'domain' in cookie and 'bing.com' in cookie['domain']:
                     driver.add_cookie(cookie)
             
-            encoded_prompt = uc.quote(prompt)
-            driver.get(f"{self.base_url}?q={encoded_prompt}&ensearch=1")
+            encoded_prompt = quote(prompt)
+            driver.get(f"{self.base_url}?q={encoded_prompt}&rt=4&FORM=GENCRE")
             
             self.__log(f"{self.log.GREEN}Menunggu halaman dimuat dan prompt diproses...")
 
