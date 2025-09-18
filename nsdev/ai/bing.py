@@ -2,7 +2,7 @@ import asyncio
 import os
 import re
 import time
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import httpx
 import fake_useragent
@@ -15,7 +15,7 @@ class ImageGenerator:
         self.all_cookies = self._parse_cookie_file(cookies_file_path)
         self.required_cookies = [
             'MUID', 'ANON', '_U', 'MSPTC', 'ak_bmsc', 
-            '_RwBf', '_SS', 'SRCHUSR', 'SRCHUID', 'SRCHHPGUSR'
+            '_RwBf', '_SS', 'SRCHUSR', 'SRCHUID', 'SRCHHPGUSR', 'KievRPSSecAuth'
         ]
         
         self.base_url = "https://www.bing.com"
@@ -34,15 +34,14 @@ class ImageGenerator:
 
         headers = {
             'User-Agent': fake_useragent.UserAgent().random,
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Referer': f"{self.base_url}/create",
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Referer': f"{self.base_url}/images/create",
             'Origin': self.base_url,
             'Upgrade-Insecure-Requests': '1',
             'Sec-Fetch-Dest': 'document',
             'Sec-Fetch-Mode': 'navigate',
             'Sec-Fetch-Site': 'same-origin',
-            'Sec-Fetch-User': '?1',
         }
         
         return httpx.AsyncClient(
@@ -104,21 +103,23 @@ class ImageGenerator:
     async def generate(self, prompt: str):
         self.__log(f"{self.log.GREEN}Memulai pembuatan gambar untuk prompt: '{prompt}'")
         
-        encoded_prompt = urlencode({'q': prompt})
+        params = {'q': prompt, 'rt': '4', 'FORM': 'GENCRE'}
+        encoded_params = urlencode(params)
+        creation_url = f'/images/create?{encoded_params}'
         
-        creation_url = f'/images/create?{encoded_prompt}&rt=4&FORM=GENCRE'
+        self.client.headers.update({'Referer': f"{self.base_url}{creation_url}"})
         
-        self.__log(f"{self.log.CYAN}Mengirim permintaan ke Bing...")
-        response = await self.client.get(creation_url)
+        self.__log(f"{self.log.CYAN}Mengirim permintaan POST ke Bing...")
+        response = await self.client.post(creation_url)
         response.raise_for_status()
         
-        if "create/async/results/" not in str(response.url):
+        if response.status_code != 200 or "create/async/results/" not in str(response.url):
             if 'ContentData' in response.text and 'Block' in response.text:
-                raise Exception('Prompt Anda ditolak karena alasan kebijakan konten. ' + str(response.url))
-            raise Exception('Gagal mendapatkan URL hasil. Periksa validitas cookie Anda. ' + str(response.url))
+                raise Exception(f'Prompt Anda ditolak karena alasan kebijakan konten.')
+            raise Exception(f'Gagal mendapatkan URL hasil. URL akhir: {response.url}. Periksa validitas cookie Anda.')
 
         polling_url = str(response.url)
-        self.__log(f"{self.log.GREEN}Permintaan berhasil, URL polling: {polling_url.replace(self.base_url, '')}")
+        self.__log(f"{self.log.GREEN}Permintaan berhasil, URL polling: {urlparse(polling_url).path}?{urlparse(polling_url).query}")
         
         image_urls = await self._fetch_images_from_result(polling_url, prompt)
         
