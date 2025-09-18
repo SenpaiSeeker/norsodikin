@@ -40,6 +40,7 @@ from .utils.github import GitHubInfo
 from .utils.gradient import Gradient
 from .utils.image import ImageManipulator
 from .utils.logger import LoggerHandler
+from .utils.lookup import TMDbClient
 from .utils.osint import OsintTools
 from .utils.paste import PasteClient
 from .utils.progress import TelegramProgressBar
@@ -113,6 +114,7 @@ class NsDev:
             grad=Gradient(),
             image=ImageManipulator(),
             log=LoggerHandler,
+            lookup=TMDbClient,
             osint=OsintTools,
             paste=PasteClient,
             progress=TelegramProgressBar,
