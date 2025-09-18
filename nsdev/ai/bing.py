@@ -23,16 +23,8 @@ class ImageGenerator:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File cookie tidak ditemukan: {file_path}")
         
-        cookies = []
         with open(file_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                if line.strip() and not line.strip().startswith('#'):
-                    parts = line.strip().split('\t')
-                    if len(parts) >= 7:
-                        name = parts[5]
-                        value = parts[6]
-                        cookies.append(f"{name}={value}")
-        return "; ".join(cookies)
+            return {parts[5]: parts[6] for parts in (line.strip().split('\t') for line in f) if len(parts) >= 7 and ".bing.com" in parts[0] and not parts[0].startswith('#')}
 
     def _prepare_client(self):
         headers = {
@@ -40,7 +32,7 @@ class ImageGenerator:
             "accept-language": "en-US,en;q=0.9",
             "cache-control": "max-age=0",
             "content-type": "application/x-www-form-urlencoded",
-            "referer": f"{self.base_url}/images/create/",
+            "referrer": f"{self.base_url}/images/create/",
             "origin": self.base_url,
             "user-agent": fake_useragent.UserAgent().random,
             "cookie": self.cookie_string
