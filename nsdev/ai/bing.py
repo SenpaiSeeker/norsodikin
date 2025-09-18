@@ -16,12 +16,23 @@ class ImageGenerator:
         self.logging_enabled = logging_enabled
         self.log = LoggerHandler()
         
-        if not os.path.exists(cookies_file_path):
-            raise FileNotFoundError(f"File cookie tidak ditemukan: {cookies_file_path}")
-        with open(cookies_file_path, "r", encoding="utf-8") as f:
-            self.cookie_string = f.read().strip()
-
+        self.cookie_string = self._parse_netscape_to_header_string(cookies_file_path)
         self.client = self._prepare_client()
+
+    def _parse_netscape_to_header_string(self, file_path: str) -> str:
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File cookie tidak ditemukan: {file_path}")
+        
+        cookies = []
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                if line.strip() and not line.strip().startswith('#'):
+                    parts = line.strip().split('\t')
+                    if len(parts) >= 7:
+                        name = parts[5]
+                        value = parts[6]
+                        cookies.append(f"{name}={value}")
+        return "; ".join(cookies)
 
     def _prepare_client(self):
         headers = {
@@ -29,7 +40,7 @@ class ImageGenerator:
             "accept-language": "en-US,en;q=0.9",
             "cache-control": "max-age=0",
             "content-type": "application/x-www-form-urlencoded",
-            "referrer": f"{self.base_url}/images/create/",
+            "referer": f"{self.base_url}/images/create/",
             "origin": self.base_url,
             "user-agent": fake_useragent.UserAgent().random,
             "cookie": self.cookie_string
