@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import httpx
 import requests
+import fake_useragent
 from faker import Faker
 
 from ..data.ymlreder import YamlHandler
@@ -184,6 +185,7 @@ class PaymentTrakteer:
             "Accept": "application/json",
             "key": self.api_key,
             "X-Requested-With": "XMLHttpRequest",
+            "User-Agent": fake_useragent.UserAgent().random,
         }
         self.convert = YamlHandler()
 
