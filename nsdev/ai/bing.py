@@ -2,129 +2,103 @@ import asyncio
 import os
 import re
 import time
-from urllib.parse import urlencode, urlparse
+from urllib.parse import quote
 
 import httpx
 import fake_useragent
+from http.cookiejar import MozillaCookieJar
 
 from ..utils.logger import LoggerHandler
 
-
 class ImageGenerator:
-    def __init__(self, cookies_file_path: str = "cookies/Bing.txt", logging_enabled: bool = True):
-        self.all_cookies = self._parse_cookie_file(cookies_file_path)
-        self.required_cookies = [
-            'MUID', 'ANON', '_U', 'MSPTC', 'ak_bmsc', 
-            '_RwBf', '_SS', 'SRCHUSR', 'SRCHUID', 'SRCHHPGUSR', 'KievRPSSecAuth'
-        ]
-        
-        self.base_url = "https://www.bing.com"
-        self.client = self._prepare_client()
+    def __init__(self, cookies_file_path: str = "cookies.txt", logging_enabled: bool = True):
+        self.client = self._prepare_client(cookies_file_path)
         self.logging_enabled = logging_enabled
         self.log = LoggerHandler()
 
-    def _prepare_client(self):
-        filtered_cookies = {k: v for k, v in self.all_cookies.items() if k in self.required_cookies}
-        if "_U" not in filtered_cookies:
-            raise ValueError("File cookie harus berisi cookie '_U'.")
+    def _prepare_client(self, cookie_path):
+        if not os.path.exists(cookie_path):
+            raise FileNotFoundError(f"File cookie tidak ditemukan: {cookie_path}")
 
-        cookie_jar = httpx.Cookies()
-        for name, value in filtered_cookies.items():
-            cookie_jar.set(name, value, domain=".bing.com")
+        cj = MozillaCookieJar(cookie_path)
+        cj.load(ignore_discard=True, ignore_expires=True)
+
+        cookies = httpx.Cookies()
+        for cookie in cj:
+            cookies.set(cookie.name, cookie.value, domain=cookie.domain, path=cookie.path)
 
         headers = {
-            'User-Agent': fake_useragent.UserAgent().random,
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Referer': f"{self.base_url}/images/create",
-            'Origin': self.base_url,
-            'Upgrade-Insecure-Requests': '1',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'same-origin',
+            "User-Agent": fake_useragent.UserAgent().random,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Origin": "https://www.bing.com",
+            "Referer": "https://www.bing.com/images/create",
         }
-        
+
         return httpx.AsyncClient(
-            base_url=self.base_url,
+            base_url="https://www.bing.com",
             headers=headers,
-            cookies=cookie_jar,
-            follow_redirects=True,
-            timeout=200,
+            cookies=cookies,
+            timeout=httpx.Timeout(300.0),
+            follow_redirects=True
         )
-
-    def _parse_cookie_file(self, file_path: str) -> dict:
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File cookie tidak ditemukan: {file_path}")
-
-        cookies_dict = {}
-        with open(file_path, "r", encoding="utf-8") as f:
-            for line in f:
-                if line.strip().startswith("#") or not line.strip():
-                    continue
-
-                parts = line.strip().split('\t')
-                if len(parts) >= 7 and '.bing.com' in parts[0]:
-                    cookies_dict[parts[5]] = parts[6]
         
-        return cookies_dict
-
     def __log(self, message: str):
         if self.logging_enabled:
             self.log.print(message)
-
-    async def _fetch_images_from_result(self, polling_url: str, prompt: str):
-        start_time = time.time()
-        while time.time() - start_time < 180:
-            self.__log(f"{self.log.YELLOW}Meminta hasil gambar...")
-            response = await self.client.get(polling_url)
             
-            if response.status_code != 200:
+    async def generate(self, prompt: str, retries: int = 3):
+        url_prompt = quote(prompt)
+        
+        for attempt in range(1, retries + 1):
+            self.__log(f"{self.log.CYAN}Mengirim permintaan ke Bing (Percobaan {attempt}/{retries})...")
+            
+            request = self.client.build_request(
+                "POST", 
+                f"/images/create?q={url_prompt}&FORM=GENCRE",
+                data={"q": url_prompt, "qs": "ds"}
+            )
+            
+            response = await self.client.send(request, follow_redirects=False)
+
+            if response.status_code == 302:
+                redirect_url = response.headers.get("Location")
+                if not redirect_url:
+                    raise Exception("Redirect diterima, tetapi tanpa header Location.")
+                try:
+                    request_id = re.search(r"id=([^&]+)", redirect_url).group(1)
+                    self.__log(f"{self.log.GREEN}Berhasil mendapatkan ID permintaan: {request_id}")
+                    break
+                except (AttributeError, IndexError):
+                    raise Exception("Gagal mengekstrak ID permintaan dari URL redirect.")
+            else:
+                if attempt == retries:
+                    raise Exception(f"Gagal mendapatkan redirect setelah {retries} percobaan. Status: {response.status_code}")
+                await asyncio.sleep(2)
+        
+        polling_url = f"/images/create/async/results/{request_id}?q={url_prompt}"
+        start_time = time.time()
+        self.__log(f"{self.log.YELLOW}Menunggu hasil gambar...")
+
+        while time.time() - start_time < 180:
+            poll_response = await self.client.get(polling_url)
+            
+            if poll_response.status_code != 200:
+                self.__log(f"{self.log.YELLOW}Status polling tidak 200 ({poll_response.status_code}), mencoba lagi...")
                 await asyncio.sleep(5)
                 continue
 
-            if 'Your images are being created' in response.text or 'data-preloader="true"' in response.text:
-                 self.__log(f"{self.log.YELLOW}Gambar masih dalam proses rendering...")
-                 await asyncio.sleep(5)
-                 continue
+            if "gil_err_msg" in poll_response.text or "errorMessage" in poll_response.text:
+                 raise Exception("Bing mengembalikan error, kemungkinan karena kebijakan konten.")
 
-            if 'src="https://th.bing.com/th/id/' in response.text:
-                image_urls = re.findall(r'<img class="mimg".*?src="([^"]+)"', response.text)
-                if image_urls:
-                    cleaned_urls = [re.sub(r'&w=\d+&h=\d+&c=\d+&rs=\d+&qlt=\d+&o=\d+&dpr=\d+&pid=ImgGn', '', url) for url in image_urls]
-                    return cleaned_urls
-
-            if 'gil_err_msg' in response.text:
-                raise Exception("Bing mengembalikan error, mungkin karena kebijakan konten.")
+            links = re.findall(r'src="([^"]+)"', poll_response.text)
+            valid_links = [link.split("?")[0] for link in links if "tse" in link]
+            
+            if valid_links:
+                unique_links = sorted(list(set(valid_links)))
+                self.__log(f"{self.log.GREEN}Ditemukan {len(unique_links)} gambar.")
+                return unique_links
             
             await asyncio.sleep(5)
-
-        raise Exception("Waktu tunggu habis saat mengambil gambar.")
-    
-    async def generate(self, prompt: str):
-        self.__log(f"{self.log.GREEN}Memulai pembuatan gambar untuk prompt: '{prompt}'")
-        
-        params = {'q': prompt, 'rt': '4', 'FORM': 'GENCRE'}
-        encoded_params = urlencode(params)
-        creation_url = f'/images/create?{encoded_params}'
-        
-        self.client.headers.update({'Referer': f"{self.base_url}{creation_url}"})
-        
-        self.__log(f"{self.log.CYAN}Mengirim permintaan POST ke Bing...")
-        response = await self.client.post(creation_url)
-        response.raise_for_status()
-        
-        if response.status_code != 200 or "create/async/results/" not in str(response.url):
-            if 'ContentData' in response.text and 'Block' in response.text:
-                raise Exception(f'Prompt Anda ditolak karena alasan kebijakan konten.')
-            raise Exception(f'Gagal mendapatkan URL hasil. URL akhir: {response.url}. Periksa validitas cookie Anda.')
-
-        polling_url = str(response.url)
-        self.__log(f"{self.log.GREEN}Permintaan berhasil, URL polling: {urlparse(polling_url).path}?{urlparse(polling_url).query}")
-        
-        image_urls = await self._fetch_images_from_result(polling_url, prompt)
-        
-        if not image_urls:
-            raise Exception("Tidak ada gambar yang dihasilkan. Coba lagi atau perbarui cookie.")
-
-        self.__log(f"{self.log.GREEN}Ditemukan {len(image_urls)} gambar final.")
-        return image_urls
+            
+        raise Exception("Waktu tunggu habis saat menunggu gambar.")
