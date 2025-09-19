@@ -5,7 +5,6 @@ import time
 from urllib.parse import quote
 
 import httpx
-import fake_useragent
 from http.cookiejar import MozillaCookieJar
 
 from ..utils.logger import LoggerHandler
@@ -28,8 +27,7 @@ class ImageGenerator:
             cookies.set(cookie.name, cookie.value, domain=cookie.domain, path=cookie.path)
 
         headers = {
-            "User-Agent": fake_useragent.UserAgent().random,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
             "Accept-Language": "en-US,en;q=0.9",
             "Origin": "https://www.bing.com",
             "Referer": "https://www.bing.com/images/create",
