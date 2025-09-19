@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+import json
 import time
 import uuid
 from types import SimpleNamespace
@@ -181,7 +182,7 @@ class PaymentTrakteer:
         self.base_url = "https://api.trakteer.id/v1"
         self.headers = {
             "Accept": "application/json",
-            "X-Api-Key": self.api_key,
+            "key": self.api_key,
             "X-Requested-With": "XMLHttpRequest",
         }
         self.convert = YamlHandler()
@@ -197,7 +198,10 @@ class PaymentTrakteer:
                 response.raise_for_status()
                 return self.convert._convertToNamespace(response.json())
             except httpx.HTTPStatusError as e:
-                error_details = e.response.json().get("message", e.response.text)
+                try:
+                    error_details = e.response.json().get("message", e.response.text)
+                except json.JSONDecodeError:
+                    error_details = e.response.text
                 raise Exception(f"API Trakteer Error: {e.response.status_code} - {error_details}")
             except Exception as e:
                 raise Exception(f"Gagal membuat link pembayaran Trakteer: {e}")
@@ -210,7 +214,10 @@ class PaymentTrakteer:
                 response.raise_for_status()
                 return self.convert._convertToNamespace(response.json())
             except httpx.HTTPStatusError as e:
-                error_details = e.response.json().get("message", e.response.text)
+                try:
+                    error_details = e.response.json().get("message", e.response.text)
+                except json.JSONDecodeError:
+                    error_details = e.response.text
                 raise Exception(f"API Trakteer Error: {e.response.status_code} - {error_details}")
             except Exception as e:
                 raise Exception(f"Gagal memeriksa transaksi Trakteer: {e}")
