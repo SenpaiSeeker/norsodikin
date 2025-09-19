@@ -159,7 +159,9 @@ class VideoFX(FontManager):
             "-",
             "-an",
             "-c:v",
-            "png",
+            "libvpx-vp9",
+            "-pix_fmt",
+            "yuva420p",
             "-preset",
             "fast",
             output_path,
@@ -188,7 +190,7 @@ class VideoFX(FontManager):
         await self._run_in_executor(self._create_animated_video, text_lines, output_path, duration, fps, font_size)
         return output_path
 
-    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 60):
+    def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30):
         try:
             ffprobe_cmd = [
                 "ffprobe",
@@ -252,17 +254,17 @@ class VideoFX(FontManager):
         result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise RuntimeError(f"FFmpeg failed during GIF conversion: {result.stderr}")
-            
+
     async def video_to_gif(self, video_path: str, output_path: str):
         await self._run_in_executor(self._convert_video_to_gif, video_path, output_path)
         return output_path
-    
+
     def _add_text_to_video(self, video_path: str, output_path: str, top_text: str, bottom_text: str):
         font = self._get_font(70)
-        
+
         def escape_ffmpeg_text(text):
             return text.replace("'", "'\\''")
-        
+
         top_drawtext = (
             f"drawtext=fontfile='{font.path}':text='{escape_ffmpeg_text(top_text.upper())}':"
             "fontcolor=white:fontsize=80:borderw=2:bordercolor=black:"
@@ -279,7 +281,7 @@ class VideoFX(FontManager):
         if bottom_text: filters_list.append(bottom_drawtext)
 
         vf_filter = ",".join(filters_list)
-        
+
         ffmpeg_cmd = ["ffmpeg", "-y", "-i", video_path, "-vf", vf_filter, "-c:a", "copy", output_path]
 
         result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
@@ -288,4 +290,44 @@ class VideoFX(FontManager):
 
     async def add_text_to_video(self, video_path: str, output_path: str, top_text: str = "", bottom_text: str = ""):
         await self._run_in_executor(self._add_text_to_video, video_path, output_path, top_text, bottom_text)
+        return output_path
+    
+    def _sync_video_to_audio(self, video_path: str, output_path: str):
+        ffmpeg_cmd = ["ffmpeg", "-y", "-i", video_path, "-q:a", "0", "-map", "a", output_path]
+        result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"FFmpeg failed during audio extraction: {result.stderr}")
+    
+    async def video_to_audio(self, video_path: str, output_path: str):
+        await self._run_in_executor(self._sync_video_to_audio, video_path, output_path)
+        return output_path
+
+    def _sync_trim_video(self, video_path: str, output_path: str, start_time: str, end_time: str):
+        ffmpeg_cmd = ["ffmpeg", "-y", "-i", video_path, "-ss", start_time, "-to", end_time, "-c", "copy", output_path]
+        result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"FFmpeg failed during video trim: {result.stderr}")
+    
+    async def trim_video(self, video_path: str, output_path: str, start_time: str, end_time: str):
+        await self._run_in_executor(self._sync_trim_video, video_path, output_path, start_time, end_time)
+        return output_path
+
+    def _sync_change_speed(self, video_path: str, output_path: str, speed_factor: float):
+        if speed_factor <= 0:
+            raise ValueError("Speed factor must be positive.")
+        
+        filter_complex = f"[0:v]setpts={1/speed_factor}*PTS[v];[0:a]atempo={speed_factor}[a]"
+        
+        ffmpeg_cmd = [
+            "ffmpeg", "-y", "-i", video_path,
+            "-filter_complex", filter_complex,
+            "-map", "[v]", "-map", "[a]",
+            output_path
+        ]
+        result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"FFmpeg failed during speed change: {result.stderr}")
+    
+    async def change_speed(self, video_path: str, output_path: str, speed_factor: float):
+        await self._run_in_executor(self._sync_change_speed, video_path, output_path, speed_factor)
         return output_path
