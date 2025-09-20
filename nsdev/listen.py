@@ -38,7 +38,7 @@ class Client:
         self.old__init__(*args, **kwargs)
 
     @patchable
-    async def listen(self, chat_id, timeout=None):
+    async def listen(self, chat_id, filters=None, timeout=None):
         if not isinstance(chat_id, int):
             try:
                 chat = await self.get_chat(chat_id)
@@ -50,7 +50,7 @@ class Client:
         future = loop.create_future()
 
         future.add_done_callback(functools.partial(self._clear, chat_id))
-        self._conversations[chat_id] = future
+        self._conversations[chat_id] = (future, filters)
 
         try:
             return await asyncio.wait_for(future, timeout)
@@ -59,20 +59,20 @@ class Client:
             raise
 
     @patchable
-    async def ask(self, chat_id, text, timeout=None, **kwargs):
+    async def ask(self, chat_id, text, filters=None, timeout=None, **kwargs):
         request = await self.send_message(chat_id, text, **kwargs)
-        response = await self.listen(chat_id, timeout)
+        response = await self.listen(chat_id, filters, timeout)
         response.request = request
         return response
 
     @patchable
     def _clear(self, chat_id, future):
-        if chat_id in self._conversations and self._conversations[chat_id] is future:
+        if chat_id in self._conversations and self._conversations[chat_id][0] is future:
             del self._conversations[chat_id]
 
     @patchable
     def cancel(self, chat_id, future_to_cancel=None):
-        future = self._conversations.get(chat_id)
+        future, _ = self._conversations.get(chat_id, (None, None))
         if future and not future.done() and (not future_to_cancel or future is future_to_cancel):
             future.set_exception(UserCancelled())
             self._clear(chat_id, future)
@@ -87,18 +87,28 @@ class MessageHandler:
 
     @patchable
     async def _resolver(self, client, message, *args):
-        future = client._conversations.get(message.chat.id)
-        if future and not future.done():
-            future.set_result(message)
-            return
+        conversation = client._conversations.get(message.chat.id)
+        if conversation:
+            future, filters = conversation
+            if not future.done():
+                if filters is None or await filters(client, message):
+                    future.set_result(message)
+                    return
         
         await self._user_callback(client, message, *args)
 
     @patchable
     async def check(self, client, update):
-        if hasattr(update, 'chat') and update.chat and client._conversations.get(update.chat.id):
-            return True
-        return await self.filters(client, update) if callable(self.filters) else True
+        if isinstance(update, pyrogram.types.Message) and update.chat:
+            conversation = client._conversations.get(update.chat.id)
+            if conversation:
+                _, filters = conversation
+                if filters is None or await filters(client, update):
+                    return True
+        
+        if callable(self.filters):
+            return await self.filters(client, update)
+        return True
 
 
 @patch(pyrogram.types.Chat)
@@ -112,9 +122,9 @@ class Chat:
         return self._client.cancel(self.id)
 
     @patchable
-    async def ask(self, text, timeout=None, **kwargs):
+    async def ask(self, text, filters=None, timeout=None, **kwargs):
         request = await self._client.send_message(self.id, text, **kwargs)
-        response = await self.listen(timeout=timeout)
+        response = await self.listen(filters=filters, timeout=timeout)
         response.request = request
         return response
 
@@ -130,8 +140,8 @@ class User:
         return self._client.cancel(self.id)
 
     @patchable
-    async def ask(self, text, timeout=None, **kwargs):
+    async def ask(self, text, filters=None, timeout=None, **kwargs):
         request = await self._client.send_message(self.id, text, **kwargs)
-        response = await self.listen(timeout=timeout)
+        response = await self.listen(filters=filters, timeout=timeout)
         response.request = request
         return response
