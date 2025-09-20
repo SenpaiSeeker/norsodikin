@@ -90,12 +90,13 @@ class MessageHandler:
         future = client._conversations.get(message.chat.id)
         if future and not future.done():
             future.set_result(message)
-        else:
-            await self._user_callback(client, message, *args)
+            return
+        
+        await self._user_callback(client, message, *args)
 
     @patchable
     async def check(self, client, update):
-        if update.chat and client._conversations.get(update.chat.id):
+        if hasattr(update, 'chat') and update.chat and client._conversations.get(update.chat.id):
             return True
         return await self.filters(client, update) if callable(self.filters) else True
 
