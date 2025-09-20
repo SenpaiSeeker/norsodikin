@@ -93,12 +93,6 @@ class MessageHandler:
         else:
             await self._user_callback(client, message, *args)
 
-    @patchable
-    async def check(self, client, update):
-        if update.chat and client._conversations.get(update.chat.id):
-            return True
-        return await self.filters(client, update) if callable(self.filters) else True
-
 
 @patch(pyrogram.types.Chat)
 class Chat:
