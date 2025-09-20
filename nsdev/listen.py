@@ -37,6 +37,20 @@ class Client:
         self._conversations = {}
         self.old__init__(*args, **kwargs)
 
+        async def conversation_resolver(_, message: pyrogram.types.Message):
+            future = self._conversations.get(message.chat.id)
+            if future and not future.done():
+                future.set_result(message)
+                raise pyrogram.StopPropagation
+
+        self.add_handler(
+            pyrogram.handlers.MessageHandler(
+                conversation_resolver, 
+                filters=pyrogram.filters.all
+            ), 
+            group=-666
+        )
+
     @patchable
     async def listen(self, chat_id, timeout=None):
         if not isinstance(chat_id, int):
@@ -76,22 +90,6 @@ class Client:
         if future and not future.done() and (not future_to_cancel or future is future_to_cancel):
             future.set_exception(UserCancelled())
             self._clear(chat_id, future)
-
-
-@patch(pyrogram.handlers.MessageHandler)
-class MessageHandler:
-    @patchable
-    def __init__(self, callback, filters=None):
-        self._user_callback = callback
-        self.old__init__(self._resolver, filters)
-
-    @patchable
-    async def _resolver(self, client, message, *args):
-        future = client._conversations.get(message.chat.id)
-        if future and not future.done():
-            future.set_result(message)
-        else:
-            await self._user_callback(client, message, *args)
 
 
 @patch(pyrogram.types.Chat)
