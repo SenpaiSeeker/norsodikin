@@ -9,7 +9,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 class FontManager:
     def __init__(self):
-        self.fonts_dir = resources.files('nsdev').joinpath('assets', 'fonts')
+        self.fonts_dir = resources.files('assets').joinpath('fonts')
         self.available_fonts: List[str] = [str(f) for f in self.fonts_dir.iterdir()]
 
     def _get_default_pfp(self, initial: str) -> bytes:
