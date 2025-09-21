@@ -22,7 +22,7 @@ class ImageManipulator(FontManager):
     def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
-    
+
     def _sync_add_watermark(self, image_bytes: bytes, text: str, position: Tuple[int, int] = (10, 10), font_size: int = 30, opacity: int = 128) -> bytes:
         img = Image.open(BytesIO(image_bytes)).convert("RGBA")
         txt_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
@@ -145,49 +145,30 @@ class ImageManipulator(FontManager):
             with resources.as_file(font_resource) as font_path:
                 return ImageFont.truetype(str(font_path), size)
 
-        def has_glyph(font, char):
-            try:
-                return font.getmask(char).getbbox()
-            except AttributeError:
-                return False
+        def has_glyph(font, glyph):
+            return font.getmask(glyph).getbbox()
 
         font_name = get_font_from_package("NotoSans-Regular.ttf", 40)
         font_quote = get_font_from_package("NotoSans-Regular.ttf", 50)
         emoji_font = get_font_from_package("NotoColorEmoji-Regular.ttf", 50)
-        
-        def segment_text(text, main_font, fallback_font):
-            segments = []
-            current_segment = ""
-            current_font = main_font if has_glyph(main_font, text[0] if text else " ") else fallback_font
 
-            for char in text:
-                font_for_char = main_font if has_glyph(main_font, char) else fallback_font
-                if font_for_char != current_font:
-                    segments.append((current_segment, current_font))
-                    current_segment = ""
-                
-                current_segment += char
-                current_font = font_for_char
-
-            if current_segment:
-                segments.append((current_segment, current_font))
-            return segments
-
-        def draw_segmented_text(draw, pos, segments, fill):
+        def draw_text_with_fallback(draw, pos, text, main_font, fallback_font, fill):
             x, y = pos
-            for text_segment, font in segments:
-                if font == fallback_font:
-                    for char in text_segment:
-                        draw.text((x, y), char, font=font, embedded_color=True)
-                        x += font.getlength(char)
+            for char in text:
+                if has_glyph(main_font, char):
+                    draw.text((x, y), char, font=main_font, fill=fill)
+                    x += main_font.getlength(char)
                 else:
-                    draw.text((x, y), text_segment, font=font, fill=fill)
-                    x += font.getlength(text_segment)
+                    draw.text((x, y), char, font=fallback_font, embedded_color=True)
+                    x += fallback_font.getlength(char)
 
-        def get_text_width(segments):
+        def get_text_width_with_fallback(text, main_font, fallback_font):
             width = 0
-            for text_segment, font in segments:
-                width += font.getlength(text_segment)
+            for char in text:
+                if has_glyph(main_font, char):
+                    width += main_font.getlength(char)
+                else:
+                    width += fallback_font.getlength(char)
             return width
         
         pfp_data = pfp_bytes
@@ -211,44 +192,39 @@ class ImageManipulator(FontManager):
         MIN_IMAGE_WIDTH = 512
         MAX_TEXT_WIDTH = MAX_IMAGE_WIDTH - TEXT_LEFT_MARGIN - RIGHT_MARGIN
 
-        final_lines_segmented = []
+        final_lines = []
         initial_lines = text.splitlines()
         if not initial_lines:
             initial_lines = [" "]
 
         for line in initial_lines:
             if not line.strip():
-                final_lines_segmented.append(segment_text(" ", font_quote, emoji_font))
+                final_lines.append(" ")
                 continue
-            
             words = line.split(' ')
-            current_line_segments = []
+            current_line = ''
             for word in words:
-                word_segments = segment_text(word + ' ', font_quote, emoji_font)
-                temp_segments = current_line_segments + word_segments
-                if get_text_width(temp_segments) > MAX_TEXT_WIDTH:
-                    final_lines_segmented.append(current_line_segments)
-                    current_line_segments = segment_text(word + ' ', font_quote, emoji_font)[:-1]
+                if get_text_width_with_fallback(current_line + word, font_quote, emoji_font) <= MAX_TEXT_WIDTH:
+                    current_line += word + ' '
                 else:
-                    current_line_segments = temp_segments
-            
-            final_lines_segmented.append(current_line_segments)
+                    final_lines.append(current_line.strip())
+                    current_line = word + ' '
+            final_lines.append(current_line.strip())
             
         longest_line_width = 0
-        for segments in final_lines_segmented:
-            line_width = get_text_width(segments)
+        for line in final_lines:
+            line_width = get_text_width_with_fallback(line, font_quote, emoji_font)
             if line_width > longest_line_width:
                 longest_line_width = line_width
-
-        name_segments = segment_text(user_name, font_name, emoji_font)
-        name_width = get_text_width(name_segments)
+                
+        name_width = get_text_width_with_fallback(user_name, font_name, emoji_font)
         longest_line_width = max(longest_line_width, name_width)
 
         image_w = int(TEXT_LEFT_MARGIN + longest_line_width + RIGHT_MARGIN)
         image_w = max(MIN_IMAGE_WIDTH, image_w)
         image_w = min(MAX_IMAGE_WIDTH, image_w)
 
-        quote_h = sum([font_quote.getbbox(line[0][0])[3] for line in final_lines_segmented if line and line[0][0]]) + (len(final_lines_segmented) - 1) * 10
+        quote_h = sum([font_quote.getbbox(line)[3] for line in final_lines]) + (len(final_lines) - 1) * 10
         name_h = font_name.getbbox(user_name)[3]
         
         image_h = max(200, quote_h + name_h + 100)
@@ -259,12 +235,12 @@ class ImageManipulator(FontManager):
         img.paste(pfp, (50, 40), pfp)
 
         current_h = (image_h - (quote_h + name_h + 10)) / 2
-        draw_segmented_text(draw, (TEXT_LEFT_MARGIN, current_h), name_segments, name_color)
+        draw_text_with_fallback(draw, (TEXT_LEFT_MARGIN, current_h), user_name, font_name, emoji_font, name_color)
         current_h += name_h + 10
 
-        for segments in final_lines_segmented:
-            draw_segmented_text(draw, (TEXT_LEFT_MARGIN, current_h), segments, text_color)
-            current_h += font_quote.getbbox(segments[0][0] if segments and segments[0][0] else " ")[3] + 10
+        for line in final_lines:
+            draw_text_with_fallback(draw, (TEXT_LEFT_MARGIN, current_h), line, font_quote, emoji_font, text_color)
+            current_h += font_quote.getbbox(line)[3] + 10
 
         output = BytesIO()
         img.save(output, format="PNG")
