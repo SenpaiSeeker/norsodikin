@@ -73,10 +73,7 @@ all = [
 ]
 
 [tool.setuptools]
-packages = ["nsdev", "assets"]
-
-[tool.setuptools.package-data]
-assets = ["fonts/*"]
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
