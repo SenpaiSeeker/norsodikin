@@ -23,7 +23,14 @@ class ImageManipulator(FontManager):
         loop = asyncio.get_running_loop()
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
 
-    def _sync_add_watermark(self, image_bytes: bytes, text: str, position: Tuple[int, int] = (10, 10), font_size: int = 30, opacity: int = 128) -> bytes:
+    def _sync_add_watermark(
+        self,
+        image_bytes: bytes,
+        text: str,
+        position: Tuple[int, int] = (10, 10),
+        font_size: int = 30,
+        opacity: int = 128,
+    ) -> bytes:
         img = Image.open(BytesIO(image_bytes)).convert("RGBA")
         txt_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
         font = self._get_font(font_size)
@@ -34,7 +41,14 @@ class ImageManipulator(FontManager):
         watermarked_img.save(output_buffer, format="PNG")
         return output_buffer.getvalue()
 
-    async def add_watermark(self, image_bytes: bytes, text: str, position: Tuple[int, int] = (10, 10), font_size: int = 30, opacity: int = 128) -> bytes:
+    async def add_watermark(
+        self,
+        image_bytes: bytes,
+        text: str,
+        position: Tuple[int, int] = (10, 10),
+        font_size: int = 30,
+        opacity: int = 128,
+    ) -> bytes:
         return await self._run_in_executor(self._sync_add_watermark, image_bytes, text, position, font_size, opacity)
 
     def _sync_resize(self, image_bytes: bytes, size: Tuple[int, int], keep_aspect_ratio: bool = True) -> bytes:
@@ -77,12 +91,11 @@ class ImageManipulator(FontManager):
         top_text, bottom_text = top_text.upper(), bottom_text.upper()
 
         if top_text:
-            bbox = draw.textbbox((0, 0), top_text, font=font)
-            top_w = bbox[2] - bbox[0]
+            top_w = draw.textlength(top_text, font=font)
             draw_text_with_outline(top_text, (img.width - top_w) / 2, 10)
         if bottom_text:
             bbox = draw.textbbox((0, 0), bottom_text, font=font)
-            bottom_w, bottom_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+            bottom_w, bottom_h = draw.textlength(bottom_text, font=font), bbox[3] - bbox[1]
             draw_text_with_outline(bottom_text, (img.width - bottom_w) / 2, img.height - bottom_h - 15)
 
         output_buffer = BytesIO()
@@ -139,9 +152,11 @@ class ImageManipulator(FontManager):
         return await self._run_in_executor(self._sync_convert_sticker_to_png, sticker_bytes)
 
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
+        
+        dummy_draw = ImageDraw.Draw(Image.new("RGB", (1, 1)))
 
         def get_font_from_package(font_filename, size):
-            font_resource = resources.files('assets').joinpath('fonts', font_filename)
+            font_resource = resources.files('nsdev').joinpath('assets', 'fonts', font_filename)
             with resources.as_file(font_resource) as font_path:
                 return ImageFont.truetype(str(font_path), size)
 
@@ -157,18 +172,18 @@ class ImageManipulator(FontManager):
             for char in text:
                 if has_glyph(main_font, char):
                     draw.text((x, y), char, font=main_font, fill=fill)
-                    x += main_font.getlength(char)
+                    x += dummy_draw.textlength(char, font=main_font)
                 else:
                     draw.text((x, y), char, font=fallback_font, embedded_color=True)
-                    x += fallback_font.getlength(char)
+                    x += dummy_draw.textlength(char, font=fallback_font)
 
         def get_text_width_with_fallback(text, main_font, fallback_font):
             width = 0
             for char in text:
                 if has_glyph(main_font, char):
-                    width += main_font.getlength(char)
+                    width += dummy_draw.textlength(char, font=main_font)
                 else:
-                    width += fallback_font.getlength(char)
+                    width += dummy_draw.textlength(char, font=fallback_font)
             return width
         
         pfp_data = pfp_bytes
@@ -224,8 +239,8 @@ class ImageManipulator(FontManager):
         image_w = max(MIN_IMAGE_WIDTH, image_w)
         image_w = min(MAX_IMAGE_WIDTH, image_w)
 
-        quote_h = sum([font_quote.getbbox(line)[3] for line in final_lines]) + (len(final_lines) - 1) * 10
-        name_h = font_name.getbbox(user_name)[3]
+        quote_h = sum([dummy_draw.textbbox((0,0), line, font=font_quote)[3] for line in final_lines]) + (len(final_lines) - 1) * 10
+        name_h = dummy_draw.textbbox((0,0), user_name, font=font_name)[3]
         
         image_h = max(200, quote_h + name_h + 100)
         
@@ -240,7 +255,7 @@ class ImageManipulator(FontManager):
 
         for line in final_lines:
             draw_text_with_fallback(draw, (TEXT_LEFT_MARGIN, current_h), line, font_quote, emoji_font, text_color)
-            current_h += font_quote.getbbox(line)[3] + 10
+            current_h += dummy_draw.textbbox((0,0), line, font=font_quote)[3] + 10
 
         output = BytesIO()
         img.save(output, format="PNG")
