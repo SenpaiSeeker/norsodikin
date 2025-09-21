@@ -155,21 +155,6 @@ class ImageManipulator(FontManager):
         return await self._run_in_executor(self._sync_convert_sticker_to_png, sticker_bytes)
 
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
-        def wrap_text(text, font, max_width):
-            lines = []
-            if font.getbbox(text)[2] <= max_width:
-                return [text]
-            words = text.split(' ')
-            line = ''
-            for word in words:
-                if font.getbbox(line + word)[2] <= max_width:
-                    line += word + ' '
-                else:
-                    lines.append(line.strip())
-                    line = word + ' '
-            lines.append(line.strip())
-            return lines
-
         def get_clean_font(size):
             try:
                 return ImageFont.truetype("DejaVuSans.ttf", size)
@@ -203,10 +188,28 @@ class ImageManipulator(FontManager):
         MIN_IMAGE_WIDTH = 512
         MAX_TEXT_WIDTH = MAX_IMAGE_WIDTH - TEXT_LEFT_MARGIN - RIGHT_MARGIN
 
-        wrapped_text = wrap_text(text, font_quote, MAX_TEXT_WIDTH)
+        final_lines = []
+        initial_lines = text.splitlines()
+        if not initial_lines:
+            initial_lines = [" "]
 
+        for line in initial_lines:
+            if not line.strip():
+                final_lines.append(" ")
+                continue
+
+            words = line.split(' ')
+            current_line = ''
+            for word in words:
+                if font_quote.getbbox(current_line + word)[2] <= MAX_TEXT_WIDTH:
+                    current_line += word + ' '
+                else:
+                    final_lines.append(current_line.strip())
+                    current_line = word + ' '
+            final_lines.append(current_line.strip())
+            
         longest_line_width = 0
-        for line in wrapped_text:
+        for line in final_lines:
             line_width = font_quote.getbbox(line)[2]
             if line_width > longest_line_width:
                 longest_line_width = line_width
@@ -218,7 +221,7 @@ class ImageManipulator(FontManager):
         image_w = max(MIN_IMAGE_WIDTH, image_w)
         image_w = min(MAX_IMAGE_WIDTH, image_w)
 
-        quote_h = sum([font_quote.getbbox(line)[3] for line in wrapped_text]) + (len(wrapped_text) - 1) * 10
+        quote_h = sum([font_quote.getbbox(line)[3] for line in final_lines]) + (len(final_lines) - 1) * 10
         name_h = font_name.getbbox(user_name)[3]
         
         image_h = max(200, quote_h + name_h + 100)
@@ -232,7 +235,7 @@ class ImageManipulator(FontManager):
         draw.text((TEXT_LEFT_MARGIN, current_h), user_name, font=font_name, fill=name_color)
         current_h += name_h + 10
 
-        for line in wrapped_text:
+        for line in final_lines:
             draw.text((TEXT_LEFT_MARGIN, current_h), line, font=font_quote, fill=text_color)
             current_h += font_quote.getbbox(line)[3] + 10
 
