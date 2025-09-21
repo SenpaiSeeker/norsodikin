@@ -139,51 +139,23 @@ class ImageManipulator(FontManager):
         return await self._run_in_executor(self._sync_convert_sticker_to_png, sticker_bytes)
 
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
-
-        def get_font_from_package(font_filename, size):
+        def get_font_path(filename):
             font_resource = resources.files('assets').joinpath('fonts', font_filename)
             with resources.as_file(font_resource) as font_path:
-                return ImageFont.truetype(str(font_path), size)
+                return str(font_path)
 
-        def has_glyph(font, char):
-            try:
-                return font.getmask(char).getbbox()
-            except AttributeError:
-                return False
-
-        font_name = get_font_from_package("NotoSans-Regular.ttf", 40)
-        font_quote = get_font_from_package("NotoSans-Regular.ttf", 50)
-        emoji_font = get_font_from_package("NotoColorEmoji-Regular.ttf", 50)
-
-        def segment_text(text, main_font, fallback_font):
-            segments = []
-            current_segment_text = ""
-            current_segment_font = None
-            for char in text:
-                font_for_char = main_font if has_glyph(main_font, char) else fallback_font
-                if current_segment_font and font_for_char != current_segment_font:
-                    segments.append((current_segment_text, current_segment_font))
-                    current_segment_text = ""
-                current_segment_text += char
-                current_segment_font = font_for_char
-            if current_segment_text:
-                segments.append((current_segment_text, current_segment_font))
-            return segments
-
-        def draw_segmented_text(draw, pos, segments, fill_color, fallback_font):
-            x, y = pos
-            for segment_text, font in segments:
-                if font == fallback_font:
-                    draw.text((x, y), segment_text, font=font, embedded_color=True)
+        def wrap_text(text, font, max_width):
+            lines = []
+            words = text.split(' ')
+            line = ''
+            for word in words:
+                if font.getbbox(line + word)[2] <= max_width:
+                    line += word + ' '
                 else:
-                    draw.text((x, y), segment_text, font=font, fill=fill_color)
-                x += font.getlength(segment_text)
-
-        def get_segmented_text_width(segments):
-            width = 0
-            for segment_text, font in segments:
-                width += font.getlength(segment_text)
-            return width
+                    lines.append(line.strip())
+                    line = word + ' '
+            lines.append(line.strip())
+            return lines
 
         pfp_data = pfp_bytes
         if not pfp_data:
@@ -198,6 +170,18 @@ class ImageManipulator(FontManager):
         draw_mask.ellipse((0, 0) + pfp.size, fill=255)
         pfp.putalpha(mask)
 
+        font_paths = [
+            get_font_path("NotoSans-Regular.ttf"),
+            get_font_path("NotoColorEmoji-Regular.ttf"),
+            get_font_path("NotoSansSymbols2-Regular.ttf")
+        ]
+
+        font_name = ImageFont.truetype(font_paths[0], 40, layout_engine=ImageFont.Layout.RAQM)
+        font_quote = ImageFont.truetype(font_paths[0], 50, layout_engine=ImageFont.Layout.RAQM)
+
+        font_name.set_variation_by_name("Regular")
+        font_quote.set_variation_by_name("Regular")
+
         bg_color, text_color, name_color = ("#161616", "#FFFFFF", "#AAAAAA") if not invert else ("#FFFFFF", "#161616", "#555555")
 
         TEXT_LEFT_MARGIN = 200
@@ -206,60 +190,41 @@ class ImageManipulator(FontManager):
         MIN_IMAGE_WIDTH = 512
         MAX_TEXT_WIDTH = MAX_IMAGE_WIDTH - TEXT_LEFT_MARGIN - RIGHT_MARGIN
 
-        final_lines_segmented = []
-        initial_lines = text.splitlines()
-        if not initial_lines:
-            initial_lines = [" "]
+        final_lines = []
+        for line in text.splitlines():
+            final_lines.extend(wrap_text(line if line else " ", font_quote, MAX_TEXT_WIDTH))
 
-        for line in initial_lines:
-            if not line.strip():
-                final_lines_segmented.append([(" ", font_quote)])
-                continue
-            words = line.split(' ')
-            current_line_segments = []
-            for word in words:
-                word_segments = segment_text(word + ' ', font_quote, emoji_font)
-                temp_width = get_segmented_text_width(current_line_segments + word_segments)
-                if temp_width > MAX_TEXT_WIDTH and current_line_segments:
-                    final_lines_segmented.append(current_line_segments)
-                    current_line_segments = segment_text(word + ' ', font_quote, emoji_font)
-                else:
-                    current_line_segments.extend(word_segments)
-            final_lines_segmented.append(current_line_segments)
-            
         longest_line_width = 0
-        for segments in final_lines_segmented:
-            line_width = get_segmented_text_width(segments)
+        for line in final_lines:
+            line_width = font_quote.getbbox(line)[2]
             if line_width > longest_line_width:
                 longest_line_width = line_width
                 
-        name_segments = segment_text(user_name, font_name, emoji_font)
-        name_width = get_segmented_text_width(name_segments)
+        name_width = font_name.getbbox(user_name)[2]
         longest_line_width = max(longest_line_width, name_width)
 
         image_w = int(TEXT_LEFT_MARGIN + longest_line_width + RIGHT_MARGIN)
         image_w = max(MIN_IMAGE_WIDTH, image_w)
         image_w = min(MAX_IMAGE_WIDTH, image_w)
+
+        quote_h = sum([font_quote.getbbox(line)[3] - font_quote.getbbox(line)[1] for line in final_lines]) + (len(final_lines) - 1) * 10
+        name_h = font_name.getbbox(user_name)[3] - font_name.getbbox(user_name)[1]
         
-        line_height = font_quote.getbbox("Tg")[3] + 10
-        name_height = font_name.getbbox("Tg")[3]
-        
-        quote_h = len(final_lines_segmented) * line_height
-        
-        image_h = max(200, quote_h + name_height + 100)
+        image_h = max(200, quote_h + name_h + 100)
         
         img = Image.new("RGB", (image_w, image_h), bg_color)
         draw = ImageDraw.Draw(img)
 
         img.paste(pfp, (50, 40), pfp)
 
-        current_h = (image_h - (quote_h + name_height + 10)) / 2
-        draw_segmented_text(draw, (TEXT_LEFT_MARGIN, current_h), name_segments, name_color, emoji_font)
-        current_h += name_height + 10
+        current_h = (image_h - (quote_h + name_h + 20)) / 2
+        
+        draw.text((TEXT_LEFT_MARGIN, current_h), user_name, font=font_name, fill=name_color, features=["-liga"], font_features=font_paths)
+        current_h += name_h + 20
 
-        for segments in final_lines_segmented:
-            draw_segmented_text(draw, (TEXT_LEFT_MARGIN, current_h), segments, text_color, emoji_font)
-            current_h += line_height
+        for line in final_lines:
+            draw.text((TEXT_LEFT_MARGIN, current_h), line, font=font_quote, fill=text_color, features=["-liga"], font_features=font_paths)
+            current_h += (font_quote.getbbox(line)[3] - font_quote.getbbox(line)[1]) + 10
 
         output = BytesIO()
         img.save(output, format="PNG")
