@@ -2,18 +2,15 @@ import os
 import random
 import glob
 from typing import List
+from importlib import resources
 
 from PIL import Image, ImageDraw, ImageFont
 
 
 class FontManager:
     def __init__(self):
-        self.fonts_dir = os.path.join(os.path.dirname(__file__), '..', 'assets', 'fonts')
-        
-        font_extensions = ("*.ttf", "*.otf")
-        self.available_fonts: List[str] = []
-        for ext in font_extensions:
-            self.available_fonts.extend(glob.glob(os.path.join(self.fonts_dir, ext)))
+        self.fonts_dir = resources.files('nsdev').joinpath('assets', 'fonts')
+        self.available_fonts: List[str] = [str(f) for f in self.fonts_dir.iterdir()]
 
     def _get_default_pfp(self, initial: str) -> bytes:
         from io import BytesIO
@@ -45,6 +42,7 @@ class FontManager:
                 pass
         
         try:
-            return ImageFont.truetype(os.path.join(self.fonts_dir, "NotoSans-Regular.ttf"), font_size)
-        except IOError:
+            with resources.as_file(self.fonts_dir.joinpath("NotoSans-Regular.ttf")) as font_path:
+                return ImageFont.truetype(str(font_path), font_size)
+        except (IOError, FileNotFoundError):
             return ImageFont.load_default()
