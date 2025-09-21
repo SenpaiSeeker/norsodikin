@@ -170,6 +170,15 @@ class ImageManipulator(FontManager):
             lines.append(line.strip())
             return lines
 
+        def get_clean_font(size):
+            try:
+                return ImageFont.truetype("DejaVuSans.ttf", size)
+            except IOError:
+                try:
+                    return ImageFont.truetype("arial.ttf", size)
+                except IOError:
+                    return ImageFont.load_default()
+
         pfp_data = pfp_bytes
         if not pfp_data:
             initial = user_name[0].upper()
@@ -183,8 +192,8 @@ class ImageManipulator(FontManager):
         draw.ellipse((0, 0) + pfp.size, fill=255)
         pfp.putalpha(mask)
 
-        font_name = self._get_font(40)
-        font_quote = self._get_font(50)
+        font_name = get_clean_font(40)
+        font_quote = get_clean_font(50)
 
         bg_color, text_color, name_color = ("#161616", "#FFFFFF", "#AAAAAA") if not invert else ("#FFFFFF", "#161616", "#555555")
 
