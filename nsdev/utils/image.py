@@ -201,11 +201,8 @@ class ImageManipulator(FontManager):
         RIGHT_MARGIN = 80
         MAX_IMAGE_WIDTH = 1280
         MIN_IMAGE_WIDTH = 512
-        TOP_PADDING = 40
-        NAME_QUOTE_SPACING = 15
-        LINE_SPACING = 10
-
         MAX_TEXT_WIDTH = MAX_IMAGE_WIDTH - TEXT_LEFT_MARGIN - RIGHT_MARGIN
+
         wrapped_text = wrap_text(text, font_quote, MAX_TEXT_WIDTH)
 
         longest_line_width = 0
@@ -221,31 +218,23 @@ class ImageManipulator(FontManager):
         image_w = max(MIN_IMAGE_WIDTH, image_w)
         image_w = min(MAX_IMAGE_WIDTH, image_w)
 
-        name_bbox = font_name.getbbox(user_name)
-        name_h = name_bbox[3] - name_bbox[1]
-
-        line_heights = [font_quote.getbbox(line)[3] - font_quote.getbbox(line)[1] for line in wrapped_text]
-        quote_h = sum(line_heights) + (len(wrapped_text) - 1) * LINE_SPACING
+        quote_h = sum([font_quote.getbbox(line)[3] for line in wrapped_text]) + (len(wrapped_text) - 1) * 10
+        name_h = font_name.getbbox(user_name)[3]
         
-        total_text_h = name_h + NAME_QUOTE_SPACING + quote_h
-        image_h = int(total_text_h + (TOP_PADDING * 2) + 20)
-        image_h = max(200, image_h)
+        image_h = max(200, quote_h + name_h + 100)
         
         img = Image.new("RGB", (image_w, image_h), bg_color)
         draw = ImageDraw.Draw(img)
 
-        pfp_y = TOP_PADDING
-        img.paste(pfp, (50, pfp_y), pfp)
+        img.paste(pfp, (50, 40), pfp)
 
-        start_y = TOP_PADDING
-        
-        current_h = start_y
+        current_h = (image_h - (quote_h + name_h + 10)) / 2
         draw.text((TEXT_LEFT_MARGIN, current_h), user_name, font=font_name, fill=name_color)
-        current_h += name_h + NAME_QUOTE_SPACING
+        current_h += name_h + 10
 
-        for i, line in enumerate(wrapped_text):
+        for line in wrapped_text:
             draw.text((TEXT_LEFT_MARGIN, current_h), line, font=font_quote, fill=text_color)
-            current_h += line_heights[i] + LINE_SPACING
+            current_h += font_quote.getbbox(line)[3] + 10
 
         output = BytesIO()
         img.save(output, format="PNG")
