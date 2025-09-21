@@ -141,7 +141,7 @@ class ImageManipulator(FontManager):
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
 
         def get_font_from_package(font_filename, size):
-            font_resource = resources.files('nsdev').joinpath('assets', 'fonts', font_filename)
+            font_resource = resources.files('assets').joinpath('fonts', font_filename)
             with resources.as_file(font_resource) as font_path:
                 return ImageFont.truetype(str(font_path), size)
 
