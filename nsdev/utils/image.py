@@ -201,8 +201,10 @@ class ImageManipulator(FontManager):
         RIGHT_MARGIN = 80
         MAX_IMAGE_WIDTH = 1280
         MIN_IMAGE_WIDTH = 512
-        MAX_TEXT_WIDTH = MAX_IMAGE_WIDTH - TEXT_LEFT_MARGIN - RIGHT_MARGIN
+        VERTICAL_PADDING = 60
+        NAME_QUOTE_SPACING = 15
 
+        MAX_TEXT_WIDTH = MAX_IMAGE_WIDTH - TEXT_LEFT_MARGIN - RIGHT_MARGIN
         wrapped_text = wrap_text(text, font_quote, MAX_TEXT_WIDTH)
 
         longest_line_width = 0
@@ -220,18 +222,19 @@ class ImageManipulator(FontManager):
 
         quote_h = sum([font_quote.getbbox(line)[3] for line in wrapped_text]) + (len(wrapped_text) - 1) * 10
         name_h = font_name.getbbox(user_name)[3]
+        total_text_h = name_h + NAME_QUOTE_SPACING + quote_h
         
-        BOTTOM_PADDING = 40 
-        image_h = max(200, quote_h + name_h + 80 + BOTTOM_PADDING)
+        image_h = total_text_h + (VERTICAL_PADDING * 2)
+        image_h = max(200, image_h)
         
         img = Image.new("RGB", (image_w, image_h), bg_color)
         draw = ImageDraw.Draw(img)
 
         img.paste(pfp, (50, 40), pfp)
 
-        current_h = (image_h - (quote_h + name_h + 10)) / 2
+        current_h = VERTICAL_PADDING
         draw.text((TEXT_LEFT_MARGIN, current_h), user_name, font=font_name, fill=name_color)
-        current_h += name_h + 10
+        current_h += name_h + NAME_QUOTE_SPACING
 
         for line in wrapped_text:
             draw.text((TEXT_LEFT_MARGIN, current_h), line, font=font_quote, fill=text_color)
