@@ -185,12 +185,11 @@ class ImageManipulator(FontManager):
             pfp_data = self._get_default_pfp(initial)
 
         pfp = Image.open(BytesIO(pfp_data)).convert("RGBA")
-        pfp_size = (120, 120)
-        pfp = pfp.resize(pfp_size)
+        pfp = pfp.resize((120, 120))
         
-        mask = Image.new('L', pfp_size, 0)
+        mask = Image.new('L', pfp.size, 0)
         draw_mask = ImageDraw.Draw(mask) 
-        draw_mask.ellipse((0, 0) + pfp_size, fill=255)
+        draw_mask.ellipse((0, 0) + pfp.size, fill=255)
         pfp.putalpha(mask)
 
         font_name = get_clean_font(40)
@@ -224,24 +223,22 @@ class ImageManipulator(FontManager):
 
         name_bbox = font_name.getbbox(user_name)
         name_h = name_bbox[3] - name_bbox[1]
-
+        
         line_heights = [font_quote.getbbox(line)[3] - font_quote.getbbox(line)[1] for line in wrapped_text]
         quote_h = sum(line_heights) + (len(wrapped_text) - 1) * LINE_SPACING
         
         total_text_h = name_h + NAME_QUOTE_SPACING + quote_h
-        image_h = int(total_text_h + (VERTICAL_PADDING * 2))
-        
-        pfp_area_h = pfp_size[1] + (VERTICAL_PADDING * 2)
-        image_h = max(image_h, pfp_area_h)
+        image_h = int(total_text_h) + (VERTICAL_PADDING * 2)
+        image_h = max(200, image_h)
         
         img = Image.new("RGB", (image_w, image_h), bg_color)
         draw = ImageDraw.Draw(img)
 
-        start_y = (image_h - total_text_h) / 2
-        pfp_y = int((image_h - pfp_size[1]) / 2)
-        
+        pfp_y = VERTICAL_PADDING
         img.paste(pfp, (50, pfp_y), pfp)
 
+        start_y = (image_h - total_text_h) / 2
+        
         current_h = start_y
         draw.text((TEXT_LEFT_MARGIN, current_h), user_name, font=font_name, fill=name_color)
         current_h += name_h + NAME_QUOTE_SPACING
