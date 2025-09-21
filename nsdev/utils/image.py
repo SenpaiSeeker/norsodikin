@@ -154,15 +154,15 @@ class ImageManipulator(FontManager):
         font_name = get_font_from_package("NotoSans-Regular.ttf", 40)
         font_quote = get_font_from_package("NotoSans-Regular.ttf", 50)
         emoji_font = get_font_from_package("NotoColorEmoji-Regular.ttf", 50)
-
+        
         def segment_text(text, main_font, fallback_font):
             segments = []
             current_segment = ""
-            current_font = None
+            current_font = main_font if has_glyph(main_font, text[0] if text else " ") else fallback_font
 
             for char in text:
                 font_for_char = main_font if has_glyph(main_font, char) else fallback_font
-                if current_font and font_for_char != current_font:
+                if font_for_char != current_font:
                     segments.append((current_segment, current_font))
                     current_segment = ""
                 
@@ -173,21 +173,23 @@ class ImageManipulator(FontManager):
                 segments.append((current_segment, current_font))
             return segments
 
-        def get_text_width(segments):
-            width = 0
-            for text, font in segments:
-                width += font.getlength(text)
-            return width
-            
         def draw_segmented_text(draw, pos, segments, fill):
             x, y = pos
-            for text, font in segments:
-                if font == emoji_font:
-                    draw.text((x, y), text, font=font, embedded_color=True)
+            for text_segment, font in segments:
+                if font == fallback_font:
+                    for char in text_segment:
+                        draw.text((x, y), char, font=font, embedded_color=True)
+                        x += font.getlength(char)
                 else:
-                    draw.text((x, y), text, font=font, fill=fill)
-                x += font.getlength(text)
+                    draw.text((x, y), text_segment, font=font, fill=fill)
+                    x += font.getlength(text_segment)
 
+        def get_text_width(segments):
+            width = 0
+            for text_segment, font in segments:
+                width += font.getlength(text_segment)
+            return width
+        
         pfp_data = pfp_bytes
         if not pfp_data:
             initial = user_name[0].upper()
@@ -216,7 +218,7 @@ class ImageManipulator(FontManager):
 
         for line in initial_lines:
             if not line.strip():
-                final_lines_segmented.append([(" ", font_quote)])
+                final_lines_segmented.append(segment_text(" ", font_quote, emoji_font))
                 continue
             
             words = line.split(' ')
@@ -226,7 +228,7 @@ class ImageManipulator(FontManager):
                 temp_segments = current_line_segments + word_segments
                 if get_text_width(temp_segments) > MAX_TEXT_WIDTH:
                     final_lines_segmented.append(current_line_segments)
-                    current_line_segments = segment_text(word + ' ', font_quote, emoji_font)
+                    current_line_segments = segment_text(word + ' ', font_quote, emoji_font)[:-1]
                 else:
                     current_line_segments = temp_segments
             
