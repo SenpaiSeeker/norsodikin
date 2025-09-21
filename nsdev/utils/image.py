@@ -156,7 +156,7 @@ class ImageManipulator(FontManager):
         dummy_draw = ImageDraw.Draw(Image.new("RGB", (1, 1)))
 
         def get_font_from_package(font_filename, size):
-            font_resource = resources.files('nsdev').joinpath('assets', 'fonts', font_filename)
+            font_resource = resources.files('assets').joinpath('fonts', font_filename)
             with resources.as_file(font_resource) as font_path:
                 return ImageFont.truetype(str(font_path), size)
 
