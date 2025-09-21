@@ -157,12 +157,12 @@ class ImageManipulator(FontManager):
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
         def wrap_text(text, font, max_width):
             lines = []
-            if font.getlength(text) <= max_width:
+            if font.getbbox(text)[2] <= max_width:
                 return [text]
             words = text.split(' ')
             line = ''
             for word in words:
-                if font.getlength(line + word) <= max_width:
+                if font.getbbox(line + word)[2] <= max_width:
                     line += word + ' '
                 else:
                     lines.append(line.strip())
@@ -188,8 +188,8 @@ class ImageManipulator(FontManager):
         pfp = pfp.resize((120, 120))
         
         mask = Image.new('L', pfp.size, 0)
-        draw = ImageDraw.Draw(mask) 
-        draw.ellipse((0, 0) + pfp.size, fill=255)
+        draw_mask = ImageDraw.Draw(mask) 
+        draw_mask.ellipse((0, 0) + pfp.size, fill=255)
         pfp.putalpha(mask)
 
         font_name = get_clean_font(40)
@@ -197,23 +197,43 @@ class ImageManipulator(FontManager):
 
         bg_color, text_color, name_color = ("#161616", "#FFFFFF", "#AAAAAA") if not invert else ("#FFFFFF", "#161616", "#555555")
 
-        wrapped_text = wrap_text(text, font_quote, 900)
+        TEXT_LEFT_MARGIN = 200
+        RIGHT_MARGIN = 80
+        MAX_IMAGE_WIDTH = 1280
+        MIN_IMAGE_WIDTH = 512
+        MAX_TEXT_WIDTH = MAX_IMAGE_WIDTH - TEXT_LEFT_MARGIN - RIGHT_MARGIN
+
+        wrapped_text = wrap_text(text, font_quote, MAX_TEXT_WIDTH)
+
+        longest_line_width = 0
+        for line in wrapped_text:
+            line_width = font_quote.getbbox(line)[2]
+            if line_width > longest_line_width:
+                longest_line_width = line_width
+                
+        name_width = font_name.getbbox(user_name)[2]
+        longest_line_width = max(longest_line_width, name_width)
+
+        image_w = int(TEXT_LEFT_MARGIN + longest_line_width + RIGHT_MARGIN)
+        image_w = max(MIN_IMAGE_WIDTH, image_w)
+        image_w = min(MAX_IMAGE_WIDTH, image_w)
+
         quote_h = sum([font_quote.getbbox(line)[3] for line in wrapped_text]) + (len(wrapped_text) - 1) * 10
         name_h = font_name.getbbox(user_name)[3]
         
         image_h = max(200, quote_h + name_h + 100)
         
-        img = Image.new("RGB", (1280, image_h), bg_color)
+        img = Image.new("RGB", (image_w, image_h), bg_color)
         draw = ImageDraw.Draw(img)
 
         img.paste(pfp, (50, 40), pfp)
 
         current_h = (image_h - (quote_h + name_h + 10)) / 2
-        draw.text((200, current_h), user_name, font=font_name, fill=name_color)
+        draw.text((TEXT_LEFT_MARGIN, current_h), user_name, font=font_name, fill=name_color)
         current_h += name_h + 10
 
         for line in wrapped_text:
-            draw.text((200, current_h), line, font=font_quote, fill=text_color)
+            draw.text((TEXT_LEFT_MARGIN, current_h), line, font=font_quote, fill=text_color)
             current_h += font_quote.getbbox(line)[3] + 10
 
         output = BytesIO()
