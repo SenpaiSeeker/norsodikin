@@ -4,6 +4,7 @@ from io import BytesIO
 from typing import Tuple
 import os
 
+
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps, ImageFont
 
 from .font_manager import FontManager
@@ -21,7 +22,7 @@ class ImageManipulator(FontManager):
     def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
-        
+
     def _sync_add_watermark(
         self,
         image_bytes: bytes,
@@ -78,12 +79,8 @@ class ImageManipulator(FontManager):
     def _sync_create_meme(self, image_bytes: bytes, top_text: str, bottom_text: str) -> bytes:
         img = Image.open(BytesIO(image_bytes)).convert("RGBA")
         draw = ImageDraw.Draw(img)
-        
-        try:
-            font_size = int(img.width / 10)
-            font = self._get_font(font_size)
-        except Exception:
-             font = ImageFont.load_default()
+        font_size = int(img.width / 10)
+        font = self._get_font(font_size)
 
         def draw_text_with_outline(text, x, y):
             outline_color, text_color = "black", "white"
@@ -169,8 +166,9 @@ class ImageManipulator(FontManager):
         draw_mask.ellipse((0, 0) + pfp.size, fill=255)
         pfp.putalpha(mask)
 
-        font = ImageFont.load_default()
-        
+        font_name = ImageFont.load_default(size=40)
+        font_quote = ImageFont.load_default(size=50)
+
         bg_color, text_color, name_color = ("#161616", "#FFFFFF", "#AAAAAA") if not invert else ("#FFFFFF", "#161616", "#555555")
 
         TEXT_LEFT_MARGIN = 200
@@ -178,55 +176,61 @@ class ImageManipulator(FontManager):
         MAX_IMAGE_WIDTH = 1280
         MIN_IMAGE_WIDTH = 512
         MAX_TEXT_WIDTH = MAX_IMAGE_WIDTH - TEXT_LEFT_MARGIN - RIGHT_MARGIN
-        
+
         final_lines = []
         initial_lines = text.splitlines()
+        if not initial_lines:
+            initial_lines = [" "]
         
+        avg_char_width = 30
+        max_chars_per_line = MAX_TEXT_WIDTH // avg_char_width
+
         for line in initial_lines:
+            if not line.strip():
+                final_lines.append(" ")
+                continue
             words = line.split(' ')
-            current_line = ""
+            current_line = ''
             for word in words:
-                if font.getlength(current_line + " " + word) <= MAX_TEXT_WIDTH:
-                    current_line += " " + word
+                if len(current_line + word) < max_chars_per_line:
+                    current_line += word + ' '
                 else:
                     final_lines.append(current_line.strip())
-                    current_line = word
+                    current_line = word + ' '
             final_lines.append(current_line.strip())
-
-        final_lines = [line for line in final_lines if line]
         
+        dummy_draw = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+
         longest_line_width = 0
         for line in final_lines:
-            line_width = font.getlength(line)
+            line_width = dummy_draw.textlength(line, font=font_quote)
             if line_width > longest_line_width:
                 longest_line_width = line_width
                 
-        name_width = font.getlength(user_name)
+        name_width = dummy_draw.textlength(user_name, font=font_name)
         longest_line_width = max(longest_line_width, name_width)
 
         image_w = int(TEXT_LEFT_MARGIN + longest_line_width + RIGHT_MARGIN)
         image_w = max(MIN_IMAGE_WIDTH, image_w)
         image_w = min(MAX_IMAGE_WIDTH, image_w)
+
+        quote_h = sum([dummy_draw.textbbox((0,0), line, font=font_quote)[3] for line in final_lines]) + (len(final_lines) - 1) * 10
+        name_h = dummy_draw.textbbox((0,0), user_name, font=font_name)[3]
         
-        # Approximate height
-        line_height = font.getbbox("Tg")[3] + 4
-        quote_h = len(final_lines) * line_height
-        name_h = line_height
-        
-        image_h = max(200, int(quote_h + name_h + 100))
+        image_h = max(200, quote_h + name_h + 100)
         
         img = Image.new("RGB", (image_w, image_h), bg_color)
         draw = ImageDraw.Draw(img)
 
         img.paste(pfp, (50, 40), pfp)
 
-        current_h = (image_h - (quote_h + name_h)) / 2
-        draw.text((TEXT_LEFT_MARGIN, current_h), user_name, font=font, fill=name_color)
+        current_h = (image_h - (quote_h + name_h + 10)) / 2
+        draw.text((TEXT_LEFT_MARGIN, current_h), user_name, font=font_name, fill=name_color, stroke_width=0)
         current_h += name_h + 10
 
         for line in final_lines:
-            draw.text((TEXT_LEFT_MARGIN, current_h), line, font=font, fill=text_color)
-            current_h += line_height
+            draw.text((TEXT_LEFT_MARGIN, current_h), line, font=font_quote, fill=text_color, stroke_width=0)
+            current_h += dummy_draw.textbbox((0,0), line, font=font_quote)[3] + 10
 
         output = BytesIO()
         img.save(output, format="PNG")
