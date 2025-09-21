@@ -22,7 +22,7 @@ class ImageManipulator(FontManager):
     def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
-
+    
     def _sync_add_watermark(self, image_bytes: bytes, text: str, position: Tuple[int, int] = (10, 10), font_size: int = 30, opacity: int = 128) -> bytes:
         img = Image.open(BytesIO(image_bytes)).convert("RGBA")
         txt_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
@@ -145,32 +145,47 @@ class ImageManipulator(FontManager):
             with resources.as_file(font_resource) as font_path:
                 return ImageFont.truetype(str(font_path), size)
 
-        def has_glyph(font, glyph):
-            return font.getmask(glyph).getbbox()
+        def has_glyph(font, char):
+            try:
+                return font.getmask(char).getbbox()
+            except AttributeError:
+                return False
 
         font_name = get_font_from_package("NotoSans-Regular.ttf", 40)
         font_quote = get_font_from_package("NotoSans-Regular.ttf", 50)
         emoji_font = get_font_from_package("NotoColorEmoji-Regular.ttf", 50)
 
-        def draw_text_with_fallback(draw, pos, text, main_font, fallback_font, fill):
+        def segment_and_draw(draw, pos, text, main_font, fallback_font, fill):
             x, y = pos
-            for char in text:
-                if has_glyph(main_font, char):
-                    draw.text((x, y), char, font=main_font, fill=fill)
-                    x += main_font.getlength(char)
-                else:
-                    draw.text((x, y), char, font=fallback_font, embedded_color=True)
-                    x += fallback_font.getlength(char)
+            current_segment = ""
+            current_font = main_font
 
-        def get_text_width_with_fallback(text, main_font, fallback_font):
+            for char in text:
+                font_for_char = main_font if has_glyph(main_font, char) else fallback_font
+                
+                if font_for_char != current_font:
+                    if current_font == fallback_font:
+                        draw.text((x, y), current_segment, font=current_font, embedded_color=True)
+                    else:
+                        draw.text((x, y), current_segment, font=current_font, fill=fill)
+                    x += current_font.getlength(current_segment)
+                    current_segment = ""
+                
+                current_segment += char
+                current_font = font_for_char
+            
+            if current_segment:
+                if current_font == fallback_font:
+                    draw.text((x, y), current_segment, font=current_font, embedded_color=True)
+                else:
+                    draw.text((x, y), current_segment, font=current_font, fill=fill)
+
+        def get_text_width(text, main_font, fallback_font):
             width = 0
             for char in text:
-                if has_glyph(main_font, char):
-                    width += main_font.getlength(char)
-                else:
-                    width += fallback_font.getlength(char)
+                width += main_font.getlength(char) if has_glyph(main_font, char) else fallback_font.getlength(char)
             return width
-        
+
         pfp_data = pfp_bytes
         if not pfp_data:
             initial = user_name[0].upper()
@@ -201,10 +216,11 @@ class ImageManipulator(FontManager):
             if not line.strip():
                 final_lines.append(" ")
                 continue
+            
             words = line.split(' ')
             current_line = ''
             for word in words:
-                if get_text_width_with_fallback(current_line + word, font_quote, emoji_font) <= MAX_TEXT_WIDTH:
+                if get_text_width(current_line + word, font_quote, emoji_font) <= MAX_TEXT_WIDTH:
                     current_line += word + ' '
                 else:
                     final_lines.append(current_line.strip())
@@ -213,11 +229,11 @@ class ImageManipulator(FontManager):
             
         longest_line_width = 0
         for line in final_lines:
-            line_width = get_text_width_with_fallback(line, font_quote, emoji_font)
+            line_width = get_text_width(line, font_quote, emoji_font)
             if line_width > longest_line_width:
                 longest_line_width = line_width
                 
-        name_width = get_text_width_with_fallback(user_name, font_name, emoji_font)
+        name_width = get_text_width(user_name, font_name, emoji_font)
         longest_line_width = max(longest_line_width, name_width)
 
         image_w = int(TEXT_LEFT_MARGIN + longest_line_width + RIGHT_MARGIN)
@@ -235,12 +251,12 @@ class ImageManipulator(FontManager):
         img.paste(pfp, (50, 40), pfp)
 
         current_h = (image_h - (quote_h + name_h + 10)) / 2
-        draw_text_with_fallback(draw, (TEXT_LEFT_MARGIN, current_h), user_name, font_name, emoji_font, name_color)
+        segment_and_draw(draw, (TEXT_LEFT_MARGIN, current_h), user_name, font_name, emoji_font, name_color)
         current_h += name_h + 10
 
         for line in final_lines:
-            draw_text_with_fallback(draw, (TEXT_LEFT_MARGIN, current_h), line, font_quote, emoji_font, text_color)
-            current_h += font_quote.getbbox(line)[3] + 10
+            segment_and_draw(draw, (TEXT_LEFT_MARGIN, current_h), line, font_quote, emoji_font, text_color)
+            current_h += font_quote.getbbox(line or " ")[3] + 10
 
         output = BytesIO()
         img.save(output, format="PNG")
