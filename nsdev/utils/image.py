@@ -144,49 +144,30 @@ class ImageManipulator(FontManager):
             font_resource = resources.files('assets').joinpath('fonts', font_filename)
             with resources.as_file(font_resource) as font_path:
                 return ImageFont.truetype(str(font_path), size)
-
-        def has_glyph(font, char):
-            try:
-                return font.getmask(char).getbbox()
-            except AttributeError:
-                return False
-
+        
         font_name = get_font_from_package("NotoSans-Regular.ttf", 40)
         font_quote = get_font_from_package("NotoSans-Regular.ttf", 50)
-        emoji_font = get_font_from_package("NotoColorEmoji-Regular.ttf", 50)
-
-        def segment_text_and_get_width(text, main_font, fallback_font):
-            segments = []
-            current_segment = ""
-            current_font_is_main = True
-            width = 0
-
-            for char in text:
-                char_is_main = has_glyph(main_font, char)
-                if char_is_main != current_font_is_main:
-                    font = main_font if current_font_is_main else fallback_font
-                    segments.append((current_segment, font))
-                    width += font.getlength(current_segment)
-                    current_segment = ""
-                
-                current_segment += char
-                current_font_is_main = char_is_main
+        
+        def wrap_text(text, font, max_width):
+            lines = []
             
-            if current_segment:
-                font = main_font if current_font_is_main else fallback_font
-                segments.append((current_segment, font))
-                width += font.getlength(current_segment)
-
-            return segments, width
-
-        def draw_segmented_text(draw, pos, segments, fill):
-            x, y = pos
-            for text_segment, font in segments:
-                if font == fallback_font:
-                    draw.text((x, y), text_segment, font=font, embedded_color=True)
-                else:
-                    draw.text((x, y), text_segment, font=font, fill=fill)
-                x += font.getlength(text_segment)
+            for line in text.splitlines():
+                if not line:
+                    lines.append(" ")
+                    continue
+                
+                words = line.split(' ')
+                current_line = ''
+                for word in words:
+                    if font.getbbox(current_line + word)[2] <= max_width:
+                        current_line += word + ' '
+                    else:
+                        if current_line:
+                            lines.append(current_line.strip())
+                        current_line = word + ' '
+                lines.append(current_line.strip())
+            
+            return lines
 
         pfp_data = pfp_bytes
         if not pfp_data:
@@ -209,43 +190,22 @@ class ImageManipulator(FontManager):
         MIN_IMAGE_WIDTH = 512
         MAX_TEXT_WIDTH = MAX_IMAGE_WIDTH - TEXT_LEFT_MARGIN - RIGHT_MARGIN
 
-        final_lines_segments = []
-        initial_lines = text.splitlines()
-        if not initial_lines:
-            initial_lines = [" "]
-
-        for line in initial_lines:
-            words = line.split(' ')
-            current_line = []
-            for word in words:
-                word_with_space = (word + ' ') if word != words[-1] else word
-                word_segments, _ = segment_text_and_get_width(word_with_space, font_quote, emoji_font)
-
-                line_width = get_text_width_with_fallback(current_line + word_segments)
-                if line_width > MAX_TEXT_WIDTH and current_line:
-                    final_lines_segments.append(current_line)
-                    current_line = segment_text_and_get_width(word, font_quote, emoji_font)[0]
-                else:
-                    current_line.extend(word_segments)
-            final_lines_segments.append(current_line)
-
-        def get_text_width_with_fallback(segments):
-            return sum(font.getlength(text) for text, font in segments)
+        wrapped_text = wrap_text(text, font_quote, MAX_TEXT_WIDTH)
 
         longest_line_width = 0
-        for segments in final_lines_segments:
-            line_width = get_text_width_with_fallback(segments)
+        for line in wrapped_text:
+            line_width = font_quote.getbbox(line)[2]
             if line_width > longest_line_width:
                 longest_line_width = line_width
-        
-        name_segments, name_width = segment_text_and_get_width(user_name, font_name, emoji_font)
+                
+        name_width = font_name.getbbox(user_name)[2]
         longest_line_width = max(longest_line_width, name_width)
 
         image_w = int(TEXT_LEFT_MARGIN + longest_line_width + RIGHT_MARGIN)
         image_w = max(MIN_IMAGE_WIDTH, image_w)
         image_w = min(MAX_IMAGE_WIDTH, image_w)
 
-        quote_h = sum([font_quote.getbbox("A")[3] for _ in final_lines_segments]) + (len(final_lines_segments) - 1) * 10
+        quote_h = sum([font_quote.getbbox(line)[3] for line in wrapped_text]) + (len(wrapped_text) - 1) * 10
         name_h = font_name.getbbox(user_name)[3]
         
         image_h = max(200, quote_h + name_h + 100)
@@ -256,12 +216,12 @@ class ImageManipulator(FontManager):
         img.paste(pfp, (50, 40), pfp)
 
         current_h = (image_h - (quote_h + name_h + 10)) / 2
-        draw_segmented_text(draw, (TEXT_LEFT_MARGIN, current_h), name_segments, name_color)
+        draw.text((TEXT_LEFT_MARGIN, current_h), user_name, font=font_name, fill=name_color, font_size=40)
         current_h += name_h + 10
 
-        for segments in final_lines_segments:
-            draw_segmented_text(draw, (TEXT_LEFT_MARGIN, current_h), segments, text_color)
-            current_h += font_quote.getbbox("A")[3] + 10
+        for line in wrapped_text:
+            draw.text((TEXT_LEFT_MARGIN, current_h), line, font=font_quote, fill=text_color, font_size=50)
+            current_h += font_quote.getbbox(line)[3] + 10
 
         output = BytesIO()
         img.save(output, format="PNG")
