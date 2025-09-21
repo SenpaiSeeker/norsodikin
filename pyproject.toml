@@ -73,11 +73,14 @@ all = [
 ]
 
 [tool.setuptools]
-include-package-data = true
+packages = ["nsdev", "assets"]
+
+[tool.setuptools.package-data]
+assets = ["fonts/*"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["nsdev*"]
+include = ["nsdev*", "assets*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "nsdev.__version__" }
