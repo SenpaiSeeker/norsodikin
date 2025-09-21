@@ -2,6 +2,7 @@ import asyncio
 from functools import partial
 from io import BytesIO
 from typing import Tuple
+import os
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps, ImageFont
 
@@ -155,15 +156,36 @@ class ImageManipulator(FontManager):
         return await self._run_in_executor(self._sync_convert_sticker_to_png, sticker_bytes)
 
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
-        def get_clean_font(size):
-            try:
-                return ImageFont.truetype("DejaVuSans.ttf", size)
-            except IOError:
-                try:
-                    return ImageFont.truetype("arial.ttf", size)
-                except IOError:
-                    return ImageFont.load_default()
+        
+        def get_font(font_filename, size):
+            return ImageFont.truetype(os.path.join(self.fonts_dir, font_filename), size)
 
+        def has_glyph(font, glyph):
+            return font.getmask(glyph).getbbox()
+
+        font_name = get_font("NotoSans-Regular.ttf", 40)
+        font_quote = get_font("NotoSans-Regular.ttf", 50)
+        emoji_font = get_font("NotoColorEmoji-Regular.ttf", 50)
+
+        def draw_text_with_fallback(draw, pos, text, main_font, fallback_font, fill):
+            x, y = pos
+            for char in text:
+                if has_glyph(main_font, char):
+                    draw.text((x, y), char, font=main_font, fill=fill)
+                    x += main_font.getlength(char)
+                else:
+                    draw.text((x, y), char, font=fallback_font, embedded_color=True)
+                    x += fallback_font.getlength(char)
+
+        def get_text_width_with_fallback(text, main_font, fallback_font):
+            width = 0
+            for char in text:
+                if has_glyph(main_font, char):
+                    width += main_font.getlength(char)
+                else:
+                    width += fallback_font.getlength(char)
+            return width
+        
         pfp_data = pfp_bytes
         if not pfp_data:
             initial = user_name[0].upper()
@@ -176,9 +198,6 @@ class ImageManipulator(FontManager):
         draw_mask = ImageDraw.Draw(mask) 
         draw_mask.ellipse((0, 0) + pfp.size, fill=255)
         pfp.putalpha(mask)
-
-        font_name = get_clean_font(40)
-        font_quote = get_clean_font(50)
 
         bg_color, text_color, name_color = ("#161616", "#FFFFFF", "#AAAAAA") if not invert else ("#FFFFFF", "#161616", "#555555")
 
@@ -197,11 +216,10 @@ class ImageManipulator(FontManager):
             if not line.strip():
                 final_lines.append(" ")
                 continue
-
             words = line.split(' ')
             current_line = ''
             for word in words:
-                if font_quote.getbbox(current_line + word)[2] <= MAX_TEXT_WIDTH:
+                if get_text_width_with_fallback(current_line + word, font_quote, emoji_font) <= MAX_TEXT_WIDTH:
                     current_line += word + ' '
                 else:
                     final_lines.append(current_line.strip())
@@ -210,11 +228,11 @@ class ImageManipulator(FontManager):
             
         longest_line_width = 0
         for line in final_lines:
-            line_width = font_quote.getbbox(line)[2]
+            line_width = get_text_width_with_fallback(line, font_quote, emoji_font)
             if line_width > longest_line_width:
                 longest_line_width = line_width
                 
-        name_width = font_name.getbbox(user_name)[2]
+        name_width = get_text_width_with_fallback(user_name, font_name, emoji_font)
         longest_line_width = max(longest_line_width, name_width)
 
         image_w = int(TEXT_LEFT_MARGIN + longest_line_width + RIGHT_MARGIN)
@@ -232,11 +250,11 @@ class ImageManipulator(FontManager):
         img.paste(pfp, (50, 40), pfp)
 
         current_h = (image_h - (quote_h + name_h + 10)) / 2
-        draw.text((TEXT_LEFT_MARGIN, current_h), user_name, font=font_name, fill=name_color)
+        draw_text_with_fallback(draw, (TEXT_LEFT_MARGIN, current_h), user_name, font_name, emoji_font, name_color)
         current_h += name_h + 10
 
         for line in final_lines:
-            draw.text((TEXT_LEFT_MARGIN, current_h), line, font=font_quote, fill=text_color)
+            draw_text_with_fallback(draw, (TEXT_LEFT_MARGIN, current_h), line, font_quote, emoji_font, text_color)
             current_h += font_quote.getbbox(line)[3] + 10
 
         output = BytesIO()
