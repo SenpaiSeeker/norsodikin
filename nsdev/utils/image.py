@@ -221,7 +221,8 @@ class ImageManipulator(FontManager):
         quote_h = sum([font_quote.getbbox(line)[3] for line in wrapped_text]) + (len(wrapped_text) - 1) * 10
         name_h = font_name.getbbox(user_name)[3]
         
-        image_h = max(200, quote_h + name_h + 100)
+        BOTTOM_PADDING = 40 
+        image_h = max(200, quote_h + name_h + 80 + BOTTOM_PADDING)
         
         img = Image.new("RGB", (image_w, image_h), bg_color)
         draw = ImageDraw.Draw(img)
