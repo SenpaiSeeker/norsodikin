@@ -3,6 +3,7 @@ from functools import partial
 from io import BytesIO
 from typing import Tuple
 import os
+from importlib import resources
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps, ImageFont
 
@@ -22,14 +23,7 @@ class ImageManipulator(FontManager):
         loop = asyncio.get_running_loop()
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
 
-    def _sync_add_watermark(
-        self,
-        image_bytes: bytes,
-        text: str,
-        position: Tuple[int, int] = (10, 10),
-        font_size: int = 30,
-        opacity: int = 128,
-    ) -> bytes:
+    def _sync_add_watermark(self, image_bytes: bytes, text: str, position: Tuple[int, int] = (10, 10), font_size: int = 30, opacity: int = 128) -> bytes:
         img = Image.open(BytesIO(image_bytes)).convert("RGBA")
         txt_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
         font = self._get_font(font_size)
@@ -40,14 +34,7 @@ class ImageManipulator(FontManager):
         watermarked_img.save(output_buffer, format="PNG")
         return output_buffer.getvalue()
 
-    async def add_watermark(
-        self,
-        image_bytes: bytes,
-        text: str,
-        position: Tuple[int, int] = (10, 10),
-        font_size: int = 30,
-        opacity: int = 128,
-    ) -> bytes:
+    async def add_watermark(self, image_bytes: bytes, text: str, position: Tuple[int, int] = (10, 10), font_size: int = 30, opacity: int = 128) -> bytes:
         return await self._run_in_executor(self._sync_add_watermark, image_bytes, text, position, font_size, opacity)
 
     def _sync_resize(self, image_bytes: bytes, size: Tuple[int, int], keep_aspect_ratio: bool = True) -> bytes:
@@ -111,11 +98,7 @@ class ImageManipulator(FontManager):
             processed_img = ImageOps.grayscale(img)
         elif filter_name == "sepia":
             grayscale_img = ImageOps.grayscale(img)
-            sepia_palette = [
-                component
-                for i in range(256)
-                for component in (int(min(255, i * 1.2)), int(min(255, i * 1.0)), int(min(255, i * 0.8)))
-            ]
+            sepia_palette = [ component for i in range(256) for component in (int(min(255, i * 1.2)), int(min(255, i * 1.0)), int(min(255, i * 0.8))) ]
             grayscale_img.putpalette(sepia_palette)
             processed_img = grayscale_img.convert("RGB")
         elif filter_name == "invert":
@@ -156,16 +139,18 @@ class ImageManipulator(FontManager):
         return await self._run_in_executor(self._sync_convert_sticker_to_png, sticker_bytes)
 
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
-        
-        def get_font(font_filename, size):
-            return ImageFont.truetype(os.path.join(self.fonts_dir, font_filename), size)
+
+        def get_font_from_package(font_filename, size):
+            font_resource = resources.files('nsdev').joinpath('assets', 'fonts', font_filename)
+            with resources.as_file(font_resource) as font_path:
+                return ImageFont.truetype(str(font_path), size)
 
         def has_glyph(font, glyph):
             return font.getmask(glyph).getbbox()
 
-        font_name = get_font("NotoSans-Regular.ttf", 40)
-        font_quote = get_font("NotoSans-Regular.ttf", 50)
-        emoji_font = get_font("NotoColorEmoji-Regular.ttf", 50)
+        font_name = get_font_from_package("NotoSans-Regular.ttf", 40)
+        font_quote = get_font_from_package("NotoSans-Regular.ttf", 50)
+        emoji_font = get_font_from_package("NotoColorEmoji-Regular.ttf", 50)
 
         def draw_text_with_fallback(draw, pos, text, main_font, fallback_font, fill):
             x, y = pos
