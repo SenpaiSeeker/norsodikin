@@ -5,7 +5,7 @@ import urllib.request
 from typing import List
 
 import requests
-from PIL import ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
 
 class FontManager:
@@ -13,6 +13,27 @@ class FontManager:
         self.font_cache_dir = ".cache_fonts"
         os.makedirs(self.font_cache_dir, exist_ok=True)
         self.available_fonts = self._load_or_fetch_fonts()
+
+    def _get_default_pfp(self, initial: str) -> bytes:
+        from io import BytesIO
+        
+        W, H = (200, 200)
+        bg_color = (120, 120, 120)
+        img = Image.new('RGB', (W, H), color=bg_color)
+        
+        font = self._get_font(100)
+        draw = ImageDraw.Draw(img)
+        
+        bbox = draw.textbbox((0, 0), initial, font=font)
+        text_w = bbox[2] - bbox[0]
+        text_h = bbox[3] - bbox[1]
+        
+        position = ((W-text_w)/2, (H-text_h)/2 - 10)
+        draw.text(position, initial, font=font, fill=(255, 255, 255))
+        
+        output = BytesIO()
+        img.save(output, format='PNG')
+        return output.getvalue()
 
     def _load_or_fetch_fonts(self) -> List[str]:
         try:
@@ -105,4 +126,8 @@ class FontManager:
                 return ImageFont.truetype(random_font_path, font_size)
             except IOError:
                 pass
-        return ImageFont.load_default()
+        
+        try:
+            return ImageFont.truetype("arial.ttf", font_size)
+        except IOError:
+            return ImageFont.load_default()
