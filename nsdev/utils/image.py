@@ -3,7 +3,7 @@ from functools import partial
 from io import BytesIO
 from typing import Tuple
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps, ImageFont
 
 from .font_manager import FontManager
 
@@ -153,3 +153,63 @@ class ImageManipulator(FontManager):
 
     async def convert_sticker_to_png(self, sticker_bytes: bytes) -> bytes:
         return await self._run_in_executor(self._sync_convert_sticker_to_png, sticker_bytes)
+
+    def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
+        def wrap_text(text, font, max_width):
+            lines = []
+            if font.getlength(text) <= max_width:
+                return [text]
+            words = text.split(' ')
+            line = ''
+            for word in words:
+                if font.getlength(line + word) <= max_width:
+                    line += word + ' '
+                else:
+                    lines.append(line.strip())
+                    line = word + ' '
+            lines.append(line.strip())
+            return lines
+
+        pfp_data = pfp_bytes
+        if not pfp_data:
+            initial = user_name[0].upper()
+            pfp_data = self._get_default_pfp(initial)
+
+        pfp = Image.open(BytesIO(pfp_data)).convert("RGBA")
+        pfp = pfp.resize((120, 120))
+        
+        mask = Image.new('L', pfp.size, 0)
+        draw = ImageDraw.Draw(mask) 
+        draw.ellipse((0, 0) + pfp.size, fill=255)
+        pfp.putalpha(mask)
+
+        font_name = self._get_font(40)
+        font_quote = self._get_font(50)
+
+        bg_color, text_color, name_color = ("#161616", "#FFFFFF", "#AAAAAA") if not invert else ("#FFFFFF", "#161616", "#555555")
+
+        wrapped_text = wrap_text(text, font_quote, 900)
+        quote_h = sum([font_quote.getbbox(line)[3] for line in wrapped_text]) + (len(wrapped_text) - 1) * 10
+        name_h = font_name.getbbox(user_name)[3]
+        
+        image_h = max(200, quote_h + name_h + 100)
+        
+        img = Image.new("RGB", (1280, image_h), bg_color)
+        draw = ImageDraw.Draw(img)
+
+        img.paste(pfp, (50, 40), pfp)
+
+        current_h = (image_h - (quote_h + name_h + 10)) / 2
+        draw.text((200, current_h), user_name, font=font_name, fill=name_color)
+        current_h += name_h + 10
+
+        for line in wrapped_text:
+            draw.text((200, current_h), line, font=font_quote, fill=text_color)
+            current_h += font_quote.getbbox(line)[3] + 10
+
+        output = BytesIO()
+        img.save(output, format="PNG")
+        return output.getvalue()
+    
+    async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False) -> bytes:
+        return await self._run_in_executor(self._sync_create_quote, text, user_name, pfp_bytes, invert)
