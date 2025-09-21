@@ -8,12 +8,12 @@ from PIL import Image, ImageDraw, ImageFont
 
 class FontManager:
     def __init__(self):
-        self.assets_dir = os.path.join(os.path.dirname(__file__), '..', 'assets')
+        self.fonts_dir = os.path.join(os.path.dirname(__file__), '..', 'assets', 'fonts')
         
         font_extensions = ("*.ttf", "*.otf")
         self.available_fonts: List[str] = []
         for ext in font_extensions:
-            self.available_fonts.extend(glob.glob(os.path.join(self.assets_dir, ext)))
+            self.available_fonts.extend(glob.glob(os.path.join(self.fonts_dir, ext)))
 
     def _get_default_pfp(self, initial: str) -> bytes:
         from io import BytesIO
@@ -45,6 +45,6 @@ class FontManager:
                 pass
         
         try:
-            return ImageFont.truetype(os.path.join(self.assets_dir, "NotoSans-Regular.ttf"), font_size)
+            return ImageFont.truetype(os.path.join(self.fonts_dir, "NotoSans-Regular.ttf"), font_size)
         except IOError:
             return ImageFont.load_default()
