@@ -201,7 +201,7 @@ class ImageManipulator(FontManager):
         RIGHT_MARGIN = 80
         MAX_IMAGE_WIDTH = 1280
         MIN_IMAGE_WIDTH = 512
-        TOP_PADDING = 50
+        TOP_PADDING = 40
         NAME_QUOTE_SPACING = 15
         LINE_SPACING = 10
 
@@ -234,9 +234,12 @@ class ImageManipulator(FontManager):
         img = Image.new("RGB", (image_w, image_h), bg_color)
         draw = ImageDraw.Draw(img)
 
-        img.paste(pfp, (50, TOP_PADDING), pfp)
+        pfp_y = TOP_PADDING
+        img.paste(pfp, (50, pfp_y), pfp)
 
-        current_h = TOP_PADDING
+        start_y = TOP_PADDING
+        
+        current_h = start_y
         draw.text((TEXT_LEFT_MARGIN, current_h), user_name, font=font_name, fill=name_color)
         current_h += name_h + NAME_QUOTE_SPACING
 
