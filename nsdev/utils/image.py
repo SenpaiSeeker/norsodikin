@@ -19,14 +19,6 @@ class ImageManipulator(FontManager):
     def __init__(self):
         super().__init__()
 
-    def _get_font_from_package(self, font_filename, size):
-        try:
-            font_resource = resources.files('assets').joinpath('fonts', font_filename)
-            with resources.as_file(font_resource) as font_path:
-                return ImageFont.truetype(str(font_path), size)
-        except (IOError, FileNotFoundError):
-            return ImageFont.load_default()
-
     def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
@@ -160,15 +152,24 @@ class ImageManipulator(FontManager):
         draw_mask.ellipse((0, 0) + pfp.size, fill=255)
         pfp.putalpha(mask)
 
-        font_name = self._get_font_from_package("NotoSans-Regular.ttf", 40)
-        font_quote = self._get_font_from_package("NotoSans-Regular.ttf", 50)
-        
-        font_paths = [
-            str(self._get_font_from_package_path("NotoSans-Regular.ttf")),
-            str(self._get_font_from_package_path("NotoColorEmoji-Regular.ttf")),
-            str(self._get_font_from_package_path("NotoSansSymbols2-Regular.ttf"))
-        ]
+        def get_font_object(filename, size):
+            font_resource = resources.files('assets').joinpath('fonts', filename)
+            with resources.as_file(font_resource) as font_path:
+                return ImageFont.truetype(str(font_path), size)
 
+        font_name = get_font_object("NotoSans-Regular.ttf", 40)
+        font_quote = get_font_object("NotoSans-Regular.ttf", 50)
+        
+        def get_font_path_str(filename):
+             with resources.as_file(resources.files('assets').joinpath('fonts', filename)) as font_path:
+                return str(font_path)
+
+        font_paths = [
+            get_font_path_str("NotoSans-Regular.ttf"),
+            get_font_path_str("NotoColorEmoji-Regular.ttf"),
+            get_font_path_str("NotoSansSymbols2-Regular.ttf")
+        ]
+        
         bg_color, text_color, name_color = ("#161616", "#FFFFFF", "#AAAAAA") if not invert else ("#FFFFFF", "#161616", "#555555")
 
         TEXT_LEFT_MARGIN, RIGHT_MARGIN, MAX_WIDTH, MIN_WIDTH = 200, 80, 1280, 512
@@ -176,7 +177,7 @@ class ImageManipulator(FontManager):
         
         final_lines = []
         for line in text.splitlines():
-            words = (line if line else " ").split(' ')
+            words = (line if line.strip() else " ").split(' ')
             current_line = ""
             for word in words:
                 test_line = (current_line + " " + word).strip()
