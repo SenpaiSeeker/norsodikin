@@ -10,7 +10,7 @@ import requests
 from pil import image, imagedraw, imagefont
 
 
-class fontmanager:
+class FontManager:
     def __init__(self):
         self.assets_dir = os.path.join(os.path.dirname(__file__), '..', 'assets')
         self.fonts_dir = os.path.join(self.assets_dir, 'fonts')
