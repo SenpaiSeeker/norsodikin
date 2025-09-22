@@ -5,6 +5,8 @@ import urllib.request
 from typing import List
 
 import requests
+
+from importlib import resources
 from PIL import ImageFont
 
 
