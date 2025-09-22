@@ -19,6 +19,14 @@ class ImageManipulator(FontManager):
     def __init__(self):
         super().__init__()
 
+    def _get_font_from_package(self, font_filename, size):
+        try:
+            font_resource = resources.files('assets').joinpath('fonts', font_filename)
+            with resources.as_file(font_resource) as font_path:
+                return ImageFont.truetype(str(font_path), size)
+        except (IOError, FileNotFoundError):
+            return ImageFont.load_default()
+
     def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
@@ -139,24 +147,45 @@ class ImageManipulator(FontManager):
         return await self._run_in_executor(self._sync_convert_sticker_to_png, sticker_bytes)
 
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
-        def get_font_path(filename):
-            font_resource = resources.files('assets').joinpath('fonts', font_filename)
-            with resources.as_file(font_resource) as font_path:
-                return str(font_path)
+        def has_glyph(font, char):
+            try:
+                return font.getmask(char).getbbox() is not None
+            except AttributeError:
+                return False
 
-        def wrap_text(text, font, max_width):
-            lines = []
-            words = text.split(' ')
-            line = ''
-            for word in words:
-                if font.getbbox(line + word)[2] <= max_width:
-                    line += word + ' '
+        def segment_text_and_fonts(line, main_font, emoji_font, symbol_font):
+            segments = []
+            current_segment = ""
+            current_font = None
+
+            for char in line:
+                if has_glyph(main_font, char) or char.isspace():
+                    font_for_char = main_font
+                elif has_glyph(emoji_font, char):
+                    font_for_char = emoji_font
                 else:
-                    lines.append(line.strip())
-                    line = word + ' '
-            lines.append(line.strip())
-            return lines
+                    font_for_char = symbol_font
+                
+                if current_font and font_for_char != current_font:
+                    segments.append((current_segment, current_font))
+                    current_segment = ""
+                
+                current_segment += char
+                current_font = font_for_char
+            
+            if current_segment:
+                segments.append((current_segment, current_font))
+            return segments
 
+        def draw_segmented_text(draw, pos, segments, fill):
+            x, y = pos
+            for txt, font in segments:
+                if font == emoji_font:
+                    draw.text((x, y), txt, font=font, embedded_color=True)
+                else:
+                    draw.text((x, y), txt, font=font, fill=fill)
+                x += font.getlength(txt)
+        
         pfp_data = pfp_bytes
         if not pfp_data:
             initial = user_name[0].upper()
@@ -170,65 +199,62 @@ class ImageManipulator(FontManager):
         draw_mask.ellipse((0, 0) + pfp.size, fill=255)
         pfp.putalpha(mask)
 
-        font_paths = [
-            get_font_path("NotoSans-Regular.ttf"),
-            get_font_path("NotoColorEmoji-Regular.ttf"),
-            get_font_path("NotoSansSymbols2-Regular.ttf")
-        ]
-
-        font_name = ImageFont.truetype(font_paths[0], 40, layout_engine=ImageFont.Layout.RAQM)
-        font_quote = ImageFont.truetype(font_paths[0], 50, layout_engine=ImageFont.Layout.RAQM)
-
-        font_name.set_variation_by_name("Regular")
-        font_quote.set_variation_by_name("Regular")
-
+        font_name = self._get_font_from_package("NotoSans-Regular.ttf", 40)
+        font_quote = self._get_font_from_package("NotoSans-Regular.ttf", 50)
+        emoji_font = self._get_font_from_package("NotoColorEmoji-Regular.ttf", 50)
+        symbol_font = self._get_font_from_package("NotoSansSymbols2-Regular.ttf", 50)
+        
         bg_color, text_color, name_color = ("#161616", "#FFFFFF", "#AAAAAA") if not invert else ("#FFFFFF", "#161616", "#555555")
 
-        TEXT_LEFT_MARGIN = 200
-        RIGHT_MARGIN = 80
-        MAX_IMAGE_WIDTH = 1280
-        MIN_IMAGE_WIDTH = 512
-        MAX_TEXT_WIDTH = MAX_IMAGE_WIDTH - TEXT_LEFT_MARGIN - RIGHT_MARGIN
-
+        TEXT_LEFT_MARGIN, RIGHT_MARGIN, MAX_WIDTH, MIN_WIDTH = 200, 80, 1280, 512
+        MAX_TEXT_WIDTH = MAX_WIDTH - TEXT_LEFT_MARGIN - RIGHT_MARGIN
+        
         final_lines = []
         for line in text.splitlines():
-            final_lines.extend(wrap_text(line if line else " ", font_quote, MAX_TEXT_WIDTH))
-
+            words = (line if line else " ").split(' ')
+            current_line = ""
+            for word in words:
+                test_line = (current_line + " " + word).strip()
+                if font_quote.getlength(test_line) > MAX_TEXT_WIDTH:
+                    final_lines.append(current_line)
+                    current_line = word
+                else:
+                    current_line = test_line
+            final_lines.append(current_line)
+        
         longest_line_width = 0
         for line in final_lines:
-            line_width = font_quote.getbbox(line)[2]
+            line_width = font_quote.getlength(line)
             if line_width > longest_line_width:
                 longest_line_width = line_width
-                
-        name_width = font_name.getbbox(user_name)[2]
+        
+        name_width = font_name.getlength(user_name)
         longest_line_width = max(longest_line_width, name_width)
+        
+        image_w = min(MAX_WIDTH, max(MIN_WIDTH, int(TEXT_LEFT_MARGIN + longest_line_width + RIGHT_MARGIN)))
 
-        image_w = int(TEXT_LEFT_MARGIN + longest_line_width + RIGHT_MARGIN)
-        image_w = max(MIN_IMAGE_WIDTH, image_w)
-        image_w = min(MAX_IMAGE_WIDTH, image_w)
-
-        quote_h = sum([font_quote.getbbox(line)[3] - font_quote.getbbox(line)[1] for line in final_lines]) + (len(final_lines) - 1) * 10
+        quote_h = sum([font_quote.getbbox(l)[3] - font_quote.getbbox(l)[1] for l in final_lines]) + (len(final_lines) -1) * 15
         name_h = font_name.getbbox(user_name)[3] - font_name.getbbox(user_name)[1]
         
-        image_h = max(200, quote_h + name_h + 100)
+        image_h = max(200, quote_h + name_h + 120)
         
         img = Image.new("RGB", (image_w, image_h), bg_color)
         draw = ImageDraw.Draw(img)
-
-        img.paste(pfp, (50, 40), pfp)
+        img.paste(pfp, (50, 60), pfp)
 
         current_h = (image_h - (quote_h + name_h + 20)) / 2
-        
-        draw.text((TEXT_LEFT_MARGIN, current_h), user_name, font=font_name, fill=name_color, features=["-liga"], font_features=font_paths)
+        name_segments = segment_text_and_fonts(user_name, font_name, emoji_font, symbol_font)
+        draw_segmented_text(draw, (TEXT_LEFT_MARGIN, current_h), name_segments, name_color)
         current_h += name_h + 20
 
         for line in final_lines:
-            draw.text((TEXT_LEFT_MARGIN, current_h), line, font=font_quote, fill=text_color, features=["-liga"], font_features=font_paths)
-            current_h += (font_quote.getbbox(line)[3] - font_quote.getbbox(line)[1]) + 10
-
+            line_segments = segment_text_and_fonts(line, font_quote, emoji_font, symbol_font)
+            draw_segmented_text(draw, (TEXT_LEFT_MARGIN, current_h), line_segments, text_color)
+            current_h += (font_quote.getbbox(line)[3] - font_quote.getbbox(line)[1]) + 15
+            
         output = BytesIO()
         img.save(output, format="PNG")
         return output.getvalue()
-    
+
     async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False) -> bytes:
         return await self._run_in_executor(self._sync_create_quote, text, user_name, pfp_bytes, invert)
