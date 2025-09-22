@@ -1,8 +1,7 @@
+import datetime
 from types import SimpleNamespace
 from urllib.parse import urljoin, urlparse, urlunparse
-import datetime
 
-import bs4
 import fake_useragent
 import httpx
 
@@ -32,7 +31,7 @@ class GitHubInfo:
                 if repos_res.status_code == 200:
                     repos_data = repos_res.json()
                     total_stars = sum(repo.get("stargazers_count", 0) for repo in repos_data)
-                
+
             except httpx.RequestError as e:
                 raise Exception(f"Failed to fetch GitHub API data: {e}")
 
@@ -43,7 +42,7 @@ class GitHubInfo:
                 created_at_dt = datetime.datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
             except ValueError:
                 pass
-        
+
         avatar_url = user_data.get("avatar_url", "")
         if avatar_url:
             parsed_url = urlparse(avatar_url)

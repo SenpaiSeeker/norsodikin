@@ -1,14 +1,13 @@
 import asyncio
 from functools import partial
+from importlib import resources
 from io import BytesIO
 from typing import Tuple
-import os
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
 from .font_manager import FontManager
 
-from importlib import resources
 try:
     from rembg import remove as remove_bg
 except ImportError:
@@ -22,8 +21,15 @@ class ImageManipulator(FontManager):
     def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
-    
-    def _sync_add_watermark(self, image_bytes: bytes, text: str, position: Tuple[int, int] = (10, 10), font_size: int = 30, opacity: int = 128) -> bytes:
+
+    def _sync_add_watermark(
+        self,
+        image_bytes: bytes,
+        text: str,
+        position: Tuple[int, int] = (10, 10),
+        font_size: int = 30,
+        opacity: int = 128,
+    ) -> bytes:
         img = Image.open(BytesIO(image_bytes)).convert("RGBA")
         txt_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
         font = self._get_font(font_size)
@@ -34,7 +40,14 @@ class ImageManipulator(FontManager):
         watermarked_img.save(output_buffer, format="PNG")
         return output_buffer.getvalue()
 
-    async def add_watermark(self, image_bytes: bytes, text: str, position: Tuple[int, int] = (10, 10), font_size: int = 30, opacity: int = 128) -> bytes:
+    async def add_watermark(
+        self,
+        image_bytes: bytes,
+        text: str,
+        position: Tuple[int, int] = (10, 10),
+        font_size: int = 30,
+        opacity: int = 128,
+    ) -> bytes:
         return await self._run_in_executor(self._sync_add_watermark, image_bytes, text, position, font_size, opacity)
 
     def _sync_resize(self, image_bytes: bytes, size: Tuple[int, int], keep_aspect_ratio: bool = True) -> bytes:
@@ -98,7 +111,11 @@ class ImageManipulator(FontManager):
             processed_img = ImageOps.grayscale(img)
         elif filter_name == "sepia":
             grayscale_img = ImageOps.grayscale(img)
-            sepia_palette = [ component for i in range(256) for component in (int(min(255, i * 1.2)), int(min(255, i * 1.0)), int(min(255, i * 0.8))) ]
+            sepia_palette = [
+                component
+                for i in range(256)
+                for component in (int(min(255, i * 1.2)), int(min(255, i * 1.0)), int(min(255, i * 0.8)))
+            ]
             grayscale_img.putpalette(sepia_palette)
             processed_img = grayscale_img.convert("RGB")
         elif filter_name == "invert":
@@ -141,20 +158,20 @@ class ImageManipulator(FontManager):
     def _get_default_pfp(self, initial: str) -> bytes:
         W, H = (200, 200)
         bg_color = (120, 120, 120)
-        img = Image.new('RGB', (W, H), color=bg_color)
-        
+        img = Image.new("RGB", (W, H), color=bg_color)
+
         font = self._get_font(100)
         draw = ImageDraw.Draw(img)
-        
+
         bbox = draw.textbbox((0, 0), initial, font=font)
         text_w = bbox[2] - bbox[0]
         text_h = bbox[3] - bbox[1]
-        
-        position = ((W-text_w)/2, (H-text_h)/2 - 10)
+
+        position = ((W - text_w) / 2, (H - text_h) / 2 - 10)
         draw.text(position, initial, font=font, fill=(255, 255, 255))
-        
+
         output = BytesIO()
-        img.save(output, format='PNG')
+        img.save(output, format="PNG")
         return output.getvalue()
 
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
@@ -165,33 +182,37 @@ class ImageManipulator(FontManager):
 
         pfp = Image.open(BytesIO(pfp_data)).convert("RGBA")
         pfp = pfp.resize((120, 120))
-        
-        mask = Image.new('L', pfp.size, 0)
-        draw_mask = ImageDraw.Draw(mask) 
+
+        mask = Image.new("L", pfp.size, 0)
+        draw_mask = ImageDraw.Draw(mask)
         draw_mask.ellipse((0, 0) + pfp.size, fill=255)
         pfp.putalpha(mask)
-        
-        with resources.as_file(resources.files('assets').joinpath('fonts', 'NotoSans-Regular.ttf')) as font_path:
+
+        with resources.as_file(resources.files("assets").joinpath("fonts", "NotoSans-Regular.ttf")) as font_path:
             font_name_path = str(font_path)
-        with resources.as_file(resources.files('assets').joinpath('fonts', 'NotoColorEmoji-Regular.ttf')) as font_path:
+        with resources.as_file(resources.files("assets").joinpath("fonts", "NotoColorEmoji-Regular.ttf")) as font_path:
             emoji_font_path = str(font_path)
-        with resources.as_file(resources.files('assets').joinpath('fonts', 'NotoSansSymbols2-Regular.ttf')) as font_path:
+        with resources.as_file(
+            resources.files("assets").joinpath("fonts", "NotoSansSymbols2-Regular.ttf")
+        ) as font_path:
             symbol_font_path = str(font_path)
 
         font_paths = [font_name_path, emoji_font_path, symbol_font_path]
-        
+
         layout_engine = ImageFont.Layout.RAQM
         font_name = ImageFont.truetype(font_name_path, 40, layout_engine=layout_engine)
         font_quote = ImageFont.truetype(font_name_path, 50, layout_engine=layout_engine)
-        
-        bg_color, text_color, name_color = ("#161616", "#FFFFFF", "#AAAAAA") if not invert else ("#FFFFFF", "#161616", "#555555")
+
+        bg_color, text_color, name_color = (
+            ("#161616", "#FFFFFF", "#AAAAAA") if not invert else ("#FFFFFF", "#161616", "#555555")
+        )
 
         TEXT_LEFT, PADDING_RIGHT, MAX_WIDTH, MIN_WIDTH = 200, 80, 1280, 512
         MAX_TEXT_WIDTH = MAX_WIDTH - TEXT_LEFT - PADDING_RIGHT
-        
+
         final_lines = []
         for line in text.splitlines():
-            words = (line if line else " ").split(' ')
+            words = (line if line else " ").split(" ")
             current_line = ""
             for word in words:
                 test_line = (current_line + " " + word).strip()
@@ -201,16 +222,16 @@ class ImageManipulator(FontManager):
                 else:
                     current_line = test_line
             final_lines.append(current_line)
-        
+
         longest_line_width = 0
         for line in final_lines:
             line_width = font_quote.getlength(line)
             if line_width > longest_line_width:
                 longest_line_width = line_width
-        
+
         name_width = font_name.getlength(user_name)
         longest_line_width = max(longest_line_width, name_width)
-        
+
         image_w = min(MAX_WIDTH, max(MIN_WIDTH, int(TEXT_LEFT + longest_line_width + PADDING_RIGHT)))
 
         def get_line_height(font, text_line):
@@ -219,27 +240,43 @@ class ImageManipulator(FontManager):
                 return bbox[3] * 0.5
             bbox = font.getbbox(text_line)
             return bbox[3] - bbox[1]
-        
+
         line_height_name = get_line_height(font_name, user_name)
         line_spacing_quote = 15
-        total_quote_h = sum([get_line_height(font_quote, l) for l in final_lines]) + (len(final_lines) - 1) * line_spacing_quote
-        
+        total_quote_h = (
+            sum([get_line_height(font_quote, l) for l in final_lines]) + (len(final_lines) - 1) * line_spacing_quote
+        )
+
         PADDING_TOP_BOTTOM = 60
         image_h = max(200, int(total_quote_h + line_height_name + 20 + PADDING_TOP_BOTTOM * 2))
-        
+
         img = Image.new("RGB", (image_w, image_h), bg_color)
         draw = ImageDraw.Draw(img)
         img.paste(pfp, (50, 60), pfp)
-        
+
         current_h = (image_h - (total_quote_h + line_height_name + 20)) / 2
-        
-        draw.text((TEXT_LEFT, current_h), user_name, font=font_name, fill=name_color, features=["-liga"], font_features=font_paths)
+
+        draw.text(
+            (TEXT_LEFT, current_h),
+            user_name,
+            font=font_name,
+            fill=name_color,
+            features=["-liga"],
+            font_features=font_paths,
+        )
         current_h += line_height_name + 20
-        
+
         for line in final_lines:
-            draw.text((TEXT_LEFT, current_h), line, font=font_quote, fill=text_color, features=["-liga"], font_features=font_paths)
+            draw.text(
+                (TEXT_LEFT, current_h),
+                line,
+                font=font_quote,
+                fill=text_color,
+                features=["-liga"],
+                font_features=font_paths,
+            )
             current_h += get_line_height(font_quote, line) + line_spacing_quote
-            
+
         output = BytesIO()
         img.save(output, format="PNG")
         return output.getvalue()

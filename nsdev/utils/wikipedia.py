@@ -45,10 +45,10 @@ class WikipediaSearch:
 
                 summary = page.get("extract")
                 if not summary or "may refer to" in summary:
-                     raise ValueError(f"'{query}' is ambiguous or has no summary.")
-                     
+                    raise ValueError(f"'{query}' is ambiguous or has no summary.")
+
                 summary = " ".join(summary.split("\n")[0].split()[:60]) + "..."
-                
+
                 image_url = page.get("thumbnail", {}).get("source")
                 page_url = f"https://id.wikipedia.org/wiki/{quote(page_title)}"
 
@@ -61,5 +61,3 @@ class WikipediaSearch:
 
             except httpx.RequestError as e:
                 raise Exception(f"Failed to connect to Wikipedia API: {e}")
-
-

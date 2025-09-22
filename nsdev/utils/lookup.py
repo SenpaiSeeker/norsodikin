@@ -1,5 +1,7 @@
 from types import SimpleNamespace
+
 import httpx
+
 
 class TMDbClient:
     def __init__(self, api_key: str):
@@ -51,7 +53,7 @@ class TMDbClient:
                     overview=details.get("overview", "Tidak ada plot."),
                     poster_url=f"{self.img_base_url}{details['poster_path']}" if details.get("poster_path") else None,
                     imdb_url=f"https://www.imdb.com/title/{details['imdb_id']}" if details.get("imdb_id") else None,
-                    trailer_url=trailer_link
+                    trailer_url=trailer_link,
                 )
 
             except httpx.RequestError as e:

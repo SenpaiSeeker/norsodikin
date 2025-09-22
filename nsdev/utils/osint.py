@@ -11,7 +11,7 @@ class OsintTools:
         target = ip_or_domain.strip()
 
         def _is_ip(s):
-            parts = s.split('.')
+            parts = s.split(".")
             return len(parts) == 4 and all(p.isdigit() and 0 <= int(p) <= 255 for p in parts)
 
         if not _is_ip(target):
@@ -32,7 +32,7 @@ class OsintTools:
 
                 connection_data = data.get("connection", {})
                 timezone_data = data.get("timezone", {})
-                
+
                 result_data = {
                     "ip": data.get("ip"),
                     "country": data.get("country"),
@@ -47,7 +47,7 @@ class OsintTools:
                     "timezone_utc": timezone_data.get("utc"),
                 }
                 return SimpleNamespace(**result_data)
-                
+
             except httpx.RequestError as e:
                 raise Exception(f"Failed to connect to IP API: {e}")
             except (KeyError, ValueError) as e:
@@ -77,9 +77,6 @@ class OsintTools:
             return None
 
         async with httpx.AsyncClient(follow_redirects=True) as session:
-            tasks = [
-                _check_site(session, url, platform)
-                for platform, url in PLATFORMS.items()
-            ]
+            tasks = [_check_site(session, url, platform) for platform, url in PLATFORMS.items()]
             results = await asyncio.gather(*tasks)
             return [res for res in results if res]

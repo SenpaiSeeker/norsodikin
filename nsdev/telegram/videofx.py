@@ -275,8 +275,10 @@ class VideoFX(FontManager):
         )
 
         filters_list = []
-        if top_text: filters_list.append(top_drawtext)
-        if bottom_text: filters_list.append(bottom_drawtext)
+        if top_text:
+            filters_list.append(top_drawtext)
+        if bottom_text:
+            filters_list.append(bottom_drawtext)
 
         vf_filter = ",".join(filters_list)
 
@@ -289,13 +291,13 @@ class VideoFX(FontManager):
     async def add_text_to_video(self, video_path: str, output_path: str, top_text: str = "", bottom_text: str = ""):
         await self._run_in_executor(self._add_text_to_video, video_path, output_path, top_text, bottom_text)
         return output_path
-    
+
     def _sync_video_to_audio(self, video_path: str, output_path: str):
         ffmpeg_cmd = ["ffmpeg", "-y", "-i", video_path, "-q:a", "0", "-map", "a", output_path]
         result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise RuntimeError(f"FFmpeg failed during audio extraction: {result.stderr}")
-    
+
     async def video_to_audio(self, video_path: str, output_path: str):
         await self._run_in_executor(self._sync_video_to_audio, video_path, output_path)
         return output_path
@@ -305,7 +307,7 @@ class VideoFX(FontManager):
         result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise RuntimeError(f"FFmpeg failed during video trim: {result.stderr}")
-    
+
     async def trim_video(self, video_path: str, output_path: str, start_time: str, end_time: str):
         await self._run_in_executor(self._sync_trim_video, video_path, output_path, start_time, end_time)
         return output_path
@@ -313,19 +315,26 @@ class VideoFX(FontManager):
     def _sync_change_speed(self, video_path: str, output_path: str, speed_factor: float):
         if speed_factor <= 0:
             raise ValueError("Speed factor must be positive.")
-        
+
         filter_complex = f"[0:v]setpts={1/speed_factor}*PTS[v];[0:a]atempo={speed_factor}[a]"
-        
+
         ffmpeg_cmd = [
-            "ffmpeg", "-y", "-i", video_path,
-            "-filter_complex", filter_complex,
-            "-map", "[v]", "-map", "[a]",
-            output_path
+            "ffmpeg",
+            "-y",
+            "-i",
+            video_path,
+            "-filter_complex",
+            filter_complex,
+            "-map",
+            "[v]",
+            "-map",
+            "[a]",
+            output_path,
         ]
         result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise RuntimeError(f"FFmpeg failed during speed change: {result.stderr}")
-    
+
     async def change_speed(self, video_path: str, output_path: str, speed_factor: float):
         await self._run_in_executor(self._sync_change_speed, video_path, output_path, speed_factor)
         return output_path

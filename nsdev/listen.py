@@ -44,11 +44,7 @@ class Client:
                 raise pyrogram.StopPropagation
 
         self.add_handler(
-            pyrogram.handlers.MessageHandler(
-                conversation_resolver, 
-                filters=pyrogram.filters.all
-            ), 
-            group=-666
+            pyrogram.handlers.MessageHandler(conversation_resolver, filters=pyrogram.filters.all), group=-666
         )
 
     @patchable

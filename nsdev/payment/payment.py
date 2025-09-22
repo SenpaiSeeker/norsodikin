@@ -1,14 +1,11 @@
 import base64
 import hashlib
 import hmac
-import json
 import time
 import uuid
-from types import SimpleNamespace
 
 import httpx
 import requests
-import fake_useragent
 from faker import Faker
 
 from ..data.ymlreder import YamlHandler

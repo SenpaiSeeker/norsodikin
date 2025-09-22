@@ -23,4 +23,3 @@ class PasteClient:
                 raise Exception(f"Failed to connect to the paste service: {e}")
             except httpx.HTTPStatusError as e:
                 raise Exception(f"The paste service returned an error: {e}")
-

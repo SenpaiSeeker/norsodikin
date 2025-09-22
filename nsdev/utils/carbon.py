@@ -17,4 +17,3 @@ class CarbonClient:
                 raise Exception(f"Failed to connect to Carbon API: {e}")
             except httpx.HTTPStatusError as e:
                 raise Exception(f"Carbon API returned an error: {e.response.status_code} - {e.response.text}")
-

@@ -35,7 +35,7 @@ class Button:
         buttons, remaining_text = self.parse_buttons_and_text(text, mode="inline")
         for label, payload in buttons:
             cb_data, *extra_params = payload.split(";")
-            
+
             is_url = bool(self.get_urls(cb_data))
 
             if not is_url:
