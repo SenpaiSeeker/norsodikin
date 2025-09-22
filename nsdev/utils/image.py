@@ -147,24 +147,6 @@ class ImageManipulator(FontManager):
         return await self._run_in_executor(self._sync_convert_sticker_to_png, sticker_bytes)
 
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
-        def get_font_path(filename):
-            font_resource = resources.files('assets').joinpath('fonts', filename)
-            with resources.as_file(font_resource) as font_path:
-                return str(font_path)
-
-        def wrap_text(text, font, max_width):
-            lines = []
-            words = text.split(' ')
-            line = ''
-            for word in words:
-                if font.getbbox(line + word)[2] <= max_width:
-                    line += word + ' '
-                else:
-                    lines.append(line.strip())
-                    line = word + ' '
-            lines.append(line.strip())
-            return lines
-
         pfp_data = pfp_bytes
         if not pfp_data:
             initial = user_name[0].upper()
@@ -177,17 +159,20 @@ class ImageManipulator(FontManager):
         draw_mask = ImageDraw.Draw(mask) 
         draw_mask.ellipse((0, 0) + pfp.size, fill=255)
         pfp.putalpha(mask)
+        
+        with resources.as_file(resources.files('assets').joinpath('fonts', 'NotoSans-Regular.ttf')) as font_path:
+            font_name_path = str(font_path)
+        with resources.as_file(resources.files('assets').joinpath('fonts', 'NotoColorEmoji-Regular.ttf')) as font_path:
+            emoji_font_path = str(font_path)
+        with resources.as_file(resources.files('assets').joinpath('fonts', 'NotoSansSymbols2-Regular.ttf')) as font_path:
+            symbol_font_path = str(font_path)
 
-        font_paths = [
-            get_font_path("NotoSans-Regular.ttf"),
-            get_font_path("NotoColorEmoji-Regular.ttf"),
-            get_font_path("NotoSansSymbols2-Regular.ttf")
-        ]
+        font_paths = [font_name_path, emoji_font_path, symbol_font_path]
         
         layout_engine = ImageFont.Layout.RAQM
-        font_name = ImageFont.truetype(font_paths[0], 40, layout_engine=layout_engine)
-        font_quote = ImageFont.truetype(font_paths[0], 50, layout_engine=layout_engine)
-
+        font_name = ImageFont.truetype(font_name_path, 40, layout_engine=layout_engine)
+        font_quote = ImageFont.truetype(font_name_path, 50, layout_engine=layout_engine)
+        
         bg_color, text_color, name_color = ("#161616", "#FFFFFF", "#AAAAAA") if not invert else ("#FFFFFF", "#161616", "#555555")
 
         TEXT_LEFT, PADDING_RIGHT, MAX_WIDTH, MIN_WIDTH = 200, 80, 1280, 512
@@ -195,24 +180,38 @@ class ImageManipulator(FontManager):
         
         final_lines = []
         for line in text.splitlines():
-            final_lines.extend(wrap_text(line if line else " ", font_quote, MAX_TEXT_WIDTH))
+            words = (line if line else " ").split(' ')
+            current_line = ""
+            for word in words:
+                test_line = (current_line + " " + word).strip()
+                if font_quote.getlength(test_line) > MAX_TEXT_WIDTH:
+                    final_lines.append(current_line)
+                    current_line = word
+                else:
+                    current_line = test_line
+            final_lines.append(current_line)
         
         longest_line_width = 0
         for line in final_lines:
-            line_width = font_quote.getbbox(line, features=["-liga"], font_features=font_paths)[2]
+            line_width = font_quote.getlength(line)
             if line_width > longest_line_width:
                 longest_line_width = line_width
         
-        name_width = font_name.getbbox(user_name, features=["-liga"], font_features=font_paths)[2]
+        name_width = font_name.getlength(user_name)
         longest_line_width = max(longest_line_width, name_width)
         
         image_w = min(MAX_WIDTH, max(MIN_WIDTH, int(TEXT_LEFT + longest_line_width + PADDING_RIGHT)))
+
+        def get_line_height(font, text_line):
+            if not text_line.strip():
+                bbox = font.getbbox("Tg")
+                return bbox[3] * 0.5
+            bbox = font.getbbox(text_line)
+            return bbox[3] - bbox[1]
         
-        line_height_name = font_name.getbbox("Tg")[3]
-        line_height_quote = font_quote.getbbox("Tg")[3]
-        line_spacing_quote = line_height_quote * 0.3
-        
-        total_quote_h = sum([line_height_quote for _ in final_lines]) + (len(final_lines) - 1) * line_spacing_quote
+        line_height_name = get_line_height(font_name, user_name)
+        line_spacing_quote = 15
+        total_quote_h = sum([get_line_height(font_quote, l) for l in final_lines]) + (len(final_lines) - 1) * line_spacing_quote
         
         PADDING_TOP_BOTTOM = 60
         image_h = max(200, int(total_quote_h + line_height_name + 20 + PADDING_TOP_BOTTOM * 2))
@@ -222,12 +221,13 @@ class ImageManipulator(FontManager):
         img.paste(pfp, (50, 60), pfp)
         
         current_h = (image_h - (total_quote_h + line_height_name + 20)) / 2
+        
         draw.text((TEXT_LEFT, current_h), user_name, font=font_name, fill=name_color, features=["-liga"], font_features=font_paths)
         current_h += line_height_name + 20
         
         for line in final_lines:
             draw.text((TEXT_LEFT, current_h), line, font=font_quote, fill=text_color, features=["-liga"], font_features=font_paths)
-            current_h += line_height_quote + line_spacing_quote
+            current_h += get_line_height(font_quote, line) + line_spacing_quote
             
         output = BytesIO()
         img.save(output, format="PNG")
