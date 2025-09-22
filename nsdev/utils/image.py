@@ -146,6 +146,25 @@ class ImageManipulator(FontManager):
     async def convert_sticker_to_png(self, sticker_bytes: bytes) -> bytes:
         return await self._run_in_executor(self._sync_convert_sticker_to_png, sticker_bytes)
 
+    def _get_default_pfp(self, initial: str) -> bytes:
+        W, H = (200, 200)
+        bg_color = (120, 120, 120)
+        img = Image.new('RGB', (W, H), color=bg_color)
+        
+        font = self._get_font(100)
+        draw = ImageDraw.Draw(img)
+        
+        bbox = draw.textbbox((0, 0), initial, font=font)
+        text_w = bbox[2] - bbox[0]
+        text_h = bbox[3] - bbox[1]
+        
+        position = ((W-text_w)/2, (H-text_h)/2 - 10)
+        draw.text(position, initial, font=font, fill=(255, 255, 255))
+        
+        output = BytesIO()
+        img.save(output, format='PNG')
+        return output.getvalue()
+
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
         pfp_data = pfp_bytes
         if not pfp_data:
