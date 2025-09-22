@@ -147,6 +147,34 @@ class ImageManipulator(FontManager):
         return await self._run_in_executor(self._sync_convert_sticker_to_png, sticker_bytes)
 
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
+        def has_glyph(font, char):
+            return char in font.get_variation_names() or font.getmask(char).getbbox() is not None
+
+        font_name = self._get_font_from_package("NotoSans-Regular.ttf", 40)
+        font_quote = self._get_font_from_package("NotoSans-Regular.ttf", 50)
+        emoji_font = self._get_font_from_package("NotoColorEmoji-Regular.ttf", 50)
+        symbol_font = self._get_font_from_package("NotoSansSymbols2-Regular.ttf", 50)
+        
+        def get_segments(line, main_font, emoji, symbol):
+            segments = []
+            current_text = ""
+            current_font = main_font
+            for char in line:
+                font_for_char = main_font
+                if not has_glyph(main_font, char):
+                    font_for_char = emoji if has_glyph(emoji, char) else symbol
+                
+                if current_font != font_for_char and current_text:
+                    segments.append({'text': current_text, 'font': current_font})
+                    current_text = ""
+                
+                current_text += char
+                current_font = font_for_char
+            
+            if current_text:
+                segments.append({'text': current_text, 'font': current_font})
+            return segments
+
         pfp_data = pfp_bytes
         if not pfp_data:
             initial = user_name[0].upper()
@@ -154,81 +182,64 @@ class ImageManipulator(FontManager):
 
         pfp = Image.open(BytesIO(pfp_data)).convert("RGBA")
         pfp = pfp.resize((120, 120))
-        
         mask = Image.new('L', pfp.size, 0)
-        draw_mask = ImageDraw.Draw(mask) 
-        draw_mask.ellipse((0, 0) + pfp.size, fill=255)
+        ImageDraw.Draw(mask).ellipse((0, 0) + pfp.size, fill=255)
         pfp.putalpha(mask)
-        
-        with resources.as_file(resources.files('assets').joinpath('fonts', 'NotoSans-Regular.ttf')) as font_path:
-            font_name_path = str(font_path)
-        with resources.as_file(resources.files('assets').joinpath('fonts', 'NotoColorEmoji-Regular.ttf')) as font_path:
-            emoji_font_path = str(font_path)
-        with resources.as_file(resources.files('assets').joinpath('fonts', 'NotoSansSymbols2-Regular.ttf')) as font_path:
-            symbol_font_path = str(font_path)
 
-        font_paths = [font_name_path, emoji_font_path, symbol_font_path]
-        
-        layout_engine = ImageFont.Layout.RAQM
-        font_name = ImageFont.truetype(font_name_path, 40, layout_engine=layout_engine)
-        font_quote = ImageFont.truetype(font_name_path, 50, layout_engine=layout_engine)
-        
         bg_color, text_color, name_color = ("#161616", "#FFFFFF", "#AAAAAA") if not invert else ("#FFFFFF", "#161616", "#555555")
 
-        TEXT_LEFT, PADDING_RIGHT, MAX_WIDTH, MIN_WIDTH = 200, 80, 1280, 512
-        MAX_TEXT_WIDTH = MAX_WIDTH - TEXT_LEFT - PADDING_RIGHT
-        
-        final_lines = []
-        for line in text.splitlines():
-            words = (line if line else " ").split(' ')
-            current_line = ""
-            for word in words:
-                test_line = (current_line + " " + word).strip()
-                if font_quote.getlength(test_line) > MAX_TEXT_WIDTH:
-                    final_lines.append(current_line)
-                    current_line = word
-                else:
-                    current_line = test_line
-            final_lines.append(current_line)
-        
-        longest_line_width = 0
-        for line in final_lines:
-            line_width = font_quote.getlength(line)
-            if line_width > longest_line_width:
-                longest_line_width = line_width
-        
-        name_width = font_name.getlength(user_name)
-        longest_line_width = max(longest_line_width, name_width)
-        
-        image_w = min(MAX_WIDTH, max(MIN_WIDTH, int(TEXT_LEFT + longest_line_width + PADDING_RIGHT)))
+        TEXT_LEFT, MARGIN_RIGHT, MAX_WIDTH, MIN_WIDTH = 200, 80, 1280, 512
+        MAX_TEXT_WIDTH = MAX_WIDTH - TEXT_LEFT - MARGIN_RIGHT
 
-        def get_line_height(font, text_line):
-            if not text_line.strip():
-                bbox = font.getbbox("Tg")
-                return bbox[3] * 0.5
-            bbox = font.getbbox(text_line)
-            return bbox[3] - bbox[1]
+        def wrap(line, font, max_w):
+            lines = []
+            words = line.split(' ')
+            current = ""
+            for word in words:
+                if font.getlength(current + " " + word) < max_w:
+                    current = (current + " " + word).strip()
+                else:
+                    lines.append(current)
+                    current = word
+            lines.append(current)
+            return lines
+
+        final_lines = [l for L in text.splitlines() for l in wrap(L if L else " ", font_quote, MAX_TEXT_WIDTH)]
+
+        longest_line = max(final_lines, key=lambda l: font_quote.getlength(l))
+        longest_w = max(font_quote.getlength(longest_line), font_name.getlength(user_name))
         
-        line_height_name = get_line_height(font_name, user_name)
-        line_spacing_quote = 15
-        total_quote_h = sum([get_line_height(font_quote, l) for l in final_lines]) + (len(final_lines) - 1) * line_spacing_quote
+        image_w = min(MAX_WIDTH, max(MIN_WIDTH, TEXT_LEFT + int(longest_w) + MARGIN_RIGHT))
         
-        PADDING_TOP_BOTTOM = 60
-        image_h = max(200, int(total_quote_h + line_height_name + 20 + PADDING_TOP_BOTTOM * 2))
-        
+        name_h = font_name.getbbox("Tg")[3] - font_name.getbbox("Tg")[1]
+        quote_line_h = font_quote.getbbox("Tg")[3] - font_quote.getbbox("Tg")[1]
+        line_spacing = 15
+
+        quote_h = sum([quote_line_h for _ in final_lines]) + max(0, len(final_lines) - 1) * line_spacing
+        image_h = max(200, name_h + quote_h + 20 + 120)
+
         img = Image.new("RGB", (image_w, image_h), bg_color)
         draw = ImageDraw.Draw(img)
         img.paste(pfp, (50, 60), pfp)
+
+        y = (image_h - (name_h + quote_h + 20)) / 2
         
-        current_h = (image_h - (total_quote_h + line_height_name + 20)) / 2
+        name_segments = get_segments(user_name, font_name, emoji_font, symbol_font)
+        x = TEXT_LEFT
+        for seg in name_segments:
+            draw.text((x, y), seg['text'], font=seg['font'], fill=name_color, embedded_color=True)
+            x += seg['font'].getlength(seg['text'])
         
-        draw.text((TEXT_LEFT, current_h), user_name, font=font_name, fill=name_color, features=["-liga"], font_features=font_paths)
-        current_h += line_height_name + 20
-        
+        y += name_h + 20
+
         for line in final_lines:
-            draw.text((TEXT_LEFT, current_h), line, font=font_quote, fill=text_color, features=["-liga"], font_features=font_paths)
-            current_h += get_line_height(font_quote, line) + line_spacing_quote
-            
+            line_segments = get_segments(line, font_quote, emoji_font, symbol_font)
+            x = TEXT_LEFT
+            for seg in line_segments:
+                draw.text((x, y), seg['text'], font=seg['font'], fill=text_color, embedded_color=True)
+                x += seg['font'].getlength(seg['text'])
+            y += quote_line_h + line_spacing
+
         output = BytesIO()
         img.save(output, format="PNG")
         return output.getvalue()
