@@ -151,14 +151,6 @@ class ImageManipulator(FontManager):
         draw_mask = ImageDraw.Draw(mask) 
         draw_mask.ellipse((0, 0) + pfp.size, fill=255)
         pfp.putalpha(mask)
-
-        def get_font_object(filename, size):
-            font_resource = resources.files('assets').joinpath('fonts', filename)
-            with resources.as_file(font_resource) as font_path:
-                return ImageFont.truetype(str(font_path), size)
-
-        font_name = get_font_object("NotoSans-Regular.ttf", 40)
-        font_quote = get_font_object("NotoSans-Regular.ttf", 50)
         
         def get_font_path_str(filename):
              with resources.as_file(resources.files('assets').joinpath('fonts', filename)) as font_path:
@@ -169,7 +161,17 @@ class ImageManipulator(FontManager):
             get_font_path_str("NotoColorEmoji-Regular.ttf"),
             get_font_path_str("NotoSansSymbols2-Regular.ttf")
         ]
-        
+
+        font_name = ImageFont.truetype(font_paths[0], 40, layout_engine=ImageFont.Layout.RAQM)
+        font_quote = ImageFont.truetype(font_paths[0], 50, layout_engine=ImageFont.Layout.RAQM)
+
+        def get_text_width(font, text, features):
+            try:
+                return font.getbbox(text, features=["-liga"], font_features=features)[2]
+            except TypeError:
+                return font.getlength(text)
+
+
         bg_color, text_color, name_color = ("#161616", "#FFFFFF", "#AAAAAA") if not invert else ("#FFFFFF", "#161616", "#555555")
 
         TEXT_LEFT_MARGIN, RIGHT_MARGIN, MAX_WIDTH, MIN_WIDTH = 200, 80, 1280, 512
@@ -181,7 +183,7 @@ class ImageManipulator(FontManager):
             current_line = ""
             for word in words:
                 test_line = (current_line + " " + word).strip()
-                if font_quote.getlength(test_line) > MAX_TEXT_WIDTH:
+                if get_text_width(font_quote, test_line, font_paths) > MAX_TEXT_WIDTH:
                     final_lines.append(current_line)
                     current_line = word
                 else:
@@ -190,11 +192,11 @@ class ImageManipulator(FontManager):
         
         longest_line_width = 0
         for line in final_lines:
-            line_width = font_quote.getlength(line, features=["-liga"], font_features=font_paths)
+            line_width = get_text_width(font_quote, line, font_paths)
             if line_width > longest_line_width:
                 longest_line_width = line_width
         
-        name_width = font_name.getlength(user_name, features=["-liga"], font_features=font_paths)
+        name_width = get_text_width(font_name, user_name, font_paths)
         longest_line_width = max(longest_line_width, name_width)
         
         image_w = min(MAX_WIDTH, max(MIN_WIDTH, int(TEXT_LEFT_MARGIN + longest_line_width + RIGHT_MARGIN)))
