@@ -8,6 +8,7 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps, ImageFont
 
 from .font_manager import FontManager
 
+from importlib import resources
 try:
     from rembg import remove as remove_bg
 except ImportError:
