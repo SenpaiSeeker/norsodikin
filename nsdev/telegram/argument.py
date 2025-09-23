@@ -75,10 +75,10 @@ class Argument:
         if is_arg:
             if len(command_parts) > 1:
                 return text_content.split(None, 1)[1]
-            if replied and replied_text:
-                return replied_text
             if quote_text:
                 return quote_text
+            if replied and replied_text:
+                return replied_text
             return ""
 
         if replied:
