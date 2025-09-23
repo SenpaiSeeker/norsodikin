@@ -49,11 +49,13 @@ class ImageGenerator:
     async def generate(self, prompt: str, retries: int = 3):
         url_prompt = quote(prompt)
 
+        dalle_url = f"/images/create?q={url_prompt}&rt=4&mdl=0&ar=1&FORM=GENCRE"
+
         for attempt in range(1, retries + 1):
             self.__log(f"{self.log.CYAN}Mengirim permintaan ke Bing (Percobaan {attempt}/{retries})...")
 
             request = self.client.build_request(
-                "POST", f"/images/create?q={url_prompt}&FORM=GENCRE", data={"q": url_prompt, "qs": "ds"}
+                "POST", dalle_url, data={"q": url_prompt, "qs": "ds"}
             )
 
             response = await self.client.send(request, follow_redirects=False)
@@ -77,7 +79,7 @@ class ImageGenerator:
 
         polling_url = f"/images/create/async/results/{request_id}?q={url_prompt}"
         start_time = time.time()
-        self.__log(f"{self.log.YELLOW}Menunggu hasil gambar...")
+        self.__log(f"{self.log.YELLOW}Menunggu hasil gambar (mode DALL·E)...")
 
         while time.time() - start_time < 180:
             poll_response = await self.client.get(polling_url)
@@ -95,7 +97,7 @@ class ImageGenerator:
 
             if valid_links:
                 unique_links = sorted(list(set(valid_links)))
-                self.__log(f"{self.log.GREEN}Ditemukan {len(unique_links)} gambar.")
+                self.__log(f"{self.log.GREEN}Ditemukan {len(unique_links)} gambar (DALL·E).")
                 return unique_links
 
             await asyncio.sleep(5)
