@@ -1,115 +1,144 @@
 import asyncio
 from datetime import datetime
+from typing import Optional, Tuple, Union
 
 import pyrogram
-import requests
 
 
 class Argument:
     def __init__(self, client):
-        self.client = client
+        self.client: pyrogram.Client = client
 
-    def getMention(self, me, logs=False, no_tag=False, tag_and_id=False):
-        name = f"{me.first_name} {me.last_name}" if me.last_name else me.first_name
-        link = f"tg://user?id={me.id}"
-        return (
-            f"{name} ({me.id})"
-            if logs
-            else (
-                name
-                if no_tag
-                else f"<a href='{link}'>{name}</a>{' | <code>' + str(me.id) + '</code>' if tag_and_id else ''}"
-            )
+    def getMention(
+        self,
+        user: pyrogram.types.User,
+        logs: bool = False,
+        no_tag: bool = False,
+        tag_and_id: bool = False,
+    ) -> str:
+        
+        name = user.first_name
+        if user.last_name:
+            name += f" {user.last_name}"
+
+        if logs:
+            return f"{name} ({user.id})"
+        if no_tag:
+            return name
+            
+        link = f"tg://user?id={user.id}"
+        mention = f"<a href='{link}'>{name}</a>"
+        if tag_and_id:
+            mention += f" | <code>{user.id}</code>"
+        
+        return mention
+
+    async def getNamebot(self, bot_token: str) -> str:
+        temp_bot_client = pyrogram.Client(
+            name="temp_bot_name_fetcher",
+            api_id=self.client.api_id,
+            api_hash=self.client.api_hash,
+            bot_token=bot_token,
+            in_memory=True
         )
-
-    def getNamebot(self, bot_token):
-        url = f"https://api.telegram.org/bot  {bot_token}/getMe"
         try:
-            response = requests.get(url)
-            data = response.json()
-            if data.get("ok"):
-                return data["result"]["first_name"]
+            async with temp_bot_client:
+                me = await temp_bot_client.get_me()
+                return me.first_name
+        except Exception:
             return "Bot token invalid"
-        except requests.exceptions.RequestException as error:
-            return str(error)
 
-    def getMessage(self, message, is_arg=False, is_tuple=False):
-        cmd = getattr(message, "command", []) or []
-        replied = getattr(message, "reply_to_message", None)
+    def getMessage(
+        self,
+        message: pyrogram.types.Message,
+        is_arg: bool = False,
+        is_tuple: bool = False,
+    ) -> Union[str, pyrogram.types.Message, Tuple[Optional[str], Optional[str]]]:
+        
+        text_content = message.text or message.caption or ""
+        command_parts = message.command or text_content.split()
+        replied = message.reply_to_message
 
-        def _text_of(msg):
-            return getattr(msg, "text", None) or getattr(msg, "caption", None) or ""
+        replied_text = ""
+        if replied:
+            replied_text = replied.text or replied.caption or ""
+        
+        quote_text = ""
+        if hasattr(message, "quote") and message.quote:
+             quote_text = message.quote.text or ""
 
         if is_tuple:
-            args = cmd[1:] if cmd else []
-            part1 = args[0] if args else None
-            if len(args) > 1:
-                part2 = " ".join(args[1:])
-            else:
-                part2 = _text_of(replied) if replied else None
+            part1 = command_parts[1] if len(command_parts) > 1 else None
+            part2 = " ".join(command_parts[2:]) if len(command_parts) > 2 else (replied_text or quote_text or None)
             return part1, part2
 
         if is_arg:
-            if replied and len(cmd) < 2:
-                return _text_of(replied)
-            if len(cmd) > 1:
-                rest = _text_of(message)
-                return rest.split(None, 1)[1] if rest and len(rest.split(None, 1)) > 1 else ""
+            if len(command_parts) > 1:
+                return text_content.split(None, 1)[1]
+            if replied and replied_text:
+                return replied_text
+            if quote_text:
+                return quote_text
             return ""
 
         if replied:
             return replied
-        if len(cmd) > 1:
-            rest = _text_of(message)
-            return rest.split(None, 1)[1] if rest and len(rest.split(None, 1)) > 1 else ""
+        if len(command_parts) > 1:
+            return text_content.split(None, 1)[1]
+        
         return ""
 
-    async def getReasonAndId(self, message, sender_chat=False):
-        args = message.text.strip().split()
-        reply = message.reply_to_message
-        user_id = None
+    async def getReasonAndId(
+        self, message: pyrogram.types.Message, sender_chat: bool = False
+    ) -> Tuple[Optional[int], Optional[str]]:
+        
+        args = (message.text or "").strip().split()
+        replied = message.reply_to_message
+        target_id = None
         reason = None
-
-        if reply:
-            if reply.from_user:
-                user_id = reply.from_user.id
-            elif sender_chat and reply.sender_chat:
-                user_id = reply.sender_chat.id
-
+        
+        if replied:
+            if replied.from_user:
+                target_id = replied.from_user.id
+            elif sender_chat and replied.sender_chat:
+                target_id = replied.sender_chat.id
+            
             if len(args) > 1:
                 reason = " ".join(args[1:])
-            return user_id, reason
-
-        if len(args) > 1:
+        
+        elif len(args) > 1:
             try:
-                user = await self.client.get_users(args[1])
-                user_id = user.id
+                target_user = await self.client.get_users(args[1])
+                target_id = target_user.id
+                if len(args) > 2:
+                    reason = " ".join(args[2:])
             except Exception:
                 return None, None
+        
+        return target_id, reason
 
-            if len(args) > 2:
-                reason = " ".join(args[2:])
-            return user_id, reason
+    async def getAdmin(self, message: pyrogram.types.Message) -> bool:
+        try:
+            member = await self.client.get_chat_member(message.chat.id, message.from_user.id)
+            return member.status in (
+                pyrogram.enums.ChatMemberStatus.ADMINISTRATOR,
+                pyrogram.enums.ChatMemberStatus.OWNER,
+            )
+        except Exception:
+            return False
 
-        return None, None
-
-    async def getAdmin(self, message):
-        member = await self.client.get_chat_member(message.chat.id, message.from_user.id)
-        return member.status in (
-            pyrogram.enums.ChatMemberStatus.ADMINISTRATOR,
-            pyrogram.enums.ChatMemberStatus.OWNER,
-        )
-
-    async def getId(self, message):
+    async def getId(self, message: pyrogram.types.Message) -> Optional[int]:
         user_id, _ = await self.getReasonAndId(message, sender_chat=True)
         return user_id
 
-    async def copyMessage(self, chatId, msgId, chatTarget):
-        get_msg = await self.client.get_messages(chatId, msgId)
-        await get_msg.copy(chatTarget, protect_content=True)
-        await asyncio.sleep(1)
+    async def copyMessage(self, chatId: int, msgId: int, chatTarget: int):
+        try:
+            await self.client.copy_message(chatTarget, chatId, msgId)
+            await asyncio.sleep(1)
+        except Exception:
+            pass
 
-    async def ping(self):
+    async def ping(self) -> float:
         start = datetime.now()
         await self.client.invoke(pyrogram.raw.functions.Ping(ping_id=0))
         end = datetime.now()
