@@ -44,7 +44,7 @@ class Argument:
         try:
             async with temp_bot_client:
                 me = await temp_bot_client.get_me()
-                return me.first_name
+                return me
         except Exception:
             return "Bot token invalid"
 
