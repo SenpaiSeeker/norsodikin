@@ -2,6 +2,7 @@ import asyncio
 import os
 import re
 from typing import Tuple, Optional
+from urllib.parse import urlparse, parse_qs
 
 from pyrogram.errors import FloodWait, RPCError
 from pyrogram.types import Message
@@ -19,28 +20,35 @@ class MessageCopier:
     def _parse_link(self, link: str) -> Tuple[Optional[str or int], Optional[int]]:
         link = link.strip()
         
-        patterns = [
-            r"https_?://t\.me/(?:c/)?(\w+)/(\d+)(?:/(\d+))?",
-        ]
+        if link.startswith("tg://openmessage"):
+            parsed_url = urlparse(link)
+            query_params = parse_qs(parsed_url.query)
+            user_id = query_params.get('user_id', [None])[0]
+            message_id = query_params.get('message_id', [None])[0]
+            if user_id and message_id:
+                try:
+                    return int(user_id), int(message_id)
+                except (ValueError, TypeError):
+                    return None, None
 
-        for pattern in patterns:
-            match = re.match(pattern, link)
-            if match:
-                groups = match.groups()
-                
-                chat_id_str = groups[0]
-                message_id = int(groups[-1] or groups[-2])
+        pattern = r"https?://t\.me/(?:c/)?(\w+)/(\d+)(?:/(\d+))?"
+        match = re.match(pattern, link)
+        if match:
+            groups = match.groups()
+            chat_id_str = groups[0]
+            message_id = int(groups[-1] or groups[-2])
 
-                if chat_id_str.isdigit():
-                    return int(f"-100{chat_id_str}"), message_id
-                else:
-                    return chat_id_str, message_id
+            if chat_id_str.isdigit():
+                return int(f"-100{chat_id_str}"), message_id
+            else:
+                return chat_id_str, message_id
         
         return None, None
 
     async def _get_and_verify_message(self, chat_id, msg_id):
         if isinstance(chat_id, str) and chat_id.isdigit():
             chat_id = int(chat_id)
+        
         if isinstance(chat_id, int) and chat_id < 0:
             if chat_id not in self._peer_cache:
                 try:
@@ -48,6 +56,7 @@ class MessageCopier:
                     self._peer_cache[chat_id] = True
                 except Exception as e:
                     raise RPCError(f"Gagal akses chat {chat_id}. Pastikan Anda anggota. Detail: {e}")
+        
         return await self._client.get_messages(chat_id, msg_id)
 
     async def _process_single_message(self, message: Message, user_chat_id: int, status_message: Message):
