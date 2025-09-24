@@ -162,7 +162,7 @@ class DataBase:
         elif self.storage_type == 'mongo':
             data = self.data.vars.find_one({"_id": user_id_str})
             return data if data else {}
-        else: # local
+        else:
             return self._load_data().get("vars", {}).get(user_id_str, {})
             
     def _set_user_vars(self, user_id, user_data):
@@ -173,7 +173,7 @@ class DataBase:
             self.conn.commit()
         elif self.storage_type == 'mongo':
             self.data.vars.update_one({"_id": user_id_str}, {"$set": user_data}, upsert=True)
-        else: # local
+        else:
             full_data = self._load_data()
             full_data["vars"][user_id_str] = user_data
             self._save_data(full_data)
