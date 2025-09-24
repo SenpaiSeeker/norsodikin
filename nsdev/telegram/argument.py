@@ -34,16 +34,19 @@ class Argument:
 
         return mention
 
-    def getNamebot(self, bot_token):
-        url = f"https://api.telegram.org/bot{bot_token}/getMe"
+    async def getNamebot(self, bot_token: str) -> dict:
+        temp_bot_client = pyrogram.Client(
+            name="temp_bot_name_fetcher",
+            api_id=self.client.api_id,
+            api_hash=self.client.api_hash,
+            bot_token=bot_token,
+            in_memory=True
+        )
         try:
-            response = requests.get(url)
-            data = response.json()
-            if data.get("ok"):
-                return data["result"]
+            async with temp_bot_client:
+                return await temp_bot_client.get_me()
+        except Exception:
             return "Bot token invalid"
-        except requests.exceptions.RequestException as error:
-            return str(error)
 
     def getMessage(
         self,
