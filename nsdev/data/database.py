@@ -18,7 +18,7 @@ class DataBase:
         self.keys_encrypt = options.get("keys_encrypt", "default_db_key_12345")
         self.method_encrypt = options.get("method_encrypt", "bytes")
         self.cipher = CipherHandler(key=self.keys_encrypt, method=self.method_encrypt)
-
+        
         self.auto_backup = options.get("auto_backup", False)
         self.backup_bot_token = options.get("backup_bot_token")
         self.backup_chat_id = options.get("backup_chat_id")
@@ -27,7 +27,6 @@ class DataBase:
 
         if self.storage_type == "mongo":
             import pymongo
-
             self.mongo_url = options.get("mongo_url")
             if not self.mongo_url:
                 raise ValueError("mongo_url is required for MongoDB storage")
@@ -41,7 +40,7 @@ class DataBase:
             self.data_file = f"{self.file_name}.json"
             if not os.path.exists(self.data_file):
                 self._save_data({"vars": {}, "bots": []})
-
+        
         if self.auto_backup and self.storage_type in ["local", "sqlite"]:
             if not self.backup_bot_token or not self.backup_chat_id:
                 self.cipher.log.print(
@@ -81,14 +80,12 @@ class DataBase:
             zip_path = await loop.run_in_executor(None, self._create_zip_archive, source_path)
             if zip_path:
                 timestamp = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
-                caption = (
-                    f"Backup otomatis untuk `{self.file_name}`\nTipe: `{self.storage_type}`\nWaktu: `{timestamp} WIB`"
-                )
+                caption = f"Backup otomatis untuk `{self.file_name}`\nTipe: `{self.storage_type}`\nWaktu: `{timestamp} WIB`"
                 await self._send_zip_to_telegram(zip_path, caption)
         finally:
             if zip_path and os.path.exists(zip_path):
                 os.remove(zip_path)
-
+    
     def _create_zip_archive(self, source_path):
         timestamp = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y%m%d_%H%M%S")
         zip_filename = f"backup_{self.file_name}_{timestamp}.zip"
@@ -108,15 +105,13 @@ class DataBase:
                 params = {"chat_id": self.backup_chat_id, "caption": caption, "parse_mode": "Markdown"}
                 async with httpx.AsyncClient(timeout=60) as client:
                     response = await client.post(url, params=params, files=files)
-
+            
             response.raise_for_status()
             response_data = response.json()
             if response_data.get("ok"):
                 self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] Berhasil dikirim ke Telegram.")
             else:
-                self.cipher.log.print(
-                    f"{self.cipher.log.RED}[BACKUP] Gagal mengirim: {response_data.get('description')}"
-                )
+                self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] Gagal mengirim: {response_data.get('description')}")
         except Exception as e:
             self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] Gagal mengirim file ke Telegram: {e}")
 
@@ -140,7 +135,7 @@ class DataBase:
             try:
                 await self._backup_task
             except asyncio.CancelledError:
-                pass
+                pass 
         self.close()
 
     def close(self):
@@ -150,40 +145,36 @@ class DataBase:
     def _initialize_sqlite(self):
         cursor = self.conn.cursor()
         cursor.execute("CREATE TABLE IF NOT EXISTS vars (user_id TEXT PRIMARY KEY, data TEXT)")
-        cursor.execute(
-            """
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS bots (
                 user_id TEXT PRIMARY KEY, api_id TEXT, api_hash TEXT,
                 bot_token TEXT, session_string TEXT
             )
-        """
-        )
+        """)
         self.conn.commit()
-
+        
     def _get_user_vars(self, user_id):
         user_id_str = str(user_id)
-        if self.storage_type == "sqlite":
+        if self.storage_type == 'sqlite':
             cursor = self.conn.cursor()
             cursor.execute("SELECT data FROM vars WHERE user_id = ?", (user_id_str,))
             row = cursor.fetchone()
             return json.loads(self.cipher.decrypt(row[0])) if row else {}
-        elif self.storage_type == "mongo":
+        elif self.storage_type == 'mongo':
             data = self.data.vars.find_one({"_id": user_id_str})
             return data if data else {}
-        else:
+        else: # local
             return self._load_data().get("vars", {}).get(user_id_str, {})
-
+            
     def _set_user_vars(self, user_id, user_data):
         user_id_str = str(user_id)
-        if self.storage_type == "sqlite":
+        if self.storage_type == 'sqlite':
             encrypted_data = self.cipher.encrypt(json.dumps(user_data))
-            self.conn.execute(
-                "INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)", (user_id_str, encrypted_data)
-            )
+            self.conn.execute("INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)", (user_id_str, encrypted_data))
             self.conn.commit()
-        elif self.storage_type == "mongo":
+        elif self.storage_type == 'mongo':
             self.data.vars.update_one({"_id": user_id_str}, {"$set": user_data}, upsert=True)
-        else:  # local
+        else: # local
             full_data = self._load_data()
             full_data["vars"][user_id_str] = user_data
             self._save_data(full_data)
@@ -191,16 +182,14 @@ class DataBase:
     def setVars(self, user_id, query_name, value, var_key="variabel"):
         encrypted_value = self.cipher.encrypt(json.dumps(value) if isinstance(value, (dict, list)) else str(value))
         user_data = self._get_user_vars(user_id)
-        if var_key not in user_data:
-            user_data[var_key] = {}
+        if var_key not in user_data: user_data[var_key] = {}
         user_data[var_key][query_name] = encrypted_value
         self._set_user_vars(user_id, user_data)
-
+        
     def getVars(self, user_id, query_name, var_key="variabel"):
         user_data = self._get_user_vars(user_id)
         encrypted_value = user_data.get(var_key, {}).get(query_name)
-        if not encrypted_value:
-            return None
+        if not encrypted_value: return None
         decrypted_str = self.cipher.decrypt(encrypted_value)
         try:
             return json.loads(decrypted_str)
@@ -215,10 +204,8 @@ class DataBase:
     def setListVars(self, user_id, query_name, value, var_key="variabel"):
         encrypted_value = self.cipher.encrypt(json.dumps(value) if isinstance(value, (dict, list)) else str(value))
         user_data = self._get_user_vars(user_id)
-        if var_key not in user_data:
-            user_data[var_key] = {}
-        if query_name not in user_data[var_key]:
-            user_data[var_key][query_name] = []
+        if var_key not in user_data: user_data[var_key] = {}
+        if query_name not in user_data[var_key]: user_data[var_key][query_name] = []
         if encrypted_value not in user_data[var_key][query_name]:
             user_data[var_key][query_name].append(encrypted_value)
             self._set_user_vars(user_id, user_data)
@@ -256,35 +243,23 @@ class DataBase:
             "api_id": self.cipher.encrypt(str(api_id)),
             "api_hash": self.cipher.encrypt(api_hash),
         }
-        if value:
-            bot_data[field] = self.cipher.encrypt(value)
-
+        if value: bot_data[field] = self.cipher.encrypt(value)
+        
         if self.storage_type == "mongo":
             self.data.bot.update_one({"_id": user_id_str}, {"$set": bot_data}, upsert=True)
         elif self.storage_type == "sqlite":
-            self.conn.execute(
-                """
+            self.conn.execute("""
                 INSERT OR REPLACE INTO bots (user_id, api_id, api_hash, bot_token, session_string) 
                 VALUES (?, ?, ?, ?, ?)
-            """,
-                (
-                    user_id_str,
-                    bot_data["api_id"],
-                    bot_data["api_hash"],
-                    bot_data.get("bot_token"),
-                    bot_data.get("session_string"),
-                ),
-            )
+            """, (user_id_str, bot_data["api_id"], bot_data["api_hash"], bot_data.get("bot_token"), bot_data.get("session_string")))
             self.conn.commit()
         else:
             data = self._load_data()
             existing = next((b for b in data["bots"] if b.get("user_id") == user_id_str), None)
-            if existing:
-                existing.update(bot_data)
-            else:
-                data["bots"].append({"user_id": user_id_str, **bot_data})
+            if existing: existing.update(bot_data)
+            else: data["bots"].append({"user_id": user_id_str, **bot_data})
             self._save_data(data)
-
+            
     def getBots(self, is_token=False):
         raw_bots = []
         if self.storage_type == "mongo":
@@ -292,11 +267,8 @@ class DataBase:
         elif self.storage_type == "sqlite":
             cursor = self.conn.cursor()
             cursor.execute("SELECT user_id, api_id, api_hash, bot_token, session_string FROM bots")
-            raw_bots = [
-                {"user_id": r[0], "api_id": r[1], "api_hash": r[2], "bot_token": r[3], "session_string": r[4]}
-                for r in cursor.fetchall()
-            ]
-        else:  # local
+            raw_bots = [{"user_id": r[0], "api_id": r[1], "api_hash": r[2], "bot_token": r[3], "session_string": r[4]} for r in cursor.fetchall()]
+        else: # local
             raw_bots = self._load_data().get("bots", [])
 
         decrypted_bots = []
@@ -310,10 +282,9 @@ class DataBase:
                     decrypted_bots.append(decrypted)
                 elif not is_token and decrypted.get("session_string"):
                     decrypted_bots.append(decrypted)
-            except (ValueError, TypeError):
-                continue
+            except (ValueError, TypeError): continue
         return decrypted_bots
-
+        
     def removeBot(self, user_id):
         user_id_str = str(user_id)
         if self.storage_type == "mongo":
