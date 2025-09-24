@@ -79,9 +79,9 @@ class DataBase:
         try:
             zip_path = await loop.run_in_executor(None, self._create_zip_archive, source_path)
             if zip_path:
-                timestamp = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
+                timestamp = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S %Ź")
                 caption = (
-                    f"Backup otomatis untuk `{self.file_name}`\nTipe: `{self.storage_type}`\nWaktu: `{timestamp} WIB`"
+                    f"Backup otomatis untuk `{self.file_name}`\nTipe: `{self.storage_type}`\nWaktu: `{timestamp}`"
                 )
                 await self._send_zip_to_telegram(zip_path, caption)
         finally:
