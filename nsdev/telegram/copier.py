@@ -1,7 +1,7 @@
 import asyncio
 import os
 import re
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 from pyrogram.errors import FloodWait, RPCError
 from pyrogram.types import Message
