@@ -16,19 +16,36 @@ class MessageCopier:
         self._log = LoggerHandler()
         self._peer_cache = {}
 
-    def _parse_link(self, link: str) -> Tuple[Union[str, int], int] or Tuple[None, None]:
+    def _parse_link(self, link: str) -> Tuple[Optional[int], int, Optional[int]]:
         link = link.strip()
-        public_match = re.match(r"https?://t\.me/([a-zA-Z0-9_]{5,32})/(\d+)", link)
-        if public_match:
-            return public_match.group(1), int(public_match.group(2))
-        private_match = re.match(r"https?://t\.me/c/(\d+)/(\d+)", link)
-        if private_match:
-            chat_id_str, msg_id = private_match.groups()
-            try:
-                return int(f"-100{chat_id_str}"), int(msg_id)
-            except ValueError:
-                pass
-        return None, None
+        
+        patterns = [
+            r"https?://t\.me/([a-zA-Z0-9_]{5,32})/(\d+)/(\d+)",
+            r"https?://t\.me/c/(\d+)/(\d+)/(\d+)",
+            r"https?://t\.me/([a-zA-Z0-9_]{5,32})/(\d+)",
+            r"https?://t\.me/c/(\d+)/(\d+)",
+        ]
+
+        for pattern in patterns:
+            match = re.match(pattern, link)
+            if match:
+                groups = match.groups()
+                if len(groups) == 3:
+                    chat_id_str, topic_id, msg_id = groups
+                    topic_id, msg_id = int(topic_id), int(msg_id)
+                else:
+                    chat_id_str, msg_id = groups
+                    topic_id, msg_id = None, int(msg_id)
+
+                if chat_id_str.isdigit():
+                    chat_id = int(f"-100{chat_id_str}")
+                else:
+                    chat_id = chat_id_str
+                
+                return chat_id, msg_id, topic_id
+
+        return None, None, None
+
 
     async def _force_get_peer_for_private_chat(self, chat_id_to_find: int):
         if chat_id_to_find in self._peer_cache:
@@ -40,27 +57,27 @@ class MessageCopier:
             raise RPCError(f"Gagal mengakses chat {chat_id_to_find}. Pastikan Anda anggota. Detail: {e}")
 
     async def _get_and_verify_message(self, chat_id, msg_id):
-        if chat_id == "c":
-            raise RPCError("Parsing gagal: chat_id tidak valid.")
         if isinstance(chat_id, str) and chat_id.isdigit():
             chat_id = int(chat_id)
-        await self._force_get_peer_for_private_chat(chat_id)
+        if isinstance(chat_id, int) and chat_id < 0:
+             await self._force_get_peer_for_private_chat(chat_id)
         return await self._client.get_messages(chat_id, msg_id)
 
     async def _process_single_message(self, message: Message, user_chat_id: int, status_message: Message):
         thumb_path = file_path = None
         try:
+            download_progress = TelegramProgressBar(self._client, status_message, "Downloading")
+
             if not message.media:
                 await message.copy(user_chat_id)
                 return
 
-            download_progress = TelegramProgressBar(self._client, status_message, "Downloads")
             file_path = await self._client.download_media(message, progress=download_progress.update)
 
-            media_obj = message.video or message.audio
-            if media_obj and getattr(media_obj, "thumbs", None):
-                thumb_path = await self._client.download_media(media_obj.thumbs[-1].file_id)
-
+            media_obj = getattr(message, message.media.value, None)
+            if media_obj and hasattr(media_obj, 'thumbs') and media_obj.thumbs:
+                thumb_path = await self._client.download_media(media_obj.thumbs[0].file_id)
+            
             upload_progress = TelegramProgressBar(self._client, status_message, "Uploading")
             send_map = {
                 "video": self._client.send_video,
@@ -79,9 +96,8 @@ class MessageCopier:
                     "caption": message.caption or "",
                     "progress": upload_progress.update,
                 }
-                media_attr = getattr(message, message.media.value)
-                if hasattr(media_attr, "duration"):
-                    kwargs["duration"] = media_attr.duration
+                if hasattr(media_obj, "duration"):
+                    kwargs["duration"] = media_obj.duration
                 if thumb_path:
                     kwargs["thumb"] = thumb_path
                 kwargs[message.media.value] = file_path
@@ -96,27 +112,27 @@ class MessageCopier:
 
     async def copy_from_links(self, user_chat_id: int, links_text: str, status_message: Message):
         links_to_process = []
+        message_kwargs = {}
 
         if "|" in links_text:
             parts = [p.strip() for p in links_text.split("|")]
             if len(parts) != 2:
                 raise ValueError("Format rentang tidak valid.")
-            chat_id1, msg_id1 = self._parse_link(parts[0])
-            chat_id2, msg_id2 = self._parse_link(parts[1])
-            if not (chat_id1 and chat_id2) or chat_id1 != chat_id2:
-                raise ValueError("Link tidak valid atau bukan dari chat yang sama.")
+            chat_id1, msg_id1, topic_id1 = self._parse_link(parts[0])
+            chat_id2, msg_id2, topic_id2 = self._parse_link(parts[1])
+
+            if not chat_id1 or not chat_id2 or chat_id1 != chat_id2 or topic_id1 != topic_id2:
+                raise ValueError("Link tidak valid, bukan dari chat yang sama, atau bukan dari topic yang sama.")
+            
             for msg_id in range(min(msg_id1, msg_id2), max(msg_id1, msg_id2) + 1):
-                links_to_process.append((chat_id1, msg_id))
+                links_to_process.append((chat_id1, msg_id, topic_id1))
         else:
             for link in links_text.split():
-                chat_id, msg_id = self._parse_link(link)
-                if chat_id is None:
-                    self._log.error(f"Link tidak valid: {link}")
+                chat_id, msg_id, topic_id = self._parse_link(link)
+                if not chat_id or not msg_id:
+                    self._log.error(f"Link tidak valid atau gagal di-parse: {link}")
                     continue
-                if chat_id == "c":
-                    self._log.error(f"Parsing gagal: {link}")
-                    continue
-                links_to_process.append((chat_id, msg_id))
+                links_to_process.append((chat_id, msg_id, topic_id))
 
         if not links_to_process:
             raise ValueError("Tidak ada link valid yang ditemukan.")
@@ -125,17 +141,31 @@ class MessageCopier:
         await asyncio.sleep(2)
 
         total = len(links_to_process)
-        for i, (chat_id, msg_id) in enumerate(links_to_process):
+        for i, (chat_id, msg_id, topic_id) in enumerate(links_to_process):
             try:
+                if topic_id:
+                    message_kwargs["reply_to_message_id"] = topic_id
+                else:
+                    message_kwargs.pop("reply_to_message_id", None)
+                    
                 await status_message.edit(f"Memproses pesan {i+1}/{total} (ID: {msg_id})...")
-                message = await self._get_and_verify_message(chat_id, msg_id)
-                if not message.empty:
-                    await self._process_single_message(message, user_chat_id, status_message)
+                
+                if topic_id:
+                     message_from_topic = await self._client.get_discussion_message(chat_id, msg_id)
+                     target_message = await self._get_and_verify_message(message_from_topic.chat.id, message_from_topic.id)
+                else:
+                     target_message = await self._get_and_verify_message(chat_id, msg_id)
+
+                if not target_message.empty:
+                    user_chat_id_to_send = message_kwargs.get("reply_to_message_id", user_chat_id)
+                    await self._process_single_message(target_message, user_chat_id, status_message)
                     await asyncio.sleep(1.5)
+
             except FloodWait as e:
                 wait_time = e.value + 2
                 self._log.print(f"{self._log.YELLOW}FloodWait: tunggu {wait_time} detik...{self._log.RESET}")
                 await asyncio.sleep(wait_time)
+                i -= 1 
             except Exception as e:
                 self._log.error(f"Gagal memproses ({chat_id}/{msg_id}): {e}")
 
