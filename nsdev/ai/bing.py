@@ -54,9 +54,7 @@ class ImageGenerator:
         for attempt in range(1, retries + 1):
             self.__log(f"{self.log.CYAN}Mengirim permintaan ke Bing (Percobaan {attempt}/{retries})...")
 
-            request = self.client.build_request(
-                "POST", dalle_url, data={"q": url_prompt, "qs": "ds"}
-            )
+            request = self.client.build_request("POST", dalle_url, data={"q": url_prompt, "qs": "ds"})
 
             response = await self.client.send(request, follow_redirects=False)
 

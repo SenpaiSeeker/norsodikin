@@ -1,9 +1,9 @@
 import asyncio
-import requests 
 from datetime import datetime
 from typing import Optional, Tuple, Union
 
 import pyrogram
+import requests
 
 
 class Argument:
@@ -17,7 +17,7 @@ class Argument:
         no_tag: bool = False,
         tag_and_id: bool = False,
     ) -> str:
-        
+
         name = user.first_name
         if user.last_name:
             name += f" {user.last_name}"
@@ -26,12 +26,12 @@ class Argument:
             return f"{name} ({user.id})"
         if no_tag:
             return name
-            
+
         link = f"tg://user?id={user.id}"
         mention = f"<a href='{link}'>{name}</a>"
         if tag_and_id:
             mention += f" | <code>{user.id}</code>"
-        
+
         return mention
 
     def getNamebot(self, bot_token):
@@ -51,7 +51,7 @@ class Argument:
         is_arg: bool = False,
         is_tuple: bool = False,
     ) -> Union[str, pyrogram.types.Message, Tuple[Optional[str], Optional[str]]]:
-        
+
         text_content = message.text or message.caption or ""
         command_parts = message.command or text_content.split()
         replied = message.reply_to_message
@@ -59,10 +59,10 @@ class Argument:
         replied_text = ""
         if replied:
             replied_text = replied.text or replied.caption or ""
-        
+
         quote_text = ""
         if hasattr(message, "quote") and message.quote:
-             quote_text = message.quote.text or ""
+            quote_text = message.quote.text or ""
 
         if is_tuple:
             part1 = command_parts[1] if len(command_parts) > 1 else None
@@ -82,27 +82,27 @@ class Argument:
             return replied
         if len(command_parts) > 1:
             return text_content.split(None, 1)[1]
-        
+
         return ""
 
     async def getReasonAndId(
         self, message: pyrogram.types.Message, sender_chat: bool = False
     ) -> Tuple[Optional[int], Optional[str]]:
-        
+
         args = (message.text or "").strip().split()
         replied = message.reply_to_message
         target_id = None
         reason = None
-        
+
         if replied:
             if replied.from_user:
                 target_id = replied.from_user.id
             elif sender_chat and replied.sender_chat:
                 target_id = replied.sender_chat.id
-            
+
             if len(args) > 1:
                 reason = " ".join(args[1:])
-        
+
         elif len(args) > 1:
             try:
                 target_user = await self.client.get_users(args[1])
@@ -111,7 +111,7 @@ class Argument:
                     reason = " ".join(args[2:])
             except Exception:
                 return None, None
-        
+
         return target_id, reason
 
     async def getAdmin(self, message: pyrogram.types.Message) -> bool:
