@@ -27,6 +27,7 @@ dependencies = [
     "pyyaml",
     "httpx",
     "python-dotenv",
+    "tornado",
     "requests",
 ]
 
