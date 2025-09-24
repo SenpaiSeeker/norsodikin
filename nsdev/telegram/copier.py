@@ -65,14 +65,19 @@ class MessageCopier:
             download_progress = TelegramProgressBar(self._client, status_message, "Downloading")
 
             if not message.media:
-                await message.copy(user_chat_id)
-                return
+                return await message.copy(user_chat_id)
 
             file_path = await self._client.download_media(message, progress=download_progress.update)
+            if not file_path or not os.path.exists(file_path):
+                 return await message.copy(user_chat_id)
+
 
             media_obj = getattr(message, message.media.value, None)
             if media_obj and hasattr(media_obj, 'thumbs') and media_obj.thumbs:
-                thumb_path = await self._client.download_media(media_obj.thumbs[0].file_id)
+                try:
+                    thumb_path = await self._client.download_media(media_obj.thumbs[0].file_id)
+                except Exception:
+                    thumb_path = None
             
             upload_progress = TelegramProgressBar(self._client, status_message, "Uploading")
             send_map = {
@@ -81,13 +86,21 @@ class MessageCopier:
                 "voice": self._client.send_voice, "animation": self._client.send_animation,
                 "sticker": self._client.send_sticker,
             }
-
-            if message.media.value in send_map:
-                send_func = send_map[message.media.value]
+            
+            media_type = message.media.value
+            
+            if media_type in send_map:
+                send_func = send_map[media_type]
                 kwargs = { "chat_id": user_chat_id, "caption": message.caption or "", "progress": upload_progress.update }
-                if hasattr(media_obj, "duration"): kwargs["duration"] = media_obj.duration
-                if thumb_path: kwargs["thumb"] = thumb_path
-                kwargs[message.media.value] = file_path
+                
+                kwargs[media_type] = file_path
+                
+                if hasattr(media_obj, "duration"): 
+                    kwargs["duration"] = media_obj.duration
+                
+                if thumb_path and media_type in ["video", "audio", "document"]:
+                    kwargs["thumb"] = thumb_path
+                
                 await send_func(**kwargs)
             else:
                 await message.copy(user_chat_id)
