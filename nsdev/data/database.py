@@ -251,6 +251,29 @@ class DataBase:
             full_data.get("vars", {}).pop(user_id_str, None)
             self._save_data(full_data)
 
+    def allVars(self, user_id, var_key="variabel"):
+        user_data = self._get_user_vars(user_id)
+        encrypted_data = user_data.get(var_key, {})
+        
+        decrypted = {}
+        for key, value in encrypted_data.items():
+            if isinstance(value, list):
+                temp_list = []
+                for v in value:
+                    decrypted_v_str = self.cipher.decrypt(v)
+                    try:
+                        temp_list.append(json.loads(decrypted_v_str))
+                    except (json.JSONDecodeError, TypeError):
+                        temp_list.append(decrypted_v_str)
+                decrypted[key] = temp_list
+            else:
+                decrypted_v_str = self.cipher.decrypt(value)
+                try:
+                    decrypted[key] = json.loads(decrypted_v_str)
+                except (json.JSONDecodeError, TypeError):
+                    decrypted[key] = decrypted_v_str
+        return decrypted
+
     def saveBot(self, user_id, api_id, api_hash, value, is_token=False):
         user_id_str = str(user_id)
         field = "bot_token" if is_token else "session_string"
