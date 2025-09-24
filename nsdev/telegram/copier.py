@@ -91,7 +91,11 @@ class MessageCopier:
             
             if media_type in send_map:
                 send_func = send_map[media_type]
-                kwargs = { "chat_id": user_chat_id, "caption": message.caption or "", "progress": upload_progress.update }
+                kwargs = { 
+                    "chat_id": user_chat_id, 
+                    "caption": message.caption.html if message.caption else "",
+                    "progress": upload_progress.update
+                }
                 
                 kwargs[media_type] = file_path
                 
