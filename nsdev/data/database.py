@@ -39,22 +39,20 @@ class DataBase:
         else:
             self.data_file = f"{self.file_name}.json"
             if not os.path.exists(self.data_file):
-                self._save_data({"vars": {}, "bots": []})
-        
+                self._save_data({"vars": {}, "bots": []})    
+
+    async def start_services(self):
         if self.auto_backup and self.storage_type in ["local", "sqlite"]:
             if not self.backup_bot_token or not self.backup_chat_id:
                 self.cipher.log.print(
                     f"{self.cipher.log.YELLOW}[BACKUP] Auto backup dinonaktifkan karena token/chat_id tidak ada."
                 )
             else:
-                self._start_backup_task()
-
-    def _start_backup_task(self):
-        if self._backup_task is None or self._backup_task.done():
-            self.cipher.log.print(
-                f"{self.cipher.log.GREEN}[BACKUP] Task backup dijadwalkan setiap {self.backup_interval_hours} jam."
-            )
-            self._backup_task = asyncio.create_task(self._backup_looper())
+                if self._backup_task is None or self._backup_task.done():
+                    self.cipher.log.print(
+                        f"{self.cipher.log.GREEN}[BACKUP] Task backup dijadwalkan setiap {self.backup_interval_hours} jam."
+                    )
+                    self._backup_task = asyncio.create_task(self._backup_looper())
 
     async def _backup_looper(self):
         interval_seconds = self.backup_interval_hours * 3600
@@ -74,7 +72,8 @@ class DataBase:
         if not os.path.exists(source_path):
             self.cipher.log.print(f"{self.cipher.log.YELLOW}[BACKUP] File database tidak ditemukan. Backup dilewati.")
             return
-
+        
+        zip_path = None
         loop = asyncio.get_running_loop()
         try:
             zip_path = await loop.run_in_executor(None, self._create_zip_archive, source_path)
@@ -213,7 +212,7 @@ class DataBase:
     def getListVars(self, user_id, query_name, var_key="variabel"):
         user_data = self._get_user_vars(user_id)
         encrypted_list = user_data.get(var_key, {}).get(query_name, [])
-        return [self.cipher.decrypt(v) for v in encrypted_list]
+        return [json.loads(self.cipher.decrypt(v)) if v.startswith(('[', '{')) else self.cipher.decrypt(v) for v in encrypted_list]
 
     def removeListVars(self, user_id, query_name, value, var_key="variabel"):
         encrypted_value = self.cipher.encrypt(json.dumps(value) if isinstance(value, (dict, list)) else str(value))
@@ -268,7 +267,7 @@ class DataBase:
             cursor = self.conn.cursor()
             cursor.execute("SELECT user_id, api_id, api_hash, bot_token, session_string FROM bots")
             raw_bots = [{"user_id": r[0], "api_id": r[1], "api_hash": r[2], "bot_token": r[3], "session_string": r[4]} for r in cursor.fetchall()]
-        else: # local
+        else:
             raw_bots = self._load_data().get("bots", [])
 
         decrypted_bots = []
@@ -277,10 +276,10 @@ class DataBase:
                 decrypted = {"name": bot_data.get("user_id") or bot_data.get("_id")}
                 for key in ["api_id", "api_hash", "bot_token", "session_string"]:
                     if bot_data.get(key):
-                        decrypted[key] = self.cipher.decrypt(bot_data[key])
-                if is_token and decrypted.get("bot_token"):
-                    decrypted_bots.append(decrypted)
-                elif not is_token and decrypted.get("session_string"):
+                        value = self.cipher.decrypt(bot_data[key])
+                        decrypted[key] = int(value) if key == "api_id" else value
+                
+                if (is_token and "bot_token" in decrypted) or (not is_token and "session_string" in decrypted):
                     decrypted_bots.append(decrypted)
             except (ValueError, TypeError): continue
         return decrypted_bots
