@@ -3,7 +3,7 @@ import httpx
 
 class CarbonClient:
     def __init__(self, timeout: int = 30):
-        self.api_url = "https://sourcecodeshots.com/api/image/create"
+        self.api_url = "https://sourcecodeshots.com/api/image"
         self.timeout = timeout
 
     async def generate(self, code: str) -> bytes:
@@ -20,7 +20,7 @@ class CarbonClient:
 
         async with httpx.AsyncClient() as client:
             try:
-                response = await client.post(self.api_url, json=payload, headers=headers, timeout=self.timeout)
+                response = await client.post(self.api_url, json=payload, headers=headers, timeout=httpx.Timeout(self.timeout))
                 response.raise_for_status()
                 
                 result = response.json()
