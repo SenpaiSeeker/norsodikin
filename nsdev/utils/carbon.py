@@ -2,7 +2,7 @@ import httpx
 
 
 class CarbonClient:
-    def ____init____(self, timeout: int = 30):
+    def __init__(self, timeout: int = 30):
         self.api_url = "https://carbonara.solopov.dev/api/cook"
         self.timeout = timeout
 
