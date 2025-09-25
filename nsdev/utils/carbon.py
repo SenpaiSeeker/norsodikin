@@ -18,23 +18,15 @@ class CarbonClient:
             "Content-Type": "application/json",
         }
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(self.timeout)) as client:
             try:
-                response = await client.post(self.api_url, json=payload, headers=headers, timeout=httpx.Timeout(self.timeout))
+                response = await client.post(self.api_url, json=payload, headers=headers)
                 response.raise_for_status()
                 
-                result = response.json()
-                image_url = result.get("url")
-                
-                if not image_url:
-                    raise Exception("API did not return an image URL.")
-                
-                image_response = await client.get(image_url, timeout=self.timeout)
-                image_response.raise_for_status()
-                
-                return image_response.content
+                return response.content
 
             except httpx.RequestError as e:
-                raise Exception(f"Gagal terhubung ke API Carbon baru: {e}")
+                raise Exception(f"Gagal terhubung ke API Carbon: {e}")
             except httpx.HTTPStatusError as e:
-                raise Exception(f"API Carbon baru mengembalikan error: {e.response.status_code} - {e.response.text}")
+                error_body = e.response.text
+                raise Exception(f"API Carbon mengembalikan error: {e.response.status_code} - {error_body}")
