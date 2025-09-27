@@ -50,7 +50,7 @@ class ViuDownloader:
             "platform_flag_label": "web",
             "area_id": "1001",
             "language_flag_id": "7",
-            "countryCode": "MY",
+            "countryCode": "ID",
             "ut": "0",
             "os_flag_id": "1"
         }
