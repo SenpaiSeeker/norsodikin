@@ -25,64 +25,102 @@ class ViuDownloader:
         if not shutil.which("ffmpeg"):
             raise EnvironmentError("ffmpeg tidak ditemukan. Pastikan sudah terinstal dan ada di PATH.")
 
-        self.client = self._prepare_client(cookies_file_path)
+        self.client, self.auth_token = self._prepare_client_and_token(cookies_file_path)
 
-    def _prepare_client(self, cookie_path: str) -> httpx.AsyncClient:
+    def _prepare_client_and_token(self, cookie_path: str):
         jar = http.cookiejar.MozillaCookieJar(cookie_path)
         jar.load(ignore_discard=True, ignore_expires=True)
         
         cookies = httpx.Cookies()
+        token = None
         for cookie in jar:
             cookies.set(cookie.name, cookie.value, domain=cookie.domain)
+            if cookie.name == 'token':
+                token = cookie.value
+        
+        if not token:
+            raise ValueError("Cookie 'token' tidak ditemukan di dalam file cookies. Pastikan Anda sudah login.")
 
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Authorization": f"Bearer {token}"
         }
-        return httpx.AsyncClient(headers=headers, cookies=cookies, follow_redirects=True, timeout=30)
+        client = httpx.AsyncClient(headers=headers, cookies=cookies, follow_redirects=True, timeout=30)
+        return client, token
 
-    async def _get_m3u8_url(self, video_id: str) -> SimpleNamespace:
-        self.log.print(f"{self.log.CYAN}Mengambil detail video untuk ID: {video_id}")
-        api_url = f"https://www.viu.com/api/v2/play?ccs_product_id={video_id}"
+    async def _get_product_info(self, url: str) -> SimpleNamespace:
+        self.log.print(f"{self.log.CYAN}Mengekstrak Product ID dari URL...")
+        match = re.search(r"/vod/(\d+)/", url)
+        if not match:
+            raise ValueError("URL Viu tidak valid atau tidak mengandung Product ID.")
         
-        request_headers = self.client.headers.copy()
-        request_headers['Referer'] = f"https://www.viu.com/ott/id/id/vod/{video_id}/"
-
-        response = await self.client.get(api_url, headers=request_headers)
+        product_id = match.group(1)
         
-        if response.status_code == 404:
-            raise ValueError("API mengembalikan 404 Not Found. ID video mungkin salah atau konten tidak tersedia.")
+        api_url = "https://api-gateway-global.viu.com/api/mobile"
+        params = {
+            "platform_flag_label": "web",
+            "area_id": "1001",
+            "language_flag_id": "3",
+            "countryCode": "ID",
+            "product_id": product_id,
+            "r": "/vod/detail",
+        }
         
+        response = await self.client.get(api_url, params=params)
         response.raise_for_status()
         data = response.json()
 
-        stream_data = data.get("data", {}).get("stream", {})
-        hls_url = stream_data.get("hls", {}).get("url")
-        title = data.get("data", {}).get("series", {}).get("name", f"viu_video_{video_id}")
+        current_product = data.get("data", {}).get("current_product", {})
+        series_name = current_product.get("series_name", f"viu_video_{product_id}")
+        ccs_product_id = current_product.get("ccs_product_id")
+
+        if not ccs_product_id:
+            raise ValueError("Tidak dapat menemukan CCS Product ID. Konten mungkin tidak tersedia.")
         
-        if not hls_url:
-            raise ValueError("Tidak dapat menemukan URL M3U8 dalam respons API. Cookie mungkin tidak valid atau konten ini memerlukan premium.")
+        return SimpleNamespace(ccs_product_id=ccs_product_id, title=series_name)
+
+    async def _get_m3u8_url(self, ccs_product_id: str) -> str:
+        self.log.print(f"{self.log.CYAN}Mengambil manifest streaming untuk CCS ID: {ccs_product_id}")
+        api_url = "https://api-gateway-global.viu.com/api/playback/distribute"
+        params = {
+            "platform_flag_label": "web",
+            "area_id": "1001",
+            "language_flag_id": "3",
+            "ccs_product_id": ccs_product_id
+        }
+
+        response = await self.client.get(api_url, params=params)
+        response.raise_for_status()
+        data = response.json()
+
+        manifests = data.get("data", {}).get("stream", {}).get("url", {})
         
-        clean_title = re.sub(r'[\\/*?:"<>|]', "", title).strip()
-        
-        return SimpleNamespace(url=hls_url, title=clean_title)
+        # Cari resolusi tertinggi yang tersedia
+        for res in ["s1080p", "s720p", "s480p", "s240p"]:
+            if manifests.get(res):
+                self.log.print(f"{self.log.GREEN}Manifest ditemukan untuk resolusi: {res}")
+                return manifests[res]
+
+        raise ValueError("Tidak dapat menemukan URL M3U8 yang valid dalam respons API.")
 
     async def _run_downloader(self, m3u8_url: str, output_filename: str) -> str:
-        output_path = os.path.join(self.download_path, output_filename)
+        clean_title = re.sub(r'[\\/*?:"<>|]', "", output_filename).strip()
+        output_path = os.path.join(self.download_path, clean_title)
         ffmpeg_path = shutil.which("ffmpeg")
 
-        command = (
-            f'N_m3u8DL-RE "{m3u8_url}" '
-            f'--save-name "{output_filename}" '
-            f'--work-dir "{self.download_path}" '
-            f'--binary-merge '
-            f'--use-ffmpeg-binary-path "{ffmpeg_path}" '
-            f'--auto-select'
-        )
+        command = [
+            "N_m3u8DL-RE", m3u8_url,
+            "--save-name", clean_title,
+            "--work-dir", self.download_path,
+            "--binary-merge",
+            "--use-ffmpeg-binary-path", ffmpeg_path,
+            "--auto-select"
+        ]
         
         self.log.print(f"{self.log.YELLOW}Memulai proses unduh dengan N_m3u8DL-RE...")
         
-        process = await asyncio.create_subprocess_shell(
-            command,
+        process = await asyncio.create_subprocess_exec(
+            *command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
@@ -92,28 +130,27 @@ class ViuDownloader:
         if process.returncode != 0:
             error_details = stderr.decode('utf-8', errors='ignore')
             self.log.print(f"{self.log.RED}Download gagal. Detail:\n{error_details}")
-            raise RuntimeError(f"N_m3u8DL-RE gagal dengan kode {process.returncode}. Error: {error_details}")
+            raise RuntimeError(f"N_m3u8DL-RE gagal dengan kode {process.returncode}.")
         
         final_file_path = f"{output_path}.mp4"
         if not os.path.exists(final_file_path):
-             all_files = os.listdir(self.download_path)
-             for file in all_files:
-                 if file.startswith(output_filename) and file.endswith((".mp4", ".mkv")):
-                     final_file_path = os.path.join(self.download_path, file)
+             for ext in [".mp4", ".mkv", ".ts"]:
+                 potential_file = f"{output_path}{ext}"
+                 if os.path.exists(potential_file):
+                     final_file_path = potential_file
                      break
+        
+        if not os.path.exists(final_file_path):
+            raise FileNotFoundError(f"File hasil unduhan tidak ditemukan setelah proses selesai.")
 
         self.log.print(f"{self.log.GREEN}Video berhasil diunduh ke: {final_file_path}")
         return final_file_path
 
     async def download(self, url: str) -> str:
-        match = re.search(r"/vod/(\d+)/", url)
-        if not match:
-            raise ValueError("URL Viu tidak valid atau tidak mengandung ID video.")
+        product_info = await self._get_product_info(url)
         
-        video_id = match.group(1)
+        m3u8_url = await self._get_m3u8_url(product_info.ccs_product_id)
         
-        video_details = await self._get_m3u8_url(video_id)
-        
-        final_path = await self._run_downloader(video_details.url, video_details.title)
+        final_path = await self._run_downloader(m3u8_url, product_info.title)
         
         return final_path
