@@ -1,267 +1,174 @@
-import asyncio
 import os
 import re
-import shutil
-import tempfile
+import subprocess
+import requests
 from http.cookiejar import MozillaCookieJar
-from typing import Callable, Optional
-
-import httpx
+from types import SimpleNamespace
 
 from ..utils.logger import LoggerHandler
 
-
 class ViuDownloader:
-    def __init__(self, token: str, cookies_path: str = "cookies.txt"):
-        if not token:
-            raise ValueError("VIU Bearer Token is required.")
-        
+    def __init__(self, auth_token: str, cookies_path: str = "cookies.txt"):
+        if not auth_token:
+            raise ValueError("VIU authorization token is required.")
+        if not os.path.exists(cookies_path):
+            raise FileNotFoundError(f"Cookies file not found at: {cookies_path}")
+
+        self.token = auth_token
+        self.session = requests.Session()
         self.log = LoggerHandler()
-        self._viu_api = self._VIU_API(token, cookies_path, self.log)
-        self.output_dir = "downloads_viu"
-        os.makedirs(self.output_dir, exist_ok=True)
+        self.headers = {
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'accept-language': 'en-US,en;q=0.9',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        }
+        self._load_cookies(cookies_path)
 
-    async def _run_command(self, command: list, log_prefix: str) -> bool:
-        process = await asyncio.create_subprocess_exec(
-            *command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await process.communicate()
-
-        if process.returncode != 0:
-            error_output = stderr.decode('utf-8', errors='ignore').strip()
-            self.log.error(f"[{log_prefix}] Failed. Return code: {process.returncode}")
-            self.log.error(f"[{log_prefix}] Stderr: {error_output}")
-            return False
-        
-        self.log.info(f"[{log_prefix}] Command executed successfully.")
-        return True
-
-    async def download_episode(
-        self,
-        url: str,
-        resolution: str = "720p",
-        subtitle_lang: str = "Indonesian",
-        progress_callback: Optional[Callable] = None
-    ) -> Optional[str]:
-
-        self.log.info(f"Starting download process for URL: {url}")
-        
+    def _load_cookies(self, file_path):
         try:
-            metadata = await self._viu_api.get_product_series_id(url)
-            if not metadata:
-                self.log.error("Failed to extract metadata from URL.")
-                return None
+            cookie_jar = MozillaCookieJar(file_path)
+            cookie_jar.load(ignore_discard=True, ignore_expires=True)
+            self.session.cookies = cookie_jar
+            self.log.print(f"{self.log.GREEN}Successfully loaded VIU cookies from {file_path}{self.log.RESET}")
+        except Exception as e:
+            self.log.print(f"{self.log.RED}Error loading cookies: {e}{self.log.RESET}")
+            raise IOError(f"Failed to load cookies: {e}")
+
+    def _extract_product_id(self, url: str) -> str:
+        pattern = r'viu\.com/.*?/vod/(\d+)'
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+        raise ValueError("Could not extract a valid Product ID from the URL.")
+
+    def get_episode_details(self, url: str) -> SimpleNamespace:
+        try:
+            response = self.session.get(url, headers=self.headers)
+            response.raise_for_status()
+            html_content = response.text
+
+            series_pattern = r'"series_id":\s*"(\d+)",\s*"series_name":\s*"(.*?)",\s*"product_id":\s*"(\d+)"'
+            series_match = re.search(series_pattern, html_content)
+
+            if not series_match:
+                raise ValueError("Could not find series information on the page.")
+
+            series_id = series_match.group(1)
+            series_name = series_match.group(2)
+            product_id = series_match.group(3)
             
-            product_id, series_id, series_name = metadata
-            self.log.info(f"Found Series: '{series_name}', Product ID: {product_id}")
-
-            temp_dir = tempfile.mkdtemp()
-            subtitle_path = None
+            episode_pattern = r'<h2[^>]*id="type_ep"[^>]*>Episod\s+(\d+)</h2>'
+            episode_match = re.search(episode_pattern, html_content)
             
-            subtitles = await self._viu_api.get_subtitle(product_id)
-            target_subtitle = next((s for s in subtitles if subtitle_lang.lower() in s['name'].lower()), None)
+            episode_number = episode_match.group(1) if episode_match else "1"
+            formatted_name = f"{series_name} - Episode {episode_number}"
 
-            if target_subtitle:
-                sub_filename = f"{series_name}.srt"
-                subtitle_path = os.path.join(temp_dir, sub_filename)
-                await self._viu_api.download_file_http(target_subtitle['url'], subtitle_path)
-                self.log.info(f"Subtitle downloaded to: {subtitle_path}")
-            else:
-                self.log.warning(f"Subtitle '{subtitle_lang}' not found. Proceeding without subtitles.")
+            subtitles = self._5get_subtitles(product_id)
+            resolutions = self._get_manifests(series_id)
 
-            ccs_product_id = await self._viu_api.get_ccs_product_id_for_single(product_id)
-            if not ccs_product_id:
-                self.log.error(f"Could not find CCS Product ID for Product ID {product_id}")
-                return None
+            return SimpleNamespace(
+                name=formatted_name,
+                product_id=product_id,
+                series_id=series_id,
+                ccs_product_id=series_id,
+                subtitles=subtitles,
+                resolutions=resolutions
+            )
+        except requests.RequestException as e:
+            raise ConnectionError(f"Failed to fetch VIU page: {e}")
+        except Exception as e:
+            raise RuntimeError(f"An unexpected error occurred while getting episode details: {e}")
 
-            manifests = await self._viu_api.get_manifest(ccs_product_id)
-            if not manifests:
-                self.log.error("Failed to retrieve video manifests.")
-                return None
+    def _get_subtitles(self, product_id: str) -> list:
+        api_url = "https://api-gateway-global.viu.com/api/mobile"
+        params = {
+            "platform_flag_label": "web", "area_id": "1001", "language_flag_id": "7",
+            "countryCode": "MY", "ut": "0", "r": "/vod/detail", "product_id": product_id, "os_flag_id": "1"
+        }
+        headers = self.headers.copy()
+        headers["authorization"] = f"Bearer {self.token}"
+        
+        response = self.session.get(api_url, headers=headers, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        subtitle_list = []
+        if "data" in data and "product_subtitle" in data["data"]:
+            for sub in data["data"]["product_subtitle"]:
+                subtitle_list.append(SimpleNamespace(name=sub.get("name"), url=sub.get("subtitle_url")))
+        return subtitle_list
 
-            manifest_url = manifests.get(resolution.upper())
-            if not manifest_url:
-                self.log.warning(f"Resolution '{resolution}' not found. Falling back to best available.")
-                manifest_url = list(manifests.values())[-1]
+    def _get_manifests(self, ccs_product_id: str) -> dict:
+        api_url = "https://api-gateway-global.viu.com/api/playback/distribute"
+        params = {
+            "platform_flag_label": "web", "area_id": "1001", "language_flag_id": "7",
+            "countryCode": "MY", "ut": "1", "ccs_product_id": ccs_product_id
+        }
+        headers = self.headers.copy()
+        headers["authorization"] = f"Bearer {self.token}"
+        
+        response = self.session.get(api_url, headers=headers, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        stream_urls = data.get("data", {}).get("stream", {}).get("url", {})
+        manifests = {
+            "240p": stream_urls.get("s240p"),
+            "480p": stream_urls.get("s480p"),
+            "720p": stream_urls.get("s720p"),
+            "1080p": stream_urls.get("s1080p"),
+        }
+        return {k: v for k, v in manifests.items() if v}
 
-            self.log.info(f"Selected manifest URL for download.")
-            
-            video_filename_template = series_name.replace(":", "").replace("?", "")
-            
-            dl_command = [
-                "N_m3u8DL-RE",
-                manifest_url,
-                "--save-name", video_filename_template,
-                "--save-dir", temp_dir,
+    def download_and_merge(self, m3u8_url: str, subtitle_url: str, save_dir: str, file_name: str) -> str:
+        os.makedirs(save_dir, exist_ok=True)
+        
+        base_filename = re.sub(r'[\\/*?:"<>|]', "", file_name)
+        raw_video_path = os.path.join(save_dir, f"{base_filename}_raw.mp4")
+        subtitle_path = os.path.join(save_dir, f"{base_filename}.srt")
+        final_video_path = os.path.join(save_dir, f"{base_filename}.mp4")
+
+        try:
+            self.log.print(f"{self.log.CYAN}Downloading HLS stream...{self.log.RESET}")
+            hls_command = [
+                "N_m3u8DL-RE", m3u8_url,
+                "--save-name", f"{base_filename}_raw",
+                "--save-dir", save_dir,
                 "--thread-count", "8",
-                "-mt",
-                "-M", "format=mp4",
-                "--select-video", "BEST",
-                "--select-audio", "BEST"
+                "-mt", "-M", "format=mp4"
             ]
-            
-            self.log.info(f"Executing N_m3u8DL-RE...")
-            if not await self._run_command(dl_command, "HLS-Download"):
-                shutil.rmtree(temp_dir)
-                return None
-            
-            downloaded_video_path = os.path.join(temp_dir, f"{video_filename_template}.mp4")
-            if not os.path.exists(downloaded_video_path):
-                 self.log.error(f"Downloaded video file not found at expected path: {downloaded_video_path}")
-                 shutil.rmtree(temp_dir)
-                 return None
+            subprocess.run(hls_command, check=True, capture_output=True, text=True)
+            if not os.path.exists(raw_video_path):
+                raise FileNotFoundError("HLS download did not produce the expected video file.")
 
-            final_video_path = os.path.join(self.output_dir, f"{video_filename_template}.mp4")
+            self.log.print(f"{self.log.CYAN}Downloading subtitle...{self.log.RESET}")
+            sub_response = requests.get(subtitle_url)
+            sub_response.raise_for_status()
+            with open(subtitle_path, 'wb') as f:
+                f.write(sub_response.content)
 
-            if subtitle_path:
-                self.log.info("Merging video and subtitles...")
-                merged_output_path = os.path.join(self.output_dir, f"{video_filename_template} [SUB].mp4")
-                
-                merge_command = [
-                    "ffmpeg", "-y",
-                    "-i", downloaded_video_path,
-                    "-i", subtitle_path,
-                    "-c", "copy",
-                    "-c:s", "mov_text",
-                    "-metadata:s:s:0", f"language={subtitle_lang[:3].lower()}",
-                    "-metadata:s:s:0", f"title={subtitle_lang}",
-                    merged_output_path
-                ]
-                
-                if await self._run_command(merge_command, "FFmpeg-Merge"):
-                    final_video_path = merged_output_path
-                else:
-                    self.log.warning("Subtitle merge failed. Moving the original video.")
-                    shutil.move(downloaded_video_path, final_video_path)
-            else:
-                shutil.move(downloaded_video_path, final_video_path)
-
-            shutil.rmtree(temp_dir)
-            self.log.info(f"Process complete. Final video at: {final_video_path}")
+            self.log.print(f"{self.log.CYAN}Merging video and subtitles with FFmpeg...{self.log.RESET}")
+            merge_command = [
+                "ffmpeg", "-y",
+                "-i", raw_video_path,
+                "-i", subtitle_path,
+                "-c", "copy",
+                "-c:s", "mov_text",
+                "-metadata:s:s:0", "language=ind",
+                final_video_path
+            ]
+            result = subprocess.run(merge_command, check=True, capture_output=True, text=True)
+            self.log.print(f"{self.log.GREEN}Successfully merged video to: {final_video_path}{self.log.RESET}")
             return final_video_path
 
+        except subprocess.CalledProcessError as e:
+            self.log.error(f"A command-line tool failed:\nSTDOUT: {e.stdout}\nSTDERR: {e.stderr}")
+            raise RuntimeError(f"Process failed: {e.stderr}")
         except Exception as e:
-            self.log.error(f"An unexpected error occurred in download_episode: {e}")
-            if 'temp_dir' in locals() and os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
-            return None
-
-    class _VIU_API:
-        def __init__(self, token, cookies_path, logger):
-            self.token = token
-            self.log = logger
-            self.session = httpx.AsyncClient(timeout=30.0, follow_redirects=True)
-            self.headers = {
-                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                'accept-language': 'en-US,en;q=0.9',
-                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-            }
-            if os.path.exists(cookies_path):
-                self._load_cookies(cookies_path)
-
-        def _load_cookies(self, file_path):
-            try:
-                cookie_jar = MozillaCookieJar(file_path)
-                cookie_jar.load(ignore_discard=True, ignore_expires=True)
-                self.session.cookies = cookie_jar
-                self.log.info(f"Successfully loaded cookies from {file_path}")
-            except Exception as e:
-                self.log.error(f"Error loading cookies: {e}")
-
-        async def get_product_series_id(self, url):
-            try:
-                response = await self.session.get(url, headers=self.headers)
-                response.raise_for_status()
-                
-                content = response.text
-                product_id_match = re.search(r'"product_id":\s*"(\d+)"', content)
-                series_id_match = re.search(r'"series_id":\s*"(\d+)"', content)
-                series_name_match = re.search(r'"series_name":\s*"(.*?)"', content)
-                
-                if not product_id_match or not series_id_match or not series_name_match:
-                    self.log.warning("Could not find all required IDs/name in the page content.")
-                    return None
-                
-                product_id = product_id_match.group(1)
-                series_id = series_id_match.group(1)
-                series_name = series_name_match.group(1)
-
-                episode_match = re.search(r'<h2[^>]*id="type_ep"[^>]*>Episod\s+(\d+)</h2>', content)
-                formatted_name = f"{series_name} Episode {episode_match.group(1)}" if episode_match else series_name
-
-                return product_id, series_id, formatted_name
-            except Exception as e:
-                self.log.error(f"Error in get_product_series_id: {e}")
-                return None
-
-        async def get_subtitle(self, product_id):
-            api_url = "https://api-gateway-global.viu.com/api/mobile"
-            params = {
-                "platform_flag_label": "web", "area_id": "1001", "language_flag_id": "7",
-                "countryCode": "MY", "ut": "0", "r": "/vod/detail", "product_id": product_id, "os_flag_id": "1"
-            }
-            headers = self.headers.copy()
-            headers["authorization"] = f"Bearer {self.token}"
-            
-            try:
-                response = await self.session.get(api_url, headers=headers, params=params)
-                response.raise_for_status()
-                data = response.json()
-                subtitles = []
-                if "data" in data and "product_subtitle" in data["data"]:
-                    for sub in data["data"]["product_subtitle"]:
-                        subtitles.append({"name": sub.get("name", "N/A"), "url": sub.get("subtitle_url", "N/A")})
-                return subtitles
-            except Exception as e:
-                self.log.error(f"Error in get_subtitle: {e}")
-                return []
-        
-        async def get_ccs_product_id_for_single(self, product_id):
-            params = {
-                'platform_flag_label': 'web', 'area_id': '1001', 'language_flag_id': '3',
-                'countryCode': 'MY', 'ut': '2', 'r': '/vod/detail', 'product_id': product_id, 'os_flag_id': '1',
-            }
-            headers = self.headers.copy()
-            headers["authorization"] = f"Bearer {self.token}"
-            
-            try:
-                response = await self.session.get('https://api-gateway-global.viu.com/api/mobile', params=params, headers=headers)
-                response.raise_for_status()
-                data = response.json()
-                return data.get("data", {}).get("current_product", {}).get("ccs_product_id")
-            except Exception as e:
-                self.log.error(f"Error getting CCS Product ID: {e}")
-                return None
-
-        async def get_manifest(self, ccs_product_id):
-            url = "https://api-gateway-global.viu.com/api/playback/distribute"
-            params = {
-                "platform_flag_label": "web", "area_id": "1001", "language_flag_id": "7",
-                "countryCode": "MY", "ut": "1", "ccs_product_id": ccs_product_id
-            }
-            headers = self.headers.copy()
-            headers["authorization"] = f"Bearer {self.token}"
-            
-            try:
-                response = await self.session.get(url, headers=headers, params=params)
-                response.raise_for_status()
-                data = response.json()
-                
-                stream_urls = data.get("data", {}).get("stream", {}).get("url", {})
-                manifests = {
-                    "240P": stream_urls.get("s240p"), "480P": stream_urls.get("s480p"),
-                    "720P": stream_urls.get("s720p"), "1080P": stream_urls.get("s1080p"),
-                }
-                return {k: v for k, v in manifests.items() if v}
-            except Exception as e:
-                self.log.error(f"Error in get_manifest: {e}")
-                return None
-
-        async def download_file_http(self, url, output_path):
-            async with self.session.stream("GET", url) as response:
-                response.raise_for_status()
-                with open(output_path, 'wb') as f:
-                    async for chunk in response.aiter_bytes():
-                        f.write(chunk)
+            self.log.error(f"An error occurred during download/merge: {e}")
+            raise
+        finally:
+            if os.path.exists(raw_video_path):
+                os.remove(raw_video_path)
+            if os.path.exists(subtitle_path):
+                os.remove(subtitle_path)
