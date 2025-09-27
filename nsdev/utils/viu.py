@@ -35,13 +35,13 @@ class ViuDownloader:
         token = None
         for cookie in jar:
             cookies.set(cookie.name, cookie.value, domain=cookie.domain)
-            if cookie.name == "token":
+            if cookie.name == "authMcToken":
                 token = cookie.value
         
         if not token:
-            self.log.print(f"{self.log.YELLOW}Parameter 'token' tidak ditemukan di cookies, mencoba 'authMcToken'.")
+            self.log.print(f"{self.log.YELLOW}Parameter 'authMcToken' tidak ditemukan di cookies, mencoba 'token'.")
             for cookie in jar:
-                if cookie.name == "authMcToken":
+                if cookie.name == "token":
                     token = cookie.value
                     break
         
