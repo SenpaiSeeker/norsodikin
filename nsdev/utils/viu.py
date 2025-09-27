@@ -48,36 +48,55 @@ class ViuDownloader:
         client = httpx.AsyncClient(headers=headers, cookies=cookies, follow_redirects=True, timeout=30)
         return client, token
 
-    async def _get_product_info(self, url: str) -> SimpleNamespace:
-        self.log.print(f"{self.log.CYAN}Mengekstrak Product ID dari URL...")
-        match = re.search(r"/vod/(\d+)/", url)
-        if not match:
-            raise ValueError("URL Viu tidak valid atau tidak mengandung Product ID.")
-        
-        product_id = match.group(1)
-        
+    async def _get_product_info_from_html(self, url: str) -> SimpleNamespace:
+        self.log.print(f"{self.log.CYAN}Mengekstrak info dari halaman HTML: {url}")
+        try:
+            response = await self.client.get(url, headers={"Authorization": ""})
+            response.raise_for_status()
+            
+            series_id_match = re.search(r'"series_id":\s*"(\d+)"', response.text)
+            product_id_match = re.search(r'"product_id":\s*"(\d+)"', response.text)
+            series_name_match = re.search(r'"series_name":\s*"(.*?)"', response.text)
+            
+            if not series_id_match or not product_id_match or not series_name_match:
+                raise ValueError("Gagal mengekstrak series_id, product_id, atau series_name dari halaman HTML.")
+
+            return SimpleNamespace(
+                series_id=series_id_match.group(1),
+                product_id=product_id_match.group(1),
+                series_name=series_name_match.group(1)
+            )
+        except Exception as e:
+            raise RuntimeError(f"Gagal mengambil atau mem-parsing halaman Viu: {e}")
+
+    async def _get_ccs_product_id(self, series_id: str, target_product_id: str) -> str:
+        self.log.print(f"{self.log.CYAN}Mencari CCS Product ID untuk Series ID: {series_id}")
         api_url = "https://api-gateway-global.viu.com/api/mobile"
         params = {
             "platform_flag_label": "web",
             "area_id": "1001",
             "language_flag_id": "3",
-            "countryCode": "ID",
-            "product_id": product_id,
-            "r": "/vod/detail",
+            "series_id": series_id,
+            "size": "-1",
+            "sort": "asc",
+            "r": "/vod/product-list",
         }
         
         response = await self.client.get(api_url, params=params)
         response.raise_for_status()
         data = response.json()
 
-        current_product = data.get("data", {}).get("current_product", {})
-        series_name = current_product.get("series_name", f"viu_video_{product_id}")
-        ccs_product_id = current_product.get("ccs_product_id")
+        product_list = data.get("data", {}).get("product_list", [])
+        if not product_list:
+            raise ValueError(f"Tidak ada daftar episode yang ditemukan untuk series_id {series_id}.")
 
-        if not ccs_product_id:
-            raise ValueError("Tidak dapat menemukan CCS Product ID. Konten mungkin tidak tersedia.")
+        for product in product_list:
+            if str(product.get("product_id")) == target_product_id:
+                ccs_id = product.get("ccs_product_id")
+                if ccs_id:
+                    return ccs_id
         
-        return SimpleNamespace(ccs_product_id=ccs_product_id, title=series_name)
+        raise ValueError(f"CCS Product ID tidak ditemukan untuk product_id {target_product_id} di dalam series.")
 
     async def _get_m3u8_url(self, ccs_product_id: str) -> str:
         self.log.print(f"{self.log.CYAN}Mengambil manifest streaming untuk CCS ID: {ccs_product_id}")
@@ -95,7 +114,6 @@ class ViuDownloader:
 
         manifests = data.get("data", {}).get("stream", {}).get("url", {})
         
-        # Cari resolusi tertinggi yang tersedia
         for res in ["s1080p", "s720p", "s480p", "s240p"]:
             if manifests.get(res):
                 self.log.print(f"{self.log.GREEN}Manifest ditemukan untuk resolusi: {res}")
@@ -105,7 +123,6 @@ class ViuDownloader:
 
     async def _run_downloader(self, m3u8_url: str, output_filename: str) -> str:
         clean_title = re.sub(r'[\\/*?:"<>|]', "", output_filename).strip()
-        output_path = os.path.join(self.download_path, clean_title)
         ffmpeg_path = shutil.which("ffmpeg")
 
         command = [
@@ -132,10 +149,10 @@ class ViuDownloader:
             self.log.print(f"{self.log.RED}Download gagal. Detail:\n{error_details}")
             raise RuntimeError(f"N_m3u8DL-RE gagal dengan kode {process.returncode}.")
         
-        final_file_path = f"{output_path}.mp4"
+        final_file_path = os.path.join(self.download_path, f"{clean_title}.mp4")
         if not os.path.exists(final_file_path):
-             for ext in [".mp4", ".mkv", ".ts"]:
-                 potential_file = f"{output_path}{ext}"
+             for ext in [".mkv", ".ts"]:
+                 potential_file = os.path.join(self.download_path, f"{clean_title}{ext}")
                  if os.path.exists(potential_file):
                      final_file_path = potential_file
                      break
@@ -147,10 +164,12 @@ class ViuDownloader:
         return final_file_path
 
     async def download(self, url: str) -> str:
-        product_info = await self._get_product_info(url)
+        html_info = await self._get_product_info_from_html(url)
         
-        m3u8_url = await self._get_m3u8_url(product_info.ccs_product_id)
+        ccs_product_id = await self._get_ccs_product_id(html_info.series_id, html_info.product_id)
         
-        final_path = await self._run_downloader(m3u8_url, product_info.title)
+        m3u8_url = await self._get_m3u8_url(ccs_product_id)
+        
+        final_path = await self._run_downloader(m3u8_url, html_info.series_name)
         
         return final_path
