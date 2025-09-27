@@ -1,7 +1,8 @@
 from ctypes import c_int32
+from hashlib import md5
 
 
-class CKey:
+class ViuCKey:
     def __init__(self):
         self.encryption_arrays = [[
             1332468387, -1641050960, 2136896045, -1629555948,
@@ -28,20 +29,19 @@ class CKey:
         u = 0
         for i in range(256):
             v = u ^ u << 1 ^ u << 2 ^ u << 3 ^ u << 4
-            v = CKey.rshift(v, 8) ^ 255 & v ^ 99
+            v = ViuCKey.rshift(v, 8) ^ 255 & v ^ 99
             d[t] = v
             x = o[t]
-            z = o[o[x]]
-            A = CKey.int32(257 * o[v] ^ 16843008 * v)
-            f[t] = CKey.int32(A << 24 | CKey.rshift(A, 8))
-            g[t] = CKey.int32(A << 16 | CKey.rshift(A, 16))
-            h[t] = CKey.int32(A << 8 | CKey.rshift(A, 24))
+            A = ViuCKey.int32(257 * o[v] ^ 16843008 * v)
+            f[t] = ViuCKey.int32(A << 24 | ViuCKey.rshift(A, 8))
+            g[t] = ViuCKey.int32(A << 16 | ViuCKey.rshift(A, 16))
+            h[t] = ViuCKey.int32(A << 8 | ViuCKey.rshift(A, 24))
             j[t] = A
             if t == 0:
                 t = 1
                 u = 1
             else:
-                t = x ^ o[o[o[z ^ x]]]
+                t = x ^ o[o[o[o[t] ^ x]]]
                 u ^= o[o[u]]
 
         self.encryption_arrays.append(f)
@@ -71,7 +71,7 @@ class CKey:
         text_array = []
         for i in range(length):
             text_array.append('{:02x}'.format(
-                CKey.rshift(arr[i // 4], 24 - i % 4 * 8) & 255))
+                ViuCKey.rshift(arr[i // 4], 24 - i % 4 * 8) & 255))
 
         return ''.join(text_array)
 
@@ -79,7 +79,7 @@ class CKey:
     def calculate_hash(text):
         result = 0
         for char in text:
-            result = CKey.int32(result << 5) - result + ord(char)
+            result = ViuCKey.int32(result << 5) - result + ord(char)
         return str(result)
 
     @staticmethod
@@ -108,34 +108,34 @@ class CKey:
         m = a[b + 3] ^ c[3]
         n = 4
         for _ in range(9):
-            q = (d[CKey.rshift(j, 24)] ^ e[CKey.rshift(k, 16) & 255]
-                 ^ f[CKey.rshift(l, 8) & 255] ^ g[255 & m] ^ c[n])
-            s = (d[CKey.rshift(k, 24)] ^ e[CKey.rshift(l, 16) & 255]
-                 ^ f[CKey.rshift(m, 8) & 255] ^ g[255 & j] ^ c[n + 1])
-            t = (d[CKey.rshift(l, 24)] ^ e[CKey.rshift(m, 16) & 255]
-                 ^ f[CKey.rshift(j, 8) & 255] ^ g[255 & k] ^ c[n + 2])
-            m = (d[CKey.rshift(m, 24)] ^ e[CKey.rshift(j, 16) & 255]
-                 ^ f[CKey.rshift(k, 8) & 255] ^ g[255 & l] ^ c[n + 3])
+            q = (d[ViuCKey.rshift(j, 24)] ^ e[ViuCKey.rshift(k, 16) & 255]
+                 ^ f[ViuCKey.rshift(l, 8) & 255] ^ g[255 & m] ^ c[n])
+            s = (d[ViuCKey.rshift(k, 24)] ^ e[ViuCKey.rshift(l, 16) & 255]
+                 ^ f[ViuCKey.rshift(m, 8) & 255] ^ g[255 & j] ^ c[n + 1])
+            t = (d[ViuCKey.rshift(l, 24)] ^ e[ViuCKey.rshift(m, 16) & 255]
+                 ^ f[ViuCKey.rshift(j, 8) & 255] ^ g[255 & k] ^ c[n + 2])
+            m = (d[ViuCKey.rshift(m, 24)] ^ e[ViuCKey.rshift(j, 16) & 255]
+                 ^ f[ViuCKey.rshift(k, 8) & 255] ^ g[255 & l] ^ c[n + 3])
             j = q
             k = s
             l = t
             n += 4
 
-        q = CKey.int32(h[CKey.rshift(j, 24)] << 24
-                       | h[CKey.rshift(k, 16) & 255] << 16
-                       | h[CKey.rshift(l, 8) & 255] << 8
+        q = ViuCKey.int32(h[ViuCKey.rshift(j, 24)] << 24
+                       | h[ViuCKey.rshift(k, 16) & 255] << 16
+                       | h[ViuCKey.rshift(l, 8) & 255] << 8
                        | h[255 & m]) ^ c[n]
-        s = CKey.int32(h[CKey.rshift(k, 24)] << 24
-                       | h[CKey.rshift(l, 16) & 255] << 16
-                       | h[CKey.rshift(m, 8) & 255] << 8
+        s = ViuCKey.int32(h[ViuCKey.rshift(k, 24)] << 24
+                       | h[ViuCKey.rshift(l, 16) & 255] << 16
+                       | h[ViuCKey.rshift(m, 8) & 255] << 8
                        | h[255 & j]) ^ c[n + 1]
-        t = CKey.int32(h[CKey.rshift(l, 24)] << 24
-                       | h[CKey.rshift(m, 16) & 255] << 16
-                       | h[CKey.rshift(j, 8) & 255] << 8
+        t = ViuCKey.int32(h[ViuCKey.rshift(l, 24)] << 24
+                       | h[ViuCKey.rshift(m, 16) & 255] << 16
+                       | h[ViuCKey.rshift(j, 8) & 255] << 8
                        | h[255 & k]) ^ c[n + 2]
-        m = CKey.int32(h[CKey.rshift(m, 24)] << 24
-                       | h[CKey.rshift(j, 16) & 255] << 16
-                       | h[CKey.rshift(k, 8) & 255] << 8
+        m = ViuCKey.int32(h[ViuCKey.rshift(m, 24)] << 24
+                       | h[ViuCKey.rshift(j, 16) & 255] << 16
+                       | h[ViuCKey.rshift(k, 8) & 255] << 8
                        | h[255 & l]) ^ c[n + 3]
         a[b] = q
         a[b + 1] = s
@@ -151,9 +151,9 @@ class CKey:
             url[:48], user_agent[:48].lower(), referer[:48],
             nav_code_name, nav_name, nav_platform, '00', ''
         ]
-        text_parts.insert(1, CKey.calculate_hash('|'.join(text_parts)))
+        text_parts.insert(1, ViuCKey.calculate_hash('|'.join(text_parts)))
 
-        text = CKey.pad_text('|'.join(text_parts))
-        [arr, length] = CKey.encode_text(text)
+        text = ViuCKey.pad_text('|'.join(text_parts))
+        [arr, length] = ViuCKey.encode_text(text)
         self.encrypt(arr)
-        return CKey.decode_text(arr, length).upper()
+        return ViuCKey.decode_text(arr, length).upper()
