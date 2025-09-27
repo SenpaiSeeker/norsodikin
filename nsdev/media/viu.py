@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from http.cookiejar import MozillaCookieJar
 
 import httpx
-from bs4 import BeautifulSoup
 
 from ..utils.logger import LoggerHandler
 from ..utils.shell import ShellExecutor
@@ -34,14 +33,18 @@ class ViuDownloader:
         self.session = httpx.AsyncClient(
             cookies=cookie_jar,
             headers={
-                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+                'accept-language': 'en-US,en;q=0.9,id;q=0.8',
             },
             timeout=30.0,
             follow_redirects=True
         )
         self.api_headers = {
             "authorization": f"Bearer {self.token}",
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            'accept-language': 'en-US,en;q=0.9,id;q=0.8',
+            'origin': 'https://www.viu.com',
+            'referer': 'https://www.viu.com/',
         }
 
     async def _api_request(self, endpoint, params):
@@ -49,7 +52,7 @@ class ViuDownloader:
         default_params = {
             "platform_flag_label": "web",
             "area_id": "1001",
-            "language_flag_id": "7",
+            "language_flag_id": "3",
             "countryCode": "ID",
             "ut": "0",
             "os_flag_id": "1"
