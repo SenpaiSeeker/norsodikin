@@ -65,6 +65,8 @@ payment = [
 media = [
     "yt-dlp",
     "ffmpeg-python",
+    "beautifulsoup4",
+    "lxml",
 ]
 schedule = [
     "aiocron",
