@@ -27,7 +27,7 @@ class ViuDownloader:
 
         self.client, self.auth_token = self._prepare_client_and_token(cookies_file_path)
 
-    def _prepare_client_and_token(self, cookie_path: str):
+    def _prepare_client_and_token(self, cookie_path: str) -> tuple[httpx.AsyncClient, str]:
         jar = http.cookiejar.MozillaCookieJar(cookie_path)
         jar.load(ignore_discard=True, ignore_expires=True)
         
@@ -35,109 +35,78 @@ class ViuDownloader:
         token = None
         for cookie in jar:
             cookies.set(cookie.name, cookie.value, domain=cookie.domain)
-            if cookie.name == 'token':
+            if cookie.name == "token":
                 token = cookie.value
         
         if not token:
-            raise ValueError("Cookie 'token' tidak ditemukan di dalam file cookies. Pastikan Anda sudah login.")
+            self.log.print(f"{self.log.YELLOW}Parameter 'token' tidak ditemukan di cookies, mencoba 'authMcToken'.")
+            for cookie in jar:
+                if cookie.name == "authMcToken":
+                    token = cookie.value
+                    break
+        
+        if not token:
+            raise ValueError("Cookie otentikasi ('token' atau 'authMcToken') tidak ditemukan. Pastikan Anda sudah login di Viu.")
 
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Authorization": f"Bearer {token}"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
         client = httpx.AsyncClient(headers=headers, cookies=cookies, follow_redirects=True, timeout=30)
         return client, token
 
-    async def _get_product_info_from_html(self, url: str) -> SimpleNamespace:
-        self.log.print(f"{self.log.CYAN}Mengekstrak info dari halaman HTML: {url}")
-        try:
-            response = await self.client.get(url, headers={"Authorization": ""})
-            response.raise_for_status()
-            
-            series_id_match = re.search(r'"series_id":\s*"(\d+)"', response.text)
-            product_id_match = re.search(r'"product_id":\s*"(\d+)"', response.text)
-            series_name_match = re.search(r'"series_name":\s*"(.*?)"', response.text)
-            
-            if not series_id_match or not product_id_match or not series_name_match:
-                raise ValueError("Gagal mengekstrak series_id, product_id, atau series_name dari halaman HTML.")
-
-            return SimpleNamespace(
-                series_id=series_id_match.group(1),
-                product_id=product_id_match.group(1),
-                series_name=series_name_match.group(1)
-            )
-        except Exception as e:
-            raise RuntimeError(f"Gagal mengambil atau mem-parsing halaman Viu: {e}")
-
-    async def _get_ccs_product_id(self, series_id: str, target_product_id: str) -> str:
-        self.log.print(f"{self.log.CYAN}Mencari CCS Product ID untuk Series ID: {series_id}")
-        api_url = "https://api-gateway-global.viu.com/api/mobile"
-        params = {
-            "platform_flag_label": "web",
-            "area_id": "1001",
-            "language_flag_id": "3",
-            "series_id": series_id,
-            "size": "-1",
-            "sort": "asc",
-            "r": "/vod/product-list",
-        }
+    async def _get_m3u8_url(self, video_id: str) -> SimpleNamespace:
+        self.log.print(f"{self.log.CYAN}Mengambil detail video untuk ID: {video_id}")
         
-        response = await self.client.get(api_url, params=params)
-        response.raise_for_status()
-        data = response.json()
-
-        product_list = data.get("data", {}).get("product_list", [])
-        if not product_list:
-            raise ValueError(f"Tidak ada daftar episode yang ditemukan untuk series_id {series_id}.")
-
-        for product in product_list:
-            if str(product.get("product_id")) == target_product_id:
-                ccs_id = product.get("ccs_product_id")
-                if ccs_id:
-                    return ccs_id
-        
-        raise ValueError(f"CCS Product ID tidak ditemukan untuk product_id {target_product_id} di dalam series.")
-
-    async def _get_m3u8_url(self, ccs_product_id: str) -> str:
-        self.log.print(f"{self.log.CYAN}Mengambil manifest streaming untuk CCS ID: {ccs_product_id}")
         api_url = "https://api-gateway-global.viu.com/api/playback/distribute"
         params = {
             "platform_flag_label": "web",
-            "area_id": "1001",
-            "language_flag_id": "3",
-            "ccs_product_id": ccs_product_id
+            "area_id": "1000",
+            "language_flag_id": "8",
+            "countryCode": "ID",
+            "ut": "1",
+            "ccs_product_id": video_id
         }
+        
+        request_headers = self.client.headers.copy()
+        request_headers['Referer'] = f"https://www.viu.com/ott/id/id/vod/{video_id}/"
+        request_headers['Authorization'] = f"Bearer {self.auth_token}"
 
-        response = await self.client.get(api_url, params=params)
+        response = await self.client.get(api_url, headers=request_headers, params=params)
+        
+        if response.status_code == 404:
+            raise ValueError("API mengembalikan 404 Not Found. ID video mungkin salah atau konten tidak tersedia.")
+        
         response.raise_for_status()
         data = response.json()
 
-        manifests = data.get("data", {}).get("stream", {}).get("url", {})
+        stream_data = data.get("data", {}).get("stream", {})
+        hls_url = stream_data.get("url", {}).get("s1080p") or stream_data.get("url", {}).get("s720p") or stream_data.get("url", {}).get("s480p")
+        title = data.get("data", {}).get("series", {}).get("name", f"viu_video_{video_id}")
         
-        for res in ["s1080p", "s720p", "s480p", "s240p"]:
-            if manifests.get(res):
-                self.log.print(f"{self.log.GREEN}Manifest ditemukan untuk resolusi: {res}")
-                return manifests[res]
-
-        raise ValueError("Tidak dapat menemukan URL M3U8 yang valid dalam respons API.")
+        if not hls_url:
+            raise ValueError("Tidak dapat menemukan URL M3U8 dalam respons API. Cookie mungkin tidak valid atau konten ini memerlukan premium.")
+        
+        clean_title = re.sub(r'[\\/*?:"<>|]', "", title).strip()
+        
+        return SimpleNamespace(url=hls_url, title=clean_title)
 
     async def _run_downloader(self, m3u8_url: str, output_filename: str) -> str:
-        clean_title = re.sub(r'[\\/*?:"<>|]', "", output_filename).strip()
+        output_path = os.path.join(self.download_path, output_filename)
         ffmpeg_path = shutil.which("ffmpeg")
 
-        command = [
-            "N_m3u8DL-RE", m3u8_url,
-            "--save-name", clean_title,
-            "--work-dir", self.download_path,
-            "--binary-merge",
-            "--use-ffmpeg-binary-path", ffmpeg_path,
-            "--auto-select"
-        ]
+        command = (
+            f'N_m3u8DL-RE "{m3u8_url}" '
+            f'--save-name "{output_filename}" '
+            f'--work-dir "{self.download_path}" '
+            f'--binary-merge '
+            f'--use-ffmpeg-binary-path "{ffmpeg_path}" '
+            f'--auto-select'
+        )
         
         self.log.print(f"{self.log.YELLOW}Memulai proses unduh dengan N_m3u8DL-RE...")
         
-        process = await asyncio.create_subprocess_exec(
-            *command,
+        process = await asyncio.create_subprocess_shell(
+            command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
@@ -147,29 +116,28 @@ class ViuDownloader:
         if process.returncode != 0:
             error_details = stderr.decode('utf-8', errors='ignore')
             self.log.print(f"{self.log.RED}Download gagal. Detail:\n{error_details}")
-            raise RuntimeError(f"N_m3u8DL-RE gagal dengan kode {process.returncode}.")
+            raise RuntimeError(f"N_m3u8DL-RE gagal dengan kode {process.returncode}. Error: {error_details}")
         
-        final_file_path = os.path.join(self.download_path, f"{clean_title}.mp4")
+        final_file_path = f"{output_path}.mp4"
         if not os.path.exists(final_file_path):
-             for ext in [".mkv", ".ts"]:
-                 potential_file = os.path.join(self.download_path, f"{clean_title}{ext}")
-                 if os.path.exists(potential_file):
-                     final_file_path = potential_file
+             all_files = os.listdir(self.download_path)
+             for file in all_files:
+                 if file.startswith(output_filename) and file.endswith((".mp4", ".mkv")):
+                     final_file_path = os.path.join(self.download_path, file)
                      break
-        
-        if not os.path.exists(final_file_path):
-            raise FileNotFoundError(f"File hasil unduhan tidak ditemukan setelah proses selesai.")
 
         self.log.print(f"{self.log.GREEN}Video berhasil diunduh ke: {final_file_path}")
         return final_file_path
 
     async def download(self, url: str) -> str:
-        html_info = await self._get_product_info_from_html(url)
+        match = re.search(r"/vod/(\d+)/", url)
+        if not match:
+            raise ValueError("URL Viu tidak valid atau tidak mengandung ID video.")
         
-        ccs_product_id = await self._get_ccs_product_id(html_info.series_id, html_info.product_id)
+        video_id = match.group(1)
         
-        m3u8_url = await self._get_m3u8_url(ccs_product_id)
+        video_details = await self._get_m3u8_url(video_id)
         
-        final_path = await self._run_downloader(m3u8_url, html_info.series_name)
+        final_path = await self._run_downloader(video_details.url, video_details.title)
         
         return final_path
