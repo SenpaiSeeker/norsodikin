@@ -18,7 +18,6 @@ from .code.encrypt import AsciiManager, CipherHandler
 from .data.database import DataBase
 from .data.storekey import KeyManager
 from .data.ymlreder import YamlHandler
-from .media.viu import ViuDownloader
 from .payment.payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
 from .schedule.manager import Scheduler
 from .server.addUser import SSHUserManager
@@ -83,9 +82,6 @@ class NsDev:
             db=DataBase,
             key=KeyManager,
             yaml=YamlHandler(),
-        )
-        self.media = SimpleNamespace(
-            viu=ViuDownloader
         )
         self.payment = SimpleNamespace(
             Midtrans=PaymentMidtrans,
