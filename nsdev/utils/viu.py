@@ -8,10 +8,10 @@ from types import SimpleNamespace
 from urllib.parse import urlencode
 
 import httpx
-import orjson
+import m3u8
 
 from .logger import LoggerHandler
-from .viu_ckey import CKey
+from .viu_ckey import ViuCKey
 
 
 class ViuDownloader:
@@ -32,51 +32,81 @@ class ViuDownloader:
         self.client = self._prepare_client(cookies_file_path)
 
     def _prepare_client(self, cookie_path: str) -> httpx.AsyncClient:
-        jar = http.cookiejar.MozillaCookieJar(cookie_path)
-        jar.load(ignore_discard=True, ignore_expires=True)
+        self.jar = http.cookiejar.MozillaCookieJar(cookie_path)
+        self.jar.load(ignore_discard=True, ignore_expires=True)
         
-        self.cookies = {}
-        for cookie in jar:
-            self.cookies[cookie.name] = cookie.value
-            
+        cookies = httpx.Cookies()
+        for cookie in self.jar:
+            cookies.set(cookie.name, cookie.value, domain=cookie.domain)
+
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
-        return httpx.AsyncClient(headers=headers, cookies=self.cookies, follow_redirects=True, timeout=30)
+        return httpx.AsyncClient(headers=headers, cookies=cookies, follow_redirects=True, timeout=30)
 
-    async def _get_media_info(self, video_id: str, url: str) -> SimpleNamespace:
-        self.log.print(f"{self.log.CYAN}Mengambil detail video untuk ID: {video_id}")
+    async def _get_vid_and_title(self, url: str) -> SimpleNamespace:
+        self.log.print(f"{self.log.CYAN}Mengambil VID dan judul dari: {url}")
+        response = await self.client.get(url)
+        response.raise_for_status()
         
+        match = re.search(r'window\.__NUXT__=(\(function\(\)\{var a=(.+?);return a\}\)\(\));', response.text)
+        if not match:
+            raise ValueError("Tidak dapat menemukan data NUXT di halaman Viu. Strukturnya mungkin telah berubah.")
+            
+        data = orjson.loads(match.group(2))
+        
+        video_info = data.get('state', {}).get('vod', {}).get('first-product-detail', {}).get('data', {})
+        if not video_info:
+            raise ValueError("Tidak dapat menemukan detail produk di data halaman.")
+
+        vid = video_info.get('current_product', {}).get('vid')
+        title = video_info.get('series', {}).get('name', f"viu_video_{vid}")
+        
+        if not vid:
+            raise ValueError("VID tidak ditemukan di data halaman.")
+            
+        clean_title = re.sub(r'[\\/*?:"<>|]', "", title).strip()
+        
+        return SimpleNamespace(vid=vid, title=clean_title)
+
+    async def _get_m3u8_url(self, vid: str, title: str, page_url: str) -> SimpleNamespace:
+        self.log.print(f"{self.log.CYAN}Mengambil URL M3U8 untuk VID: {vid}")
+        
+        guid = next((cookie.value for cookie in self.jar if cookie.name == '_ottUID'), None)
+        if not guid:
+            raise ValueError("Cookie '_ottUID' (guid) tidak ditemukan. Pastikan cookie valid.")
+
         tm = str(int(time.time()))
-        guid = self.cookies.get('guid', 'default_guid')
-        ckey = CKey().make(vid=video_id, tm=tm, app_ver='2.5.13', guid=guid, platform='4830201', url=url)
+        ckey = ViuCKey().make(vid=vid, tm=tm, app_ver='2.5.13', guid=guid, platform='4830201', url=page_url)
 
         params = {
             'charge': '0', 'otype': 'json', 'defnpayver': '0', 'spau': '1', 'spaudio': '1',
-            'spwm': '1', 'sphls': '1', 'host': 'wetv.vip', 'refer': 'wetv.vip', 'ehost': url,
-            'sphttps': '1', 'encryptVer': '8.1', 'cKey': ckey, 'clip': '4', 'guid': guid,
-            'flowid': '4bc874cf11eac741b34fa6e4c62ca18e', 'platform': '4830201',
-            'sdtfrom': '1002', 'appVer': '2.5.13', 'vid': video_id, 'defn': 'shd',
-            'fhdswitch': '0', 'dtype': '3', 'spsrt': '2', 'tm': tm, 'lang_code': '8229847',
-            'spcaptiontype': '1', 'spmasterm3u8': '2', 'country_code': '153514', 'drm': '40'
+            'spwm': '1', 'sphls': '1', 'host': 'www.viu.com', 'refer': 'www.viu.com',
+            'ehost': page_url, 'sphttps': '1', 'encryptVer': '8.1', 'cKey': ckey,
+            'clip': '4', 'guid': guid, 'platform': '4830201', 'sdtfrom': '1002',
+            'appVer': '2.5.13', 'vid': vid, 'defn': 'shd', 'fhdswitch': '0', 'dtype': '3',
+            'spsrt': '2', 'tm': tm, 'drm': '40',
+            'callback': f'getinfo_callback_{int(time.time() * 1000)}'
         }
         
-        api_url = f"https://play.wetv.vip/getvinfo?{urlencode(params)}"
+        getvinfo_url = f"https://api-gateway-global.viu.com/api/playback/getvinfo?{urlencode(params)}"
         
-        res = await self.client.get(api_url)
-        res.raise_for_status()
-        data = res.json()
+        response = await self.client.get(getvinfo_url)
+        response.raise_for_status()
+        
+        json_text = re.search(r'getinfo_callback_\d+\((.*)\)', response.text).group(1)
+        data = orjson.loads(json_text)
+        
+        if data.get("msg") == "fail":
+            raise ValueError(f"API getvinfo gagal: {data.get('message', 'Error tidak diketahui')}")
 
-        if 'sfl' not in data or not data['sfl']['fi']:
-            raise ValueError("Tidak dapat menemukan stream info (sfl). Konten mungkin memerlukan premium atau tidak tersedia.")
+        hls_info = data.get('vl', {}).get('vi', [{}])[0].get('ul', {}).get('hls', {})
+        if not hls_info:
+            raise ValueError("URL HLS tidak ditemukan dalam respons API.")
+
+        m3u8_url = list(hls_info.values())[0]
         
-        stream_info = data['sfl']['fi'][0]
-        m3u8_url = f"{data['vl']['vi'][0]['ul']['ui'][0]['url']}{stream_info['name']}?{stream_info['key']}"
-        title = data['vl']['vi'][0]['ti']
-        
-        clean_title = re.sub(r'[\\/*?:"<>|]', "", title).strip()
-        
-        return SimpleNamespace(url=m3u8_url, title=clean_title)
+        return SimpleNamespace(url=m3u8_url, title=title)
 
     async def _run_downloader(self, m3u8_url: str, output_filename: str) -> str:
         output_path = os.path.join(self.download_path, output_filename)
@@ -118,14 +148,7 @@ class ViuDownloader:
         return final_file_path
 
     async def download(self, url: str) -> str:
-        match = re.search(r"/vod/(\d+)/", url)
-        if not match:
-            raise ValueError("URL Viu tidak valid atau tidak mengandung ID video.")
-        
-        video_id = match.group(1)
-        
-        video_details = await self._get_media_info(video_id, url)
-        
+        page_info = await self._get_vid_and_title(url)
+        video_details = await self._get_m3u8_url(page_info.vid, page_info.title, url)
         final_path = await self._run_downloader(video_details.url, video_details.title)
-        
         return final_path
