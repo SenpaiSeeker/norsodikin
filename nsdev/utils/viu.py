@@ -84,7 +84,7 @@ class ViuDownloader:
         title = data.get("data", {}).get("series", {}).get("name", f"viu_video_{video_id}")
         
         if not hls_url:
-            raise ValueError("Tidak dapat menemukan URL M3U8 dalam respons API. Cookie mungkin tidak valid atau konten ini memerlukan premium.")
+            raise ValueError(f"Tidak dapat menemukan URL M3U8 dalam respons API. Cookie mungkin tidak valid atau konten ini memerlukan premium.\nResponse: {data}")
         
         clean_title = re.sub(r'[\\/*?:"<>|]', "", title).strip()
         
