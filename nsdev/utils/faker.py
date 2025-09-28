@@ -4,7 +4,7 @@ from faker import Faker
 
 
 class FakeInfoGenerator:
-    def ____init____(self, locale: str = "id_ID"):
+    def __init__(self, locale: str = "id_ID"):
         self.fake = Faker(locale)
 
     def generate(self) -> SimpleNamespace:
