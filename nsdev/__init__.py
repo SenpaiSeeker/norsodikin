@@ -31,6 +31,7 @@ from .telegram.errors import ErrorHandler
 from .telegram.formatter import TextFormatter
 from .telegram.story import StoryDownloader
 from .telegram.videofx import VideoFX
+from .utils.audiofx import AudioFX
 from .utils.cache import memoize
 from .utils.carbon import CarbonClient
 from .utils.colorize import AnsiColors
@@ -106,6 +107,7 @@ class NsDev:
             videofx=VideoFX(),
         )
         self.utils = SimpleNamespace(
+            audiofx=AudioFX(),
             cache=memoize,
             carbon=CarbonClient,
             color=AnsiColors(),
