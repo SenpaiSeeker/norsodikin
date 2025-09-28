@@ -9,6 +9,7 @@ from .ai.search import WebSearch
 from .ai.stt import SpeechToText
 from .ai.translate import Translator
 from .ai.tts import TextToSpeech
+from .ai.upscaler import ImageUpscaler
 from .ai.vision import VisionAnalyzer
 from .ai.web_summarizer import WebSummarizer
 from .analytics.chat import ChatAnalyzer
@@ -50,7 +51,6 @@ from .utils.ratelimit import RateLimiter
 from .utils.shell import ShellExecutor
 from .utils.url import UrlUtils
 from .utils.wikipedia import WikipediaSearch
-from .utils.zeroxzero import ZeroXZeroUploader
 
 __version__ = "1.9.0"
 __author__ = "@NorSodikin"
@@ -69,6 +69,7 @@ class NsDev:
             stt=SpeechToText,
             translate=Translator,
             tts=TextToSpeech,
+            upscaler=ImageUpscaler,
             vision=VisionAnalyzer,
             web=WebSummarizer,
         )
@@ -125,7 +126,6 @@ class NsDev:
             progress=TelegramProgressBar,
             ratelimit=RateLimiter(self._client),
             shell=ShellExecutor(),
-            uploader=ZeroXZeroUploader(),
             url=UrlUtils(),
             wikipedia=WikipediaSearch,
         )
