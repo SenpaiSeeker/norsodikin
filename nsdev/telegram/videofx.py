@@ -6,7 +6,7 @@ import random
 import subprocess
 from typing import Dict, List, Tuple
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from ..utils.font_manager import FontManager
 
@@ -186,6 +186,48 @@ class VideoFX(FontManager):
     ):
         text_lines = text.split(";") if ";" in text else text.splitlines()
         await self._run_in_executor(self._create_animated_video, text_lines, output_path, duration, fps, font_size)
+        return output_path
+
+    def _sync_create_afk_animation(self, text_lines: List[str], output_path: str):
+        font_main = self._get_font_from_package("NotoSans-Bold.ttf", 60)
+        font_sub = self._get_font_from_package("NotoSans-Regular.ttf", 40)
+        
+        canvas_w, canvas_h = 512, 288
+        img = Image.new("RGB", (canvas_w, canvas_h), "#181818")
+        draw = ImageDraw.Draw(img)
+
+        y_pos = 60
+        for i, line in enumerate(text_lines):
+            font = font_main if i == 0 else font_sub
+            bbox = draw.textbbox((0, 0), line, font=font)
+            line_w = bbox[2] - bbox[0]
+            line_h = bbox[3] - bbox[1]
+            draw.text(((canvas_w - line_w) / 2, y_pos), line, font=font, fill="#FFFFFF")
+            y_pos += line_h + 20
+            
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-loop", "1",
+            "-i", "-",
+            "-f", "lavfi",
+            "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
+            "-c:v", "libx264",
+            "-t", "5",
+            "-pix_fmt", "yuv420p",
+            "-vf", "scale=512:288",
+            "-c:a", "aac",
+            "-shortest",
+            output_path,
+        ]
+        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        img.save(proc.stdin, 'PNG')
+        _, stderr = proc.communicate()
+        if proc.returncode != 0:
+            raise RuntimeError(f"FFmpeg failed during AFK animation creation: {stderr.decode(errors='ignore')}")
+        
+    async def create_afk_animation(self, text_lines: List[str], output_path: str):
+        await self._run_in_executor(self._sync_create_afk_animation, text_lines, output_path)
         return output_path
 
     def _convert_to_sticker(self, video_path: str, output_path: str, fps: int = 30):
