@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import List
 from urllib.parse import quote
 
 import httpx
@@ -9,7 +10,42 @@ class WikipediaSearch:
         self.api_url = f"https://{lang}.wikipedia.org/w/api.php"
         self.timeout = timeout
 
-    async def search(self, query: str):
+    async def search(self, query: str, limit: int = 1) -> List[SimpleNamespace]:
+        if limit == 1:
+            return [await self._get_top_article(query)]
+
+        return await self._get_search_list(query, limit)
+
+    async def _get_search_list(self, query: str, limit: int) -> List[SimpleNamespace]:
+        search_params = {
+            "action": "query",
+            "format": "json",
+            "list": "search",
+            "srsearch": query,
+            "srlimit": limit,
+            "srprop": "snippet",
+        }
+        async with httpx.AsyncClient() as client:
+            try:
+                search_response = await client.get(self.api_url, params=search_params, timeout=self.timeout)
+                search_response.raise_for_status()
+                search_data = search_response.json()
+
+                results = []
+                for item in search_data.get("query", {}).get("search", []):
+                    snippet = item.get("snippet", "").replace('<span class="searchmatch">', "").replace("</span>", "")
+                    results.append(
+                        SimpleNamespace(
+                            title=item.get("title"),
+                            summary=snippet + "...",
+                            url=f"https://id.wikipedia.org/wiki/{quote(item.get('title'))}",
+                        )
+                    )
+                return results
+            except httpx.RequestError as e:
+                raise Exception(f"Failed to connect to Wikipedia API: {e}")
+
+    async def _get_top_article(self, query: str) -> SimpleNamespace:
         search_params = {
             "action": "query",
             "format": "json",
