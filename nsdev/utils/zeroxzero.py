@@ -1,19 +1,21 @@
 from io import BytesIO
 
 import httpx
+from fake_useragent import UserAgent
 
 
 class ZeroXZeroUploader:
     def __init__(self, timeout: int = 60):
         self.api_url = "https://0x0.st"
         self.timeout = timeout
+        self.headers = {"User-Agent": UserAgent().random}
 
     async def upload(self, file_bytes: bytes, file_name: str) -> str:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             try:
                 files = {'file': (file_name, BytesIO(file_bytes))}
                 
-                response = await client.post(self.api_url, files=files)
+                response = await client.post(self.api_url, files=files, headers=self.headers)
                 response.raise_for_status()
 
                 url = response.text.strip()
