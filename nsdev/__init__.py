@@ -48,6 +48,7 @@ from .utils.paste import PasteClient
 from .utils.progress import TelegramProgressBar
 from .utils.ratelimit import RateLimiter
 from .utils.shell import ShellExecutor
+from .utils.telegraph import TelegraphUploader
 from .utils.url import UrlUtils
 from .utils.wikipedia import WikipediaSearch
 
@@ -124,6 +125,7 @@ class NsDev:
             progress=TelegramProgressBar,
             ratelimit=RateLimiter(self._client),
             shell=ShellExecutor(),
+            telegraph=TelegraphUploader(),
             url=UrlUtils(),
             wikipedia=WikipediaSearch,
         )
