@@ -29,6 +29,7 @@ dependencies = [
     "python-dotenv",
     "tornado",
     "requests",
+    "faker",
 ]
 
 [project.urls]
@@ -58,9 +59,6 @@ database = [
 ]
 cli = [
     "pyfiglet",
-]
-payment = [
-    "faker",
 ]
 media = [
     "yt-dlp",
