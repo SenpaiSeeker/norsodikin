@@ -48,9 +48,9 @@ from .utils.paste import PasteClient
 from .utils.progress import TelegramProgressBar
 from .utils.ratelimit import RateLimiter
 from .utils.shell import ShellExecutor
-from .utils.telegraph import TelegraphUploader
 from .utils.url import UrlUtils
 from .utils.wikipedia import WikipediaSearch
+from .utils.zeroxzero import ZeroXZeroUploader
 
 __version__ = "1.9.0"
 __author__ = "@NorSodikin"
@@ -125,7 +125,7 @@ class NsDev:
             progress=TelegramProgressBar,
             ratelimit=RateLimiter(self._client),
             shell=ShellExecutor(),
-            telegraph=TelegraphUploader(),
+            uploader=ZeroXZeroUploader(),
             url=UrlUtils(),
             wikipedia=WikipediaSearch,
         )
