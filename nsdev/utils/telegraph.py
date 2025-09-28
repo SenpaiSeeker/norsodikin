@@ -9,10 +9,10 @@ class TelegraphUploader:
         self.base_url = "https://telegra.ph"
         self.timeout = timeout
 
-    async def upload(self, file_bytes: bytes, file_name: str = "file.png") -> str:
+    async def upload(self, file_bytes: bytes, file_name: str, mime_type: str) -> str:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             try:
-                file_to_upload = (file_name, BytesIO(file_bytes), "image/png")
+                file_to_upload = (file_name, BytesIO(file_bytes), mime_type)
                 files = {"file": file_to_upload}
 
                 response = await client.post(self.upload_url, files=files)
