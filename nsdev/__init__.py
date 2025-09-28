@@ -35,6 +35,7 @@ from .utils.cache import memoize
 from .utils.carbon import CarbonClient
 from .utils.colorize import AnsiColors
 from .utils.downloader import MediaDownloader
+from .utils.faker import FakeInfoGenerator
 from .utils.files import FileManager
 from .utils.github import GitHubInfo
 from .utils.gradient import Gradient
@@ -49,7 +50,7 @@ from .utils.shell import ShellExecutor
 from .utils.url import UrlUtils
 from .utils.wikipedia import WikipediaSearch
 
-__version__ = "1.9.1"
+__version__ = "1.9.0"
 __author__ = "@NorSodikin"
 
 
@@ -109,6 +110,7 @@ class NsDev:
             carbon=CarbonClient,
             color=AnsiColors(),
             downloader=MediaDownloader,
+            faker=FakeInfoGenerator(),
             files=FileManager(),
             github=GitHubInfo,
             grad=Gradient(),
