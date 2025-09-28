@@ -1,4 +1,5 @@
 import asyncio
+import random
 from functools import partial
 from importlib import resources
 from io import BytesIO
@@ -283,3 +284,23 @@ class ImageManipulator(FontManager):
 
     async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False) -> bytes:
         return await self._run_in_executor(self._sync_create_quote, text, user_name, pfp_bytes, invert)
+
+    def _sync_deepfry(self, image_bytes: bytes) -> bytes:
+        img = Image.open(BytesIO(image_bytes)).convert("RGB")
+        img = ImageEnhance.Color(img).enhance(3.0)
+        img = ImageEnhance.Contrast(img).enhance(2.5)
+        img = ImageEnhance.Sharpness(img).enhance(3.0)
+
+        noise = Image.new("RGB", img.size)
+        draw = ImageDraw.Draw(noise)
+        for y in range(img.height):
+            for x in range(img.width):
+                draw.point((x, y), (random.randint(0, 50), random.randint(0, 50), random.randint(0, 50)))
+        img = Image.blend(img, noise, 0.15)
+
+        output_buffer = BytesIO()
+        img.save(output_buffer, format="JPEG", quality=80)
+        return output_buffer.getvalue()
+
+    async def deepfry(self, image_bytes: bytes) -> bytes:
+        return await self._run_in_executor(self._sync_deepfry, image_bytes)
