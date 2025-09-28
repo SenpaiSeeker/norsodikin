@@ -1,6 +1,8 @@
 import asyncio
 import os
 from functools import partial
+from types import SimpleNamespace
+from typing import List
 
 import requests
 from yt_dlp import YoutubeDL
@@ -13,10 +15,36 @@ class MediaDownloader:
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
 
+    async def search_youtube(self, query: str, limit: int = 5) -> List[SimpleNamespace]:
+        def _sync_search():
+            ydl_opts = {
+                "format": "best",
+                "quiet": True,
+                "noplaylist": True,
+                "extract_flat": "in_playlist",
+                "default_search": f"ytsearch{limit}",
+            }
+            with YoutubeDL(ydl_opts) as ydl:
+                result = ydl.extract_info(query, download=False)
+                if "entries" in result:
+                    return [
+                        SimpleNamespace(
+                            id=entry.get("id"),
+                            title=entry.get("title", "No Title"),
+                            url=f"https://www.youtube.com/watch?v={entry.get('id')}",
+                            duration=entry.get("duration", 0),
+                            uploader=entry.get("uploader", "N/A"),
+                        )
+                        for entry in result["entries"]
+                    ]
+            return []
+
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _sync_search)
+
     def _sync_download(
         self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop
     ) -> dict:
-
         def _hook(d):
             if d["status"] == "downloading" and progress_callback:
                 total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate")
@@ -31,15 +59,12 @@ class MediaDownloader:
             "geo_bypass_country": "ID",
             "geo_verify": True,
         }
-
         if progress_callback:
             ydl_opts["progress_hooks"] = [_hook]
-
         if self.cookies_file_path:
             if not os.path.exists(self.cookies_file_path):
                 raise FileNotFoundError(f"File cookie yang ditentukan tidak ditemukan: {self.cookies_file_path}")
             ydl_opts["cookiefile"] = self.cookies_file_path
-
         if audio_only:
             ydl_opts.update(
                 {
@@ -55,14 +80,12 @@ class MediaDownloader:
             )
         else:
             ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
-
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
             if audio_only:
                 base, _ = os.path.splitext(filename)
                 filename = base + ".mp3"
-
             thumbnail_data = None
             thumbnail_url = info.get("thumbnail")
             if thumbnail_url:
@@ -72,7 +95,6 @@ class MediaDownloader:
                     thumbnail_data = thumb_response.content
                 except requests.RequestException:
                     thumbnail_data = None
-
             return {
                 "path": filename,
                 "title": info.get("fulltitle", "N/A"),
