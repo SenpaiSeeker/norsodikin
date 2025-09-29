@@ -14,7 +14,7 @@ class SpeedtestRunner:
         s.upload()
         
         image_url = s.results.share()
-        with httpx.Client() as client:
+        with httpx.Client(follow_redirects=True) as client:
             response = client.get(image_url)
             response.raise_for_status()
             image_bytes = BytesIO(response.content)
