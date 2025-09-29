@@ -11,9 +11,13 @@ class SpeedtestRunner:
         s.get_best_server()
         s.download()
         s.upload()
-        results = s.results.dict()
-
-        image_bytes = BytesIO(s.results.share(image_format="png"))
+        
+        image_url = s.results.share()
+        
+        response = s.opener.open(image_url)
+        image_data = response.read()
+        
+        image_bytes = BytesIO(image_data)
         image_bytes.name = "speedtest.png"
         return image_bytes
 
