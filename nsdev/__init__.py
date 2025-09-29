@@ -133,7 +133,7 @@ class NsDev:
             paste=PasteClient,
             progress=TelegramProgressBar,
             ratelimit=RateLimiter(self._client),
-            shell=Executor(),
+            shell=ShellExecutor(),
             url=UrlUtils(),
             wikipedia=WikipediaSearch,
         )
