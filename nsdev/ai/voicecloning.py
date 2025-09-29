@@ -1,6 +1,10 @@
 from io import BytesIO
+from types import SimpleNamespace
+from typing import List
 
 import httpx
+
+from ..utils.cache import memoize
 
 
 class VoiceCloner:
@@ -8,9 +12,40 @@ class VoiceCloner:
         if not api_key:
             raise ValueError("API key untuk ElevenLabs diperlukan.")
         self.api_key = api_key
-        self.base_url = "https://api.elevenlabs.io/v1/text-to-speech"
+        self.base_url = "https://api.elevenlabs.io/v1"
+
+    @memoize(ttl=3600)
+    async def get_voices(self) -> List[SimpleNamespace]:
+        url = f"{self.base_url}/voices"
+        headers = {"xi-api-key": self.api_key}
+        voices_list = []
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(url, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+                for voice in data.get("voices", []):
+                    labels = voice.get("labels", {})
+                    description_parts = [
+                        labels.get(key) for key in ["accent", "gender", "description", "age"] if labels.get(key)
+                    ]
+                    description = ", ".join(description_parts).title()
+                    
+                    voices_list.append(
+                        SimpleNamespace(
+                            id=voice.get("voice_id"),
+                            name=voice.get("name"),
+                            description=description or "No description",
+                        )
+                    )
+                return voices_list
+            except Exception as e:
+                raise Exception(f"Gagal mengambil daftar suara dari ElevenLabs: {e}")
+
 
     async def clone(self, text: str, voice_id: str) -> BytesIO:
+        url = f"{self.base_url}/text-to-speech/{voice_id}"
         headers = {
             "Accept": "audio/mpeg",
             "Content-Type": "application/json",
@@ -21,8 +56,6 @@ class VoiceCloner:
             "model_id": "eleven_multilingual_v2",
             "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
         }
-        
-        url = f"{self.base_url}/{voice_id}"
 
         async with httpx.AsyncClient(timeout=120) as client:
             try:
