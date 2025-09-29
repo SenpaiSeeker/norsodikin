@@ -40,6 +40,7 @@ from .utils.downloader import MediaDownloader
 from .utils.faker import FakeInfoGenerator
 from .utils.files import FileManager
 from .utils.github import GitHubInfo
+from .utils.gofile import GoFileUploader
 from .utils.gradient import Gradient
 from .utils.image import ImageManipulator
 from .utils.logger import LoggerHandler
@@ -117,6 +118,7 @@ class NsDev:
             faker=FakeInfoGenerator(),
             files=FileManager(),
             github=GitHubInfo,
+            gofile=GoFileUploader(),
             grad=Gradient(),
             image=ImageManipulator(),
             log=LoggerHandler,
