@@ -304,3 +304,41 @@ class ImageManipulator(FontManager):
 
     async def deepfry(self, image_bytes: bytes) -> bytes:
         return await self._run_in_executor(self._sync_deepfry, image_bytes)
+        
+    def _sync_create_afk_card(self, pfp_bytes: bytes, name: str, reason: str, duration: str) -> bytes:
+        pfp_data = pfp_bytes
+        if not pfp_data:
+            initial = name[0].upper() if name else "U"
+            pfp_data = self._get_default_pfp(initial)
+        
+        pfp = Image.open(BytesIO(pfp_data)).convert("RGBA").resize((128, 128))
+        mask = Image.new("L", pfp.size, 0)
+        draw_mask = ImageDraw.Draw(mask)
+        draw_mask.ellipse((0, 0) + pfp.size, fill=255)
+        pfp.putalpha(mask)
+
+        W, H = 800, 300
+        img = Image.new("RGB", (W, H), "#1C1C1E")
+        draw = ImageDraw.Draw(img)
+
+        font_name = self._get_font_from_package("NotoSans-Bold.ttf", 36)
+        font_status = self._get_font_from_package("NotoSans-Bold.ttf", 28)
+        font_text = self._get_font_from_package("NotoSans-Regular.ttf", 24)
+
+        img.paste(pfp, (40, (H - 128) // 2), pfp)
+
+        text_x = 200
+        draw.text((text_x, 60), name, font=font_name, fill="#FFFFFF")
+        draw.text((text_x, 110), "SEDANG AFK", font=font_status, fill="#FF9500")
+        
+        if reason:
+            draw.text((text_x, 170), f"Alasan: {reason}", font=font_text, fill="#EBEBF599")
+        
+        draw.text((text_x, 200), f"Sejak: {duration}", font=font_text, fill="#EBEBF599")
+
+        output = BytesIO()
+        img.save(output, format="PNG")
+        return output.getvalue()
+        
+    async def create_afk_card(self, pfp_bytes: bytes, name: str, reason: str, duration: str) -> bytes:
+        return await self._run_in_executor(self._sync_create_afk_card, pfp_bytes, name, reason, duration)
