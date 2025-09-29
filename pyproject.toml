@@ -69,7 +69,7 @@ schedule = [
     "aiocron",
 ]
 all = [
-    "norsodikin[ai,cli,database,media,payment,pyrogram,schedule,server]",
+    "norsodikin[ai,cli,database,media,pyrogram,schedule,server]",
 ]
 
 [tool.setuptools]
