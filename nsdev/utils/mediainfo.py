@@ -32,7 +32,6 @@ class MediaInspector:
         data = json.loads(result.stdout)
         info = SimpleNamespace(video=None, audio=None, general=None)
 
-        # General format info
         if "format" in data:
             fmt = data["format"]
             info.general = SimpleNamespace(
@@ -41,7 +40,6 @@ class MediaInspector:
                 format_name=fmt.get("format_long_name", "N/A"),
             )
         
-        # Stream info
         for stream in data.get("streams", []):
             if stream.get("codec_type") == "video" and not info.video:
                 info.video = SimpleNamespace(
