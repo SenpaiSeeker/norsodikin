@@ -11,6 +11,7 @@ from .ai.translate import Translator
 from .ai.tts import TextToSpeech
 from .ai.upscaler import ImageUpscaler
 from .ai.vision import VisionAnalyzer
+from .ai.voicecloning import VoiceCloner
 from .ai.web_summarizer import WebSummarizer
 from .analytics.chat import ChatAnalyzer
 from .analytics.manager import AnalyticsManager
@@ -74,6 +75,7 @@ class NsDev:
             tts=TextToSpeech,
             upscaler=ImageUpscaler,
             vision=VisionAnalyzer,
+            voicecloning=VoiceCloner,
             web=WebSummarizer,
         )
         self.analytics = SimpleNamespace(
@@ -131,7 +133,7 @@ class NsDev:
             paste=PasteClient,
             progress=TelegramProgressBar,
             ratelimit=RateLimiter(self._client),
-            shell=ShellExecutor(),
+            shell=Executor(),
             url=UrlUtils(),
             wikipedia=WikipediaSearch,
         )
