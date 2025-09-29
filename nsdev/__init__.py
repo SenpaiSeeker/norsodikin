@@ -55,7 +55,7 @@ from .utils.shell import ShellExecutor
 from .utils.url import UrlUtils
 from .utils.wikipedia import WikipediaSearch
 
-__version__ = "1.9.0"
+__version__ = "1.9.2"
 __author__ = "@NorSodikin"
 
 
