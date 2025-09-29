@@ -53,6 +53,7 @@ ai = [
 ]
 server = [
     "psutil",
+    "speedtest-cli",
 ]
 database = [
     "pymongo",
@@ -63,8 +64,6 @@ cli = [
 media = [
     "yt-dlp",
     "ffmpeg-python",
-    "beautifulsoup4",
-    "lxml",
 ]
 schedule = [
     "aiocron",
