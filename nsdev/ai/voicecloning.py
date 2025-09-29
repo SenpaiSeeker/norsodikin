@@ -17,12 +17,11 @@ class VoiceCloner:
     @memoize(ttl=3600)
     async def get_voices(self) -> List[SimpleNamespace]:
         url = f"{self.base_url}/voices"
-        headers = {"xi-api-key": self.api_key}
         voices_list = []
 
         async with httpx.AsyncClient() as client:
             try:
-                response = await client.get(url, headers=headers)
+                response = await client.get(url)
                 response.raise_for_status()
                 data = response.json()
                 for voice in data.get("voices", []):
