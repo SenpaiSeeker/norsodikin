@@ -24,6 +24,7 @@ from .schedule.manager import Scheduler
 from .server.addUser import SSHUserManager
 from .server.monitor import ServerMonitor
 from .server.process import ProcessManager
+from .server.speedtest import SpeedtestRunner
 from .telegram.actions import TelegramActions
 from .telegram.argument import Argument
 from .telegram.button import Button
@@ -98,6 +99,7 @@ class NsDev:
         self.server = SimpleNamespace(
             monitor=ServerMonitor(),
             process=ProcessManager(),
+            speedtest=SpeedtestRunner(),
             user=SSHUserManager,
         )
         self.telegram = SimpleNamespace(
