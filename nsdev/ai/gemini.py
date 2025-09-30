@@ -2,6 +2,7 @@ import os
 from google import genai
 from google.genai import types
 
+
 class ChatbotGemini:
     def __init__(self, api_key: str):
         self.api_key = api_key
@@ -61,12 +62,18 @@ class ChatbotGemini:
     async def _send_request(self, model_override: str = None, **payload) -> str:
         model_to_use = model_override or self.model_name
         contents = payload.get("contents", [])
-        config = payload.get("config", None)
+        system_instruction = payload.get("systemInstruction")
+
+        config = types.GenerateContentConfig(
+            **self.generation_config,
+            system_instruction=system_instruction if isinstance(system_instruction, str) else None
+        )
+
         try:
             response = await self.client.aio.models.generate_content(
                 model=model_to_use,
                 contents=contents,
-                config=config,
+                config=config
             )
             return response.text
         except Exception as e:
@@ -74,28 +81,32 @@ class ChatbotGemini:
 
     async def send_chat_message(self, message: str, user_id: str, bot_name: str) -> str:
         history = self.chat_history.setdefault(user_id, [])
-        user_content = types.Content(role="user", parts=[types.Part.from_text(text=message)])
-        history.append(user_content)
+        history.append({"role": "user", "parts": [{"text": message}]})
 
         instruction = self._build_instruction("chatbot", bot_name)
-        config = types.GenerateContentConfig(**self.generation_config, system_instruction=instruction)
+        payload = {
+            "contents": history,
+            "systemInstruction": instruction,
+        }
 
-        reply = await self._send_request(contents=history, config=config)
+        reply = await self._send_request(**payload)
 
-        model_content = types.Content(role="model", parts=[types.Part.from_text(text=reply)])
-        history.append(model_content)
+        history.append({"role": "model", "parts": [{"text": reply}]})
+        self.chat_history[user_id] = history
         return reply
 
     async def send_khodam_message(self, name: str, user_id: str) -> str:
         history = self.khodam_history.setdefault(user_id, [])
-        user_content = types.Content(role="user", parts=[types.Part.from_text(text=name)])
-        history.append(user_content)
+        history.append({"role": "user", "parts": [{"text": name}]})
 
         instruction = self._build_instruction("khodam")
-        config = types.GenerateContentConfig(**self.generation_config, system_instruction=instruction)
+        payload = {
+            "contents": history,
+            "systemInstruction": instruction,
+        }
 
-        reply = await self._send_request(contents=history, config=config)
+        reply = await self._send_request(**payload)
 
-        model_content = types.Content(role="model", parts=[types.Part.from_text(text=reply)])
-        history.append(model_content)
+        history.append({"role": "model", "parts": [{"text": reply}]})
+        self.khodam_history[user_id] = history
         return reply
