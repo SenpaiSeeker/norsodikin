@@ -21,17 +21,12 @@ class RateLimiter(Gradient):
             async def wrapped(client, update, *args, **kwargs):
                 if isinstance(update, Message):
                     user_id = update.from_user.id
-                    if update.command:
-                        command_name = update.command[0]
-                    else:
-                        command_name = func.__name__
                 elif isinstance(update, CallbackQuery):
                     user_id = update.from_user.id
-                    command_name = func.__name__
                 else:
                     return await func(client, update, *args, **kwargs)
 
-                key = f"{user_id}:{command_name}"
+                key = f"{user_id}:{id(func)}"
 
                 current_time = time.time()
 
