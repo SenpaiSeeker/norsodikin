@@ -68,7 +68,7 @@ class NsDev:
             gemini=ChatbotGemini,
             hf=HuggingFaceGenerator,
             local=OllamaClient,
-            qrcode=QrCodeGenerator,
+            qrcode=QrCodeGenerator(),
             search=WebSearch,
             stt=SpeechToText,
             translate=Translator,
