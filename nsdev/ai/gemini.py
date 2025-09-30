@@ -1,18 +1,19 @@
-import httpx
+from google import genai
+from google.genai import types
 
 
 class ChatbotGemini:
     def __init__(self, api_key: str):
         self.api_key = api_key
-        self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
+        self.client = genai.Client(api_key=api_key)
         self.model_name = "gemini-2.5-flash"
-        self.generation_config = {
-            "temperature": 1,
-            "top_p": 0.95,
-            "top_k": 40,
-            "max_output_tokens": 2048,
-            "response_mime_type": "text/plain",
-        }
+        self.generation_config = types.GenerateContentConfig(
+            temperature=1,
+            top_p=0.95,
+            top_k=40,
+            max_output_tokens=2048,
+            response_mime_type="text/plain",
+        )
         self.chat_history = {}
         self.khodam_history = {}
         self.custom_chatbot_instruction = None
@@ -58,52 +59,61 @@ class ChatbotGemini:
 
     async def _send_request(self, model_override: str = None, **payload) -> str:
         model_to_use = model_override or self.model_name
-        url = f"{self.base_url}/{model_to_use}:generateContent?key={self.api_key}"
-        headers = {"Content-Type": "application/json"}
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.post(url, headers=headers, json=payload, timeout=60)
-                response.raise_for_status()
-                data = response.json()
-                return data["candidates"][0]["content"]["parts"][0]["text"]
-            except (httpx.HTTPStatusError, KeyError, IndexError) as e:
-                error_text = ""
-                try:
-                    error_text = response.text
-                except Exception:
-                    pass
-                raise Exception(f"API request failed: {e}\nResponse: {error_text}")
-            except Exception as e:
-                raise Exception(f"An unexpected error occurred: {e}")
+        try:
+            response = self.client.models.generate_content(
+                model=model_to_use,
+                **payload,
+            )
+            return response.text
+        except Exception as e:
+            raise Exception(f"API request failed: {e}")
 
     async def send_chat_message(self, message: str, user_id: str, bot_name: str) -> str:
         history = self.chat_history.setdefault(user_id, [])
-        history.append({"role": "user", "parts": [{"text": message}]})
+
+        contents = [
+            types.Content(role=entry["role"], parts=[types.Part.from_text(p["text"])])
+            for entry in history
+            for p in entry["parts"]
+        ]
+        contents.append(types.Content(role="user", parts=[types.Part.from_text(message)]))
 
         instruction = self._build_instruction("chatbot", bot_name)
+
         payload = {
-            "contents": history,
-            "generationConfig": self.generation_config,
-            "systemInstruction": {"parts": [{"text": instruction}]},
+            "contents": contents,
+            "config": self.generation_config,
+            "system_instruction": types.Content(parts=[types.Part.from_text(instruction)]),
         }
 
         reply = await self._send_request(**payload)
 
+        history.append({"role": "user", "parts": [{"text": message}]})
         history.append({"role": "model", "parts": [{"text": reply}]})
+
         return reply
 
     async def send_khodam_message(self, name: str, user_id: str) -> str:
         history = self.khodam_history.setdefault(user_id, [])
-        history.append({"role": "user", "parts": [{"text": name}]})
+
+        contents = [
+            types.Content(role=entry["role"], parts=[types.Part.from_text(p["text"])])
+            for entry in history
+            for p in entry["parts"]
+        ]
+        contents.append(types.Content(role="user", parts=[types.Part.from_text(name)]))
 
         instruction = self._build_instruction("khodam")
+
         payload = {
-            "contents": history,
-            "generationConfig": self.generation_config,
-            "systemInstruction": {"parts": [{"text": instruction}]},
+            "contents": contents,
+            "config": self.generation_config,
+            "system_instruction": types.Content(parts=[types.Part.from_text(instruction)]),
         }
 
         reply = await self._send_request(**payload)
 
+        history.append({"role": "user", "parts": [{"text": name}]})
         history.append({"role": "model", "parts": [{"text": reply}]})
+
         return reply
