@@ -69,7 +69,7 @@ Semua modul dikelompokkan secara logis:
 - `client.ns.data`: Manajemen data (database, file config YAML).
 - `client.ns.utils`: Perkakas umum (logger, downloader, OSINT, pastebin, dll.).
 - `client.ns.schedule`: Penjadwalan tugas otomatis (cron).
-- `client.ns.server`: Manajemen server Linux (proses, pengguna, monitor).
+- `client.ns.server`: Manajemen server Linux (proses, monitor).
 - `client.ns.code`: Enkripsi dan dekripsi.
 - `client.ns.payment`: Integrasi payment gateway.
 
@@ -314,6 +314,36 @@ file_suara.name = "pesan.ogg"
 # await message.reply_voice(file_suara)
 ```
 ---
+### `upscaler`
+Modul AI untuk meningkatkan resolusi dan kualitas gambar menggunakan DeepAI.
+
+**Penting:** Fitur ini memerlukan API key dari DeepAI. Anda bisa mendapatkannya secara gratis setelah mendaftar di [deepai.org](https://deepai.org).
+
+**Inisialisasi:** `upscaler = client.ns.ai.upscaler(api_key)`
+
+**Metode Utama:** `upscale(image_bytes)`
+
+**Contoh Penggunaan:**
+```python
+# @app.on_message(filters.command("upscale") & filters.reply)
+# async def upscale_image(client, message):
+#     if not message.reply_to_message.photo:
+#         return await message.reply("Balas ke sebuah gambar.")
+#
+#     status = await message.reply("✨ Meningkatkan resolusi gambar...")
+#     try:
+#         photo = await client.download_media(message.reply_to_message.photo, in_memory=True)
+#         upscaler = client.ns.ai.upscaler(api_key="DEEPAI_API_KEY_ANDA")
+#         upscaled_bytes = await upscaler.upscale(photo.getvalue())
+#
+#         img_file = BytesIO(upscaled_bytes)
+#         img_file.name = "upscaled.png"
+#         await client.send_document(message.chat.id, document=img_file)
+#         await status.delete()
+#     except Exception as e:
+#         await status.edit(f"❌ Gagal: {e}")
+```
+---
 ### `vision`
 Modul AI untuk "melihat" dan memahami konten gambar menggunakan model Gemini Vision.
 
@@ -337,6 +367,45 @@ async def analyze_image(client, message):
             await status.edit(f"**Deskripsi Gambar:**\n\n{deskripsi}")
     except Exception as e:
         await status.edit(f"❌ Gagal menganalisis: {e}")
+```
+---
+### `voicecloning`
+Modul canggih untuk mengubah teks menjadi audio yang sangat realistis menggunakan AI dari ElevenLabs. Mendukung berbagai suara dan suara kustom dari akun Anda.
+
+**Penting:** Fitur ini memerlukan API key dari ElevenLabs. Anda bisa mendapatkan tier gratis dengan kuota yang cukup besar di [elevenlabs.io](https://elevenlabs.io).
+
+**Inisialisasi:** `cloner = client.ns.ai.voicecloning(api_key)`
+
+**Metode Utama:**
+- `get_voices()`: Mengambil daftar semua suara yang tersedia di akun Anda.
+- `clone(text, voice_id)`: Menghasilkan audio dari teks menggunakan ID suara tertentu.
+
+**Contoh Penggunaan:**
+```python
+# # Handler untuk perintah .vlist
+# @app.on_message(filters.command("vlist", prefixes=".") & filters.me)
+# async def list_voices(client, message):
+#     cloner = client.ns.ai.voicecloning(api_key="ELEVENLABS_API_KEY_ANDA")
+#     voices = await cloner.get_voices()
+#     response = "**Suara Tersedia:**\n\n"
+#     for voice in voices:
+#         response += f"- **{voice.name}**: _{voice.description}_\n"
+#     await message.edit(response)
+#
+# # Handler untuk perintah .vclone
+# @app.on_message(filters.command("vclone", prefixes=".") & filters.me)
+# async def clone_voice(client, message):
+#     # ... (logika parsing argumen untuk mendapatkan nama suara dan teks)
+#     voice_name = "Rachel"
+#     text = "Halo, ini adalah suara kloning."
+#
+#     cloner = client.ns.ai.voicecloning(api_key="ELEVENLABS_API_KEY_ANDA")
+#     voices = await cloner.get_voices()
+#     target_voice = next((v for v in voices if v.name.lower() == voice_name.lower()), None)
+#
+#     if target_voice:
+#         audio_file = await cloner.clone(text, target_voice.id)
+#         await client.send_voice(message.chat.id, voice=audio_file)
 ```
 ---
 ### `web`
@@ -828,6 +897,30 @@ async def top_processes(client, message):
         await message.reply(f"Gagal mengambil daftar proses: {e}")
 ```
 ---
+### `speedtest`
+Menjalankan tes kecepatan internet (download, upload, ping) langsung dari server.
+
+**Penting:** Fitur ini memerlukan dependensi `speedtest-cli`. Instal dengan "extra" `[server]`.
+
+**Inisialisasi:**
+`speedtester = client.ns.server.speedtest` (sudah siap pakai)
+
+**Metode Utama:**
+- `run()`: Menjalankan tes dan mengembalikan gambar hasil (`BytesIO`).
+
+**Contoh Penggunaan:**
+```python
+# @app.on_message(filters.command("speedtest", prefixes=".") & filters.me)
+# async def run_speedtest(client, message):
+#     status = await message.edit("🚀 Menjalankan tes kecepatan...")
+#     try:
+#         result_image = await client.ns.server.speedtest.run()
+#         await client.send_photo(message.chat.id, photo=result_image, caption="✅ Tes selesai.")
+#         await status.delete()
+#     except Exception as e:
+#         await status.edit(f"❌ Gagal: {e}")
+```
+---
 ### `user`
 Kelas untuk mengelola pengguna SSH di server Linux dari jarak jauh. Berguna untuk membuat atau menghapus akses pengguna secara dinamis.
 
@@ -1185,6 +1278,34 @@ async def animated_sticker_handler(client, message):
 <details>
 <summary><strong>🛠️ Utilitas (`client.ns.utils`)</strong></summary>
 
+### `audiofx`
+Modul untuk menerapkan berbagai efek audio pada file suara, seperti pesan suara.
+
+**Inisialisasi:** `audio_fx = client.ns.utils.audiofx` (sudah siap pakai)
+
+**Metode Utama:** `apply_effect(input_path, output_path, effect)`
+
+**Efek yang Tersedia:** `chipmunk`, `robot`, `echo`, `reverse`.
+
+**Contoh Penggunaan:**
+```python
+# @app.on_message(filters.command("voicefx", prefixes=".") & filters.reply)
+# async def voice_effect(client, message):
+#     if not message.reply_to_message.voice:
+#         return await message.edit("Balas ke pesan suara.")
+#
+#     effect_name = message.command[1]
+#     status = await message.edit(f"🎤 Menerapkan efek {effect_name}...")
+#
+#     async with client.ns.utils.files.temp_dir() as tmpdir:
+#         input_audio = await client.download_media(message.reply_to_message.voice)
+#         output_audio = os.path.join(tmpdir, "output.ogg")
+#
+#         await client.ns.utils.audiofx.apply_effect(input_audio, output_audio, effect_name)
+#         await client.send_voice(message.chat.id, voice=output_audio)
+#         await status.delete()
+```
+---
 ### `cache`
 Decorator untuk menyimpan hasil dari sebuah fungsi ke dalam memori (*caching*) untuk jangka waktu tertentu. Sangat berguna untuk mempercepat respon dan mengurangi beban pada API eksternal.
 
@@ -1210,8 +1331,30 @@ Utilitas untuk mengunduh video atau audio dari berbagai platform (YouTube, dll) 
 
 **Inisialisasi:** `downloader = client.ns.utils.downloader(cookies_file_path=None, download_path="downloads")`
 
-**Metode Utama:** `download(url, audio_only=False, progress_callback=None)`
+**Metode Utama:**
+- `download(url, audio_only=False, progress_callback=None)`
+- `search_youtube(query, limit=5)`: Mencari video di YouTube dan mengembalikan daftar hasil.
 
+---
+### `faker`
+Generator data pribadi palsu untuk berbagai keperluan, seperti testing atau privasi.
+
+**Inisialisasi:** `faker = client.ns.utils.faker` (sudah siap pakai)
+
+**Metode Utama:** `generate()`: Mengembalikan objek `SimpleNamespace` dengan atribut seperti `name`, `address`, `email`, `job`, `phone_number`, dll.
+
+**Contoh Penggunaan:**
+```python
+# @app.on_message(filters.command("fakeinfo", prefixes="."))
+# async def fake_info(client, message):
+#     info = client.ns.utils.faker.generate()
+#     response = (
+#         f"**Nama:** {info.name}\n"
+#         f"**Alamat:** {info.address.replace('\n', ', ')}\n"
+#         f"**Email:** `{info.email}`"
+#     )
+#     await message.edit(response)
+```
 ---
 ### `files`
 Manajer file yang aman untuk menangani file dan direktori temporer. Menjamin pembersihan otomatis setelah selesai digunakan, bahkan jika terjadi error.
@@ -1233,6 +1376,29 @@ Mengambil informasi profil pengguna dari GitHub menggunakan API resmi untuk data
 #     await message.reply(f"Nama: {info.name}\nBio: {info.bio}")
 ```
 ---
+### `gofile`
+Utilitas untuk mengunggah file ke layanan hosting GoFile.io dan mendapatkan tautan unduhan.
+
+**Inisialisasi:** `uploader = client.ns.utils.gofile` (sudah siap pakai)
+
+**Metode Utama:** `upload(file_path)`: Mengunggah file dan mengembalikan objek `SimpleNamespace` dengan detail seperti `downloadPage`, `name`, dll.
+
+**Contoh Penggunaan:**
+```python
+# @app.on_message(filters.command("gofile", prefixes=".") & filters.reply)
+# async def upload_to_gofile(client, message):
+#     if not message.reply_to_message.media:
+#         return await message.edit("Balas ke file.")
+#
+#     status = await message.edit("📥 Mengunduh...")
+#     file_path = await client.download_media(message.reply_to_message)
+#
+#     await status.edit("📤 Mengunggah ke GoFile...")
+#     result = await client.ns.utils.gofile.upload(file_path)
+#     await status.edit(f"**Tautan Unduhan:** {result.downloadPage}")
+#     os.remove(file_path)
+```
+---
 ### `grad`
 Mempercantik output terminal dengan teks bergradien dan timer countdown.
 
@@ -1249,11 +1415,31 @@ Kumpulan alat untuk memanipulasi gambar.
 - `apply_filter(image_bytes, filter_name)`
 - `remove_background(image_bytes)`
 - `convert_sticker_to_png(sticker_bytes)`
+- `deepfry(image_bytes)`
+- `create_afk_card(pfp_bytes, name, reason, duration)`
 
 ---
 ### `log`
 Logger canggih pengganti `print()` yang memberikan output berwarna dan informatif ke konsol.
 
+---
+### `mediainfo`
+Mengekstrak metadata teknis (codec, bitrate, resolusi, dll.) dari file video atau audio menggunakan `ffprobe`.
+
+**Inisialisasi:** `inspector = client.ns.utils.mediainfo` (sudah siap pakai)
+
+**Metode Utama:** `get_info(file_path)`: Menganalisis file dan mengembalikan objek `SimpleNamespace` dengan detail `video`, `audio`, dan `general`.
+
+**Contoh Penggunaan:**
+```python
+# @app.on_message(filters.command("mediainfo", prefixes=".") & filters.reply)
+# async def get_media_info(client, message):
+#     # ... (logika download file)
+#     file_path = "path/to/video.mp4"
+#     info = await client.ns.utils.mediainfo.get_info(file_path)
+#     if info.video:
+#         await message.edit(f"Resolusi: {info.video.resolution}")
+```
 ---
 ### `osint`
 Toolkit untuk melakukan investigasi sumber terbuka dasar.
@@ -1295,7 +1481,7 @@ Utilitas sederhana untuk memendekkan URL menggunakan layanan TinyURL.
 ### `wikipedia`
 Mencari artikel di Wikipedia dan mengembalikan ringkasan, URL, dan gambar utama.
 **Inisialisasi:** `wiki = client.ns.utils.wikipedia(lang="id")`
-**Metode Utama:** `search(query)`
+**Metode Utama:** `search(query, limit=1)`
 **Contoh:**
 ```python
 # @app.on_message(filters.command("wiki"))
