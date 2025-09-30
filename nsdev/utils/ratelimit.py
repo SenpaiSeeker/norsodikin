@@ -1,5 +1,5 @@
 import time
-from functools import partial, wraps
+from functools import wraps
 from typing import Dict, Tuple
 
 from pyrogram.types import CallbackQuery, Message
@@ -21,13 +21,17 @@ class RateLimiter(Gradient):
             async def wrapped(client, update, *args, **kwargs):
                 if isinstance(update, Message):
                     user_id = update.from_user.id
+                    if update.command:
+                        command_name = update.command[0]
+                    else:
+                        command_name = func.__name__
                 elif isinstance(update, CallbackQuery):
                     user_id = update.from_user.id
+                    command_name = func.__name__
                 else:
                     return await func(client, update, *args, **kwargs)
 
-                actual_func_name = getattr(func, 'original_func_name', func.__name__)
-                key = f"{user_id}:{actual_func_name}"
+                key = f"{user_id}:{command_name}"
 
                 current_time = time.time()
 
