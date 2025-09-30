@@ -1,20 +1,20 @@
+import os
 from google import genai
 from google.genai import types
-
 
 class ChatbotGemini:
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.client = genai.Client(api_key=api_key)
         self.model_name = "gemini-2.5-flash"
-        self.generation_config = types.GenerateContentConfig(
-            temperature=1,
-            top_p=0.95,
-            top_k=40,
-            max_output_tokens=2048,
-            response_modalities=["TEXT"],
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
-        )
+        self.generation_config = {
+            "temperature": 1,
+            "top_p": 0.95,
+            "top_k": 40,
+            "max_output_tokens": 2048,
+            "response_mime_type": "text/plain",
+            "thinking_config": types.ThinkingConfig(thinking_budget=0),
+        }
         self.chat_history = {}
         self.khodam_history = {}
         self.custom_chatbot_instruction = None
@@ -60,12 +60,13 @@ class ChatbotGemini:
 
     async def _send_request(self, model_override: str = None, **payload) -> str:
         model_to_use = model_override or self.model_name
+        contents = payload.get("contents", [])
+        config = payload.get("config", None)
         try:
-            response = self.client.models.generate_content(
+            response = await self.client.aio.models.generate_content(
                 model=model_to_use,
-                contents=payload.get("contents", []),
-                config=self.generation_config,
-                system_instruction=payload.get("systemInstruction"),
+                contents=contents,
+                config=config,
             )
             return response.text
         except Exception as e:
@@ -73,30 +74,28 @@ class ChatbotGemini:
 
     async def send_chat_message(self, message: str, user_id: str, bot_name: str) -> str:
         history = self.chat_history.setdefault(user_id, [])
-        history.append(types.Content(role="user", parts=[types.Part.from_text(text=message)]))
+        user_content = types.Content(role="user", parts=[types.Part.from_text(text=message)])
+        history.append(user_content)
 
         instruction = self._build_instruction("chatbot", bot_name)
-        payload = {
-            "contents": history,
-            "systemInstruction": types.Content(parts=[types.Part.from_text(text=instruction)]),
-        }
+        config = types.GenerateContentConfig(**self.generation_config, system_instruction=instruction)
 
-        reply = await self._send_request(**payload)
+        reply = await self._send_request(contents=history, config=config)
 
-        history.append(types.Content(role="model", parts=[types.Part.from_text(text=reply)]))
+        model_content = types.Content(role="model", parts=[types.Part.from_text(text=reply)])
+        history.append(model_content)
         return reply
 
     async def send_khodam_message(self, name: str, user_id: str) -> str:
         history = self.khodam_history.setdefault(user_id, [])
-        history.append(types.Content(role="user", parts=[types.Part.from_text(text=name)]))
+        user_content = types.Content(role="user", parts=[types.Part.from_text(text=name)])
+        history.append(user_content)
 
         instruction = self._build_instruction("khodam")
-        payload = {
-            "contents": history,
-            "systemInstruction": types.Content(parts=[types.Part.from_text(text=instruction)]),
-        }
+        config = types.GenerateContentConfig(**self.generation_config, system_instruction=instruction)
 
-        reply = await self._send_request(**payload)
+        reply = await self._send_request(contents=history, config=config)
 
-        history.append(types.Content(role="model", parts=[types.Part.from_text(text=reply)]))
+        model_content = types.Content(role="model", parts=[types.Part.from_text(text=reply)])
+        history.append(model_content)
         return reply
