@@ -26,8 +26,8 @@ class RateLimiter(Gradient):
                 else:
                     return await func(client, update, *args, **kwargs)
 
-                actual_func = func.func if isinstance(func, partial) else func
-                key = f"{user_id}:{actual_func.__name__}"
+                actual_func_name = getattr(func, 'original_func_name', func.__name__)
+                key = f"{user_id}:{actual_func_name}"
 
                 current_time = time.time()
 
