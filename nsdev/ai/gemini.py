@@ -12,7 +12,8 @@ class ChatbotGemini:
             top_p=0.95,
             top_k=40,
             max_output_tokens=2048,
-            response_mime_type="text/plain",
+            response_modalities=["TEXT"],
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
         )
         self.chat_history = {}
         self.khodam_history = {}
@@ -62,7 +63,9 @@ class ChatbotGemini:
         try:
             response = self.client.models.generate_content(
                 model=model_to_use,
-                **payload,
+                contents=payload.get("contents", []),
+                config=self.generation_config,
+                system_instruction=payload.get("systemInstruction"),
             )
             return response.text
         except Exception as e:
@@ -70,50 +73,30 @@ class ChatbotGemini:
 
     async def send_chat_message(self, message: str, user_id: str, bot_name: str) -> str:
         history = self.chat_history.setdefault(user_id, [])
-
-        contents = [
-            types.Content(role=entry["role"], parts=[types.Part.from_text(p["text"])])
-            for entry in history
-            for p in entry["parts"]
-        ]
-        contents.append(types.Content(role="user", parts=[types.Part.from_text(message)]))
+        history.append(types.Content(role="user", parts=[types.Part.from_text(text=message)]))
 
         instruction = self._build_instruction("chatbot", bot_name)
-
         payload = {
-            "contents": contents,
-            "config": self.generation_config,
-            "system_instruction": types.Content(parts=[types.Part.from_text(instruction)]),
+            "contents": history,
+            "systemInstruction": types.Content(parts=[types.Part.from_text(text=instruction)]),
         }
 
         reply = await self._send_request(**payload)
 
-        history.append({"role": "user", "parts": [{"text": message}]})
-        history.append({"role": "model", "parts": [{"text": reply}]})
-
+        history.append(types.Content(role="model", parts=[types.Part.from_text(text=reply)]))
         return reply
 
     async def send_khodam_message(self, name: str, user_id: str) -> str:
         history = self.khodam_history.setdefault(user_id, [])
-
-        contents = [
-            types.Content(role=entry["role"], parts=[types.Part.from_text(p["text"])])
-            for entry in history
-            for p in entry["parts"]
-        ]
-        contents.append(types.Content(role="user", parts=[types.Part.from_text(name)]))
+        history.append(types.Content(role="user", parts=[types.Part.from_text(text=name)]))
 
         instruction = self._build_instruction("khodam")
-
         payload = {
-            "contents": contents,
-            "config": self.generation_config,
-            "system_instruction": types.Content(parts=[types.Part.from_text(instruction)]),
+            "contents": history,
+            "systemInstruction": types.Content(parts=[types.Part.from_text(text=instruction)]),
         }
 
         reply = await self._send_request(**payload)
 
-        history.append({"role": "user", "parts": [{"text": name}]})
-        history.append({"role": "model", "parts": [{"text": reply}]})
-
+        history.append(types.Content(role="model", parts=[types.Part.from_text(text=reply)]))
         return reply
