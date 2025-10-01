@@ -369,13 +369,13 @@ class ImageManipulator(FontManager):
         with resources.as_file(resources.files("assets").joinpath("fonts", "NotoSansSymbols2-Regular.ttf")) as font_path:
             symbol_font_path = str(font_path)
 
-        font_name = ImageFont.truetype(font_bold_path, 48, layout_engine=ImageFont.Layout.RAQM)
-        font_user = ImageFont.truetype(font_regular_path, 32, layout_engine=ImageFont.Layout.RAQM)
-        font_bio = ImageFont.truetype(font_italic_path, 28, layout_engine=ImageFont.Layout.RAQM)
-        font_stats = ImageFont.truetype(font_regular_path, 24, layout_engine=ImageFont.Layout.RAQM)
-        font_badge = ImageFont.truetype(font_bold_path, 20, layout_engine=ImageFont.Layout.RAQM)
+        font_name = ImageFont.truetype(font_bold_path, 48)
+        font_user = ImageFont.truetype(font_regular_path, 32)
+        font_bio = ImageFont.truetype(font_italic_path, 28)
+        font_stats = ImageFont.truetype(font_regular_path, 24)
+        font_badge = ImageFont.truetype(font_bold_path, 20)
 
-        font_features = [font_regular_path, symbol_font_path]
+        font_features = [symbol_font_path]
         
         img.paste(pfp, (50, 50), pfp)
 
@@ -389,7 +389,7 @@ class ImageManipulator(FontManager):
             badge_bbox = draw.textbbox((0,0), "SUDO", font=font_badge)
             badge_w = badge_bbox[2] - badge_bbox[0] + 20
             badge_h = badge_bbox[3] - badge_bbox[1] + 10
-            name_bbox = draw.textbbox((0,0), name, font=font_name, features=["-liga"], font_features=font_features)
+            name_bbox = draw.textbbox((0,0), name, font=font_name)
             badge_x = text_x + (name_bbox[2] - name_bbox[0]) + 15
             badge_y = 75
             draw.rounded_rectangle((badge_x, badge_y, badge_x + badge_w, badge_y + badge_h), radius=5, fill="#388E3C")
@@ -403,7 +403,7 @@ class ImageManipulator(FontManager):
             draw.text((50, bio_y), line, font=font_bio, fill="#C9D1D9")
             bio_y += 35
 
-        draw.text((50, H - 70), f"Total Foto Profil: {pfp_count}", font=stats_font, fill="#8B949E")
+        draw.text((50, H - 70), f"Total Foto Profil: {pfp_count}", font=font_stats, fill="#8B949E")
         
         output = BytesIO()
         img.save(output, format="PNG")
