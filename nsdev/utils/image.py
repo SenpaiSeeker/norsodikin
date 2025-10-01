@@ -360,27 +360,16 @@ class ImageManipulator(FontManager):
         img = Image.new("RGB", (W, H), "#161B22")
         draw = ImageDraw.Draw(img)
         
-        with resources.as_file(resources.files("assets").joinpath("fonts", "NotoSans-Bold.ttf")) as font_path:
-            font_bold_path = str(font_path)
-        with resources.as_file(resources.files("assets").joinpath("fonts", "NotoSans-Regular.ttf")) as font_path:
-            font_regular_path = str(font_path)
-        with resources.as_file(resources.files("assets").joinpath("fonts", "NotoSans-Italic.ttf")) as font_path:
-            font_italic_path = str(font_path)
-        with resources.as_file(resources.files("assets").joinpath("fonts", "NotoSansSymbols2-Regular.ttf")) as font_path:
-            symbol_font_path = str(font_path)
+        font_name = self._get_font_from_package("NotoSans-Bold.ttf", 48)
+        font_user = self._get_font_from_package("NotoSans-Regular.ttf", 32)
+        font_bio = self._get_font_from_package("NotoSans-Italic.ttf", 28)
+        font_stats = self._get_font_from_package("NotoSans-Regular.ttf", 24)
+        font_badge = self._get_font_from_package("NotoSans-Bold.ttf", 20)
 
-        font_name = ImageFont.truetype(font_bold_path, 48)
-        font_user = ImageFont.truetype(font_regular_path, 32)
-        font_bio = ImageFont.truetype(font_italic_path, 28)
-        font_stats = ImageFont.truetype(font_regular_path, 24)
-        font_badge = ImageFont.truetype(font_bold_path, 20)
-
-        font_features = [symbol_font_path]
-        
         img.paste(pfp, (50, 50), pfp)
 
         text_x = 300
-        draw.text((text_x, 70), name, font=font_name, fill="#C9D1D9", features=["-liga"], font_features=font_features)
+        draw.text((text_x, 70), name, font=font_name, fill="#C9D1D9")
         
         username_text = f"@{username} | ID: {user_id}" if username else f"ID: {user_id}"
         draw.text((text_x, 130), username_text, font=font_user, fill="#8B949E")
