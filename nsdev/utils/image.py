@@ -360,12 +360,19 @@ class ImageManipulator(FontManager):
         img = Image.new("RGB", (W, H), "#161B22")
         draw = ImageDraw.Draw(img)
         
-        font_name = self._get_font_from_package("NotoSans-Bold.ttf", 48)
-        font_user = self._get_font_from_package("NotoSans-Regular.ttf", 32)
-        font_bio = self._get_font_from_package("NotoSans-Italic.ttf", 28)
-        font_stats = self._get_font_from_package("NotoSans-Regular.ttf", 24)
-        font_badge = self._get_font_from_package("NotoSans-Bold.ttf", 20)
-
+        font_name_path = self._get_font_from_package("NotoSans-Bold.ttf", 48).path
+        font_user_path = self._get_font_from_package("NotoSans-Regular.ttf", 32).path
+        font_bio_path = self._get_font_from_package("NotoSans-Italic.ttf", 28).path
+        font_stats_path = self._get_font_from_package("NotoSans-Regular.ttf", 24).path
+        font_badge_path = self._get_font_from_package("NotoSans-Bold.ttf", 20).path
+        font_symbol_path = self._get_font_from_package("NotoSansSymbols2-Regular.ttf", 48).path
+        
+        font_name = ImageFont.truetype(font_symbol_path, 48)
+        font_user = ImageFont.truetype(font_user_path, 32)
+        font_bio = ImageFont.truetype(font_bio_path, 28)
+        font_stats = ImageFont.truetype(font_stats_path, 24)
+        font_badge = ImageFont.truetype(font_badge_path, 20)
+        
         img.paste(pfp, (50, 50), pfp)
 
         text_x = 300
