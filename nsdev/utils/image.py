@@ -1,5 +1,6 @@
 import asyncio
 import random
+import textwrap
 from functools import partial
 from importlib import resources
 from io import BytesIO
@@ -342,3 +343,60 @@ class ImageManipulator(FontManager):
         
     async def create_afk_card(self, pfp_bytes: bytes, name: str, reason: str, duration: str) -> bytes:
         return await self._run_in_executor(self._sync_create_afk_card, pfp_bytes, name, reason, duration)
+
+    def _sync_create_profile_card(self, pfp_bytes: bytes, name: str, username: str, user_id: int, bio: str, pfp_count: int, is_sudo: bool) -> bytes:
+        pfp_data = pfp_bytes
+        if not pfp_data:
+            initial = name[0].upper() if name else "U"
+            pfp_data = self._get_default_pfp(initial)
+        
+        pfp = Image.open(BytesIO(pfp_data)).convert("RGBA").resize((200, 200))
+        mask = Image.new("L", pfp.size, 0)
+        draw_mask = ImageDraw.Draw(mask)
+        draw_mask.ellipse((0, 0) + pfp.size, fill=255)
+        pfp.putalpha(mask)
+
+        W, H = 900, 500
+        img = Image.new("RGB", (W, H), "#161B22")
+        draw = ImageDraw.Draw(img)
+        
+        font_name = self._get_font_from_package("NotoSans-Bold.ttf", 48)
+        font_user = self._get_font_from_package("NotoSans-Regular.ttf", 32)
+        font_bio = self._get_font_from_package("NotoSans-Italic.ttf", 28)
+        font_stats = self._get_font_from_package("NotoSans-Regular.ttf", 24)
+        font_badge = self._get_font_from_package("NotoSans-Bold.ttf", 20)
+
+        img.paste(pfp, (50, 50), pfp)
+
+        text_x = 300
+        draw.text((text_x, 70), name, font=font_name, fill="#C9D1D9")
+        
+        username_text = f"@{username} | ID: {user_id}" if username else f"ID: {user_id}"
+        draw.text((text_x, 130), username_text, font=font_user, fill="#8B949E")
+
+        if is_sudo:
+            badge_bbox = draw.textbbox((0,0), "SUDO", font=font_badge)
+            badge_w = badge_bbox[2] - badge_bbox[0] + 20
+            badge_h = badge_bbox[3] - badge_bbox[1] + 10
+            name_bbox = draw.textbbox((0,0), name, font=font_name)
+            badge_x = text_x + (name_bbox[2] - name_bbox[0]) + 15
+            badge_y = 75
+            draw.rounded_rectangle((badge_x, badge_y, badge_x + badge_w, badge_y + badge_h), radius=5, fill="#388E3C")
+            draw.text((badge_x + 10, badge_y + 5), "SUDO", font=font_badge, fill="#FFFFFF")
+
+        draw.line([(50, 280), (W - 50, 280)], fill="#30363D", width=2)
+
+        wrapped_bio = textwrap.wrap(bio, width=45) if bio else ["Tidak ada bio."]
+        bio_y = 310
+        for line in wrapped_bio[:3]:
+            draw.text((50, bio_y), line, font=font_bio, fill="#C9D1D9")
+            bio_y += 35
+
+        draw.text((50, H - 70), f"Total Foto Profil: {pfp_count}", font=font_stats, fill="#8B949E")
+        
+        output = BytesIO()
+        img.save(output, format="PNG")
+        return output.getvalue()
+
+    async def create_profile_card(self, pfp_bytes: bytes, name: str, username: str, user_id: int, bio: str, pfp_count: int, is_sudo: bool) -> bytes:
+        return await self._run_in_executor(self._sync_create_profile_card, pfp_bytes, name, username, user_id, bio, pfp_count, is_sudo)
