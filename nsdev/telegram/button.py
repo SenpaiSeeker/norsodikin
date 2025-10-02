@@ -37,18 +37,20 @@ class Button:
             cb_data, *extra_params = payload.split(";")
 
             is_url = bool(self.get_urls(cb_data))
+            is_copy = "copy" in extra_params
+            is_user = "user" in extra_params
 
-            if not is_url:
+            if not is_url and not is_copy and not is_user:
                 if cb_prefix:
                     cb_data = f"{cb_prefix}_{cb_data}"
                 elif inline_cmd and is_id:
                     cb_data = f"{inline_cmd} {is_id}_{cb_data}"
                 elif inline_cmd:
                     cb_data = f"{inline_cmd} {cb_data}"
-
-            if "user" in extra_params:
+            
+            if is_user:
                 button = pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
-            elif "copy" in extra_params:
+            elif is_copy:
                 button = pyrogram.types.InlineKeyboardButton(
                     label, copy_text=pyrogram.types.CopyTextButton(text=cb_data)
                 )
@@ -62,6 +64,7 @@ class Button:
             else:
                 layout.append([button])
         return pyrogram.types.InlineKeyboardMarkup(layout), remaining_text
+
 
     def create_button_keyboard(self, text):
         layout = []
