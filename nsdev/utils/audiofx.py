@@ -31,14 +31,14 @@ class AudioFX:
 
     async def apply_effect(self, input_path: str, output_path: str, effect: str):
         effects: Dict[str, str] = {
-            "chipmunk": "atempo=1.5,asetrate=44100*0.7",
-            "robot": "atempo=0.8,asetrate=44100*0.6",
-            "echo": "aecho=0.8:0.9:500:0.3",
+            "chipmunk": "asetrate=44100*1.5,atempo=1.25,aresample=44100",
+            "robot": "afftfilt=real='hypot(re,im)*cos(0)':imag='hypot(re,im)*sin(0)'",
+            "echo": "aecho=0.8:0.9:1000:0.4",
             "reverse": "areverse",
             "slow": "atempo=0.7",
-            "fast": "atempo=1.3",
-            "deep": "asetrate=44100*0.8,atempo=1.2",
-            "whisper": "volume=0.5,compand=.3|.3:1|1:-90/-900|-60/-60|-30/-10:-20:dB:attack=0.5,acrusher=.1:1:1:0:log",
+            "fast": "atempo=1.5",
+            "deep": "asetrate=44100*0.75,atempo=1.1,aresample=44100",
+            "whisper": "volume=0.3,highpass=f=300,lowpass=f=3000,afftfilt=real='random(0)':imag='random(1)'",
         }
         filter_string = effects.get(effect.lower())
         if not filter_string:
