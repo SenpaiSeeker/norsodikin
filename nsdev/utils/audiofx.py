@@ -31,7 +31,7 @@ class AudioFX:
 
     async def apply_effect(self, input_path: str, output_path: str, effect: str):
         effects: Dict[str, str] = {
-            "chipmunk": "rubberband=pitch=1.5",
+            "chipmunk": "rubberband=pitch=2",
             "deep": "rubberband=pitch=0.7",
             "robot": "afftfilt=real='hypot(re,im)*cos(0)':imag='hypot(re,im)*sin(0)'",
             "echo": "aecho=0.6:0.6:1000:0.4",
