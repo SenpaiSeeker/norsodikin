@@ -45,7 +45,6 @@ from .utils.github import GitHubInfo
 from .utils.gofile import GoFileUploader
 from .utils.gradient import Gradient
 from .utils.image import ImageManipulator
-from .utils.imagesearch import ImageSearch
 from .utils.logger import LoggerHandler
 from .utils.lookup import TMDbClient
 from .utils.mediainfo import MediaInspector
@@ -127,7 +126,6 @@ class NsDev:
             gofile=GoFileUploader(),
             grad=Gradient(),
             image=ImageManipulator(),
-            imagesearch=ImageSearch(),
             log=LoggerHandler,
             lookup=TMDbClient,
             mediainfo=MediaInspector(),
