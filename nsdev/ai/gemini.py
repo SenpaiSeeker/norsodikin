@@ -42,7 +42,7 @@ class ChatbotGemini:
                 "hubungan antara khodam dan pemiliknya dapat memengaruhi kehidupan si pemilik.\n"
                 "Deskripsi tidak harus selalu positif. Beberapa khodam mungkin memiliki sisi gelap atau aneh yang justru menambah kedalaman interpretasi. "
                 "Ini adalah hiburan semata, tetapi tetap berikan deskripsi yang singkat, padat, namun jelas agar mudah dipahami oleh audiens. Panjang deskripsi "
-                "tidak boleh melebihi 2000 karakter alfabet dalam teks polos (plain text) dan harus sepenuhnya berbahasa Indonesia."
+                "tidak boleh melebihi 1000 karakter alfabet dalam teks polos (plain text) dan harus sepenuhnya berbahasa Indonesia."
             )
         elif model_name == "chatbot":
             if self.custom_chatbot_instruction:
