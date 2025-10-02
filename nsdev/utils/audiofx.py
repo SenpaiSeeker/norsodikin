@@ -20,6 +20,8 @@ class AudioFX:
             filter_str,
             "-c:a",
             "libopus",
+            "-b:a",
+            "32k",
             output_path,
         ]
         result = subprocess.run(command, capture_output=True, text=True)
@@ -33,6 +35,10 @@ class AudioFX:
             "robot": "atempo=0.8,asetrate=44100*0.6",
             "echo": "aecho=0.8:0.9:500:0.3",
             "reverse": "areverse",
+            "slow": "atempo=0.7",
+            "fast": "atempo=1.3",
+            "deep": "asetrate=44100*0.8,atempo=1.2",
+            "whisper": "volume=0.5,compand=.3|.3:1|1:-90/-900|-60/-60|-30/-10:-20:dB:attack=0.5,acrusher=.1:1:1:0:log",
         }
         filter_string = effects.get(effect.lower())
         if not filter_string:
