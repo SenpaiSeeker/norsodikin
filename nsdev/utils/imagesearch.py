@@ -45,7 +45,7 @@ class ImageSearch:
     async def search_gif(self, query: str, limit: int = 5) -> List[str]:
         urls = await self._fetch_image_urls(query, "gif")
         random.shuffle(urls)
-        return urls[:limit]6
+        return urls[:limit]
 
     async def random_image(self, limit: int = 1) -> List[str]:
         random_queries = ["nature", "abstract", "cityscape", "animals", "flowers", "mountain"]
