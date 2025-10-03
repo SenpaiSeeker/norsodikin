@@ -1,21 +1,56 @@
 from ctypes import c_int32
-from hashlib import md5
 
 
 class ViuCKey:
     def __init__(self):
-        self.encryption_arrays = [[
-            1332468387, -1641050960, 2136896045, -1629555948,
-            1399201960, -850809832, -1307058635, 751381793,
-            -1933648423, 1106735553, -203378700, -550927659,
-            766369351, 1817882502, -1615200142, 1083409063,
-            -104955314, -1780208184, 173944250, 1254993693,
-            1422337688, -1054667952, -880990486, -2119136777,
-            -1822404972, 1380140484, -1723964626, 412019417,
-            -890799303, -1734066435, 26893779, 420787978,
-            -1337058067, 686432784, 695238595, 811911369,
-            -391724567, -1068702727, -381903814, -648522509,
-            -1266234148, 1959407397, -1644776673, 1152313324]]
+        self.encryption_arrays = [
+            [
+                1332468387,
+                -1641050960,
+                2136896045,
+                -1629555948,
+                1399201960,
+                -850809832,
+                -1307058635,
+                751381793,
+                -1933648423,
+                1106735553,
+                -203378700,
+                -550927659,
+                766369351,
+                1817882502,
+                -1615200142,
+                1083409063,
+                -104955314,
+                -1780208184,
+                173944250,
+                1254993693,
+                1422337688,
+                -1054667952,
+                -880990486,
+                -2119136777,
+                -1822404972,
+                1380140484,
+                -1723964626,
+                412019417,
+                -890799303,
+                -1734066435,
+                26893779,
+                420787978,
+                -1337058067,
+                686432784,
+                695238595,
+                811911369,
+                -391724567,
+                -1068702727,
+                -381903814,
+                -648522509,
+                -1266234148,
+                1959407397,
+                -1644776673,
+                1152313324,
+            ]
+        ]
         d = [None] * 256
         f = d.copy()
         g = d.copy()
@@ -70,10 +105,9 @@ class ViuCKey:
     def decode_text(arr, length):
         text_array = []
         for i in range(length):
-            text_array.append('{:02x}'.format(
-                ViuCKey.rshift(arr[i // 4], 24 - i % 4 * 8) & 255))
+            text_array.append("{:02x}".format(ViuCKey.rshift(arr[i // 4], 24 - i % 4 * 8) & 255))
 
-        return ''.join(text_array)
+        return "".join(text_array)
 
     @staticmethod
     def calculate_hash(text):
@@ -97,7 +131,7 @@ class ViuCKey:
         if b == 0:
             xor_arr = [22039283, 1457920463, 776125350, -1941999367]
         else:
-            xor_arr = a[b - 4: b]
+            xor_arr = a[b - 4 : b]
 
         for i, val in enumerate(xor_arr):
             a[b + i] ^= val
@@ -108,52 +142,114 @@ class ViuCKey:
         m = a[b + 3] ^ c[3]
         n = 4
         for _ in range(9):
-            q = (d[ViuCKey.rshift(j, 24)] ^ e[ViuCKey.rshift(k, 16) & 255]
-                 ^ f[ViuCKey.rshift(l, 8) & 255] ^ g[255 & m] ^ c[n])
-            s = (d[ViuCKey.rshift(k, 24)] ^ e[ViuCKey.rshift(l, 16) & 255]
-                 ^ f[ViuCKey.rshift(m, 8) & 255] ^ g[255 & j] ^ c[n + 1])
-            t = (d[ViuCKey.rshift(l, 24)] ^ e[ViuCKey.rshift(m, 16) & 255]
-                 ^ f[ViuCKey.rshift(j, 8) & 255] ^ g[255 & k] ^ c[n + 2])
-            m = (d[ViuCKey.rshift(m, 24)] ^ e[ViuCKey.rshift(j, 16) & 255]
-                 ^ f[ViuCKey.rshift(k, 8) & 255] ^ g[255 & l] ^ c[n + 3])
+            q = (
+                d[ViuCKey.rshift(j, 24)]
+                ^ e[ViuCKey.rshift(k, 16) & 255]
+                ^ f[ViuCKey.rshift(l, 8) & 255]
+                ^ g[255 & m]
+                ^ c[n]
+            )
+            s = (
+                d[ViuCKey.rshift(k, 24)]
+                ^ e[ViuCKey.rshift(l, 16) & 255]
+                ^ f[ViuCKey.rshift(m, 8) & 255]
+                ^ g[255 & j]
+                ^ c[n + 1]
+            )
+            t = (
+                d[ViuCKey.rshift(l, 24)]
+                ^ e[ViuCKey.rshift(m, 16) & 255]
+                ^ f[ViuCKey.rshift(j, 8) & 255]
+                ^ g[255 & k]
+                ^ c[n + 2]
+            )
+            m = (
+                d[ViuCKey.rshift(m, 24)]
+                ^ e[ViuCKey.rshift(j, 16) & 255]
+                ^ f[ViuCKey.rshift(k, 8) & 255]
+                ^ g[255 & l]
+                ^ c[n + 3]
+            )
             j = q
             k = s
             l = t
             n += 4
 
-        q = ViuCKey.int32(h[ViuCKey.rshift(j, 24)] << 24
-                       | h[ViuCKey.rshift(k, 16) & 255] << 16
-                       | h[ViuCKey.rshift(l, 8) & 255] << 8
-                       | h[255 & m]) ^ c[n]
-        s = ViuCKey.int32(h[ViuCKey.rshift(k, 24)] << 24
-                       | h[ViuCKey.rshift(l, 16) & 255] << 16
-                       | h[ViuCKey.rshift(m, 8) & 255] << 8
-                       | h[255 & j]) ^ c[n + 1]
-        t = ViuCKey.int32(h[ViuCKey.rshift(l, 24)] << 24
-                       | h[ViuCKey.rshift(m, 16) & 255] << 16
-                       | h[ViuCKey.rshift(j, 8) & 255] << 8
-                       | h[255 & k]) ^ c[n + 2]
-        m = ViuCKey.int32(h[ViuCKey.rshift(m, 24)] << 24
-                       | h[ViuCKey.rshift(j, 16) & 255] << 16
-                       | h[ViuCKey.rshift(k, 8) & 255] << 8
-                       | h[255 & l]) ^ c[n + 3]
+        q = (
+            ViuCKey.int32(
+                h[ViuCKey.rshift(j, 24)] << 24
+                | h[ViuCKey.rshift(k, 16) & 255] << 16
+                | h[ViuCKey.rshift(l, 8) & 255] << 8
+                | h[255 & m]
+            )
+            ^ c[n]
+        )
+        s = (
+            ViuCKey.int32(
+                h[ViuCKey.rshift(k, 24)] << 24
+                | h[ViuCKey.rshift(l, 16) & 255] << 16
+                | h[ViuCKey.rshift(m, 8) & 255] << 8
+                | h[255 & j]
+            )
+            ^ c[n + 1]
+        )
+        t = (
+            ViuCKey.int32(
+                h[ViuCKey.rshift(l, 24)] << 24
+                | h[ViuCKey.rshift(m, 16) & 255] << 16
+                | h[ViuCKey.rshift(j, 8) & 255] << 8
+                | h[255 & k]
+            )
+            ^ c[n + 2]
+        )
+        m = (
+            ViuCKey.int32(
+                h[ViuCKey.rshift(m, 24)] << 24
+                | h[ViuCKey.rshift(j, 16) & 255] << 16
+                | h[ViuCKey.rshift(k, 8) & 255] << 8
+                | h[255 & l]
+            )
+            ^ c[n + 3]
+        )
         a[b] = q
         a[b + 1] = s
         a[b + 2] = t
         a[b + 3] = m
 
-    def make(self, vid, tm, app_ver, guid, platform, url,
-             user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
-             referer='', nav_code_name='Mozilla',
-             nav_name='Netscape', nav_platform='Win64'):
+    def make(
+        self,
+        vid,
+        tm,
+        app_ver,
+        guid,
+        platform,
+        url,
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+        referer="",
+        nav_code_name="Mozilla",
+        nav_name="Netscape",
+        nav_platform="Win64",
+    ):
         text_parts = [
-            '', vid, tm, 'mg3c3b04ba', app_ver, guid, platform,
-            url[:48], user_agent[:48].lower(), referer[:48],
-            nav_code_name, nav_name, nav_platform, '00', ''
+            "",
+            vid,
+            tm,
+            "mg3c3b04ba",
+            app_ver,
+            guid,
+            platform,
+            url[:48],
+            user_agent[:48].lower(),
+            referer[:48],
+            nav_code_name,
+            nav_name,
+            nav_platform,
+            "00",
+            "",
         ]
-        text_parts.insert(1, ViuCKey.calculate_hash('|'.join(text_parts)))
+        text_parts.insert(1, ViuCKey.calculate_hash("|".join(text_parts)))
 
-        text = ViuCKey.pad_text('|'.join(text_parts))
+        text = ViuCKey.pad_text("|".join(text_parts))
         [arr, length] = ViuCKey.encode_text(text)
         self.encrypt(arr)
         return ViuCKey.decode_text(arr, length).upper()

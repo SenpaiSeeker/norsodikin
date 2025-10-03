@@ -47,7 +47,7 @@ class Button:
                     cb_data = f"{inline_cmd} {is_id}_{cb_data}"
                 elif inline_cmd:
                     cb_data = f"{inline_cmd} {cb_data}"
-            
+
             if is_user:
                 button = pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
             elif is_copy:
@@ -64,7 +64,6 @@ class Button:
             else:
                 layout.append([button])
         return pyrogram.types.InlineKeyboardMarkup(layout), remaining_text
-
 
     def create_button_keyboard(self, text):
         layout = []

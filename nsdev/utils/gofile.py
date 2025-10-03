@@ -30,7 +30,7 @@ class GoFileUploader:
                 with open(file_path, "rb") as f:
                     files = {"file": f}
                     response = await client.post(upload_url, files=files)
-                
+
                 response.raise_for_status()
                 result = response.json()
 

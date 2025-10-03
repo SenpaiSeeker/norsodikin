@@ -1,5 +1,4 @@
 import asyncio
-import functools
 from io import BytesIO
 
 import httpx
@@ -12,7 +11,7 @@ class SpeedtestRunner:
         s.get_best_server()
         s.download()
         s.upload()
-        
+
         image_url = s.results.share()
         with httpx.Client(follow_redirects=True) as client:
             response = client.get(image_url)

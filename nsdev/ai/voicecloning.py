@@ -30,7 +30,7 @@ class VoiceCloner:
                         labels.get(key) for key in ["accent", "gender", "description", "age"] if labels.get(key)
                     ]
                     description = ", ".join(description_parts).title()
-                    
+
                     voices_list.append(
                         SimpleNamespace(
                             id=voice.get("voice_id"),
@@ -41,7 +41,6 @@ class VoiceCloner:
                 return voices_list
             except Exception as e:
                 raise Exception(f"Gagal mengambil daftar suara dari ElevenLabs: {e}")
-
 
     async def clone(self, text: str, voice_id: str) -> BytesIO:
         url = f"{self.base_url}/text-to-speech/{voice_id}"
@@ -60,7 +59,7 @@ class VoiceCloner:
             try:
                 response = await client.post(url, headers=headers, json=payload)
                 response.raise_for_status()
-                
+
                 audio_bytes = BytesIO(response.content)
                 audio_bytes.name = "cloned_voice.ogg"
                 return audio_bytes

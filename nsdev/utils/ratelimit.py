@@ -6,7 +6,6 @@ from pyrogram.types import CallbackQuery, Message
 
 from .gradient import Gradient
 
-
 _user_timestamps: Dict[str, Tuple[int, float]] = {}
 
 
@@ -38,7 +37,7 @@ class RateLimiter(Gradient):
                         if count >= limit:
                             time_to_wait = per_seconds - time_passed
                             time_str = self.gettime(int(time_to_wait))
-                            
+
                             fmt = client.ns.telegram.formatter(mode="html")
                             error_text = (
                                 fmt.bold("⏳ Batas Penggunaan Tercapai ⏳")
@@ -54,8 +53,7 @@ class RateLimiter(Gradient):
                                 await update.reply_text(fmt.blockquote(error_text), quote=True)
                             elif isinstance(update, CallbackQuery):
                                 await update.answer(
-                                    f"Batas penggunaan tercapai. Coba lagi dalam {time_str}.",
-                                    show_alert=True
+                                    f"Batas penggunaan tercapai. Coba lagi dalam {time_str}.", show_alert=True
                                 )
 
                             return

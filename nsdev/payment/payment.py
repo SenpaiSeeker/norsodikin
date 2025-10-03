@@ -1,12 +1,11 @@
 import base64
 import hashlib
 import hmac
+import random
 import time
 import uuid
-import random
 
 import httpx
-from types import SimpleNamespace
 
 from ..data.ymlreder import YamlHandler
 
@@ -117,7 +116,7 @@ class VioletMediaPayClient:
         ref_kode = str(uuid.uuid4().hex)
         signature = self._generate_signature(ref_kode, amount)
         expired_time = int(time.time()) + expired
-        
+
         random_id = str(random.randint(1000, 9999))
         payload = {
             "api_key": self.api_key,

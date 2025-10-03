@@ -22,7 +22,7 @@ class CarbonClient:
             try:
                 response = await client.post(self.api_url, json=payload, headers=headers)
                 response.raise_for_status()
-                
+
                 return response.content
 
             except httpx.RequestError as e:

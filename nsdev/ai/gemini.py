@@ -1,4 +1,3 @@
-import os
 from google import genai
 from google.genai import types
 
@@ -66,14 +65,12 @@ class ChatbotGemini:
 
         config = types.GenerateContentConfig(
             **self.generation_config,
-            system_instruction=system_instruction if isinstance(system_instruction, str) else None
+            system_instruction=system_instruction if isinstance(system_instruction, str) else None,
         )
 
         try:
             response = await self.client.aio.models.generate_content(
-                model=model_to_use,
-                contents=contents,
-                config=config
+                model=model_to_use, contents=contents, config=config
             )
             return response.text
         except Exception as e:

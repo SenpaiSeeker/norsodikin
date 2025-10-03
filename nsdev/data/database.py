@@ -80,9 +80,7 @@ class DataBase:
             zip_path = await loop.run_in_executor(None, self._create_zip_archive, source_path)
             if zip_path:
                 timestamp = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S %Z")
-                caption = (
-                    f"Backup otomatis untuk `{self.file_name}`\nTipe: `{self.storage_type}`\nWaktu: `{timestamp}`"
-                )
+                caption = f"Backup otomatis untuk `{self.file_name}`\nTipe: `{self.storage_type}`\nWaktu: `{timestamp}`"
                 await self._send_zip_to_telegram(zip_path, caption)
         finally:
             if zip_path and os.path.exists(zip_path):
@@ -254,7 +252,7 @@ class DataBase:
     def allVars(self, user_id, var_key="variabel"):
         user_data = self._get_user_vars(user_id)
         encrypted_data = user_data.get(var_key, {})
-        
+
         decrypted = {}
         for key, value in encrypted_data.items():
             if isinstance(value, list):

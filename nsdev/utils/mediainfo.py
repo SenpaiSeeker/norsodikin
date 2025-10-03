@@ -19,8 +19,10 @@ class MediaInspector:
     def _sync_get_media_info(self, file_path: str) -> SimpleNamespace:
         command = [
             "ffprobe",
-            "-v", "quiet",
-            "-print_format", "json",
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
             "-show_format",
             "-show_streams",
             file_path,
@@ -28,7 +30,7 @@ class MediaInspector:
         result = subprocess.run(command, capture_output=True, text=True)
         if result.returncode != 0:
             raise RuntimeError(f"ffprobe failed: {result.stderr}")
-        
+
         data = json.loads(result.stdout)
         info = SimpleNamespace(video=None, audio=None, general=None)
 
@@ -39,7 +41,7 @@ class MediaInspector:
                 bitrate=self._format_bitrate(fmt.get("bit_rate", "0")),
                 format_name=fmt.get("format_long_name", "N/A"),
             )
-        
+
         for stream in data.get("streams", []):
             if stream.get("codec_type") == "video" and not info.video:
                 info.video = SimpleNamespace(
@@ -55,7 +57,7 @@ class MediaInspector:
                     channels=stream.get("channel_layout", "N/A"),
                     bitrate=self._format_bitrate(stream.get("bit_rate", "0")),
                 )
-        
+
         return info
 
     async def get_info(self, file_path: str) -> SimpleNamespace:

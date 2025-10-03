@@ -3,7 +3,6 @@ from datetime import datetime
 from typing import Optional, Tuple, Union
 
 import pyrogram
-import requests
 
 
 class Argument:
@@ -40,7 +39,7 @@ class Argument:
             api_id=self.client.api_id,
             api_hash=self.client.api_hash,
             bot_token=bot_token,
-            in_memory=True
+            in_memory=True,
         )
         try:
             async with temp_bot_client:
