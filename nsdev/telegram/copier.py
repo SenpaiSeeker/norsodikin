@@ -71,7 +71,7 @@ class MessageCopier:
 
             file_path = await self._client.download_media(message, progress=download_progress.update)
             if not file_path or not os.path.exists(file_path):
-                 return await message.copy(user_chat_id)
+                return await message.copy(user_chat_id)
 
             media_obj = getattr(message, message.media.value, None)
             
