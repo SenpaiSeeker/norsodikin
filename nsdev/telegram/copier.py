@@ -136,7 +136,7 @@ class MessageCopier:
                 await status_message.edit("📥 Mengunduh thumbnail kustom...")
                 thumb_message = await self._client.get_messages(user_chat_id, custom_thumb_message_id)
                 if thumb_message.photo:
-                    custom_thumb_path = await self._client.download_media(thumb_message.photo)
+                    custom_thumb_path = await self._client.download_media(thumb_message)
                 else:
                     await status_message.edit("⚠️ Balasan bukan foto, thumbnail kustom diabaikan.")
                     await asyncio.sleep(2)
