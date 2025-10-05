@@ -41,6 +41,7 @@ from .utils.colorize import AnsiColors
 from .utils.downloader import MediaDownloader
 from .utils.faker import FakeInfoGenerator
 from .utils.files import FileManager
+from .utils.fonts import FontChanger
 from .utils.github import GitHubInfo
 from .utils.gofile import GoFileUploader
 from .utils.gradient import Gradient
@@ -122,6 +123,7 @@ class NsDev:
             downloader=MediaDownloader,
             faker=FakeInfoGenerator(),
             files=FileManager(),
+            font=FontChanger(),
             github=GitHubInfo,
             gofile=GoFileUploader(),
             grad=Gradient(),
