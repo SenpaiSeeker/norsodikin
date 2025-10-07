@@ -46,7 +46,7 @@ from .utils.github import GitHubInfo
 from .utils.gofile import GoFileUploader
 from .utils.gradient import Gradient
 from .utils.image import ImageManipulator
-from .utils.logger import LoggerHandler
+from .utils.logger import CustomLogHandler, LoggerHandler
 from .utils.lookup import TMDbClient
 from .utils.mediainfo import MediaInspector
 from .utils.osint import OsintTools
