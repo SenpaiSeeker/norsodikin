@@ -1,17 +1,16 @@
 import datetime
+import logging
 import os
 import sys
 import zoneinfo
 
 from .colorize import AnsiColors
 
-
 class LoggerHandler(AnsiColors):
     def __init__(self, **options):
         super().__init__()
         """
         Inisialisasi logger dengan parameter opsional.
-
         :param options:
             - tz: Zona waktu untuk waktu lokal (default: 'Asia/Jakarta')
             - fmt: Format log (default: '{asctime} {levelname} {module}:{funcName}:{lineno} {message}')
@@ -20,40 +19,45 @@ class LoggerHandler(AnsiColors):
         self.tz = zoneinfo.ZoneInfo(options.get("tz", "Asia/Jakarta"))
         self.fmt = options.get("fmt", "{asctime} {levelname} {module}:{funcName}:{lineno} {message}")
         self.datefmt = options.get("datefmt", "%Y-%m-%d %H:%M:%S %Z")
-
-    def get_colors(self):
-        return {
-            "INFO": self.GREEN,
-            "DEBUG": self.BLUE,
+        self.colors = {
+            "INFO": self.GREEN, 
+            "DEBUG": self.BLUE, 
             "WARNING": self.YELLOW,
             "ERROR": self.RED,
             "CRITICAL": self.MAGENTA,
             "TIME": self.WHITE,
-            "MODULE": self.CYAN,
-            "PIPE": self.PURPLE,
+            "MODULE": self.CYAN, 
+            "PIPE": self.PURPLE, 
             "RESET": self.RESET,
         }
 
     def formatTime(self):
-        utc_time = datetime.datetime.utcfromtimestamp(datetime.datetime.now().timestamp())
+        utc_time = datetime.datetime.now(datetime.timezone.utc)
         local_time = utc_time.astimezone(self.tz)
         return local_time.strftime(self.datefmt)
 
     def format(self, record):
-        level_color = self.get_colors().get(record["levelname"], self.RESET)
-        pipe_color = self.get_colors()["PIPE"]
+        level_color = self.colors.get(record["levelname"], self.RESET)
+        pipe_color = self.colors["PIPE"]
 
         record["levelname"] = f"{pipe_color}│ {level_color}{record['levelname']:<8}"
         record["message"] = f"{pipe_color}│ {level_color}{record['message']}{self.RESET}"
 
         return self.fmt.format(
-            asctime=f"{self.get_colors()['TIME']}[ {self.formatTime()} ]",
+            asctime=f"{self.colors['TIME']}[ {self.formatTime()} ]",
             levelname=record["levelname"],
-            module=f"{pipe_color}│ {self.get_colors()['MODULE']}{os.path.basename(record.get('module', '<unknown>'))}",
+            module=f"{pipe_color}│ {self.colors['MODULE']}{os.path.basename(record.get('module', '<unknown>'))}",
             funcName=record.get("funcName", "<unknown>"),
             lineno=record.get("lineno", 0),
             message=record["message"],
         )
+
+    def print(self, message, isPrint=True):
+        text = f"{self.CYAN}[ {self.WHITE}{self.formatTime()} {self.CYAN}] {self.WHITE}│ {message}{self.RESET}"
+        if isPrint:
+            print(f"\033[2K{text}")
+        else:
+            return text
 
     def log(self, level, message):
         frame = sys._getframe(2)
@@ -67,13 +71,6 @@ class LoggerHandler(AnsiColors):
         }
         formatted_message = self.format(record)
         print(f"\033[2K{formatted_message}")
-
-    def print(self, message, isPrint=True):
-        text = f"{self.CYAN}[ {self.WHITE}{self.formatTime()} {self.CYAN}] {self.WHITE}│ {message}{self.RESET}"
-        if isPrint:
-            print(f"\033[2K{text}")
-        else:
-            return text
 
     def debug(self, message):
         self.log("DEBUG", message)
@@ -89,3 +86,23 @@ class LoggerHandler(AnsiColors):
 
     def critical(self, message):
         self.log("CRITICAL", message)
+
+
+class CustomLogHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.formatter_util = LoggerHandler()
+
+    def emit(self, record):
+        custom_record = {
+            "levelname": record.levelname,
+            "module": record.module,
+            "funcName": record.funcName,
+            "lineno": record.lineno,
+            "message": record.getMessage(),
+        }
+        try:
+            msg = self.formatter_util.format(custom_record)
+            print(f"\033[2K{msg}")
+        except Exception:
+            self.handleError(record)
