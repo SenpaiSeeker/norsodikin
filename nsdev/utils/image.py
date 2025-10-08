@@ -406,3 +406,40 @@ class ImageManipulator(FontManager):
         return await self._run_in_executor(
             self._sync_create_profile_card, pfp_bytes, name, username, user_id, bio, pfp_count, is_sudo
         )
+
+    def _sync_create_text_sticker(self, text: str) -> bytes:
+        font = self._get_font_from_package("NotoSans-Bold.ttf", 90)
+        
+        dummy_img = Image.new("RGBA", (1, 1))
+        dummy_draw = ImageDraw.Draw(dummy_img)
+        
+        bbox = dummy_draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        
+        padding = 30
+        canvas_width = text_width + (padding * 2)
+        canvas_height = text_height + (padding * 2)
+        
+        canvas = Image.new("RGBA", (canvas_width, canvas_height), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(canvas)
+        
+        shadow_color = (0, 0, 0, 100)
+        text_color = (255, 255, 255)
+        
+        draw.text((padding + 3, padding + 3), text, font=font, fill=shadow_color)
+        draw.text((padding, padding), text, font=font, fill=text_color)
+        
+        if canvas.width > canvas.height:
+            if canvas.width > 512:
+                canvas.thumbnail((512, 512), Image.LANCZOS)
+        else:
+            if canvas.height > 512:
+                canvas.thumbnail((512, 512), Image.LANCZOS)
+                
+        output_buffer = BytesIO()
+        canvas.save(output_buffer, format="WEBP")
+        return output_buffer.getvalue()
+
+    async def create_text_sticker(self, text: str) -> bytes:
+        return await self._run_in_executor(self._sync_create_text_sticker, text)
