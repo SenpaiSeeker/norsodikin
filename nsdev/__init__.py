@@ -55,6 +55,7 @@ from .utils.progress import TelegramProgressBar
 from .utils.ratelimit import RateLimiter
 from .utils.shell import ShellExecutor
 from .utils.url import UrlUtils
+from .utils.weather import WeatherWttr
 from .utils.wikipedia import WikipediaSearch
 
 __version__ = "1.9.5"
@@ -137,6 +138,7 @@ class NsDev:
             ratelimit=RateLimiter(self._client),
             shell=ShellExecutor(),
             url=UrlUtils(),
+            weather=WeatherWttr,
             wikipedia=WikipediaSearch,
         )
 
