@@ -3,6 +3,7 @@ import os
 from functools import partial
 from types import SimpleNamespace
 from typing import List
+from urllib.parse import urlparse
 
 import requests
 from yt_dlp import YoutubeDL
@@ -15,33 +16,53 @@ class MediaDownloader:
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
 
-    async def search_youtube(self, query: str, limit: int = 5) -> List[SimpleNamespace]:
-        def _sync_search():
-            ydl_opts = {
-                "format": "best",
-                "quiet": True,
-                "noplaylist": True,
-                "extract_flat": "in_playlist",
-                "default_search": f"ytsearch{limit}",
-            }
-            with YoutubeDL(ydl_opts) as ydl:
+    def _is_youtube_url(self, url):
+        parsed_url = urlparse(url)
+        return parsed_url.netloc in ("www.youtube.com", "youtube.com", "youtu.be")
+
+    def _sync_extract_info(self, query: str, limit: int = 10):
+        ydl_opts = {
+            "format": "best",
+            "quiet": True,
+            "noplaylist": True,
+            "extract_flat": "in_playlist",
+        }
+        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
+            ydl_opts["cookiefile"] = self.cookies_file_path
+
+        is_url = query.startswith("http")
+        if is_url:
+            ydl_opts["noplaylist"] = False 
+        else:
+            ydl_opts["default_search"] = f"ytsearch{limit}"
+            
+        with YoutubeDL(ydl_opts) as ydl:
+            try:
                 result = ydl.extract_info(query, download=False)
-                if "entries" in result:
-                    return [
-                        SimpleNamespace(
-                            id=entry.get("id"),
-                            title=entry.get("title", "No Title"),
-                            url=f"https://www.youtube.com/watch?v={entry.get('id')}",
-                            duration=entry.get("duration", 0),
-                            uploader=entry.get("uploader", "N/A"),
-                        )
-                        for entry in result["entries"]
-                    ]
-            return []
+                if not result:
+                    return []
+                    
+                entries = result.get("entries", [])
+                if not entries and "id" in result:
+                    entries = [result]
 
+                return [
+                    SimpleNamespace(
+                        id=entry.get("id"),
+                        title=entry.get("title", "No Title"),
+                        url=f"https://www.youtube.com/watch?v={entry.get('id')}",
+                        duration=entry.get("duration", 0),
+                        uploader=entry.get("uploader", "N/A"),
+                    )
+                    for entry in entries
+                ]
+            except Exception as e:
+                raise e
+
+    async def search_youtube(self, query: str, limit: int = 10) -> List[SimpleNamespace]:
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, _sync_search)
-
+        return await loop.run_in_executor(None, partial(self._sync_extract_info, query, limit))
+        
     def _sync_download(
         self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop
     ) -> dict:
@@ -59,12 +80,13 @@ class MediaDownloader:
             "geo_bypass_country": "ID",
             "geo_verify": True,
         }
+        
         if progress_callback:
             ydl_opts["progress_hooks"] = [_hook]
-        if self.cookies_file_path:
-            if not os.path.exists(self.cookies_file_path):
-                raise FileNotFoundError(f"File cookie yang ditentukan tidak ditemukan: {self.cookies_file_path}")
+            
+        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
             ydl_opts["cookiefile"] = self.cookies_file_path
+        
         if audio_only:
             ydl_opts.update(
                 {
@@ -79,13 +101,16 @@ class MediaDownloader:
                 }
             )
         else:
-            ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+            if self._is_youtube_url(url):
+                ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+            
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
             if audio_only:
                 base, _ = os.path.splitext(filename)
                 filename = base + ".mp3"
+                
             thumbnail_data = None
             thumbnail_url = info.get("thumbnail")
             if thumbnail_url:
