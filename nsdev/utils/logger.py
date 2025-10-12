@@ -6,6 +6,7 @@ import zoneinfo
 
 from .colorize import AnsiColors
 
+
 class LoggerHandler(AnsiColors):
     def __init__(self, **options):
         super().__init__()
@@ -20,14 +21,14 @@ class LoggerHandler(AnsiColors):
         self.fmt = options.get("fmt", "{asctime} {levelname} {module}:{funcName}:{lineno} {message}")
         self.datefmt = options.get("datefmt", "%Y-%m-%d %H:%M:%S %Z")
         self.colors = {
-            "INFO": self.GREEN, 
-            "DEBUG": self.BLUE, 
+            "INFO": self.GREEN,
+            "DEBUG": self.BLUE,
             "WARNING": self.YELLOW,
             "ERROR": self.RED,
             "CRITICAL": self.MAGENTA,
             "TIME": self.WHITE,
-            "MODULE": self.CYAN, 
-            "PIPE": self.PURPLE, 
+            "MODULE": self.CYAN,
+            "PIPE": self.PURPLE,
             "RESET": self.RESET,
         }
 

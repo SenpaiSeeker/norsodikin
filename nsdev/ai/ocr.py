@@ -9,7 +9,7 @@ class OCR(ChatbotGemini):
 
     async def read_text(self, image_bytes: bytes) -> str:
         encoded_image = base64.b64encode(image_bytes).decode("utf-8")
-        
+
         prompt = (
             "Extract any and all text from this image. "
             "Do not add any explanation, formatting, or comments. "
@@ -24,6 +24,6 @@ class OCR(ChatbotGemini):
                 ]
             }
         ]
-        
+
         payload = {"contents": contents}
         return await self._send_request(**payload)

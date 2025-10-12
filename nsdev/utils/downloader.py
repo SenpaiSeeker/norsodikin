@@ -32,16 +32,16 @@ class MediaDownloader:
 
         is_url = query.startswith("http")
         if is_url:
-            ydl_opts["noplaylist"] = False 
+            ydl_opts["noplaylist"] = False
         else:
             ydl_opts["default_search"] = f"ytsearch{limit}"
-            
+
         with YoutubeDL(ydl_opts) as ydl:
             try:
                 result = ydl.extract_info(query, download=False)
                 if not result:
                     return []
-                    
+
                 entries = result.get("entries", [])
                 if not entries and "id" in result:
                     entries = [result]
@@ -62,7 +62,7 @@ class MediaDownloader:
     async def search_youtube(self, query: str, limit: int = 10) -> List[SimpleNamespace]:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(self._sync_extract_info, query, limit))
-        
+
     def _sync_download(
         self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop
     ) -> dict:
@@ -80,13 +80,13 @@ class MediaDownloader:
             "geo_bypass_country": "ID",
             "geo_verify": True,
         }
-        
+
         if progress_callback:
             ydl_opts["progress_hooks"] = [_hook]
-            
+
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
             ydl_opts["cookiefile"] = self.cookies_file_path
-        
+
         if audio_only:
             ydl_opts.update(
                 {
@@ -103,14 +103,14 @@ class MediaDownloader:
         else:
             if self._is_youtube_url(url):
                 ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
-            
+
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
             if audio_only:
                 base, _ = os.path.splitext(filename)
                 filename = base + ".mp3"
-                
+
             thumbnail_data = None
             thumbnail_url = info.get("thumbnail")
             if thumbnail_url:

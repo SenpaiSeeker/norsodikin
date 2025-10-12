@@ -1,6 +1,7 @@
 import time
-import asyncio
-from pyrogram.types import Message, CallbackQuery
+
+from pyrogram.types import CallbackQuery, Message
+
 
 class TelegramProgressBar:
     def __init__(self, client, message_or_callback, task_name="Proses"):
@@ -11,9 +12,9 @@ class TelegramProgressBar:
         self.last_update_time = 0
         self._edit_func = None
 
-        if isinstance(message_or_callback, Message) and hasattr(message_or_callback, 'edit_text'):
+        if isinstance(message_or_callback, Message) and hasattr(message_or_callback, "edit_text"):
             self._edit_func = message_or_callback.edit_text
-        elif isinstance(message_or_callback, CallbackQuery) and hasattr(message_or_callback, 'edit_message_text'):
+        elif isinstance(message_or_callback, CallbackQuery) and hasattr(message_or_callback, "edit_message_text"):
             self._edit_func = message_or_callback.edit_message_text
         else:
             raise TypeError("Objek yang diberikan bukan Message atau CallbackQuery yang bisa diedit.")

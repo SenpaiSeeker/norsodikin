@@ -1,5 +1,7 @@
 from urllib.parse import quote
+
 import httpx
+
 
 class WeatherWttr:
     async def get_weather_image(self, city: str) -> bytes:
@@ -12,7 +14,7 @@ class WeatherWttr:
 
                 if response.status_code != 200:
                     raise ValueError(f"Kota '{city}' tidak ditemukan atau layanan tidak tersedia.")
-                
+
                 content_type = response.headers.get("content-type", "")
                 if "image/png" not in content_type:
                     raise ValueError(f"Kota '{city}' tidak ditemukan oleh layanan cuaca.")
