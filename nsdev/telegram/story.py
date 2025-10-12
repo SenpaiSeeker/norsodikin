@@ -24,7 +24,7 @@ class StoryDownloader:
                 high_level_media = Photo._parse(self._client, story_item.media.photo)
                 send_method = self._client.send_photo
             elif isinstance(story_item.media, types.MessageMediaDocument):
-                high_level_media = Document._parse(self._client, story_item.media.document, story_item.media.document.file_name)
+                high_level_media = Document._parse(self._client, story_item.media.document, "story.mp4")
                 send_method = self._client.send_document
 
             if high_level_media and send_method:
