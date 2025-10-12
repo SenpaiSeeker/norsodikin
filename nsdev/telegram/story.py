@@ -4,7 +4,7 @@ import re
 
 from pyrogram.errors import PeerIdInvalid, RPCError, UsernameInvalid
 from pyrogram.raw import functions, types
-from pyrogram.types import Message, Photo, Video
+from pyrogram.types import Document, Message, Photo, Video
 
 from ..utils.logger import LoggerHandler
 
@@ -75,12 +75,20 @@ class StoryDownloader:
                         self._log.print(f"{self._log.YELLOW}Melewati story tanpa media (ID: {story.id}).")
                         continue
 
+                    high_level_media = None
+                    send_method = None
+
                     if isinstance(story.media, types.MessageMediaPhoto) and hasattr(story.media, 'photo'):
                         high_level_media = Photo._parse(self._client, story.media.photo)
                         send_method = self._client.send_photo
                     elif isinstance(story.media, types.MessageMediaDocument) and hasattr(story.media, 'document'):
-                        high_level_media = Video._parse_document(self._client, story.media.document, "video.mp4")
-                        send_method = self._client.send_video
+                        parsed_doc = Document._parse(self._client, story.media.document)
+                        if parsed_doc and parsed_doc.mime_type and "video" in parsed_doc.mime_type:
+                            high_level_media = parsed_doc
+                            send_method = self._client.send_video
+                        else:
+                             self._log.print(f"{self._log.YELLOW}Melewati story (dokumen bukan video, Tipe: {parsed_doc.mime_type if parsed_doc else 'N/A'}).")
+                             continue
                     else:
                          self._log.print(f"{self._log.YELLOW}Melewati story dengan media yang tidak didukung (ID: {story.id}, Tipe: {type(story.media).__name__}).")
                          continue
