@@ -54,31 +54,49 @@ class StoryDownloader:
         try:
             peer = await self._client.resolve_peer(user.id)
             peer_stories = await self._client.invoke(functions.stories.GetPeerStories(peer=peer))
-            active_stories = peer_stories.stories.stories
 
-            if not active_stories:
-                return await status_message.edit_text(f"✅ Pengguna `{username}` tidak memiliki story aktif.")
+            story_ids = [s.id for s in getattr(peer_stories.stories, "stories", []) if isinstance(s, types.StoryItem)]
 
-            total = len(active_stories)
-            await status_message.edit_text(f"✅ Ditemukan {total} story aktif. Memulai pengunduhan & pengiriman...")
+            if not story_ids:
+                return await status_message.edit_text(f"✅ Pengguna `{username}` tidak memiliki story aktif (atau tidak dapat diakses).")
+
+            total = len(story_ids)
+            await status_message.edit_text(f"✅ Ditemukan {total} story aktif. Mengunduh dengan metode GetStoriesByID...")
 
             processed_count = 0
-            for i, story in enumerate(active_stories):                
-                await status_message.edit_text(f"📥 Memproses story {i + 1}/{total}...")
-                await self._process_and_send_story(story, chat_id)
-                processed_count += 1
-            
+            for i, story_id in enumerate(story_ids):
+                try:
+                    await status_message.edit_text(f"📥 Mengambil story {i + 1}/{total}...")
+                    story_data = await self._client.invoke(functions.stories.GetStoriesByID(peer=peer, id=[story_id]))
+
+                    if not story_data.stories:
+                        self._log.warning(f"Story ID {story_id} tidak dapat diakses.")
+                        continue
+
+                    story = story_data.stories[0]
+                    if not isinstance(story, types.StoryItem):
+                        self._log.warning(f"Story ID {story_id} bukan tipe StoryItem, dilewati.")
+                        continue
+
+                    await self._process_and_send_story(story, chat_id)
+                    processed_count += 1
+                    await asyncio.sleep(1.5)
+
+                except Exception as story_err:
+                    self._log.print(f"{self._log.YELLOW}Gagal memproses story ID {story_id}: {story_err}")
+
             if processed_count == 0:
-                 await status_message.edit_text(f"❌ Semua story dari `{username}` tidak dapat diakses.")
+                await status_message.edit_text(f"❌ Tidak ada story dari `{username}` yang dapat diunduh.")
             else:
-                await status_message.edit_text("✅ Semua story yang dapat diakses telah diproses!")
-            
+                await status_message.edit_text(f"✅ Berhasil mengunduh {processed_count}/{total} story dari `{username}`!")
+
             await asyncio.sleep(3)
             await status_message.delete()
 
         except Exception as e:
-            self._log.print(f"{self._log.RED}Gagal mengunduh story dari {username}: {e}")
+            self._log.error(f"Gagal mengunduh story dari {username}: {e}")
             await status_message.edit_text(f"❌ Terjadi kesalahan saat memproses story: `{e}`")
+
 
     async def download_single_story(self, username: str, story_id: int, chat_id: int, status_message: Message):
         if self._client.me.is_bot:
