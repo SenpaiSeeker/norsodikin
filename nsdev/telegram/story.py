@@ -54,10 +54,13 @@ class StoryDownloader:
                 stories_result = await self._client.invoke(functions.stories.GetPeerStories(peer=peer))
 
             active_stories = []
-            if isinstance(stories_result, types.stories.Stories):
-                active_stories = stories_result.stories
-            elif isinstance(stories_result, types.stories.PeerStories):
-                active_stories = stories_result.stories.stories
+            if stories_result:
+                if isinstance(stories_result, types.stories.PeerStories):
+                    peer_stories_obj = getattr(stories_result, 'stories', None)
+                    if peer_stories_obj:
+                        active_stories = getattr(peer_stories_obj, 'stories', []) or []
+                elif isinstance(stories_result, types.stories.Stories):
+                    active_stories = getattr(stories_result, 'stories', []) or []
 
             if not active_stories:
                 return await status_message.edit_text(f"✅ Pengguna `{target_user}` tidak memiliki story aktif atau story yang dicari tidak ditemukan.")
