@@ -4,9 +4,6 @@ import re
 
 from pyrogram.errors import PeerIdInvalid, RPCError, UsernameInvalid
 from pyrogram.raw import functions, types
-from pyrogram.raw.types.stories import MessageMediaPhoto as StoriesMessageMediaPhoto
-from pyrogram.raw.types.stories import MessageMediaVideo as StoriesMessageMediaVideo
-from pyrogram.raw.types.stories import MessageMediaUnsupported as StoriesMessageMediaUnsupported
 from pyrogram.types import Message, Photo, Video
 
 from ..utils.logger import LoggerHandler
@@ -72,27 +69,25 @@ class StoryDownloader:
                 try:
                     await status_message.edit_text(f"📥 Memproses story {i + 1}/{total}...")
 
-                    high_level_media = None
-                    send_method = None
                     caption = story.caption or ""
+                    
+                    if not hasattr(story, 'media') or not story.media:
+                        self._log.print(f"{self._log.YELLOW}Melewati story tanpa media (ID: {story.id}).")
+                        continue
 
-                    if hasattr(story, 'media') and story.media:
-                        if isinstance(story.media, StoriesMessageMediaPhoto) and hasattr(story.media, "photo"):
-                            high_level_media = Photo._parse(self._client, story.media.photo)
-                            send_method = self._client.send_photo
-                        elif isinstance(story.media, StoriesMessageMediaVideo) and hasattr(story.media, "video"):
-                            high_level_media = Video._parse(self._client, story.media.video, "video.mp4")
-                            send_method = self._client.send_video
-                        elif isinstance(story.media, StoriesMessageMediaUnsupported):
-                            self._log.print(f"{self._log.YELLOW}Melewati story dengan media yang tidak didukung (ID: {story.id}).")
-                            continue
-
-                    if high_level_media and send_method:
-                        downloaded_path = await self._client.download_media(high_level_media)
-                        await send_method(chat_id, downloaded_path, caption=caption)
-                        await asyncio.sleep(1.5)
+                    if isinstance(story.media, types.MessageMediaPhoto) and hasattr(story.media, 'photo'):
+                        high_level_media = Photo._parse(self._client, story.media.photo)
+                        send_method = self._client.send_photo
+                    elif isinstance(story.media, types.MessageMediaDocument) and hasattr(story.media, 'document'):
+                        high_level_media = Video._parse_document(self._client, story.media.document, "video.mp4")
+                        send_method = self._client.send_video
                     else:
-                        self._log.print(f"{self._log.YELLOW}Tidak ada media yang valid untuk diunduh pada story (ID: {story.id}).")
+                         self._log.print(f"{self._log.YELLOW}Melewati story dengan media yang tidak didukung (ID: {story.id}, Tipe: {type(story.media).__name__}).")
+                         continue
+                        
+                    downloaded_path = await self._client.download_media(high_level_media)
+                    await send_method(chat_id, downloaded_path, caption=caption)
+                    await asyncio.sleep(1.5)
 
                 except Exception as item_e:
                     self._log.print(f"{self._log.YELLOW}Gagal memproses satu story: {item_e}")
