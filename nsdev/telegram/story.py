@@ -65,8 +65,11 @@ class StoryDownloader:
             if not active_stories:
                 return await status_message.edit_text(f"✅ Pengguna `{target_user}` tidak memiliki story aktif atau story yang dicari tidak ditemukan.")
             
-            users = {u.id: u for u in getattr(stories_result, 'users', [])}
-            chats = {c.id: c for c in getattr(stories_result, 'chats', [])}
+            users_list = getattr(stories_result, 'users', None) or []
+            chats_list = getattr(stories_result, 'chats', None) or []
+            
+            users = {u.id: u for u in users_list}
+            chats = {c.id: c for c in chats_list}
 
             total = len(active_stories)
             await status_message.edit_text(f"✅ Ditemukan {total} story. Memulai pengunduhan & pengiriman...")
