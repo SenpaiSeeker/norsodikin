@@ -1,10 +1,10 @@
 import asyncio
 import os
 import re
-from datetime import datetime
 
 from pyrogram.errors import PeerIdInvalid, RPCError, UsernameInvalid
 from pyrogram.raw import functions, types
+from pyrogram.raw.base import Vector
 from pyrogram.types import Message
 
 from ..utils.logger import LoggerHandler
@@ -56,9 +56,8 @@ class StoryDownloader:
 
             active_stories = getattr(stories_result, 'stories', [])
             
-            if isinstance(active_stories, types.Vector):
+            if isinstance(active_stories, Vector):
                 active_stories = active_stories.objects
-                
             elif hasattr(active_stories, 'stories'):
                  active_stories = active_stories.stories
             
@@ -67,7 +66,6 @@ class StoryDownloader:
             
             users = {u.id: u for u in getattr(stories_result, 'users', [])}
             chats = {c.id: c for c in getattr(stories_result, 'chats', [])}
-
 
             total = len(active_stories)
             await status_message.edit_text(f"✅ Ditemukan {total} story. Memulai pengunduhan & pengiriman...")
