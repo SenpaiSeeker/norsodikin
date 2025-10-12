@@ -65,7 +65,7 @@ class StoryDownloader:
             processed_count = 0
             for i, story in enumerate(active_stories):
                 if not isinstance(story, types.StoryItem):
-                    self._log.print(f"{self._log.YELLOW}Melewatkan satu story yang tidak dapat diakses (StoryItemSkipped).")
+                    self._log.warning(f"Melewatkan satu story yang tidak dapat diakses (StoryItemSkipped).")
                     continue
                 
                 await status_message.edit_text(f"📥 Memproses story {i + 1}/{total}...")
