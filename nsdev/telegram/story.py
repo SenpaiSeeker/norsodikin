@@ -1,10 +1,11 @@
 import asyncio
 import os
 import re
+from datetime import datetime
 
 from pyrogram.errors import PeerIdInvalid, RPCError, UsernameInvalid
 from pyrogram.raw import functions, types
-from pyrogram.types import Message, Photo, Video, Document
+from pyrogram.types import Message, Photo, Video
 
 from ..utils.logger import LoggerHandler
 
@@ -75,19 +76,29 @@ class StoryDownloader:
                         self._log.print(f"{self._log.YELLOW}Melewati story tanpa media (ID: {story.id}).")
                         continue
 
+                    mock_message = types.Message(
+                        id=story.id,
+                        peer_id=peer,
+                        date=story.date,
+                        message=story.caption or "",
+                        media=story.media
+                    )
+                    
+                    parsed_message = await Message._parse(self._client, mock_message)
+                    
                     media_to_download = None
                     send_method = None
 
-                    if isinstance(story.media, types.MessageMediaPhoto):
-                        media_to_download = story.media.photo
+                    if parsed_message.photo:
+                        media_to_download = parsed_message.photo
                         send_method = self._client.send_photo
-                    elif isinstance(story.media, types.MessageMediaDocument):
-                        media_to_download = story.media.document
+                    elif parsed_message.video:
+                        media_to_download = parsed_message.video
                         send_method = self._client.send_video
                     else:
-                        self._log.print(f"{self._log.YELLOW}Melewati story dengan media yang tidak didukung (ID: {story.id}, Tipe: {type(story.media).__name__}).")
+                        self._log.print(f"{self._log.YELLOW}Melewati story dengan media yang tidak didukung (ID: {story.id}).")
                         continue
-
+                        
                     if media_to_download and send_method:
                         downloaded_path = await self._client.download_media(media_to_download)
                         await send_method(chat_id, downloaded_path, caption=caption)
@@ -95,6 +106,8 @@ class StoryDownloader:
 
                 except Exception as item_e:
                     self._log.print(f"{self._log.YELLOW}Gagal memproses satu story: {item_e}")
+                    self._log.print(f"{self._log.RED}{item_e.__class__.__name__}: {item_e}")
+
                 finally:
                     if downloaded_path and os.path.exists(downloaded_path):
                         os.remove(downloaded_path)
