@@ -34,7 +34,7 @@ class StoryDownloader:
                 await asyncio.sleep(1.5)
 
         except Exception as item_e:
-            self._log.print(f"{self._log.YELLOW}Gagal memproses satu story item: {item_e}")
+            self._log.warning(f"Gagal memproses satu story item: {item_e}")
         finally:
             if downloaded_path and os.path.exists(downloaded_path):
                 os.remove(downloaded_path)
@@ -111,5 +111,5 @@ class StoryDownloader:
             await status_message.delete()
 
         except Exception as e:
-            self._log.print(f"{self._log.RED}Gagal mengunduh story tunggal dari {username}: {e}")
+            self._log.error(f"Gagal mengunduh story tunggal dari {username}: {e}")
             await status_message.edit_text(f"❌ Terjadi kesalahan saat mengunduh story: `{e}`")
