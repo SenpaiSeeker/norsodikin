@@ -4,7 +4,7 @@ import re
 
 from pyrogram.errors import PeerIdInvalid, RPCError, UsernameInvalid
 from pyrogram.raw import functions, types
-from pyrogram.types import Message, Photo, Video
+from pyrogram.types import Message, Photo, Video, Document
 
 from ..utils.logger import LoggerHandler
 
@@ -75,40 +75,21 @@ class StoryDownloader:
                         self._log.print(f"{self._log.YELLOW}Melewati story tanpa media (ID: {story.id}).")
                         continue
 
-                    high_level_media = None
+                    media_to_download = None
                     send_method = None
-                    
-                    if isinstance(story.media, types.MessageMediaPhoto) and hasattr(story.media, 'photo'):
-                        high_level_media = Photo._parse(self._client, story.media.photo)
+
+                    if isinstance(story.media, types.MessageMediaPhoto):
+                        media_to_download = story.media.photo
                         send_method = self._client.send_photo
-                    elif isinstance(story.media, types.MessageMediaDocument) and hasattr(story.media, 'document'):
-                        raw_doc = story.media.document
-                        is_video = any(
-                            isinstance(attr, types.DocumentAttributeVideo) for attr in raw_doc.attributes
-                        )
-                        if is_video:
-                            high_level_media = Video(
-                                file_id=raw_doc.id,
-                                file_unique_id=raw_doc.id,
-                                width=next((a.w for a in raw_doc.attributes if isinstance(a, types.DocumentAttributeVideo)), 0),
-                                height=next((a.h for a in raw_doc.attributes if isinstance(a, types.DocumentAttributeVideo)), 0),
-                                duration=next((a.duration for a in raw_doc.attributes if isinstance(a, types.DocumentAttributeVideo)), 0),
-                                mime_type=raw_doc.mime_type,
-                                file_size=raw_doc.size,
-                                client=self._client
-                            )
-                            high_level_media.file_ref = raw_doc.file_reference
-                            high_level_media.dc_id = raw_doc.dc_id
-                            send_method = self._client.send_video
-                        else:
-                            self._log.print(f"{self._log.YELLOW}Melewati story (dokumen bukan video, Tipe: {raw_doc.mime_type}).")
-                            continue
+                    elif isinstance(story.media, types.MessageMediaDocument):
+                        media_to_download = story.media.document
+                        send_method = self._client.send_video
                     else:
                         self._log.print(f"{self._log.YELLOW}Melewati story dengan media yang tidak didukung (ID: {story.id}, Tipe: {type(story.media).__name__}).")
                         continue
 
-                    if high_level_media and send_method:
-                        downloaded_path = await self._client.download_media(high_level_media)
+                    if media_to_download and send_method:
+                        downloaded_path = await self._client.download_media(media_to_download)
                         await send_method(chat_id, downloaded_path, caption=caption)
                         await asyncio.sleep(1.5)
 
