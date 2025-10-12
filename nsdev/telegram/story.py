@@ -63,11 +63,7 @@ class StoryDownloader:
             await status_message.edit_text(f"✅ Ditemukan {total} story aktif. Memulai pengunduhan & pengiriman...")
 
             processed_count = 0
-            for i, story in enumerate(active_stories):
-                if not isinstance(story, types.StoryItem):
-                    self._log.warning(f"Melewatkan satu story yang tidak dapat diakses (StoryItemSkipped).")
-                    continue
-                
+            for i, story in enumerate(active_stories):                
                 await status_message.edit_text(f"📥 Memproses story {i + 1}/{total}...")
                 await self._process_and_send_story(story, chat_id)
                 processed_count += 1
