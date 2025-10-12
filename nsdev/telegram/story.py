@@ -19,7 +19,7 @@ class StoryDownloader:
         try:
             high_level_media = None
             send_method = None
-            caption = story_item.caption or ""
+            caption = getattr(story_item, "caption", None)
 
             if isinstance(story_item.media, types.MessageMediaPhoto):
                 high_level_media = Photo._parse(self._client, story_item.media.photo)
