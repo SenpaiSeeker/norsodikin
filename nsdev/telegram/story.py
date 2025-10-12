@@ -4,7 +4,7 @@ import os
 
 from pyrogram.errors import PeerIdInvalid, RPCError, UsernameInvalid
 from pyrogram.raw import functions, types
-from pyrogram.types import Document, Message, Photo
+from pyrogram.types import Document, Message, Photo, ReplyParameters 
 
 from ..utils.logger import LoggerHandler
 
@@ -14,7 +14,7 @@ class StoryDownloader:
         self._client = client
         self._log = LoggerHandler()
 
-    async def _process_and_send_story(self, story_item: types.StoryItem, target_chat_id: int):
+    async def _process_and_send_story(self, story_item: types.StoryItem, target_chat_id: int, msg_id: int):
         downloaded_path = None
         try:
             high_level_media = None
@@ -30,7 +30,7 @@ class StoryDownloader:
 
             if high_level_media and send_method:
                 downloaded_path = await self._client.download_media(high_level_media)
-                await send_method(target_chat_id, downloaded_path, caption=caption)
+                await send_method(target_chat_id, downloaded_path, caption=caption, reply_parameters=ReplyParameters(message_id=msg_id))
                 await asyncio.sleep(1.5)
 
         except Exception as item_e:
@@ -39,7 +39,7 @@ class StoryDownloader:
             if downloaded_path and os.path.exists(downloaded_path):
                 os.remove(downloaded_path)
 
-    async def download_user_stories(self, username: str, chat_id: int, status_message: Message):
+    async def download_user_stories(self, username: str, chat_id: int, status_message: Message, message_id: int):
         if self._client.me.is_bot:
             raise Exception("Bot accounts cannot download stories. This feature requires a Userbot.")
 
@@ -78,7 +78,7 @@ class StoryDownloader:
                         self._log.warning(f"Story ID {story_id} bukan tipe StoryItem, dilewati.")
                         continue
 
-                    await self._process_and_send_story(story, chat_id)
+                    await self._process_and_send_story(story, chat_id, message_id)
                     processed_count += 1
                     await asyncio.sleep(1.5)
 
@@ -98,7 +98,7 @@ class StoryDownloader:
             await status_message.edit_text(f"❌ Terjadi kesalahan saat memproses story: `{e}`")
 
 
-    async def download_single_story(self, username: str, story_id: int, chat_id: int, status_message: Message):
+    async def download_single_story(self, username: str, story_id: int, chat_id: int, status_message: Message, message_id: int):
         if self._client.me.is_bot:
             raise Exception("Bot accounts cannot download stories. This feature requires a Userbot.")
 
@@ -120,7 +120,7 @@ class StoryDownloader:
                 return await status_message.edit_text("❌ Story ini tidak dapat diakses atau telah kedaluwarsa.")
             
             await status_message.edit_text("📥 Mengunduh story...")
-            await self._process_and_send_story(story, chat_id)
+            await self._process_and_send_story(story, chat_id, message_id)
             
             await status_message.delete()
 
