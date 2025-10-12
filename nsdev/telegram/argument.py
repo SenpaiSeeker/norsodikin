@@ -1,7 +1,7 @@
 import asyncio
 import random
 from datetime import datetime
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import pyrogram
 
@@ -145,7 +145,7 @@ class Argument:
         delta_ping = (end - start).microseconds / 1000
         return delta_ping
 
-    def randomEffect(self, is_premium: bool = False) -> List[int]:
+    def randomEffect(self, is_premium: bool = False) -> int:
         if not is_premium:
             list_id_effect = [
                 5107584321108051014,
