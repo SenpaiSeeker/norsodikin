@@ -23,7 +23,7 @@ class StoryDownloader:
             if hasattr(story_item.media, "photo") and isinstance(story_item.media.photo, types.Photo):
                 high_level_media = Photo._parse(self._client, story_item.media.photo)
                 send_method = self._client.send_photo
-            elif hasattr(story_item.media, "video") and isinstance(story_item.media.video, types.Video):
+            elif hasattr(story_item.media, "video") and isinstance(story_item.media.video, types.Document):
                 high_level_media = Video._parse(self._client, story_item.media.video, "video")
                 send_method = self._client.send_video
 
