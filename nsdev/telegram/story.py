@@ -1,4 +1,5 @@
 import asyncio
+import uuid 
 import os
 
 from pyrogram.errors import PeerIdInvalid, RPCError, UsernameInvalid
@@ -24,7 +25,7 @@ class StoryDownloader:
                 high_level_media = Photo._parse(self._client, story_item.media.photo)
                 send_method = self._client.send_photo
             elif isinstance(story_item.media, types.MessageMediaDocument):
-                high_level_media = Document._parse(self._client, story_item.media.document, "story.mp4")
+                high_level_media = Document._parse(self._client, story_item.media.document, f"story_{uuid.uuid4().hex[:9]}.mp4")
                 send_method = self._client.send_video
 
             if high_level_media and send_method:
