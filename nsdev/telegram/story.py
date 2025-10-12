@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pyrogram.errors import PeerIdInvalid, RPCError, UsernameInvalid
 from pyrogram.raw import functions, types
-from pyrogram.types import Message, Photo, Video
+from pyrogram.types import Message
 
 from ..utils.logger import LoggerHandler
 
@@ -45,18 +45,29 @@ class StoryDownloader:
 
         try:
             peer = await self._client.resolve_peer(user.id)
-
+            
+            stories_result = None
             if single_story_id:
                 stories_result = await self._client.invoke(
                     functions.stories.GetStoriesByID(peer=peer, id=[single_story_id])
                 )
-                active_stories = stories_result.stories
             else:
-                peer_stories = await self._client.invoke(functions.stories.GetPeerStories(peer=peer))
-                active_stories = peer_stories.stories.stories
+                stories_result = await self._client.invoke(functions.stories.GetPeerStories(peer=peer))
 
+            active_stories = getattr(stories_result, 'stories', [])
+            
+            if isinstance(active_stories, types.Vector):
+                active_stories = active_stories.objects
+                
+            elif hasattr(active_stories, 'stories'):
+                 active_stories = active_stories.stories
+            
             if not active_stories:
                 return await status_message.edit_text(f"✅ Pengguna `{target_user}` tidak memiliki story aktif atau story yang dicari tidak ditemukan.")
+            
+            users = {u.id: u for u in getattr(stories_result, 'users', [])}
+            chats = {c.id: c for c in getattr(stories_result, 'chats', [])}
+
 
             total = len(active_stories)
             await status_message.edit_text(f"✅ Ditemukan {total} story. Memulai pengunduhan & pengiriman...")
@@ -70,24 +81,31 @@ class StoryDownloader:
                 try:
                     await status_message.edit_text(f"📥 Memproses story {i + 1}/{total}...")
 
-                    caption = story.caption or ""
-                    
                     if not hasattr(story, 'media') or not story.media:
                         self._log.print(f"{self._log.YELLOW}Melewati story tanpa media (ID: {story.id}).")
                         continue
-
-                    mock_message = types.Message(
+                    
+                    raw_message = types.Message(
                         id=story.id,
                         peer_id=peer,
                         date=story.date,
                         message=story.caption or "",
                         media=story.media
                     )
+
+                    parsed_message = await Message._parse(
+                        self._client, raw_message,
+                        users=users,
+                        chats=chats
+                    )
                     
-                    parsed_message = await Message._parse(self._client, mock_message)
-                    
+                    if parsed_message is None:
+                        self._log.print(f"{self._log.YELLOW}Gagal mem-parsing story menjadi pesan (ID: {story.id}).")
+                        continue
+
                     media_to_download = None
                     send_method = None
+                    caption = parsed_message.caption if parsed_message.caption else ""
 
                     if parsed_message.photo:
                         media_to_download = parsed_message.photo
