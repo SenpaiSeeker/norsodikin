@@ -3,7 +3,7 @@ import os
 
 from pyrogram.errors import PeerIdInvalid, RPCError, UsernameInvalid
 from pyrogram.raw import functions, types
-from pyrogram.types import Message, Photo, Video
+from pyrogram.types import Document, Message, Photo
 
 from ..utils.logger import LoggerHandler
 
@@ -21,11 +21,11 @@ class StoryDownloader:
             caption = story_item.caption or ""
 
             if isinstance(story_item.media, types.MessageMediaPhoto):
-                high_level_media = Photo._parse(self._client, story_item.media.photo.sizes[-1])
+                high_level_media = Photo._parse(self._client, story_item.media.photo])
                 send_method = self._client.send_photo
             elif isinstance(story_item.media, types.MessageMediaDocument):
-                high_level_media = Video._parse(self._client, story_item.media.document, file_name="story.mp4")
-                send_method = self._client.send_video
+                high_level_media = Document._parse(self._client, story_item.media.document, story_item.media.document.file_name)
+                send_method = self._client.send_document
 
             if high_level_media and send_method:
                 downloaded_path = await self._client.download_media(high_level_media)
