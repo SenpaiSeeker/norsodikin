@@ -41,6 +41,10 @@ class StoryDownloader:
             for i, story in enumerate(active_stories):
                 downloaded_path = None
                 try:
+                    if not isinstance(story, types.StoryItem):
+                        self._log.print(f"{self._log.YELLOW}Melewatkan story yang tidak dapat diakses (tipe: {type(story).__name__}).")
+                        continue
+
                     await status_message.edit_text(f"📥 Memproses story {i + 1}/{total}...")
 
                     high_level_media = None
