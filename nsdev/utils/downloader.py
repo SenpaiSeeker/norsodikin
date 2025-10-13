@@ -4,10 +4,8 @@ from functools import partial
 from types import SimpleNamespace
 from typing import List
 from urllib.parse import urlparse
-
 import requests
 from yt_dlp import YoutubeDL
-
 
 class MediaDownloader:
     def __init__(self, cookies_file_path: str = "cookies.txt", download_path: str = "downloads"):
@@ -25,7 +23,7 @@ class MediaDownloader:
             "format": "best",
             "quiet": True,
             "noplaylist": True,
-            "extract_flat": "in_playlist",
+            "extract_flat": "in_playlist"
         }
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
             ydl_opts["cookiefile"] = self.cookies_file_path
@@ -41,18 +39,16 @@ class MediaDownloader:
                 result = ydl.extract_info(query, download=False)
                 if not result:
                     return []
-
                 entries = result.get("entries", [])
                 if not entries and "id" in result:
                     entries = [result]
-
                 return [
                     SimpleNamespace(
                         id=entry.get("id"),
                         title=entry.get("title", "No Title"),
                         url=f"https://www.youtube.com/watch?v={entry.get('id')}",
                         duration=entry.get("duration", 0),
-                        uploader=entry.get("uploader", "N/A"),
+                        uploader=entry.get("uploader", "N/A")
                     )
                     for entry in entries
                 ]
@@ -63,9 +59,7 @@ class MediaDownloader:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(self._sync_extract_info, query, limit))
 
-    def _sync_download(
-        self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop
-    ) -> dict:
+    def _sync_download(self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop) -> dict:
         def _hook(d):
             if d["status"] == "downloading" and progress_callback:
                 total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate")
@@ -77,8 +71,13 @@ class MediaDownloader:
             "noplaylist": True,
             "quiet": True,
             "geo_bypass": True,
-            "geo_bypass_country": "ID",
-            "geo_verify": True,
+            "merge_output_format": "mp4",
+            "postprocessors": [
+                {
+                    "key": "FFmpegVideoConvertor",
+                    "preferedformat": "mp4"
+                }
+            ]
         }
 
         if progress_callback:
@@ -95,14 +94,14 @@ class MediaDownloader:
                         {
                             "key": "FFmpegExtractAudio",
                             "preferredcodec": "mp3",
-                            "preferredquality": "192",
+                            "preferredquality": "192"
                         }
-                    ],
+                    ]
                 }
             )
         else:
             if self._is_youtube_url(url):
-                ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+                ydl_opts["format"] = "bestvideo+bestaudio/best"
 
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
@@ -120,11 +119,12 @@ class MediaDownloader:
                     thumbnail_data = thumb_response.content
                 except requests.RequestException:
                     thumbnail_data = None
+
             return {
                 "path": filename,
                 "title": info.get("fulltitle", "N/A"),
                 "duration": info.get("duration", 0),
-                "thumbnail_data": thumbnail_data,
+                "thumbnail_data": thumbnail_data
             }
 
     async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> dict:
