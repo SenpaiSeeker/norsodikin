@@ -30,6 +30,7 @@ dependencies = [
     "tornado",
     "requests",
     "faker",
+    "wget",
     "setproctitle",
 ]
 
