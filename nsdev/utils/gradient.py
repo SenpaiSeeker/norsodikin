@@ -100,10 +100,3 @@ class Gradient:
                 flush=True,
             )
             await asyncio.sleep(1)
-
-    async def ping(self):
-        start_time = time.perf_counter()
-        await asyncio.sleep(random.uniform(0.1, 0.5))
-        end_time = time.perf_counter()
-
-        return (end_time - start_time) * 1000
