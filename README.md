@@ -8,54 +8,29 @@ Selamat datang di `norsodikin`! Ini bukan sekadar pustaka Python biasa, melainka
 
 ## Instalasi
 
-Instalasi `norsodikin` dilakukan langsung dari repositori GitHub untuk memastikan Anda mendapatkan versi terkini. Anda dapat memilih untuk menginstal hanya komponen yang Anda butuhkan.
+Instalasi `norsodikin` dilakukan langsung dari repositori GitHub untuk memastikan Anda mendapatkan versi terkini.
 
-**1. Instalasi Inti (Sangat Ringan)**
-Perintah ini hanya menginstal pustaka inti dengan fitur-fitur dasar.
+**1. Instalasi Lengkap**
+
+Perintah ini menginstal `norsodikin` beserta `Pyrogram` dan semua dependensi yang diperlukan untuk menjalankan fitur-fitur seperti AI, media downloader, dan manajemen server. Ini adalah metode yang paling direkomendasikan.
+
+```bash
+pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[all]"
+```
+
+> **Catatan Penting untuk Fitur AI:**
+> Beberapa fitur memerlukan library sistem. Pada Debian/Ubuntu, instal dengan:
+> ```bash
+> sudo apt-get update && sudo apt-get install -y libzbar0 ffmpeg
+> ```
+
+**2. Instalasi Pustaka Saja (Tanpa Pyrogram)**
+
+Gunakan perintah ini jika Anda hanya ingin menggunakan utilitas `norsodikin` di luar proyek Pyrogram.
 
 ```bash
 pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin"
 ```
-
-**2. Instalasi dengan Fitur Tambahan (Extras)**
-Gunakan "extras" untuk menambahkan dependensi bagi fitur-fitur spesifik.
-
-*   **Untuk integrasi Pyrogram:**
-    ```bash
-    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[pyrogram]"
-    ```
-*   **Untuk semua fitur AI (TTS, Vision, STT, Ollama, Search, Manipulasi Gambar, dll.):**
-    ```bash
-    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[ai]"
-    ```
-    > **Catatan Penting untuk Fitur AI:**
-    > - **Pembaca QR Code (`qrcode.read`)** memerlukan library `zbar`. Pada Debian/Ubuntu, instal dengan: `sudo apt-get update && sudo apt-get install -y libzbar0`.
-    > - **Penghapus Background (`image.remove_background`)** memerlukan `onnxruntime`. Jika tidak terinstal otomatis, jalankan: `pip3 install onnxruntime`.
-
-*   **Untuk pengunduh media (YouTube, dll.):**
-    ```bash
-    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[media]"
-    ```
-*   **Untuk monitoring & manajemen server:**
-    ```bash
-    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[server]"
-    ```
-*   **Untuk menggunakan database MongoDB:**
-    ```bash
-    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[database]"
-    ```
-*   **Untuk utilitas CLI (seperti gradient banner):**
-    ```bash
-    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[cli]"
-    ```
-*   **Untuk penjadwalan tugas (Scheduler):**
-    ```bash
-    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[schedule]"
-    ```
-*   **Instal Semua Fitur (Sakti Penuh):**
-    ```bash
-    pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[all]"
-    ```
 
 ## Konsep Dasar & Integrasi Pyrogram
 
@@ -203,6 +178,34 @@ async def local_ai_handler(client, message):
         await status_msg.edit(jawaban)
     except Exception as e:
         await status_msg.edit(f"❌ Gagal terhubung ke Ollama: {e}")
+```
+---
+### `ocr`
+Modul AI untuk mengekstrak teks dari gambar (Optical Character Recognition) menggunakan Gemini Vision.
+
+**Inisialisasi:** `ocr_reader = client.ns.ai.ocr(api_key)`
+
+**Metode Utama:** `read_text(image_bytes)`
+
+**Contoh Penggunaan:**
+```python
+# @app.on_message(filters.command("ocr") & filters.reply)
+# async def ocr_handler(client, message):
+#     if not message.reply_to_message.photo:
+#         return await message.reply("Balas ke sebuah gambar.")
+#
+#     status = await message.reply("👁️ Membaca teks dari gambar...")
+#     try:
+#         photo_bytes = await client.download_media(message.reply_to_message.photo, in_memory=True)
+#         ocr_reader = client.ns.ai.ocr(api_key="GEMINI_API_KEY_ANDA")
+#         extracted_text = await ocr_reader.read_text(photo_bytes.getvalue())
+#
+#         if extracted_text:
+#             await status.edit(f"**Teks Ditemukan:**\n\n`{extracted_text}`")
+#         else:
+#             await status.edit("Tidak ada teks yang dapat dibaca.")
+#     except Exception as e:
+#         await status.edit(f"❌ Gagal: {e}")
 ```
 ---
 ### `qrcode`
