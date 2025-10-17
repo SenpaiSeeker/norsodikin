@@ -31,18 +31,7 @@ dependencies = [
     "tornado",
     "requests",
     "faker",
-    "wget",
     "setproctitle",
-]
-
-[project.urls]
-Homepage = "https://github.com/SenpaiSeeker/norsodikin"
-
-[project.optional-dependencies]
-pyrogram = [
-    "pyrotgfork[fast]",
-]
-ai = [
     "gTTS",
     "beautifulsoup4",
     "lxml",
@@ -53,26 +42,24 @@ ai = [
     "google-genai",
     "ollama",
     "rembg[cpu]",
-]
-server = [
     "psutil",
     "speedtest-cli",
-]
-database = [
     "pymongo",
-]
-cli = [
     "pyfiglet",
-]
-media = [
     "yt-dlp",
     "ffmpeg-python",
-]
-schedule = [
     "aiocron",
 ]
+
+[project.urls]
+Homepage = "https://github.com/SenpaiSeeker/norsodikin"
+
+[project.optional-dependencies]
+pyrogram = [
+    "pyrotgfork[fast]",
+]
 all = [
-    "norsodikin[ai,cli,database,media,pyrogram,schedule,server]",
+    "norsodikin[pyrogram]",
 ]
 
 [tool.setuptools]
