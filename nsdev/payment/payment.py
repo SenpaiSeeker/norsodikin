@@ -4,6 +4,9 @@ import hmac
 import random
 import time
 import uuid
+import requests
+from typing import Dict
+
 
 import httpx
 
@@ -151,3 +154,122 @@ class VioletMediaPayClient:
                 return self.convert._convertToNamespace(response.json())
         except Exception as e:
             raise Exception(f"Error checking VioletMediaPay transaction: {e}")
+
+
+class SaweriaApi:
+    def __init__(self, api_key: str):
+        """
+        Initialize Saweria API
+        
+        Args:
+            api_key (str): Your Maelyn API key
+        """
+        self.api_key = api_key
+        self.base_url = "https://api.maelyn.sbs/api/saweria"
+        
+    def get_user_id(self, username: str) -> Dict:
+        """
+        Get Saweria user ID by username
+        
+        Args:
+            username (str): Saweria username
+            
+        Returns:
+            Dict: API response
+        """
+        url = f"{self.base_url}/check/user"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "mg-apikey": self.api_key
+        }
+        
+        payload = {
+            'username': username.strip()
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=10)
+            return response.json()
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Failed to get user ID: {str(e)}"
+            }
+    
+    def create_payment(
+        self, 
+        user_id: str, 
+        amount: int, 
+        name: str, 
+        email: str, 
+        message: str = ""
+    ) -> Dict:
+        """
+        Create Saweria payment
+        
+        Args:
+            user_id (str): Saweria user ID
+            amount (int): Payment amount
+            name (str): Customer name
+            email (str): Customer email
+            message (str): Payment message
+            
+        Returns:
+            Dict: API response
+        """
+        url = f"{self.base_url}/create/payment"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "mg-apikey": self.api_key
+        }
+        
+        payload = {
+            'user_id': user_id.strip(),
+            'amount': str(amount),
+            'name': name.strip(),
+            'email': email.strip(),
+            'msg': message.strip()
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=10)
+            return response.json()
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Failed to create payment: {str(e)}"
+            }
+    
+    def check_payment(self, user_id: str, payment_id: str) -> Dict:
+        """
+        Check Saweria payment status
+        
+        Args:
+            user_id (str): Saweria user ID
+            payment_id (str): Payment ID
+            
+        Returns:
+            Dict: API response
+        """
+        url = f"{self.base_url}/check/payment"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "mg-apikey": self.api_key
+        }
+        
+        payload = {
+            'user_id': user_id.strip(),
+            'payment_id': payment_id.strip()
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=10)
+            return response.json()
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Failed to check payment: {str(e)}"
+            }
