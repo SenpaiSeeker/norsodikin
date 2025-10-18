@@ -1,6 +1,6 @@
-import asyncio
 import json
 import os
+import glob
 import sqlite3
 import zipfile
 from datetime import datetime
@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from ..code.encrypt import CipherHandler
+from ..schedule.manager import Scheduler
 
 
 class DataBase:
@@ -22,8 +23,7 @@ class DataBase:
         self.auto_backup = options.get("auto_backup", False)
         self.backup_bot_token = options.get("backup_bot_token")
         self.backup_chat_id = options.get("backup_chat_id")
-        self.backup_interval_hours = options.get("backup_interval_hours", 24)
-        self._backup_task = None
+        self.backup_cron_spec = options.get("backup_cron_spec", "0 */3 * * *")
 
         if self.storage_type == "mongo":
             import pymongo
@@ -41,60 +41,70 @@ class DataBase:
             self.data_file = f"{self.file_name}.json"
             if not os.path.exists(self.data_file):
                 self._save_data({"vars": {}, "bots": []})
+        
+        self._register_backup_task()
 
-    async def start_services(self):
+    def _register_backup_task(self):
         if self.auto_backup and self.storage_type in ["local", "sqlite"]:
             if not self.backup_bot_token or not self.backup_chat_id:
                 self.cipher.log.print(
-                    f"{self.cipher.log.YELLOW}[BACKUP] Auto backup dinonaktifkan karena token/chat_id tidak ada."
+                    f"{self.cipher.log.YELLOW}[BACKUP] Auto backup is disabled because token/chat_id is missing."
                 )
-            else:
-                if self._backup_task is None or self._backup_task.done():
-                    self.cipher.log.print(
-                        f"{self.cipher.log.GREEN}[BACKUP] Task backup dijadwalkan setiap {self.backup_interval_hours} jam."
-                    )
-                    self._backup_task = asyncio.create_task(self._backup_looper())
+                return
 
-    async def _backup_looper(self):
-        interval_seconds = self.backup_interval_hours * 3600
-        while True:
-            try:
-                await asyncio.sleep(interval_seconds)
-                self.cipher.log.print(f"{self.cipher.log.CYAN}[BACKUP] Memulai proses backup terjadwal...")
-                await self._perform_backup()
-            except asyncio.CancelledError:
-                self.cipher.log.print(f"{self.cipher.log.YELLOW}[BACKUP] Task backup dihentikan.")
-                break
-            except Exception as e:
-                self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] Terjadi error pada loop backup: {e}")
+            scheduler = Scheduler()
+            
+            @scheduler.cron(self.backup_cron_spec)
+            async def scheduled_backup_task():
+                self.cipher.log.print(f"{self.cipher.log.CYAN}[BACKUP] Starting scheduled backup process...")
+                await self.perform_backup()
+            
+            self.cipher.log.print(
+                f"{self.cipher.log.GREEN}[BACKUP] Backup task scheduled with spec: '{self.backup_cron_spec}'."
+            )
 
-    async def _perform_backup(self):
-        source_path = self.data_file if self.storage_type == "local" else self.db_file
-        if not os.path.exists(source_path):
-            self.cipher.log.print(f"{self.cipher.log.YELLOW}[BACKUP] File database tidak ditemukan. Backup dilewati.")
+    async def perform_backup(self):
+        source_paths = []
+        db_path = self.data_file if self.storage_type == "local" else self.db_file
+        
+        if os.path.exists(db_path):
+            source_paths.append(db_path)
+        else:
+            self.cipher.log.print(f"{self.cipher.log.YELLOW}[BACKUP] Database file not found. Skipping database backup.")
+
+        env_files = glob.glob("*.env")
+        if env_files:
+            source_paths.extend(env_files)
+        
+        if not source_paths:
+            self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] No files to back up. Aborting.")
             return
 
         zip_path = None
-        loop = asyncio.get_running_loop()
         try:
-            zip_path = await loop.run_in_executor(None, self._create_zip_archive, source_path)
+            zip_path = self._create_zip_archive(source_paths)
             if zip_path:
                 timestamp = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S %Z")
-                caption = f"Backup otomatis untuk `{self.file_name}`\nTipe: `{self.storage_type}`\nWaktu: `{timestamp}`"
+                caption = (
+                    f"Backup otomatis untuk `{os.path.basename(zip_path)}`\n"
+                    f"Tipe DB: `{self.storage_type}`\n"
+                    f"Waktu: `{timestamp}`"
+                )
                 await self._send_zip_to_telegram(zip_path, caption)
         finally:
             if zip_path and os.path.exists(zip_path):
                 os.remove(zip_path)
 
-    def _create_zip_archive(self, source_path):
+    def _create_zip_archive(self, source_paths: list):
         timestamp = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y%m%d_%H%M%S")
         zip_filename = f"backup_{self.file_name}_{timestamp}.zip"
         try:
             with zipfile.ZipFile(zip_filename, "w", zipfile.ZIP_DEFLATED) as zf:
-                zf.write(source_path, os.path.basename(source_path))
+                for path in source_paths:
+                    zf.write(path, os.path.basename(path))
             return zip_filename
         except Exception as e:
-            self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] Gagal membuat arsip ZIP: {e}")
+            self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] Failed to create ZIP archive: {e}")
             return None
 
     async def _send_zip_to_telegram(self, file_path, caption):
@@ -109,13 +119,13 @@ class DataBase:
             response.raise_for_status()
             response_data = response.json()
             if response_data.get("ok"):
-                self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] Berhasil dikirim ke Telegram.")
+                self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] Successfully sent to Telegram.")
             else:
                 self.cipher.log.print(
-                    f"{self.cipher.log.RED}[BACKUP] Gagal mengirim: {response_data.get('description')}"
+                    f"{self.cipher.log.RED}[BACKUP] Failed to send: {response_data.get('description')}"
                 )
         except Exception as e:
-            self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] Gagal mengirim file ke Telegram: {e}")
+            self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] Failed to send file to Telegram: {e}")
 
     def _load_data(self):
         try:
@@ -132,12 +142,6 @@ class DataBase:
         self.close()
 
     async def close_async(self):
-        if self._backup_task and not self._backup_task.done():
-            self._backup_task.cancel()
-            try:
-                await self._backup_task
-            except asyncio.CancelledError:
-                pass
         self.close()
 
     def close(self):
