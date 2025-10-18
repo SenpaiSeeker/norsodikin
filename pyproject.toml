@@ -25,6 +25,7 @@ classifiers = [
 
 dependencies = [
     "aiohttp",
+    "aiofiles",
     "pyyaml",
     "httpx",
     "python-dotenv",
