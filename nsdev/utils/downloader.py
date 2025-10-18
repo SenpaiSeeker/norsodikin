@@ -1,11 +1,11 @@
 import asyncio
 import os
-import wget
 from functools import partial
 from types import SimpleNamespace
 from typing import List
 from urllib.parse import urlparse
 
+import wget
 from yt_dlp import YoutubeDL
 
 
@@ -32,16 +32,16 @@ class MediaDownloader:
 
         is_url = query.startswith("http")
         if is_url:
-            ydl_opts["noplaylist"] = False 
+            ydl_opts["noplaylist"] = False
         else:
             ydl_opts["default_search"] = f"ytsearch{limit}"
-            
+
         with YoutubeDL(ydl_opts) as ydl:
             try:
                 result = ydl.extract_info(query, download=False)
                 if not result:
                     return []
-                    
+
                 entries = result.get("entries", [])
                 if not entries and "id" in result:
                     entries = [result]
@@ -62,7 +62,7 @@ class MediaDownloader:
     async def search_youtube(self, query: str, limit: int = 10) -> List[SimpleNamespace]:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(self._sync_extract_info, query, limit))
-        
+
     def _sync_download(
         self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop
     ) -> dict:
@@ -77,15 +77,15 @@ class MediaDownloader:
             "noplaylist": True,
             "quiet": True,
             "geo_bypass": True,
-            "nocheckcertificate": True
+            "nocheckcertificate": True,
         }
-        
+
         if progress_callback:
             ydl_opts["progress_hooks"] = [_hook]
-            
+
         if self.cookies_file_path and os.path.exists(self.cookies_file_path) and self._is_youtube_url(url):
             ydl_opts["cookiefile"] = self.cookies_file_path
-        
+
         if audio_only:
             ydl_opts.update(
                 {
@@ -101,8 +101,10 @@ class MediaDownloader:
             )
         else:
             if self._is_youtube_url(url):
-                ydl_opts["format"] = "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/best"
-            
+                ydl_opts["format"] = (
+                    "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/best"
+                )
+
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
