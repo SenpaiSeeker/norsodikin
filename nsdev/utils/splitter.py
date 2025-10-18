@@ -1,6 +1,4 @@
 import asyncio
-import os
-import shutil
 import subprocess
 from functools import partial
 from pathlib import Path
@@ -14,8 +12,8 @@ class AudioSplitter:
 
     def _sync_separate(self, audio_file_path: str) -> SimpleNamespace:
         cmd_mp3 = [
-            "python3", 
-            "-m", 
+            "python3",
+            "-m",
             "demucs",
             "--two-stems=vocals",
             "--mp3",
@@ -24,7 +22,7 @@ class AudioSplitter:
             str(self.output_path),
             str(audio_file_path),
         ]
-        
+
         result_mp3 = subprocess.run(cmd_mp3, capture_output=True, text=True)
 
         if result_mp3.returncode == 0:
@@ -32,10 +30,10 @@ class AudioSplitter:
         else:
             cmd_wav = [
                 "python3",
-                "-m", 
+                "-m",
                 "demucs",
                 "--two-stems=vocals",
-                "-o", 
+                "-o",
                 str(self.output_path),
                 str(audio_file_path),
             ]
@@ -48,26 +46,21 @@ class AudioSplitter:
         model_name = "htdemucs"
         base_name = Path(audio_file_path).stem
         output_dir = self.output_path / model_name / base_name
-        
+
         vocals_path = output_dir / f"vocals.{output_format}"
         no_vocals_path = output_dir / f"no_vocals.{output_format}"
 
         if not vocals_path.exists() or not no_vocals_path.exists():
             raise FileNotFoundError("Pemisahan gagal, file output tidak ditemukan.")
-            
+
         return SimpleNamespace(
-            vocals=str(vocals_path),
-            instrumental=str(no_vocals_path),
-            output_dir=str(output_dir.parent)
+            vocals=str(vocals_path), instrumental=str(no_vocals_path), output_dir=str(output_dir.parent)
         )
 
     async def separate(self, audio_file_path: str) -> SimpleNamespace:
         loop = asyncio.get_running_loop()
         try:
-            result = await loop.run_in_executor(
-                None, 
-                partial(self._sync_separate, audio_file_path)
-            )
+            result = await loop.run_in_executor(None, partial(self._sync_separate, audio_file_path))
             return result
         except Exception as e:
             raise RuntimeError(f"Gagal memisahkan audio: {e}")

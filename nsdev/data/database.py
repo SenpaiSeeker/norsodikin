@@ -1,6 +1,6 @@
+import glob
 import json
 import os
-import glob
 import sqlite3
 import zipfile
 from datetime import datetime
@@ -23,11 +23,12 @@ class DataBase:
         self.backup_bot_token = options.get("backup_bot_token")
         self.backup_chat_id = options.get("backup_chat_id")
         self.backup_cron_spec = options.get("backup_cron_spec", "0 */3 * * *")
-        
+
         self.scheduler = options.get("scheduler_instance")
 
         if self.storage_type == "mongo":
             import pymongo
+
             self.mongo_url = options.get("mongo_url")
             if not self.mongo_url:
                 raise ValueError("mongo_url is required for MongoDB storage")
@@ -41,7 +42,7 @@ class DataBase:
             self.data_file = f"{self.file_name}.json"
             if not os.path.exists(self.data_file):
                 self._save_data({"vars": {}, "bots": []})
-        
+
         self._register_backup_task()
 
     def _register_backup_task(self):
@@ -51,12 +52,12 @@ class DataBase:
                     f"{self.cipher.log.YELLOW}[BACKUP] Auto backup is disabled because token/chat_id is missing."
                 )
                 return
-            
+
             @self.scheduler.cron(self.backup_cron_spec)
             async def scheduled_backup_task():
                 self.cipher.log.print(f"{self.cipher.log.CYAN}[BACKUP] Starting scheduled backup process...")
                 await self.perform_backup()
-            
+
             self.cipher.log.print(
                 f"{self.cipher.log.GREEN}[BACKUP] Backup task scheduled with spec: '{self.backup_cron_spec}'."
             )
@@ -64,16 +65,18 @@ class DataBase:
     async def perform_backup(self):
         source_paths = []
         db_path = self.data_file if self.storage_type == "local" else self.db_file
-        
+
         if os.path.exists(db_path):
             source_paths.append(db_path)
         else:
-            self.cipher.log.print(f"{self.cipher.log.YELLOW}[BACKUP] Database file not found. Skipping database backup.")
+            self.cipher.log.print(
+                f"{self.cipher.log.YELLOW}[BACKUP] Database file not found. Skipping database backup."
+            )
 
         env_files = glob.glob("*.env")
         if env_files:
             source_paths.extend(env_files)
-        
+
         if not source_paths:
             self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] No files to back up. Aborting.")
             return
