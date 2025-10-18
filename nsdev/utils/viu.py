@@ -3,6 +3,7 @@ import os
 import re
 import time
 import uuid
+import json
 from functools import partial
 from types import SimpleNamespace
 from typing import Optional, List
@@ -10,102 +11,128 @@ from urllib.parse import urlparse, parse_qs
 
 import aiohttp
 import aiofiles
-from .viu_ckey import ViuCKey
 
 
 class ViuDownloader:
-    def __init__(self, download_path: str = "downloads", region: str = "th"):
+    def __init__(self, download_path: str = "downloads", region: str = "id"):
         self.download_path = download_path
-        self.region = region
+        self.region = region.lower()
         self.base_url = "https://www.viu.com"
-        self.api_gateway = "https://api-gateway-global.viu.com"
+        self.api_base = "https://um.viuapi.io"
+        
+        self.device_id = str(uuid.uuid4())
+        self.session_id = str(uuid.uuid4())
+        self.token = None
         
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
     
     def _extract_product_id(self, url: str) -> Optional[str]:
-        pattern = r'/vod/(\d+)/'
-        match = re.search(pattern, url)
-        if match:
-            return match.group(1)
+        patterns = [
+            r'/vod/(\d+)',
+            r'/video-[\w-]+-(\d+)',
+            r'/all/video-[\w-]+-(\d+)'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, url)
+            if match:
+                return match.group(1)
         return None
     
-    async def _get_video_info(self, product_id: str) -> dict:
-        api_url = f"{self.base_url}/ott/{self.region}/index.php"
-        params = {
-            'r': 'vod/ajax-detail',
-            'platform_flag_label': 'web',
-            'user_id': 'undefined',
-            'product_id': product_id
-        }
+    async def _get_token(self) -> str:
+        api_url = f"{self.api_base}/user/identity"
         
         headers = {
+            'Content-Type': 'application/json',
+            'x-session-id': self.session_id,
+            'x-client': 'browser',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        params = {
+            'ver': 1.0,
+            'fmt': 'json',
+            'aver': 5.0,
+            'appver': 2.0,
+            'appid': 'viu_desktop',
+            'platform': 'desktop',
+            'iid': self.device_id
+        }
+        
+        data = json.dumps({'deviceId': self.device_id})
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(api_url, headers=headers, params=params, data=data) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    return result.get('token')
+                else:
+                    raise Exception(f"Failed to get authentication token: HTTP {response.status}")
+    
+    async def _get_video_info(self, product_id: str) -> dict:
+        if not self.token:
+            self.token = await self._get_token()
+        
+        api_url = f"{self.api_base}/drm/v1/content/{product_id}"
+        
+        headers = {
+            'Authorization': self.token,
+            'x-session-id': self.session_id,
+            'x-client': 'browser',
+            'ccode': self.region.upper(),
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Referer': f'{self.base_url}/ott/{self.region}/',
+            'Referer': self.base_url,
             'Accept': 'application/json'
         }
         
         async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, params=params, headers=headers) as response:
+            async with session.post(api_url, headers=headers, data=b'') as response:
                 if response.status == 200:
                     data = await response.json()
                     return data
                 else:
                     raise Exception(f"Failed to get video info: HTTP {response.status}")
     
-    def _generate_ckey(self, vid: str, tm: str, platform: str = "web") -> str:
-        ckey_generator = ViuCKey()
-        
-        app_ver = "1.0"
-        guid = str(uuid.uuid4())
-        url = f"{self.api_gateway}/api/playback/distribute"
-        
-        ckey = ckey_generator.make(
-            vid=vid,
-            tm=tm,
-            app_ver=app_ver,
-            guid=guid,
-            platform=platform,
-            url=url
-        )
-        
-        return ckey
-    
-    async def _get_m3u8_url(self, ccs_product_id: str) -> str:
-        tm = str(int(time.time()))
-        ckey = self._generate_ckey(ccs_product_id, tm)
-        
-        api_url = f"{self.api_gateway}/api/playback/distribute"
-        
-        params = {
-            'ccs_product_id': ccs_product_id,
-            'r': 'vod/ajax-detail',
-            'platform_flag_label': 'web',
-            'area_id': '1',
-            'language_flag_id': '1',
-            'cKey': ckey,
-            'timestamp': tm
-        }
-        
+    async def _get_webpage_metadata(self, url: str) -> dict:
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Referer': f'{self.base_url}/ott/{self.region}/',
-            'Accept': 'application/json'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
         
         async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, params=params, headers=headers) as response:
+            async with session.get(url, headers=headers) as response:
                 if response.status == 200:
-                    data = await response.json()
-                    if 'data' in data and 'stream' in data['data']:
-                        stream_data = data['data']['stream']
-                        if 'url' in stream_data:
-                            return stream_data['url']
-                        elif 'playlist' in stream_data:
-                            return stream_data['playlist'][0]['url']
-                    raise Exception("M3U8 URL not found in API response")
-                else:
-                    raise Exception(f"Failed to get M3U8 URL: HTTP {response.status}")
+                    html = await response.text()
+
+                    metadata = {}
+
+                    initial_state_match = re.search(r'window\.__INITIAL_STATE__\s*=\s*({.+?});', html, re.DOTALL)
+                    if initial_state_match:
+                        try:
+                            initial_state = json.loads(initial_state_match.group(1))
+                            clip_details = initial_state.get('content', {}).get('clipDetails', {})
+                            
+                            metadata['title'] = clip_details.get('title') or clip_details.get('display_title')
+                            metadata['description'] = clip_details.get('description')
+                            metadata['duration'] = clip_details.get('duration')
+                            metadata['episode_number'] = clip_details.get('episode_no') or clip_details.get('episodeno')
+                            
+                            subtitles = []
+                            for key, value in clip_details.items():
+                                match = re.match(r'^subtitle_([\\w-]+)_(\\w+)$', key)
+                                if match and value:
+                                    lang, ext = match.groups()
+                                    subtitles.append({
+                                        'language': lang,
+                                        'ext': ext,
+                                        'url': value
+                                    })
+                            metadata['subtitles'] = subtitles
+                        except:
+                            pass
+                    
+                    return metadata
+                return {}
     
     async def _download_subtitle(self, subtitle_url: str, output_path: str):
         headers = {
@@ -149,7 +176,6 @@ class ViuDownloader:
             
             for line in process.stderr:
                 if progress_callback and 'time=' in line:
-                    # Parse progress from ffmpeg output
                     asyncio.run_coroutine_threadsafe(
                         progress_callback(line),
                         loop
@@ -181,23 +207,19 @@ class ViuDownloader:
         
         video_info = await self._get_video_info(product_id)
         
-        if 'data' not in video_info:
-            raise Exception("Failed to get video information")
+        if not video_info.get('playUrl'):
+            raise Exception("Failed to get video playback URL")
         
-        data = video_info['data']
+        m3u8_url = video_info['playUrl']
         
-        ccs_product_id = data.get('ccs_product_id') or data.get('product', {}).get('ccs_product_id')
-        title = data.get('synopsis', {}).get('name') or data.get('product', {}).get('series', {}).get('name', 'video')
-        episode_number = data.get('synopsis', {}).get('episode_number') or data.get('product', {}).get('number', '')
+        metadata = await self._get_webpage_metadata(url)
         
-        if not ccs_product_id:
-            raise Exception("Could not find ccs_product_id in video info")
+        title = metadata.get('title') or f'VIU_Video_{product_id}'
+        episode_number = metadata.get('episode_number') or ''
         
         safe_title = re.sub(r'[\\/*?:"<>|]', '', title)
         if episode_number:
             safe_title = f"{safe_title}_EP{episode_number}"
-        
-        m3u8_url = await self._get_m3u8_url(ccs_product_id)
         
         video_filename = f"{safe_title}.mp4"
         video_path = os.path.join(self.download_path, video_filename)
@@ -215,28 +237,26 @@ class ViuDownloader:
         )
         
         subtitle_paths = []
-        if include_subtitles and 'subtitle' in data:
-            subtitle_list = data['subtitle']
-            
-            for subtitle in subtitle_list:
-                lang_code = subtitle.get('code', '').lower()
-                lang_name = subtitle.get('name', lang_code)
+        if include_subtitles and metadata.get('subtitles'):
+            for subtitle in metadata['subtitles']:
+                lang = subtitle.get('language', 'und')
+                ext = subtitle.get('ext', 'srt')
                 sub_url = subtitle.get('url')
                 
                 if not sub_url:
                     continue
                 
-                if subtitle_languages and lang_code not in subtitle_languages:
+                if subtitle_languages and lang not in subtitle_languages:
                     continue
                 
-                sub_filename = f"{safe_title}_{lang_name}.srt"
+                sub_filename = f"{safe_title}_{lang}.{ext}"
                 sub_path = os.path.join(self.download_path, sub_filename)
                 
                 success = await self._download_subtitle(sub_url, sub_path)
                 if success:
                     subtitle_paths.append({
-                        'language': lang_name,
-                        'code': lang_code,
+                        'language': lang,
+                        'code': lang,
                         'path': sub_path
                     })
         
@@ -246,25 +266,9 @@ class ViuDownloader:
             episode_number=episode_number,
             subtitle_paths=subtitle_paths,
             product_id=product_id,
-            ccs_product_id=ccs_product_id
+            ccs_product_id=product_id
         )
     
     async def get_available_subtitles(self, url: str) -> List[dict]:
-        product_id = self._extract_product_id(url)
-        if not product_id:
-            raise ValueError("Invalid Viu URL")
-        
-        video_info = await self._get_video_info(product_id)
-        
-        if 'data' not in video_info or 'subtitle' not in video_info['data']:
-            return []
-        
-        subtitles = []
-        for subtitle in video_info['data']['subtitle']:
-            subtitles.append({
-                'code': subtitle.get('code', '').lower(),
-                'name': subtitle.get('name', ''),
-                'url': subtitle.get('url', '')
-            })
-        
-        return subtitles
+        metadata = await self._get_webpage_metadata(url)
+        return metadata.get('subtitles', [])
