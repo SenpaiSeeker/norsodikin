@@ -55,6 +55,7 @@ from .utils.paste import PasteClient
 from .utils.progress import TelegramProgressBar
 from .utils.ratelimit import RateLimiter
 from .utils.shell import ShellExecutor
+from .utils.splitter import AudioSplitter
 from .utils.url import UrlUtils
 from .utils.weather import WeatherWttr
 from .utils.wikipedia import WikipediaSearch
@@ -139,6 +140,7 @@ class NsDev:
             progress=TelegramProgressBar,
             ratelimit=RateLimiter(self._client),
             shell=ShellExecutor(),
+            splitter=AudioSplitter,
             url=UrlUtils(),
             weather=WeatherWttr,
             wikipedia=WikipediaSearch,
