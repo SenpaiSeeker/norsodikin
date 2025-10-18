@@ -61,7 +61,7 @@ from .utils.viu import ViuDownloader
 from .utils.weather import WeatherWttr
 from .utils.wikipedia import WikipediaSearch
 
-__version__ = "1.9.9.2"
+__version__ = "1.9.9.3"
 __author__ = "@NorSodikin"
 
 
