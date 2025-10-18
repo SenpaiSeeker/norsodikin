@@ -49,6 +49,8 @@ dependencies = [
     "yt-dlp",
     "ffmpeg-python",
     "aiocron",
+    "demucs", 
+    "torchcodec",
 ]
 
 [project.urls]
