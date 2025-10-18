@@ -13,7 +13,6 @@ class AudioSplitter:
 
     def _sync_separate(self, audio_file_path: str) -> dict:
         cmd = [
-        cmd = [
             "python3",
             "-m",
             "demucs",
