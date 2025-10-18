@@ -4,7 +4,7 @@ import uuid
 
 from pyrogram.errors import PeerIdInvalid, RPCError, UsernameInvalid
 from pyrogram.raw import functions, types
-from pyrogram.types import Document, Message, Photo, ReplyParameters
+from pyrogram.types import Document, Message, Photo
 
 from ..utils.logger import LoggerHandler
 
@@ -38,7 +38,6 @@ class StoryDownloader:
                     target_chat_id,
                     downloaded_path,
                     caption=caption,
-                    reply_parameters=ReplyParameters(message_id=msg_id),
                 )
                 await asyncio.sleep(1.5)
 
