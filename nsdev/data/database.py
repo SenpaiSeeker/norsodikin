@@ -9,7 +9,6 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from ..code.encrypt import CipherHandler
-from ..schedule.manager import Scheduler
 
 
 class DataBase:
@@ -24,10 +23,11 @@ class DataBase:
         self.backup_bot_token = options.get("backup_bot_token")
         self.backup_chat_id = options.get("backup_chat_id")
         self.backup_cron_spec = options.get("backup_cron_spec", "0 */3 * * *")
+        
+        self.scheduler = options.get("scheduler_instance")
 
         if self.storage_type == "mongo":
             import pymongo
-
             self.mongo_url = options.get("mongo_url")
             if not self.mongo_url:
                 raise ValueError("mongo_url is required for MongoDB storage")
@@ -45,16 +45,14 @@ class DataBase:
         self._register_backup_task()
 
     def _register_backup_task(self):
-        if self.auto_backup and self.storage_type in ["local", "sqlite"]:
+        if self.auto_backup and self.scheduler and self.storage_type in ["local", "sqlite"]:
             if not self.backup_bot_token or not self.backup_chat_id:
                 self.cipher.log.print(
                     f"{self.cipher.log.YELLOW}[BACKUP] Auto backup is disabled because token/chat_id is missing."
                 )
                 return
-
-            scheduler = Scheduler()
             
-            @scheduler.cron(self.backup_cron_spec)
+            @self.scheduler.cron(self.backup_cron_spec)
             async def scheduled_backup_task():
                 self.cipher.log.print(f"{self.cipher.log.CYAN}[BACKUP] Starting scheduled backup process...")
                 await self.perform_backup()
