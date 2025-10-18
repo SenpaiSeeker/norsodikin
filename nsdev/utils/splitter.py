@@ -4,6 +4,7 @@ import shutil
 import subprocess
 from functools import partial
 from pathlib import Path
+from types import SimpleNamespace
 
 
 class AudioSplitter:
@@ -11,7 +12,7 @@ class AudioSplitter:
         self.output_path = Path(output_path)
         self.output_path.mkdir(parents=True, exist_ok=True)
 
-    def _sync_separate(self, audio_file_path: str) -> dict:
+    def _sync_separate(self, audio_file_path: str) -> SimpleNamespace:
         cmd_mp3 = [
             "python3", 
             "-m", 
@@ -31,10 +32,10 @@ class AudioSplitter:
         else:
             cmd_wav = [
                 "python3",
-                "-m",
+                "-m", 
                 "demucs",
                 "--two-stems=vocals",
-                "-o",
+                "-o", 
                 str(self.output_path),
                 str(audio_file_path),
             ]
@@ -54,13 +55,13 @@ class AudioSplitter:
         if not vocals_path.exists() or not no_vocals_path.exists():
             raise FileNotFoundError("Pemisahan gagal, file output tidak ditemukan.")
             
-        return {
-            "vocals": str(vocals_path),
-            "instrumental": str(no_vocals_path),
-            "output_dir": str(output_dir.parent)
-        }
+        return SimpleNamespace(
+            vocals=str(vocals_path),
+            instrumental=str(no_vocals_path),
+            output_dir=str(output_dir.parent)
+        )
 
-    async def separate(self, audio_file_path: str) -> dict:
+    async def separate(self, audio_file_path: str) -> SimpleNamespace:
         loop = asyncio.get_running_loop()
         try:
             result = await loop.run_in_executor(
