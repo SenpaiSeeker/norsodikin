@@ -91,7 +91,7 @@ class ImageGenerator:
                 raise Exception("Bing mengembalikan error, kemungkinan karena kebijakan konten.")
 
             links = re.findall(r'src="([^"]+)"', poll_response.text)
-            valid_links = [link.split("?")[0] for link in links if "tse" in link]
+            valid_links = [link.split("?")[0] for link in links if "bing.com" in link]
 
             if valid_links:
                 unique_links = sorted(list(set(valid_links)))
