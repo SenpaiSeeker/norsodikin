@@ -171,10 +171,10 @@ class SaweriaApi:
                 response.raise_for_status()
                 return self.convert._convertToNamespace(response.json())
         except Exception as e:
-            return self.convert._convertToNamespace({
+            raise Exception(self.convert._convertToNamespace({
                 "status": "error",
                 "message": f"Failed to get user ID: {str(e)}"
-            })
+            }))
 
     async def create_payment(
         self, 
@@ -200,10 +200,10 @@ class SaweriaApi:
                 response.raise_for_status()
                 return self.convert._convertToNamespace(response.json())
         except Exception as e:
-            return self.convert._convertToNamespace({
+            raise Exception(self.convert._convertToNamespace({
                 "status": "error",
                 "message": f"Failed to create payment: {str(e)}"
-            })
+            }))
 
     async def check_payment(self, user_id: str, payment_id: str):
         url = f"{self.base_url}/check/payment"
@@ -219,7 +219,7 @@ class SaweriaApi:
                 response.raise_for_status()
                 return self.convert._convertToNamespace(response.json())
         except Exception as e:
-            return self.convert._convertToNamespace({
+            raise Exception(self.convert._convertToNamespace({
                 "status": "error",
                 "message": f"Failed to check payment: {str(e)}"
-            })
+            }))
