@@ -43,7 +43,7 @@ class PinterestDownloader:
                 num=1,
                 download_streams=True,
                 min_resolution=(512, 512),
-                caption=None,
+                caption="none",
                 delay=0.5
             )
 
@@ -87,7 +87,7 @@ class PinterestDownloader:
                 num=limit,
                 download_streams=True,
                 min_resolution=(512, 512),
-                caption=None,
+                caption="none",
                 delay=0.5
             )
 
