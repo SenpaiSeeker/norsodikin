@@ -57,7 +57,6 @@ from .utils.ratelimit import RateLimiter
 from .utils.shell import ShellExecutor
 from .utils.splitter import AudioSplitter
 from .utils.url import UrlUtils
-from .utils.viu import ViuDownloader
 from .utils.weather import WeatherWttr
 from .utils.wikipedia import WikipediaSearch
 
@@ -143,7 +142,6 @@ class NsDev:
             shell=ShellExecutor(),
             splitter=AudioSplitter,
             url=UrlUtils(),
-            viu=ViuDownloader,
             weather=WeatherWttr,
             wikipedia=WikipediaSearch,
         )
