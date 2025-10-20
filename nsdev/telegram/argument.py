@@ -30,7 +30,7 @@ class Argument:
         link = f"tg://user?id={user.id}"
         mention = f"<a href='{link}'>{name}</a>"
         if tag_and_id:
-            mention += f" | <code>{user.id}</code>"
+            mention += f" (<code>{user.id}</code>)"
 
         return mention
 
