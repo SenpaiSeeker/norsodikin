@@ -3,6 +3,7 @@ import asyncio
 import random
 import string
 from typing import Optional, Dict, Any
+from ..utils.logger import LoggerHandler
 
 
 class EmailGenerator:
@@ -10,6 +11,7 @@ class EmailGenerator:
     
     def __init__(self):
         self.session: Optional[aiohttp.ClientSession] = None
+        self.logger = LoggerHandler()
     
     async def _get_session(self) -> aiohttp.ClientSession:
         if self.session is None or self.session.closed:
@@ -29,8 +31,9 @@ class EmailGenerator:
                     return [domain['domain'] for domain in data['hydra:member']]
                 return []
         except Exception as e:
-            print(f"Error getting domains: {e}")
-            return []
+            error_text = f"Error getting domains: {e}"
+            self.logger.error(error_text)
+            raise Exception(error_text)
     
     def _generate_random_username(self, length: int = 10) -> str:
         chars = string.ascii_lowercase + string.digits
@@ -74,7 +77,9 @@ class EmailGenerator:
                             'id': account_info.get('id', '')
                         }
         except Exception as e:
-            print(f"Error creating account: {e}")
+            error_text = f"Error creating account: {e}"
+            self.logger.error(error_text)
+            raise Exception(error_text)
         
         return None
     
@@ -95,7 +100,9 @@ class EmailGenerator:
                     data = await response.json()
                     return data.get('token')
         except Exception as e:
-            print(f"Error logging in: {e}")
+            error_text = f"Error logging in: {e}"
+            self.logger.error(error_text)
+            raise Exception(error_text)
         
         return None
     
