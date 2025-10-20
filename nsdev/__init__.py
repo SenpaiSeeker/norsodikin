@@ -35,6 +35,7 @@ from .telegram.errors import ErrorHandler
 from .telegram.formatter import TextFormatter
 from .telegram.story import StoryDownloader
 from .telegram.videofx import VideoFX
+from .tempmail.manager import TempMailManager
 from .utils.audiofx import AudioFX
 from .utils.cache import memoize
 from .utils.carbon import CarbonClient
@@ -119,6 +120,7 @@ class NsDev:
             story=StoryDownloader(self._client),
             videofx=VideoFX(),
         )
+        self.tempmail = TempMailManager()
         self.utils = SimpleNamespace(
             audiofx=AudioFX(),
             cache=memoize,
