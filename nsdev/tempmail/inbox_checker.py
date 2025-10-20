@@ -1,6 +1,7 @@
 import aiohttp
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from ..utils.logger import LoggerHandler
 
 
 class InboxChecker:
@@ -8,6 +9,7 @@ class InboxChecker:
     
     def __init__(self):
         self.session: Optional[aiohttp.ClientSession] = None
+        self.logger = LoggerHandler()
     
     async def _get_session(self) -> aiohttp.ClientSession:
         if self.session is None or self.session.closed:
@@ -34,7 +36,9 @@ class InboxChecker:
                     data = await response.json()
                     return data.get('hydra:member', [])
         except Exception as e:
-            print(f"Error fetching messages: {e}")
+            error_text = f"Error fetching messages: {e}"
+            self.logger.error(error_text)
+            raise Exception(error_text)
         
         return []
     
@@ -53,7 +57,9 @@ class InboxChecker:
                 if response.status == 200:
                     return await response.json()
         except Exception as e:
-            print(f"Error fetching message detail: {e}")
+            error_text = f"Error fetching message detail: {e}"
+            self.logger.error(error_text)
+            raise Exception(error_text)
         
         return None
     
@@ -71,7 +77,9 @@ class InboxChecker:
             ) as response:
                 return response.status == 204
         except Exception as e:
-            print(f"Error deleting message: {e}")
+            error_text = f"Error deleting message: {e}"
+            self.logger.error(error_text)
+            raise Exception(error_text)
         
         return False
     
@@ -90,6 +98,8 @@ class InboxChecker:
             ) as response:
                 return response.status == 200
         except Exception as e:
-            print(f"Error marking message as seen: {e}")
+            error_text = f"Error marking message as seen: {e}"
+            self.logger.error(error_text)
+            raise Exception(error_text)
         
         return False
