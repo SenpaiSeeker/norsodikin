@@ -61,7 +61,7 @@ class Argument:
 
         replied_text = ""
         if replied:
-            replied_text = (replied.text or replied.caption).html if (replied.text or replied.caption) else ""
+            replied_text = replied.text or replied.caption
 
         quote_text = ""
         if hasattr(message, "quote") and message.quote:
