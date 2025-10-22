@@ -21,7 +21,7 @@ from .code.encrypt import AsciiManager, CipherHandler
 from .data.database import DataBase
 from .data.storekey import KeyManager
 from .data.ymlreder import YamlHandler
-from .payment.payment import PaymentMidtrans, PaymentTripay, VioletMediaPayClient
+from .payment.payment import PaymentCashify, PaymentMidtrans, PaymentTripay, VioletMediaPayClient
 from .schedule.manager import Scheduler
 from .server.addUser import SSHUserManager
 from .server.monitor import ServerMonitor
@@ -62,7 +62,7 @@ from .utils.url import UrlUtils
 from .utils.weather import WeatherWttr
 from .utils.wikipedia import WikipediaSearch
 
-__version__ = "2.2"
+__version__ = "2.3"
 __author__ = "@NorSodikin"
 
 
@@ -100,6 +100,7 @@ class NsDev:
             yaml=YamlHandler(),
         )
         self.payment = SimpleNamespace(
+            Cashify=PaymentCashify,
             Midtrans=PaymentMidtrans,
             Tripay=PaymentTripay,
             Violet=VioletMediaPayClient,
