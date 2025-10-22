@@ -264,7 +264,7 @@ class PaymentCashify:
 
     async def check_status(self, payment_id: str):
         url = f"{self.base_url}/generate/check-status"
-        payload = {"id": payment_id}
+        payload = {"transactionId": payment_id}
         
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
