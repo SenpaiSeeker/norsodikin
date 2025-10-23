@@ -217,6 +217,16 @@ class PaymentCashify:
         self.base_url = "https://cashify.my.id/api"
         self.convert = YamlHandler()
         self.qr_generator_url = "https://larabert-qrgen.hf.space/v1/create-qr-code"
+        self.STYLISH_QR_COLORS = [
+            "ea580c",
+            "3b82f6",
+            "16a34a",
+            "dc2626",
+            "7c3aed",
+            "db2777",
+            "0d9488",
+            "d97706",
+        ]
 
     def _get_headers(self):
         return {"x-license-key": self.license_key, "content-type": "application/json"}
@@ -275,10 +285,9 @@ class PaymentCashify:
         except Exception as e:
             raise Exception(f"Error checking Cashify payment status: {e}")
 
-    def generate_stylish_qr(self, data: str, size: str = "500x500", style: int = 2, color: str = "ea580c"):
-        if style not in [1, 2, 3]:
-            style = 2
-
+    def generate_stylish_qr(self, data: str, size: str = "500x500", style: int = None, color: str = None):
+        style = style if style else random.choice([1, 2, 3])
+        color = color if color else random.choice(self.STYLISH_QR_COLORS)
         qr_url = f"{self.qr_generator_url}?size={size}&style={style}&color={color}&data={data}"
         return qr_url
 
