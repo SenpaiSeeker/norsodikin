@@ -25,6 +25,7 @@ from .payment.payment import (
     PaymentCashify,
     PaymentMidtrans,
     PaymentTripay,
+    SaweriaApi,
     VioletMediaPayClient,
 )
 from .schedule.manager import Scheduler
@@ -107,6 +108,7 @@ class NsDev:
         self.payment = SimpleNamespace(
             Cashify=PaymentCashify,
             Midtrans=PaymentMidtrans,
+            Saweria=SaweriaApi,
             Tripay=PaymentTripay,
             Violet=VioletMediaPayClient,
         )
