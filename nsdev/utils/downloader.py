@@ -28,6 +28,10 @@ class MediaDownloader:
         parsed_url = urlparse(url)
         return parsed_url.netloc in ("twitter.com", "www.twitter.com", "x.com", "www.x.com")
 
+    def _is_tiktok_url(self, url):
+        parsed_url = urlparse(url)
+        return parsed_url.netloc in ("www.tiktok.com", "tiktok.com", "vt.tiktok.com")
+
     def _sync_extract_info(self, query: str, limit: int = 10):
         ydl_opts = {
             "format": "best",
@@ -145,8 +149,8 @@ class MediaDownloader:
         except Exception as e:
             raise Exception(f"Failed to download media: {e}")
 
-    def _sync_download_instagram(
-        self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop
+    def _sync_download_social(
+        self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop, media_name: str
     ) -> dict:
         def _hook(d):
             if d["status"] == "downloading" and progress_callback:
@@ -161,7 +165,6 @@ class MediaDownloader:
             "geo_bypass": True,
             "nocheckcertificate": True,
         }
-
         if progress_callback:
             ydl_opts["progress_hooks"] = [_hook]
 
@@ -173,11 +176,7 @@ class MediaDownloader:
                 {
                     "format": "bestaudio/best",
                     "postprocessors": [
-                        {
-                            "key": "FFmpegExtractAudio",
-                            "preferredcodec": "mp3",
-                            "preferredquality": "192",
-                        }
+                        {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}
                     ],
                 }
             )
@@ -187,11 +186,9 @@ class MediaDownloader:
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
-
             if audio_only and filename:
                 base, _ = os.path.splitext(filename)
                 filename = base + ".mp3"
-
             thumb_path = None
             if info.get("thumbnail"):
                 try:
@@ -199,95 +196,45 @@ class MediaDownloader:
                     thumb_path = wget.download(thumb_url, out=self.download_path)
                 except Exception:
                     thumb_path = None
-
             return {
                 "path": filename,
-                "title": info.get("title", "Instagram Media"),
+                "title": info.get("title", media_name),
                 "duration": info.get("duration", 0),
                 "thumbnail_path": thumb_path,
                 "uploader": info.get("uploader", "N/A"),
             }
 
-    async def download_instagram(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> dict:
+    async def download_instagram(
+        self, url: str, audio_only: bool = False, progress_callback: callable = None
+    ) -> dict:
         loop = asyncio.get_running_loop()
         try:
-            func_call = partial(self._sync_download_instagram, url, audio_only, progress_callback, loop)
-            result = await loop.run_in_executor(None, func_call)
-            return result
+            func_call = partial(
+                self._sync_download_social, url, audio_only, progress_callback, loop, "Instagram Media"
+            )
+            return await loop.run_in_executor(None, func_call)
         except Exception as e:
             raise Exception(f"Failed to download Instagram media: {e}")
 
-    def _sync_download_twitter(
-        self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop
+    async def download_twitter(
+        self, url: str, audio_only: bool = False, progress_callback: callable = None
     ) -> dict:
-        def _hook(d):
-            if d["status"] == "downloading" and progress_callback:
-                total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate")
-                if total_bytes:
-                    asyncio.run_coroutine_threadsafe(progress_callback(d["downloaded_bytes"], total_bytes), loop)
-
-        ydl_opts = {
-            "outtmpl": os.path.join(self.download_path, "%(id)s.%(ext)s"),
-            "quiet": True,
-            "no_warnings": True,
-            "geo_bypass": True,
-            "nocheckcertificate": True,
-        }
-
-        if progress_callback:
-            ydl_opts["progress_hooks"] = [_hook]
-
-        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
-            ydl_opts["cookiefile"] = self.cookies_file_path
-
-        if audio_only:
-            ydl_opts.update(
-                {
-                    "format": "bestaudio/best",
-                    "postprocessors": [
-                        {
-                            "key": "FFmpegExtractAudio",
-                            "preferredcodec": "mp3",
-                            "preferredquality": "192",
-                        }
-                    ],
-                }
-            )
-        else:
-            ydl_opts["format"] = "best[ext=mp4]/best"
-
-        with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-
-            if audio_only and filename:
-                base, _ = os.path.splitext(filename)
-                filename = base + ".mp3"
-
-            thumb_path = None
-            if info.get("thumbnail"):
-                try:
-                    thumb_url = info["thumbnail"]
-                    thumb_path = wget.download(thumb_url, out=self.download_path)
-                except Exception:
-                    thumb_path = None
-
-            return {
-                "path": filename,
-                "title": info.get("title", "Twitter Media"),
-                "duration": info.get("duration", 0),
-                "thumbnail_path": thumb_path,
-                "uploader": info.get("uploader", "N/A"),
-            }
-
-    async def download_twitter(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> dict:
         loop = asyncio.get_running_loop()
         try:
-            func_call = partial(self._sync_download_twitter, url, audio_only, progress_callback, loop)
-            result = await loop.run_in_executor(None, func_call)
-            return result
+            func_call = partial(
+                self._sync_download_social, url, audio_only, progress_callback, loop, "Twitter Media"
+            )
+            return await loop.run_in_executor(None, func_call)
         except Exception as e:
             raise Exception(f"Failed to download Twitter media: {e}")
+
+    async def download_tiktok(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> dict:
+        loop = asyncio.get_running_loop()
+        try:
+            func_call = partial(self._sync_download_social, url, audio_only, progress_callback, loop, "TikTok Media")
+            return await loop.run_in_executor(None, func_call)
+        except Exception as e:
+            raise Exception(f"Failed to download TikTok media: {e}")
 
     async def download_social_media(
         self, url: str, audio_only: bool = False, progress_callback: callable = None
@@ -296,5 +243,7 @@ class MediaDownloader:
             return await self.download_instagram(url, audio_only, progress_callback)
         elif self._is_twitter_url(url):
             return await self.download_twitter(url, audio_only, progress_callback)
+        elif self._is_tiktok_url(url):
+            return await self.download_tiktok(url, audio_only, progress_callback)
         else:
-            raise Exception("URL tidak didukung. Gunakan URL Instagram atau Twitter/X.")
+            raise Exception("URL tidak didukung. Gunakan URL Instagram, Twitter/X, atau TikTok.")
