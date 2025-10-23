@@ -21,7 +21,12 @@ from .code.encrypt import AsciiManager, CipherHandler
 from .data.database import DataBase
 from .data.storekey import KeyManager
 from .data.ymlreder import YamlHandler
-from .payment.payment import PaymentCashify, PaymentMidtrans, PaymentTripay, VioletMediaPayClient
+from .payment.payment import (
+    PaymentCashify,
+    PaymentMidtrans,
+    PaymentTripay,
+    VioletMediaPayClient,
+)
 from .schedule.manager import Scheduler
 from .server.addUser import SSHUserManager
 from .server.monitor import ServerMonitor

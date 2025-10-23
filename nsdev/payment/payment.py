@@ -219,10 +219,7 @@ class PaymentCashify:
         self.qr_generator_url = "https://larabert-qrgen.hf.space/v1/create-qr-code"
 
     def _get_headers(self):
-        return {
-            "x-license-key": self.license_key,
-            "content-type": "application/json"
-        }
+        return {"x-license-key": self.license_key, "content-type": "application/json"}
 
     async def generate_qris(
         self,
@@ -230,26 +227,26 @@ class PaymentCashify:
         amount: int,
         use_unique_code: bool = True,
         package_ids: list = None,
-        expired_in_minutes: int = 15
+        expired_in_minutes: int = 15,
     ):
         url = f"{self.base_url}/generate/qris"
-        
+
         if package_ids is None:
             package_ids = ["id.dana"]
-        
+
         if expired_in_minutes < 15:
             expired_in_minutes = 15
         elif expired_in_minutes > 1440:
             expired_in_minutes = 1440
-        
+
         payload = {
             "id": qris_id,
             "amount": amount,
             "useUniqueCode": use_unique_code,
             "packageIds": package_ids,
-            "expiredInMinutes": expired_in_minutes
+            "expiredInMinutes": expired_in_minutes,
         }
-        
+
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
                 response = await client.post(url, headers=self._get_headers(), json=payload)
@@ -265,7 +262,7 @@ class PaymentCashify:
     async def check_status(self, payment_id: str):
         url = f"{self.base_url}/generate/check-status"
         payload = {"transactionId": payment_id}
-        
+
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
                 response = await client.post(url, headers=self._get_headers(), json=payload)
@@ -278,28 +275,16 @@ class PaymentCashify:
         except Exception as e:
             raise Exception(f"Error checking Cashify payment status: {e}")
 
-    def generate_stylish_qr(
-        self,
-        data: str,
-        size: str = "500x500",
-        style: int = 2,
-        color: str = "ea580c"
-    ):
+    def generate_stylish_qr(self, data: str, size: str = "500x500", style: int = 2, color: str = "ea580c"):
         if style not in [1, 2, 3]:
             style = 2
-        
+
         qr_url = f"{self.qr_generator_url}?size={size}&style={style}&color={color}&data={data}"
         return qr_url
 
-    async def download_qr_image(
-        self,
-        data: str,
-        size: str = "500x500",
-        style: int = 2,
-        color: str = "ea580c"
-    ):
+    async def download_qr_image(self, data: str, size: str = "500x500", style: int = 2, color: str = "ea580c"):
         qr_url = self.generate_stylish_qr(data, size, style, color)
-        
+
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
                 response = await client.get(qr_url)

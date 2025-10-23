@@ -19,11 +19,11 @@ class MediaDownloader:
     def _is_youtube_url(self, url):
         parsed_url = urlparse(url)
         return parsed_url.netloc in ("www.youtube.com", "youtube.com", "youtu.be")
-    
+
     def _is_instagram_url(self, url):
         parsed_url = urlparse(url)
         return parsed_url.netloc in ("www.instagram.com", "instagram.com", "instagr.am")
-    
+
     def _is_twitter_url(self, url):
         parsed_url = urlparse(url)
         return parsed_url.netloc in ("twitter.com", "www.twitter.com", "x.com", "www.x.com")
@@ -144,7 +144,7 @@ class MediaDownloader:
             return result
         except Exception as e:
             raise Exception(f"Failed to download media: {e}")
-    
+
     def _sync_download_instagram(
         self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop
     ) -> dict:
@@ -207,10 +207,8 @@ class MediaDownloader:
                 "thumbnail_path": thumb_path,
                 "uploader": info.get("uploader", "N/A"),
             }
-    
-    async def download_instagram(
-        self, url: str, audio_only: bool = False, progress_callback: callable = None
-    ) -> dict:
+
+    async def download_instagram(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> dict:
         loop = asyncio.get_running_loop()
         try:
             func_call = partial(self._sync_download_instagram, url, audio_only, progress_callback, loop)
@@ -218,7 +216,7 @@ class MediaDownloader:
             return result
         except Exception as e:
             raise Exception(f"Failed to download Instagram media: {e}")
-    
+
     def _sync_download_twitter(
         self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop
     ) -> dict:
@@ -281,10 +279,8 @@ class MediaDownloader:
                 "thumbnail_path": thumb_path,
                 "uploader": info.get("uploader", "N/A"),
             }
-    
-    async def download_twitter(
-        self, url: str, audio_only: bool = False, progress_callback: callable = None
-    ) -> dict:
+
+    async def download_twitter(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> dict:
         loop = asyncio.get_running_loop()
         try:
             func_call = partial(self._sync_download_twitter, url, audio_only, progress_callback, loop)
@@ -292,7 +288,7 @@ class MediaDownloader:
             return result
         except Exception as e:
             raise Exception(f"Failed to download Twitter media: {e}")
-    
+
     async def download_social_media(
         self, url: str, audio_only: bool = False, progress_callback: callable = None
     ) -> dict:
