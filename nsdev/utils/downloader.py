@@ -88,18 +88,15 @@ class MediaDownloader:
 
         opts = {
             "outtmpl": os.path.join(self.download_path, "%(id)s.%(ext)s"),
+            "no_warnings": True,
             "noplaylist": True,
             "quiet": True,
             "geo_bypass": True,
             "nocheckcertificate": True,
             "retries": 5,
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/123.0.0.0 Safari/537.36",
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
             "http_headers": {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/123.0.0.0 Safari/537.36",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
                 "Referer": url,
                 "Accept-Language": "en-US,en;q=0.9",
             },
@@ -157,7 +154,7 @@ class MediaDownloader:
         except Exception as e:
             if "HTTP Error 403" in str(e):
                 raise Exception(
-                    "❌ Gagal mengunduh: Akses ditolak (403). " "Perbarui cookies.txt atau pastikan video publik."
+                    "Akses ditolak (403). " "Perbarui cookies.txt atau pastikan video publik."
                 )
             else:
                 raise Exception(f"Gagal mengunduh: {e}")
@@ -195,7 +192,7 @@ class MediaDownloader:
                 }
         except Exception as e:
             if "HTTP Error 403" in str(e):
-                raise Exception(f"❌ {media_name}: Akses ditolak (403). " "Gunakan cookies atau pastikan media publik.")
+                raise Exception(f"❌ {media_name}: Akses ditolak (403). Gunakan cookies atau pastikan media publik.")
             else:
                 raise Exception(f"❌ {media_name}: {e}")
 
