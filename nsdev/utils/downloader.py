@@ -32,13 +32,33 @@ class MediaDownloader:
         parsed_url = urlparse(url)
         return parsed_url.netloc in ("www.tiktok.com", "tiktok.com", "vt.tiktok.com")
 
-    def _sync_extract_info(self, query: str, limit: int = 10):
-        ydl_opts = {
-            "format": "best",
+    def _get_base_ydl_opts(self):
+        return {
             "quiet": True,
+            "no_warnings": False,
+            "geo_bypass": True,
+            "nocheckcertificate": True,
+            "http_headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-us,en;q=0.5",
+                "Sec-Fetch-Mode": "navigate",
+            },
+            "extractor_retries": 3,
+            "fragment_retries": 3,
+            "skip_unavailable_fragments": True,
+            "ignoreerrors": False,
+            "source_address": "0.0.0.0",
+        }
+
+    def _sync_extract_info(self, query: str, limit: int = 10):
+        ydl_opts = self._get_base_ydl_opts()
+        ydl_opts.update({
+            "format": "best",
             "noplaylist": True,
             "extract_flat": "in_playlist",
-        }
+        })
+        
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
             ydl_opts["cookiefile"] = self.cookies_file_path
 
@@ -69,7 +89,13 @@ class MediaDownloader:
                     for entry in entries
                 ]
             except Exception as e:
-                raise e
+                error_msg = str(e)
+                if "403" in error_msg or "Forbidden" in error_msg:
+                    raise Exception(f"HTTP 403 Error: YouTube access blocked. Please update cookies or try again later. Original error: {e}")
+                elif "429" in error_msg:
+                    raise Exception(f"Rate limit exceeded. Please wait and try again. Original error: {e}")
+                else:
+                    raise Exception(f"Download error: {e}")
 
     async def search_youtube(self, query: str, limit: int = 10) -> List[SimpleNamespace]:
         loop = asyncio.get_running_loop()
@@ -84,13 +110,11 @@ class MediaDownloader:
                 if total_bytes:
                     asyncio.run_coroutine_threadsafe(progress_callback(d["downloaded_bytes"], total_bytes), loop)
 
-        ydl_opts = {
+        ydl_opts = self._get_base_ydl_opts()
+        ydl_opts.update({
             "outtmpl": os.path.join(self.download_path, "%(id)s.%(ext)s"),
             "noplaylist": True,
-            "quiet": True,
-            "geo_bypass": True,
-            "nocheckcertificate": True,
-        }
+        })
 
         if progress_callback:
             ydl_opts["progress_hooks"] = [_hook]
@@ -117,28 +141,42 @@ class MediaDownloader:
                     "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/best"
                 )
 
-        with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
+        try:
+            with YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                filename = ydl.prepare_filename(info)
 
-            if audio_only and filename:
-                base, _ = os.path.splitext(filename)
-                filename = base + ".mp3"
+                if audio_only and filename:
+                    base, _ = os.path.splitext(filename)
+                    filename = base + ".mp3"
 
-            thumb_path = None
-            if info.get("thumbnail"):
-                try:
-                    thumb_url = info["thumbnail"]
-                    thumb_path = wget.download(thumb_url, out=self.download_path)
-                except Exception:
-                    thumb_path = None
+                thumb_path = None
+                if info.get("thumbnail"):
+                    try:
+                        thumb_url = info["thumbnail"]
+                        thumb_path = wget.download(thumb_url, out=self.download_path)
+                    except Exception:
+                        thumb_path = None
 
-            return {
-                "path": filename,
-                "title": info.get("title", "N/A"),
-                "duration": info.get("duration", 0),
-                "thumbnail_path": thumb_path,
-            }
+                return {
+                    "path": filename,
+                    "title": info.get("title", "N/A"),
+                    "duration": info.get("duration", 0),
+                    "thumbnail_path": thumb_path,
+                }
+        except Exception as e:
+            error_msg = str(e)
+            if "403" in error_msg or "Forbidden" in error_msg:
+                raise Exception(f"HTTP 403 Forbidden: Unable to download. This can happen due to:\n"
+                               f"1. Expired or invalid YouTube cookies\n"
+                               f"2. Geographic restrictions\n"
+                               f"3. YouTube's bot detection\n"
+                               f"Solution: Update your cookies.txt file from a logged-in browser session.\n"
+                               f"Original error: {e}")
+            elif "429" in error_msg:
+                raise Exception(f"Too many requests. Please wait before trying again. Error: {e}")
+            else:
+                raise Exception(f"Failed to download: {e}")
 
     async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> dict:
         loop = asyncio.get_running_loop()
@@ -158,13 +196,11 @@ class MediaDownloader:
                 if total_bytes:
                     asyncio.run_coroutine_threadsafe(progress_callback(d["downloaded_bytes"], total_bytes), loop)
 
-        ydl_opts = {
+        ydl_opts = self._get_base_ydl_opts()
+        ydl_opts.update({
             "outtmpl": os.path.join(self.download_path, "%(id)s.%(ext)s"),
-            "quiet": True,
-            "no_warnings": True,
-            "geo_bypass": True,
-            "nocheckcertificate": True,
-        }
+        })
+        
         if progress_callback:
             ydl_opts["progress_hooks"] = [_hook]
 
@@ -183,26 +219,33 @@ class MediaDownloader:
         else:
             ydl_opts["format"] = "best[ext=mp4]/best"
 
-        with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-            if audio_only and filename:
-                base, _ = os.path.splitext(filename)
-                filename = base + ".mp3"
-            thumb_path = None
-            if info.get("thumbnail"):
-                try:
-                    thumb_url = info["thumbnail"]
-                    thumb_path = wget.download(thumb_url, out=self.download_path)
-                except Exception:
-                    thumb_path = None
-            return {
-                "path": filename,
-                "title": info.get("title", media_name),
-                "duration": info.get("duration", 0),
-                "thumbnail_path": thumb_path,
-                "uploader": info.get("uploader", "N/A"),
-            }
+        try:
+            with YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                filename = ydl.prepare_filename(info)
+                if audio_only and filename:
+                    base, _ = os.path.splitext(filename)
+                    filename = base + ".mp3"
+                thumb_path = None
+                if info.get("thumbnail"):
+                    try:
+                        thumb_url = info["thumbnail"]
+                        thumb_path = wget.download(thumb_url, out=self.download_path)
+                    except Exception:
+                        thumb_path = None
+                return {
+                    "path": filename,
+                    "title": info.get("title", media_name),
+                    "duration": info.get("duration", 0),
+                    "thumbnail_path": thumb_path,
+                    "uploader": info.get("uploader", "N/A"),
+                }
+        except Exception as e:
+            error_msg = str(e)
+            if "403" in error_msg:
+                raise Exception(f"HTTP 403: Access denied. Try updating cookies or check if content is private. Error: {e}")
+            else:
+                raise Exception(f"Download failed: {e}")
 
     async def download_instagram(
         self, url: str, audio_only: bool = False, progress_callback: callable = None
