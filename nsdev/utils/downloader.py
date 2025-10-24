@@ -4,6 +4,7 @@ from functools import partial
 from types import SimpleNamespace
 from typing import List
 from urllib.parse import urlparse
+
 import wget
 from yt_dlp import YoutubeDL
 
@@ -39,8 +40,8 @@ class MediaDownloader:
             "extract_flat": "in_playlist",
             "retries": 3,
             "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                          "AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/123.0.0.0 Safari/537.36",
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/123.0.0.0 Safari/537.36",
         }
 
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
@@ -94,12 +95,12 @@ class MediaDownloader:
             "nocheckcertificate": True,
             "retries": 5,
             "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                          "AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/123.0.0.0 Safari/537.36",
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/123.0.0.0 Safari/537.36",
             "http_headers": {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                              "AppleWebKit/537.36 (KHTML, like Gecko) "
-                              "Chrome/123.0.0.0 Safari/537.36",
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/123.0.0.0 Safari/537.36",
                 "Referer": url,
                 "Accept-Language": "en-US,en;q=0.9",
             },
@@ -112,14 +113,18 @@ class MediaDownloader:
             opts["cookiefile"] = self.cookies_file_path
 
         if audio_only:
-            opts.update({
-                "format": "bestaudio/best",
-                "postprocessors": [{
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": "mp3",
-                    "preferredquality": "192",
-                }],
-            })
+            opts.update(
+                {
+                    "format": "bestaudio/best",
+                    "postprocessors": [
+                        {
+                            "key": "FFmpegExtractAudio",
+                            "preferredcodec": "mp3",
+                            "preferredquality": "192",
+                        }
+                    ],
+                }
+            )
         else:
             opts["format"] = "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/best"
 
@@ -152,8 +157,9 @@ class MediaDownloader:
                 }
         except Exception as e:
             if "HTTP Error 403" in str(e):
-                raise Exception("❌ Gagal mengunduh: Akses ditolak (403). "
-                                "Perbarui cookies.txt atau pastikan video publik.")
+                raise Exception(
+                    "❌ Gagal mengunduh: Akses ditolak (403). " "Perbarui cookies.txt atau pastikan video publik."
+                )
             else:
                 raise Exception(f"Gagal mengunduh: {e}")
 
@@ -190,8 +196,7 @@ class MediaDownloader:
                 }
         except Exception as e:
             if "HTTP Error 403" in str(e):
-                raise Exception(f"❌ {media_name}: Akses ditolak (403). "
-                                "Gunakan cookies atau pastikan media publik.")
+                raise Exception(f"❌ {media_name}: Akses ditolak (403). " "Gunakan cookies atau pastikan media publik.")
             else:
                 raise Exception(f"❌ {media_name}: {e}")
 
