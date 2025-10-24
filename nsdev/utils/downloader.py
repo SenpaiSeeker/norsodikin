@@ -36,6 +36,7 @@ class MediaDownloader:
         ydl_opts = {
             "format": "best",
             "quiet": True,
+            "no_warnings": True,
             "noplaylist": True,
             "extract_flat": "in_playlist",
             "retries": 3,
