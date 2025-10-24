@@ -66,9 +66,10 @@ class MediaDownloader:
                     SimpleNamespace(
                         id=entry.get("id"),
                         title=entry.get("title", "No Title"),
-                        url=f"https://www.youtube.com/watch?v={entry.get('id')}",
+                        url=entry.get("url"),
                         duration=entry.get("duration", 0),
                         uploader=entry.get("uploader", "N/A"),
+                        thumbnail_url=entry.get("thumbnail"),
                     )
                     for entry in entries
                 ]
