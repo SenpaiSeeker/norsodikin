@@ -291,7 +291,7 @@ class PaymentCashify:
         qr_url = f"{self.qr_generator_url}?size={size}&style={style}&color={color}&data={data}"
         return qr_url
 
-    async def download_qr_image(self, data: str, size: str = "500x500", style: int = 2, color: str = "ea580c"):
+    async def download_qr_image(self, data: str, size: str = "500x500", style: int = None, color: str = None):
         qr_url = self.generate_stylish_qr(data, size, style, color)
 
         try:
