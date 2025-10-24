@@ -4,7 +4,6 @@ from functools import partial
 from types import SimpleNamespace
 from typing import List
 from urllib.parse import urlparse
-
 import wget
 from yt_dlp import YoutubeDL
 
@@ -32,33 +31,18 @@ class MediaDownloader:
         parsed_url = urlparse(url)
         return parsed_url.netloc in ("www.tiktok.com", "tiktok.com", "vt.tiktok.com")
 
-    def _get_base_ydl_opts(self):
-        return {
-            "quiet": True,
-            "no_warnings": False,
-            "geo_bypass": True,
-            "nocheckcertificate": True,
-            "http_headers": {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language": "en-us,en;q=0.5",
-                "Sec-Fetch-Mode": "navigate",
-            },
-            "extractor_retries": 3,
-            "fragment_retries": 3,
-            "skip_unavailable_fragments": True,
-            "ignoreerrors": False,
-            "source_address": "0.0.0.0",
-        }
-
     def _sync_extract_info(self, query: str, limit: int = 10):
-        ydl_opts = self._get_base_ydl_opts()
-        ydl_opts.update({
+        ydl_opts = {
             "format": "best",
+            "quiet": True,
             "noplaylist": True,
             "extract_flat": "in_playlist",
-        })
-        
+            "retries": 3,
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/123.0.0.0 Safari/537.36",
+        }
+
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
             ydl_opts["cookiefile"] = self.cookies_file_path
 
@@ -89,58 +73,60 @@ class MediaDownloader:
                     for entry in entries
                 ]
             except Exception as e:
-                error_msg = str(e)
-                if "403" in error_msg or "Forbidden" in error_msg:
-                    raise Exception(f"HTTP 403 Error: YouTube access blocked. Please update cookies or try again later. Original error: {e}")
-                elif "429" in error_msg:
-                    raise Exception(f"Rate limit exceeded. Please wait and try again. Original error: {e}")
-                else:
-                    raise Exception(f"Download error: {e}")
+                raise Exception(f"Gagal mencari video: {e}")
 
     async def search_youtube(self, query: str, limit: int = 10) -> List[SimpleNamespace]:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(self._sync_extract_info, query, limit))
 
-    def _sync_download(
-        self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop
-    ) -> dict:
+    def _build_ydl_opts(self, url: str, audio_only: bool, progress_callback, loop):
         def _hook(d):
             if d["status"] == "downloading" and progress_callback:
                 total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate")
                 if total_bytes:
                     asyncio.run_coroutine_threadsafe(progress_callback(d["downloaded_bytes"], total_bytes), loop)
 
-        ydl_opts = self._get_base_ydl_opts()
-        ydl_opts.update({
+        opts = {
             "outtmpl": os.path.join(self.download_path, "%(id)s.%(ext)s"),
             "noplaylist": True,
-        })
+            "quiet": True,
+            "geo_bypass": True,
+            "nocheckcertificate": True,
+            "retries": 5,
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/123.0.0.0 Safari/537.36",
+            "http_headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                              "AppleWebKit/537.36 (KHTML, like Gecko) "
+                              "Chrome/123.0.0.0 Safari/537.36",
+                "Referer": url,
+                "Accept-Language": "en-US,en;q=0.9",
+            },
+        }
 
         if progress_callback:
-            ydl_opts["progress_hooks"] = [_hook]
+            opts["progress_hooks"] = [_hook]
 
-        if self.cookies_file_path and os.path.exists(self.cookies_file_path) and self._is_youtube_url(url):
-            ydl_opts["cookiefile"] = self.cookies_file_path
+        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
+            opts["cookiefile"] = self.cookies_file_path
 
         if audio_only:
-            ydl_opts.update(
-                {
-                    "format": "bestaudio/best",
-                    "postprocessors": [
-                        {
-                            "key": "FFmpegExtractAudio",
-                            "preferredcodec": "mp3",
-                            "preferredquality": "192",
-                        }
-                    ],
-                }
-            )
+            opts.update({
+                "format": "bestaudio/best",
+                "postprocessors": [{
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
+                }],
+            })
         else:
-            if self._is_youtube_url(url):
-                ydl_opts["format"] = (
-                    "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/best"
-                )
+            opts["format"] = "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/best"
 
+        return opts
+
+    def _sync_download(self, url, audio_only, progress_callback, loop):
+        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop)
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -165,60 +151,20 @@ class MediaDownloader:
                     "thumbnail_path": thumb_path,
                 }
         except Exception as e:
-            error_msg = str(e)
-            if "403" in error_msg or "Forbidden" in error_msg:
-                raise Exception(f"HTTP 403 Forbidden: Unable to download. This can happen due to:\n"
-                               f"1. Expired or invalid YouTube cookies\n"
-                               f"2. Geographic restrictions\n"
-                               f"3. YouTube's bot detection\n"
-                               f"Solution: Update your cookies.txt file from a logged-in browser session.\n"
-                               f"Original error: {e}")
-            elif "429" in error_msg:
-                raise Exception(f"Too many requests. Please wait before trying again. Error: {e}")
+            if "HTTP Error 403" in str(e):
+                raise Exception("❌ Gagal mengunduh: Akses ditolak (403). "
+                                "Perbarui cookies.txt atau pastikan video publik.")
             else:
-                raise Exception(f"Failed to download: {e}")
+                raise Exception(f"Gagal mengunduh: {e}")
 
     async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> dict:
         loop = asyncio.get_running_loop()
-        try:
-            func_call = partial(self._sync_download, url, audio_only, progress_callback, loop)
-            result = await loop.run_in_executor(None, func_call)
-            return result
-        except Exception as e:
-            raise Exception(f"Failed to download media: {e}")
+        func_call = partial(self._sync_download, url, audio_only, progress_callback, loop)
+        return await loop.run_in_executor(None, func_call)
 
-    def _sync_download_social(
-        self, url: str, audio_only: bool, progress_callback: callable, loop: asyncio.AbstractEventLoop, media_name: str
-    ) -> dict:
-        def _hook(d):
-            if d["status"] == "downloading" and progress_callback:
-                total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate")
-                if total_bytes:
-                    asyncio.run_coroutine_threadsafe(progress_callback(d["downloaded_bytes"], total_bytes), loop)
-
-        ydl_opts = self._get_base_ydl_opts()
-        ydl_opts.update({
-            "outtmpl": os.path.join(self.download_path, "%(id)s.%(ext)s"),
-        })
-        
-        if progress_callback:
-            ydl_opts["progress_hooks"] = [_hook]
-
-        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
-            ydl_opts["cookiefile"] = self.cookies_file_path
-
-        if audio_only:
-            ydl_opts.update(
-                {
-                    "format": "bestaudio/best",
-                    "postprocessors": [
-                        {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}
-                    ],
-                }
-            )
-        else:
-            ydl_opts["format"] = "best[ext=mp4]/best"
-
+    def _sync_download_social(self, url, audio_only, progress_callback, loop, media_name):
+        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop)
+        ydl_opts["format"] = "best[ext=mp4]/best"
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -226,6 +172,7 @@ class MediaDownloader:
                 if audio_only and filename:
                     base, _ = os.path.splitext(filename)
                     filename = base + ".mp3"
+
                 thumb_path = None
                 if info.get("thumbnail"):
                     try:
@@ -233,6 +180,7 @@ class MediaDownloader:
                         thumb_path = wget.download(thumb_url, out=self.download_path)
                     except Exception:
                         thumb_path = None
+
                 return {
                     "path": filename,
                     "title": info.get("title", media_name),
@@ -241,47 +189,28 @@ class MediaDownloader:
                     "uploader": info.get("uploader", "N/A"),
                 }
         except Exception as e:
-            error_msg = str(e)
-            if "403" in error_msg:
-                raise Exception(f"HTTP 403: Access denied. Try updating cookies or check if content is private. Error: {e}")
+            if "HTTP Error 403" in str(e):
+                raise Exception(f"❌ {media_name}: Akses ditolak (403). "
+                                "Gunakan cookies atau pastikan media publik.")
             else:
-                raise Exception(f"Download failed: {e}")
+                raise Exception(f"❌ {media_name}: {e}")
 
-    async def download_instagram(
-        self, url: str, audio_only: bool = False, progress_callback: callable = None
-    ) -> dict:
+    async def download_instagram(self, url, audio_only=False, progress_callback=None):
         loop = asyncio.get_running_loop()
-        try:
-            func_call = partial(
-                self._sync_download_social, url, audio_only, progress_callback, loop, "Instagram Media"
-            )
-            return await loop.run_in_executor(None, func_call)
-        except Exception as e:
-            raise Exception(f"Failed to download Instagram media: {e}")
+        func_call = partial(self._sync_download_social, url, audio_only, progress_callback, loop, "Instagram Media")
+        return await loop.run_in_executor(None, func_call)
 
-    async def download_twitter(
-        self, url: str, audio_only: bool = False, progress_callback: callable = None
-    ) -> dict:
+    async def download_twitter(self, url, audio_only=False, progress_callback=None):
         loop = asyncio.get_running_loop()
-        try:
-            func_call = partial(
-                self._sync_download_social, url, audio_only, progress_callback, loop, "Twitter Media"
-            )
-            return await loop.run_in_executor(None, func_call)
-        except Exception as e:
-            raise Exception(f"Failed to download Twitter media: {e}")
+        func_call = partial(self._sync_download_social, url, audio_only, progress_callback, loop, "Twitter Media")
+        return await loop.run_in_executor(None, func_call)
 
-    async def download_tiktok(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> dict:
+    async def download_tiktok(self, url, audio_only=False, progress_callback=None):
         loop = asyncio.get_running_loop()
-        try:
-            func_call = partial(self._sync_download_social, url, audio_only, progress_callback, loop, "TikTok Media")
-            return await loop.run_in_executor(None, func_call)
-        except Exception as e:
-            raise Exception(f"Failed to download TikTok media: {e}")
+        func_call = partial(self._sync_download_social, url, audio_only, progress_callback, loop, "TikTok Media")
+        return await loop.run_in_executor(None, func_call)
 
-    async def download_social_media(
-        self, url: str, audio_only: bool = False, progress_callback: callable = None
-    ) -> dict:
+    async def download_social_media(self, url, audio_only=False, progress_callback=None):
         if self._is_instagram_url(url):
             return await self.download_instagram(url, audio_only, progress_callback)
         elif self._is_twitter_url(url):
