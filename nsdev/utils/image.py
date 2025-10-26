@@ -34,9 +34,28 @@ class ImageManipulator(FontManager):
     ) -> bytes:
         img = Image.open(BytesIO(image_bytes)).convert("RGBA")
         txt_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
+        
+        font_size = int(img.width / 15)
         font = self._get_font(font_size)
         draw = ImageDraw.Draw(txt_layer)
-        draw.text(position, text, font=font, fill=(255, 255, 255, opacity))
+
+        random_color = (random.randint(150, 255), random.randint(150, 255), random.randint(150, 255), opacity)
+        outline_color = (0, 0, 0, opacity)
+
+        text_bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
+        
+        x = (img.width - text_width) / 2
+        y = (img.height - text_height) / 2
+        
+        for offset_x in range(-2, 3):
+            for offset_y in range(-2, 3):
+                if offset_x != 0 or offset_y != 0:
+                    draw.text((x + offset_x, y + offset_y), text, font=font, fill=outline_color)
+
+        draw.text((x, y), text, font=font, fill=random_color)
+
         watermarked_img = Image.alpha_composite(img, txt_layer)
         output_buffer = BytesIO()
         watermarked_img.save(output_buffer, format="PNG")
@@ -48,7 +67,7 @@ class ImageManipulator(FontManager):
         text: str,
         position: Tuple[int, int] = (10, 10),
         font_size: int = 30,
-        opacity: int = 128,
+        opacity: int = 200,
     ) -> bytes:
         return await self._run_in_executor(self._sync_add_watermark, image_bytes, text, position, font_size, opacity)
 
