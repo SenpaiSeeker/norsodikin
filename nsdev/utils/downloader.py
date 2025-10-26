@@ -115,7 +115,7 @@ class MediaDownloader:
                 }
             )
         else:
-            opts["format"] = "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/best"
+            opts["format"] = "bestvideo[ext=mp4][height<=720][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[ext=mp4][height<=720]+bestaudio/best[ext=mp4][height<=720]/best"
 
         return opts
 
@@ -132,13 +132,11 @@ class MediaDownloader:
                     base, _ = os.path.splitext(filename)
                     filename = base + ".mp3"
 
-                thumb_path = None
-                if hasattr(result_obj, "thumbnail") and result_obj.thumbnail:
-                    try:
-                        thumb_url = result_obj.thumbnail
-                        thumb_path = wget.download(thumb_url, out=self.download_path)
-                    except Exception:
-                        thumb_path = None
+                try:
+                    thumb_url = f"https://i.ytimg.com/vi/{result_obj.id}/maxresdefault.jpg"
+                    thumb_path = wget.download(thumb_url, out=self.download_path)
+                except Exception:
+                    thumb_path = None
 
                 result_obj.downloaded_path = filename
                 result_obj.thumbnail_path = thumb_path
