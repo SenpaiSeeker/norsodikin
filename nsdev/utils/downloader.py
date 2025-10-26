@@ -3,6 +3,8 @@ import os
 from functools import partial
 from typing import List
 from urllib.parse import urlparse
+from faker import Faker
+
 
 import wget
 from yt_dlp import YoutubeDL
@@ -14,9 +16,12 @@ class MediaDownloader:
     def __init__(self, cookies_file_path: str = "cookies.txt", download_path: str = "downloads"):
         self.download_path = download_path
         self.cookies_file_path = cookies_file_path
-        self.convert = YamlHandler()
+        
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
+        
+        self.convert = YamlHandler()
+        self.fake = Faker("id_ID")
 
     def _is_youtube_url(self, url):
         parsed_url = urlparse(url)
@@ -41,7 +46,7 @@ class MediaDownloader:
             "no_warnings": True,
             "noplaylist": True,
             "extract_flat": "in_playlist",
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+            "user_agent": self.fake.user_agent(),
         }
 
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
@@ -85,9 +90,9 @@ class MediaDownloader:
             "quiet": True,
             "geo_bypass": True,
             "nocheckcertificate": True,
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+            "user_agent": self.fake.user_agent(),
             "http_headers": {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+                "User-Agent": self.fake.user_agent(),
                 "Referer": url,
                 "Accept-Language": "id-ID,id;q=0.9",
             },
