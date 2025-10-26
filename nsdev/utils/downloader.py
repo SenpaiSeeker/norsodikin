@@ -1,18 +1,20 @@
 import asyncio
 import os
 from functools import partial
-from types import SimpleNamespace
 from typing import List
 from urllib.parse import urlparse
 
 import wget
 from yt_dlp import YoutubeDL
 
+from ..data.ymlreder import YamlHandler
+
 
 class MediaDownloader:
     def __init__(self, cookies_file_path: str = "cookies.txt", download_path: str = "downloads"):
         self.download_path = download_path
         self.cookies_file_path = cookies_file_path
+        self.convert = YamlHandler()
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
 
@@ -62,21 +64,11 @@ class MediaDownloader:
                 if not entries and "id" in result:
                     entries = [result]
 
-                return [
-                    SimpleNamespace(
-                        id=entry.get("id"),
-                        title=entry.get("title", "No Title"),
-                        url=f"https://www.youtube.com/watch?v={entry.get('id')}",
-                        duration=entry.get("duration", 0),
-                        uploader=entry.get("uploader", "N/A"),
-                        thumbnail_url=entry.get("thumbnail"),
-                    )
-                    for entry in entries
-                ]
+                return [self.convert._convertToNamespace(entry) for entry in entries]
             except Exception as e:
                 raise Exception(f"Gagal mencari video: {e}")
 
-    async def search_youtube(self, query: str, limit: int = 10) -> List[SimpleNamespace]:
+    async def search_youtube(self, query: str, limit: int = 10) -> List:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(self._sync_extract_info, query, limit))
 
@@ -132,6 +124,8 @@ class MediaDownloader:
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
+                result_obj = self.convert._convertToNamespace(info)
+
                 filename = ydl.prepare_filename(info)
 
                 if audio_only and filename:
@@ -139,19 +133,17 @@ class MediaDownloader:
                     filename = base + ".mp3"
 
                 thumb_path = None
-                if info.get("thumbnail"):
+                if hasattr(result_obj, "thumbnail") and result_obj.thumbnail:
                     try:
-                        thumb_url = info["thumbnail"]
+                        thumb_url = result_obj.thumbnail
                         thumb_path = wget.download(thumb_url, out=self.download_path)
                     except Exception:
                         thumb_path = None
 
-                return {
-                    "path": filename,
-                    "title": info.get("title", "N/A"),
-                    "duration": info.get("duration", 0),
-                    "thumbnail_path": thumb_path,
-                }
+                result_obj.downloaded_path = filename
+                result_obj.thumbnail_path = thumb_path
+                
+                return result_obj
         except Exception as e:
             if "HTTP Error 403" in str(e):
                 raise Exception(
@@ -160,7 +152,7 @@ class MediaDownloader:
             else:
                 raise Exception(f"Gagal mengunduh: {e}")
 
-    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> dict:
+    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> object:
         loop = asyncio.get_running_loop()
         func_call = partial(self._sync_download, url, audio_only, progress_callback, loop)
         return await loop.run_in_executor(None, func_call)
@@ -171,26 +163,28 @@ class MediaDownloader:
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
+                result_obj = self.convert._convertToNamespace(info)
+                
                 filename = ydl.prepare_filename(info)
                 if audio_only and filename:
                     base, _ = os.path.splitext(filename)
                     filename = base + ".mp3"
 
                 thumb_path = None
-                if info.get("thumbnail"):
+                if hasattr(result_obj, "thumbnail") and result_obj.thumbnail:
                     try:
-                        thumb_url = info["thumbnail"]
+                        thumb_url = result_obj.thumbnail
                         thumb_path = wget.download(thumb_url, out=self.download_path)
                     except Exception:
                         thumb_path = None
 
-                return {
-                    "path": filename,
-                    "title": info.get("title", media_name),
-                    "duration": info.get("duration", 0),
-                    "thumbnail_path": thumb_path,
-                    "uploader": info.get("uploader", "N/A"),
-                }
+                result_obj.downloaded_path = filename
+                result_obj.thumbnail_path = thumb_path
+                
+                if not hasattr(result_obj, 'title'):
+                    result_obj.title = media_name
+                
+                return result_obj
         except Exception as e:
             if "HTTP Error 403" in str(e):
                 raise Exception(f"❌ {media_name}: Akses ditolak (403). Gunakan cookies atau pastikan media publik.")
