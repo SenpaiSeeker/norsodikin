@@ -104,7 +104,7 @@ class MediaDownloader:
         if audio_only:
             opts.update(
                 {
-                    "format": "bestaudio[ext=m4a]/bestaudio",
+                    "format": "bestaudio/best",
                     "postprocessors": [
                         {
                             "key": "FFmpegExtractAudio",
@@ -115,7 +115,7 @@ class MediaDownloader:
                 }
             )
         else:
-            opts["format"] = "bestvideo[ext=mp4][height<=720][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[ext=mp4][height<=720]+bestaudio/best[ext=mp4][height<=720]/best"
+            opts["format"] = "bestvideo[ext=mp4][height<=720][vcodec^=avc]+bestaudio/bestvideo[ext=mp4][height<=720]+bestaudio/best[ext=mp4][height<=720]/best"
 
         return opts
 
