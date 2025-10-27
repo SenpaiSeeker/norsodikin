@@ -25,17 +25,16 @@ class AnalyticsManager:
                     "user_id": user_id_to_log,
                     "timestamp": int(time.time()),
                 }
-                self.db.setListVars(self.db_id, "logs", log_entry, var_key=self.var_key)
+                await self.db.setListVars(self.db_id, "logs", log_entry, var_key=self.var_key)
             return await func(client, message, *args, **kwargs)
 
         return wrapped
 
-    def _get_usage_logs(self) -> List[dict]:
-        return self.db.getListVars(self.db_id, "logs", self.var_key)
+    async def _get_usage_logs(self) -> List[dict]:
+        return await self.db.getListVars(self.db_id, "logs", self.var_key)
 
-    async def get_all_logs(self) -> List[dict]:
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self._get_usage_logs)
+    async def get_all_logs(self) -> List[dict]:t
+        return await self._get_usage_logs()
 
     async def get_top_commands(self, limit: int = 10) -> List[Tuple[str, int]]:
         logs = await self.get_all_logs()
