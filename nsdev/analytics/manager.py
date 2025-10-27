@@ -33,7 +33,7 @@ class AnalyticsManager:
     async def _get_usage_logs(self) -> List[dict]:
         return await self.db.getListVars(self.db_id, "logs", self.var_key)
 
-    async def get_all_logs(self) -> List[dict]:t
+    async def get_all_logs(self) -> List[dict]:
         return await self._get_usage_logs()
 
     async def get_top_commands(self, limit: int = 10) -> List[Tuple[str, int]]:
