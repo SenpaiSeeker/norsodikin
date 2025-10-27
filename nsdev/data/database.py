@@ -25,7 +25,6 @@ class DataBase:
         self.backup_chat_id = options.get("backup_chat_id")
         self.backup_cron_spec = options.get("backup_cron_spec", "0 */3 * * *")
         self.scheduler = options.get("scheduler_instance")
-        self.loop = asyncio.get_event_loop()
 
         if self.storage_type == "mongo":
             import pymongo
@@ -45,7 +44,8 @@ class DataBase:
         self._register_backup_task()
 
     async def _run_sync(self, func, *args, **kwargs):
-        return await self.loop.run_in_executor(None, partial(func, *args, **kwargs))
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, partial(func, *args, **kwargs))
 
     def _register_backup_task(self):
         if self.auto_backup and self.scheduler and self.storage_type in ["local", "sqlite"]:
