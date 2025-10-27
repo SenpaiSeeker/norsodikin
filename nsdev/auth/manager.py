@@ -12,13 +12,13 @@ class AuthManager:
         self.var_key = var_key
 
     async def set_role(self, user_id: int, role: str) -> None:
-        self.db.setListVars(user_id, "roles", role.lower(), var_key=self.var_key)
+        await self.db.setListVars(user_id, "roles", role.lower(), var_key=self.var_key)
 
     async def remove_role(self, user_id: int, role: str) -> None:
-        self.db.removeListVars(user_id, "roles", role.lower(), var_key=self.var_key)
+        await self.db.removeListVars(user_id, "roles", role.lower(), var_key=self.var_key)
 
     async def get_roles(self, user_id: int) -> List[str]:
-        return self.db.getListVars(user_id, "roles", var_key=self.var_key)
+        return await self.db.getListVars(user_id, "roles", var_key=self.var_key)
 
     def requires_role(self, required_roles: Union[str, List[str]]):
         if isinstance(required_roles, str):
@@ -34,7 +34,7 @@ class AuthManager:
 
                 user_id = update.from_user.id
                 user_roles = await self.get_roles(user_id)
-                user_roles_set = {role.lower() for role in user_roles}
+                user_roles_set = {role.lower() for role in (user_roles or [])}
 
                 if not required_set.intersection(user_roles_set):
                     error_msg = "🚫 Anda tidak memiliki izin untuk menggunakan perintah ini."
