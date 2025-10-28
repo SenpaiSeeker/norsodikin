@@ -91,11 +91,6 @@ class MediaDownloader:
             "geo_bypass": True,
             "nocheckcertificate": True,
             "user_agent": self.fake.user_agent(),
-            "http_headers": {
-                "User-Agent": self.fake.user_agent(),
-                "Referer": url,
-                "Accept-Language": "id-ID,id;q=0.9",
-            },
         }
 
         if progress_callback:
