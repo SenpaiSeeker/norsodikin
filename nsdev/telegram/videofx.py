@@ -398,8 +398,11 @@ class VideoFX(FontManager):
         command = [
             "ffmpeg",
             "-i", video_path,
-            "-c", "copy",
             "-map", "0",
+            "-c:v", "libx264",
+            "-c:a", "aac",
+            "-preset", "veryfast",
+            "-crf", "23",
             "-segment_time", str(split_duration),
             "-f", "segment",
             "-reset_timestamps", "1",
