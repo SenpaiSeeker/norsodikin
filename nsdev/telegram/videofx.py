@@ -2,6 +2,7 @@ import asyncio
 import colorsys
 import functools
 import math
+import os
 import random
 import subprocess
 from typing import Dict, List, Tuple
@@ -389,3 +390,35 @@ class VideoFX(FontManager):
     async def change_speed(self, video_path: str, output_path: str, speed_factor: float):
         await self._run_in_executor(self._sync_change_speed, video_path, output_path, speed_factor)
         return output_path
+
+    async def split_video(self, video_path: str, output_dir: str, split_duration: int) -> list:
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            
+        command = [
+            "ffmpeg",
+            "-i", video_path,
+            "-c", "copy",
+            "-map", "0",
+            "-segment_time", str(split_duration),
+            "-f", "segment",
+            "-reset_timestamps", "1",
+            os.path.join(output_dir, "part_%03d.mp4")
+        ]
+
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await process.communicate()
+
+        if process.returncode != 0:
+            error_message = stderr.decode().strip()
+            raise RuntimeError(f"FFmpeg error while splitting video: {error_message}")
+
+        split_files = sorted([
+            os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.startswith("part_") and f.endswith(".mp4")
+        ])
+        
+        return split_files
