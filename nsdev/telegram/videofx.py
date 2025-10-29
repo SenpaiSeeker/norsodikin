@@ -394,36 +394,59 @@ class VideoFX(FontManager):
     async def split_video(self, video_path: str, output_dir: str, split_duration: int) -> list:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-            
-        command = [
-            "ffmpeg",
-            "-i", video_path,
-            "-c:v", "libx264",
-            "-crf", "23",
-            "-preset", "veryfast",
-            "-c:a", "aac",
-            "-map", "0",
-            "-segment_time", str(split_duration),
-            "-f", "segment",
-            "-reset_timestamps", "1",
-            "-sc_threshold", "0",
-            "-force_key_frames", f"expr:gte(t,n_forced*{split_duration})",
-            os.path.join(output_dir, "part_%03d.mp4")
+        
+        ffprobe_cmd = [
+            "ffprobe",
+            "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            video_path,
         ]
-
         process = await asyncio.create_subprocess_exec(
-            *command,
+            *ffprobe_cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await process.communicate()
-
         if process.returncode != 0:
-            error_message = stderr.decode().strip()
-            raise RuntimeError(f"FFmpeg error while splitting video: {error_message}")
-
-        split_files = sorted([
-            os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.startswith("part_") and f.endswith(".mp4")
-        ])
+            raise RuntimeError(f"FFprobe error: {stderr.decode().strip()}")
         
+        try:
+            total_duration = float(stdout.decode().strip())
+        except ValueError:
+            raise ValueError("Could not determine video duration.")
+
+        num_parts = math.ceil(total_duration / split_duration)
+        split_files = []
+        
+        for i in range(num_parts):
+            start_time = i * split_duration
+            output_path = os.path.join(output_dir, f"part_{i:03d}.mp4")
+            
+            command = [
+                "ffmpeg",
+                "-i", video_path,
+                "-ss", str(start_time),
+                "-t", str(split_duration),
+                "-c:v", "libx264",
+                "-preset", "veryfast",
+                "-crf", "23",
+                "-c:a", "aac",
+                "-y",
+                output_path,
+            ]
+            
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await process.communicate()
+
+            if process.returncode != 0:
+                error_message = stderr.decode().strip()
+                raise RuntimeError(f"FFmpeg error on part {i}: {error_message}")
+            
+            split_files.append(output_path)
+            
         return split_files
