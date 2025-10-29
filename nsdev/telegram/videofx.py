@@ -398,14 +398,16 @@ class VideoFX(FontManager):
         command = [
             "ffmpeg",
             "-i", video_path,
-            "-map", "0",
             "-c:v", "libx264",
-            "-c:a", "aac",
-            "-preset", "veryfast",
             "-crf", "23",
+            "-preset", "veryfast",
+            "-c:a", "aac",
+            "-map", "0",
             "-segment_time", str(split_duration),
             "-f", "segment",
             "-reset_timestamps", "1",
+            "-sc_threshold", "0",
+            "-force_key_frames", f"expr:gte(t,n_forced*{split_duration})",
             os.path.join(output_dir, "part_%03d.mp4")
         ]
 
