@@ -456,46 +456,43 @@ class VideoFX(FontManager):
         bg_color = scene_data["bg"]
         actors = scene_data["actors"]
         
-        input_files = []
+        input_files_cmd = []
         filter_complex_parts = []
         
         bg_input = f"color=c={bg_color}:s={canvas_size[0]}x{canvas_size[1]}:d={duration}[base];"
         filter_complex_parts.append(bg_input)
-
-        stream_idx = 0
+        
         actor_streams = {}
-        for actor_id, actor_info in actors.items():
-            input_files.extend(["-i", actor_info["path"]])
-            actor_streams[actor_id] = f"[{stream_idx}:v]"
-            stream_idx += 1
+        for i, (actor_id, actor_info) in enumerate(actors.items()):
+            input_files_cmd.extend(["-i", actor_info["path"]])
+            actor_streams[actor_id] = f"[{i}:v]"
 
         last_stream = "[base]"
         for i, (actor_id, actor_info) in enumerate(actors.items()):
             current_actor_stream = actor_streams[actor_id]
             
-            scaled_stream = f"[{actor_id}_scaled]"
-            filter_complex_parts.append(f"{current_actor_stream}scale={actor_info['size'][0]}:{actor_info['size'][1]}{scaled_stream};")
-            
-            final_overlay_stream = f"[out_{i}]" if i < len(actors) - 1 else ""
-            overlay_filter = f"{last_stream}{scaled_stream}overlay=x={actor_info['pos'][0]}:y={actor_info['pos'][1]}{final_overlay_stream}"
-            filter_complex_parts.append(overlay_filter)
+            scaled_stream_name = f"[{actor_id}_scaled]"
+            filter_complex_parts.append(f"{current_actor_stream}scale={actor_info['size'][0]}:{actor_info['size'][1]}{scaled_stream_name};")
 
-            if final_overlay_stream:
-                last_stream = final_overlay_stream
+            overlay_stream_name = f"[out_{i}]"
+            x_pos = actor_info['pos'][0] - (actor_info['size'][0] // 2)
+            y_pos = actor_info['pos'][1] - (actor_info['size'][1] // 2)
+            overlay_filter = f"{last_stream}{scaled_stream_name}overlay=x={x_pos}:y={y_pos}{overlay_stream_name}"
+            
+            if i < len(actors) - 1:
+                overlay_filter += ";"
+
+            filter_complex_parts.append(overlay_filter)
+            last_stream = overlay_stream_name
         
         final_filter_complex = "".join(filter_complex_parts)
-        
-        last_map_stream = last_stream if len(actors) > 1 else "[out_0]"
-        if len(actors) == 1: 
-             last_map_stream = "[out_0]"
-             final_filter_complex = final_filter_complex.replace("[base_actor1]", last_map_stream)
-
+        final_map_stream = last_stream
 
         command = [
-            "ffmpeg", "-y",
-        ] + input_files + [
+            "ffmpeg", "-y"
+        ] + input_files_cmd + [
             "-filter_complex", final_filter_complex,
-            "-map", last_map_stream.strip(';'),
+            "-map", final_map_stream,
             "-t", str(duration),
             "-c:v", "libx264",
             "-preset", "veryfast",
