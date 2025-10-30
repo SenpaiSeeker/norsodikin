@@ -425,6 +425,7 @@ class VideoFX(FontManager):
             
             command = [
                 "ffmpeg",
+                "-y",
                 "-i", video_path,
                 "-ss", str(start_time),
                 "-t", str(split_duration),
@@ -432,7 +433,6 @@ class VideoFX(FontManager):
                 "-preset", "veryfast",
                 "-crf", "23",
                 "-c:a", "aac",
-                "-y",
                 output_path,
             ]
             
@@ -450,3 +450,72 @@ class VideoFX(FontManager):
             split_files.append(output_path)
             
         return split_files
+
+    async def render_puppet_animation(self, scene_data: dict, output_path: str, duration: int) -> str:
+        
+        canvas_size = scene_data["size"]
+        bg_color = scene_data["bg"]
+        actors = scene_data["actors"]
+        keyframes = scene_data["keyframes"]
+
+        input_files = []
+        filter_complex_parts = []
+        
+        bg_input = f"color=c={bg_color}:s={canvas_size[0]}x{canvas_size[1]}:d={duration}"
+        filter_complex_parts.append(f"[-1:v] {bg_input} [base]")
+
+        stream_idx = 0
+        actor_streams = {}
+        for actor_id, actor_info in actors.items():
+            input_files.extend(["-i", actor_info["path"]])
+            actor_streams[actor_id] = f"[{stream_idx}:v]"
+            stream_idx += 1
+
+        last_stream = "[base]"
+        for actor_id, actor_info in actors.items():
+            
+            actor_keyframes = sorted([kf for kf in keyframes if kf['id'] == actor_id], key=lambda x: x['t'])
+
+            scale_filter = f"scale={actor_info['size'][0]}:{actor_info['size'][1]}"
+            
+            pos_x = str(actor_info['pos'][0])
+            pos_y = str(actor_info['pos'][1])
+            
+            overlay_filter = f"overlay=x={pos_x}:y={pos_y}"
+
+            
+            current_stream = actor_streams[actor_id]
+            
+            
+            processed_stream = f"[{actor_id}_scaled]"
+            filter_complex_parts.append(f"{current_stream}{scale_filter}{processed_stream}")
+            
+            final_overlay_stream = f"[{last_stream.strip('[]')}_{actor_id}]"
+            filter_complex_parts.append(f"{last_stream}{processed_stream}{overlay_filter}{final_overlay_stream}")
+            
+            last_stream = final_overlay_stream
+        
+        final_filter_complex = ";".join(filter_complex_parts)
+
+        command = [
+            "ffmpeg", "-y"
+        ] + input_files + [
+            "-filter_complex", final_filter_complex,
+            "-map", last_stream,
+            "-t", str(duration),
+            "-c:v", "libx264",
+            "-preset", "veryfast",
+            "-pix_fmt", "yuv420p",
+            output_path
+        ]
+        
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await process.communicate()
+        if process.returncode != 0:
+            raise RuntimeError(f"FFmpeg puppet render error: {stderr.decode().strip()}")
+            
+        return output_path
