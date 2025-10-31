@@ -42,7 +42,6 @@ dependencies = [
     "qrcode[pil]",
     "pyzbar",
     "google-genai",
-    "ollama",
     "rembg[cpu]",
     "psutil",
     "speedtest-cli",
