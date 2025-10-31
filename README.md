@@ -64,10 +64,8 @@ client.ns.utils.log.info("Logger canggih siap mencatat progres bot!")
 # Contoh memuat konfigurasi dari file .yml
 # config = client.ns.data.yaml.loadAndConvert("config.yml")
 # api_key = config.api.gemini_key
-
-# ...dan banyak lagi, seperti yang akan dijelaskan di bawah.
 ```
-
+---
 ## Lisensi
 
 Pustaka ini dirilis di bawah [Lisensi MIT](https://opensource.org/licenses/MIT). Artinya, Anda bebas menggunakan, memodifikasi, dan mendistribusikan kode ini untuk proyek komersial maupun non-komersial.
