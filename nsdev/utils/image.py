@@ -74,9 +74,9 @@ class ImageManipulator(FontManager):
     def _sync_resize(self, image_bytes: bytes, size: Tuple[int, int], keep_aspect_ratio: bool = True) -> bytes:
         img = Image.open(BytesIO(image_bytes))
         if keep_aspect_ratio:
-            img.thumbnail(size, Image.LANCZOS)
+            img.thumbnail(size, Image.Resampling.LANCZOS)
         else:
-            img = img.resize(size, Image.LANCZOS)
+            img = img.resize(size, Image.Resampling.LANCZOS)
         output_buffer = BytesIO()
         output_format = img.format if img.format in ["JPEG", "PNG", "WEBP"] else "PNG"
         img.save(output_buffer, format=output_format)
@@ -451,10 +451,10 @@ class ImageManipulator(FontManager):
 
         if canvas.width > canvas.height:
             if canvas.width > 512:
-                canvas.thumbnail((512, 512), Image.LANCZOS)
+                canvas.thumbnail((512, 512), Image.Resampling.LANCZOS)
         else:
             if canvas.height > 512:
-                canvas.thumbnail((512, 512), Image.LANCZOS)
+                canvas.thumbnail((512, 512), Image.Resampling.LANCZOS)
 
         output_buffer = BytesIO()
         canvas.save(output_buffer, format="WEBP")
@@ -462,3 +462,65 @@ class ImageManipulator(FontManager):
 
     async def create_text_sticker(self, text: str) -> bytes:
         return await self._run_in_executor(self._sync_create_text_sticker, text)
+
+    def _invert_colors_sync(self, image_bytes: bytes) -> bytes:
+        with Image.open(BytesIO(image_bytes)) as img:
+            inverted_img = ImageOps.invert(img.convert("RGB"))
+            output = BytesIO()
+            inverted_img.save(output, format="PNG")
+            return output.getvalue()
+
+    async def invert_colors(self, image_bytes: bytes) -> bytes:
+        return await self._run_in_executor(self._invert_colors_sync, image_bytes)
+
+    def _to_grayscale_sync(self, image_bytes: bytes) -> bytes:
+        with Image.open(BytesIO(image_bytes)) as img:
+            grayscale_img = ImageOps.grayscale(img)
+            output = BytesIO()
+            grayscale_img.save(output, format="PNG")
+            return output.getvalue()
+
+    async def to_grayscale(self, image_bytes: bytes) -> bytes:
+        return await self._run_in_executor(self._to_grayscale_sync, image_bytes)
+
+    def _rotate_image_sync(self, image_bytes: bytes, angle: int) -> bytes:
+        with Image.open(BytesIO(image_bytes)).convert("RGBA") as img:
+            rotated_img = img.rotate(angle, expand=True, resample=Image.Resampling.BICUBIC)
+            output = BytesIO()
+            rotated_img.save(output, format="PNG")
+            return output.getvalue()
+
+    async def rotate_image(self, image_bytes: bytes, angle: int) -> bytes:
+        return await self._run_in_executor(self._rotate_image_sync, image_bytes, angle)
+
+    def _mirror_image_sync(self, image_bytes: bytes) -> bytes:
+        with Image.open(BytesIO(image_bytes)) as img:
+            mirrored_img = ImageOps.mirror(img)
+            output = BytesIO()
+            mirrored_img.save(output, format="PNG")
+            return output.getvalue()
+
+    async def mirror_image(self, image_bytes: bytes) -> bytes:
+        return await self._run_in_executor(self._mirror_image_sync, image_bytes)
+
+    def _blur_image_sync(self, image_bytes: bytes, radius: int) -> bytes:
+        with Image.open(BytesIO(image_bytes)) as img:
+            blurred_img = img.filter(ImageFilter.GaussianBlur(radius=radius))
+            output = BytesIO()
+            blurred_img.save(output, format="PNG")
+            return output.getvalue()
+
+    async def blur_image(self, image_bytes: bytes, radius: int) -> bytes:
+        return await self._run_in_executor(self._blur_image_sync, image_bytes, radius)
+
+    def _sharpen_image_sync(self, image_bytes: bytes, factor: int) -> bytes:
+        with Image.open(BytesIO(image_bytes)) as img:
+            sharpened_img = img
+            for _ in range(factor):
+                sharpened_img = sharpened_img.filter(ImageFilter.SHARPEN)
+            output = BytesIO()
+            sharpened_img.save(output, format="PNG")
+            return output.getvalue()
+            
+    async def sharpen_image(self, image_bytes: bytes, factor: int) -> bytes:
+        return await self._run_in_executor(self._sharpen_image_sync, image_bytes, factor)
