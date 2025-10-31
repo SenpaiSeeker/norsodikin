@@ -394,12 +394,15 @@ class VideoFX(FontManager):
     async def split_video(self, video_path: str, output_dir: str, split_duration: int) -> list:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-        
+
         ffprobe_cmd = [
             "ffprobe",
-            "-v", "error",
-            "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
             video_path,
         ]
         process = await asyncio.create_subprocess_exec(
@@ -410,7 +413,7 @@ class VideoFX(FontManager):
         stdout, stderr = await process.communicate()
         if process.returncode != 0:
             raise RuntimeError(f"FFprobe error: {stderr.decode().strip()}")
-        
+
         try:
             total_duration = float(stdout.decode().strip())
         except ValueError:
@@ -418,24 +421,31 @@ class VideoFX(FontManager):
 
         num_parts = math.ceil(total_duration / split_duration)
         split_files = []
-        
+
         for i in range(num_parts):
             start_time = i * split_duration
             output_path = os.path.join(output_dir, f"part_{i:03d}.mp4")
-            
+
             command = [
                 "ffmpeg",
-                "-i", video_path,
-                "-ss", str(start_time),
-                "-t", str(split_duration),
-                "-c:v", "libx264",
-                "-preset", "veryfast",
-                "-crf", "23",
-                "-c:a", "aac",
+                "-i",
+                video_path,
+                "-ss",
+                str(start_time),
+                "-t",
+                str(split_duration),
+                "-c:v",
+                "libx264",
+                "-preset",
+                "veryfast",
+                "-crf",
+                "23",
+                "-c:a",
+                "aac",
                 "-y",
                 output_path,
             ]
-            
+
             process = await asyncio.create_subprocess_exec(
                 *command,
                 stdout=asyncio.subprocess.PIPE,
@@ -446,7 +456,7 @@ class VideoFX(FontManager):
             if process.returncode != 0:
                 error_message = stderr.decode().strip()
                 raise RuntimeError(f"FFmpeg error on part {i}: {error_message}")
-            
+
             split_files.append(output_path)
-            
+
         return split_files

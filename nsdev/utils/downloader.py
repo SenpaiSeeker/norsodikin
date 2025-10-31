@@ -3,10 +3,9 @@ import os
 from functools import partial
 from typing import List
 from urllib.parse import urlparse
-from faker import Faker
-
 
 import wget
+from faker import Faker
 from yt_dlp import YoutubeDL
 
 from ..data.ymlreder import YamlHandler
@@ -16,10 +15,10 @@ class MediaDownloader:
     def __init__(self, cookies_file_path: str = "cookies.txt", download_path: str = "downloads"):
         self.download_path = download_path
         self.cookies_file_path = cookies_file_path
-        
+
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
-        
+
         self.convert = YamlHandler()
         self.fake = Faker("id_ID")
 
@@ -113,7 +112,9 @@ class MediaDownloader:
                 }
             )
         else:
-            opts["format"] = "bestvideo[ext=mp4][height<=720][vcodec^=avc]+bestaudio/bestvideo[ext=mp4][height<=720]+bestaudio/best[ext=mp4][height<=720]/best"
+            opts["format"] = (
+                "bestvideo[ext=mp4][height<=720][vcodec^=avc]+bestaudio/bestvideo[ext=mp4][height<=720]+bestaudio/best[ext=mp4][height<=720]/best"
+            )
 
         return opts
 
@@ -138,13 +139,11 @@ class MediaDownloader:
 
                 result_obj.downloaded_path = filename
                 result_obj.thumbnail_path = thumb_path
-                
+
                 return result_obj
         except Exception as e:
             if "HTTP Error 403" in str(e):
-                raise Exception(
-                    "Akses ditolak (403). " "Perbarui cookies.txt atau pastikan video publik."
-                )
+                raise Exception("Akses ditolak (403). " "Perbarui cookies.txt atau pastikan video publik.")
             else:
                 raise Exception(f"Gagal mengunduh: {e}")
 
@@ -160,7 +159,7 @@ class MediaDownloader:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 result_obj = self.convert._convertToNamespace(info)
-                
+
                 filename = ydl.prepare_filename(info)
                 if audio_only and filename:
                     base, _ = os.path.splitext(filename)
@@ -176,10 +175,10 @@ class MediaDownloader:
 
                 result_obj.downloaded_path = filename
                 result_obj.thumbnail_path = thumb_path
-                
-                if not hasattr(result_obj, 'title'):
+
+                if not hasattr(result_obj, "title"):
                     result_obj.title = media_name
-                
+
                 return result_obj
         except Exception as e:
             if "HTTP Error 403" in str(e):

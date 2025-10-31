@@ -1,4 +1,3 @@
-import asyncio
 import time
 from collections import Counter
 from functools import wraps
