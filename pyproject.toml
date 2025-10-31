@@ -34,7 +34,6 @@ dependencies = [
     "faker",
     "setproctitle",
     "gTTS",
-    "pydub",
     "beautifulsoup4",
     "lxml",
     "fake-useragent",
