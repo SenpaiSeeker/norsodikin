@@ -3,7 +3,6 @@ from types import SimpleNamespace
 from .ai.bing import ImageGenerator
 from .ai.gemini import ChatbotGemini
 from .ai.huggingface import HuggingFaceGenerator
-from .ai.local import OllamaClient
 from .ai.ocr import OCR
 from .ai.qrcode import QrCodeGenerator
 from .ai.search import WebSearch
@@ -67,7 +66,7 @@ from .utils.url import UrlUtils
 from .utils.weather import WeatherWttr
 from .utils.wikipedia import WikipediaSearch
 
-__version__ = "2.3.28"
+__version__ = "2.3.29"
 __author__ = "@NorSodikin"
 
 
@@ -78,7 +77,6 @@ class NsDev:
             bing=ImageGenerator,
             gemini=ChatbotGemini,
             hf=HuggingFaceGenerator,
-            local=OllamaClient,
             ocr=OCR,
             qrcode=QrCodeGenerator(),
             search=WebSearch,
