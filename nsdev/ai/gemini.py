@@ -272,9 +272,7 @@ class ChatbotGemini:
             "sample_rate": tts_result["sample_rate"]
         }
 
-    @staticmethod
-    def get_available_voices() -> dict:
-        
+    def get_available_voices(self) -> dict:
         return {
             "Zephyr": "Bright",
             "Puck": "Upbeat",
