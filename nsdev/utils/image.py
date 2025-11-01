@@ -34,7 +34,7 @@ class ImageManipulator(FontManager):
     ) -> bytes:
         img = Image.open(BytesIO(image_bytes)).convert("RGBA")
         txt_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
-        
+
         font_size = int(img.width / 15)
         font = self._get_font(font_size)
         draw = ImageDraw.Draw(txt_layer)
@@ -45,10 +45,10 @@ class ImageManipulator(FontManager):
         text_bbox = draw.textbbox((0, 0), text, font=font)
         text_width = text_bbox[2] - text_bbox[0]
         text_height = text_bbox[3] - text_bbox[1]
-        
+
         x = (img.width - text_width) / 2
         y = (img.height - text_height) / 2
-        
+
         for offset_x in range(-2, 3):
             for offset_y in range(-2, 3):
                 if offset_x != 0 or offset_y != 0:
@@ -521,6 +521,6 @@ class ImageManipulator(FontManager):
             output = BytesIO()
             sharpened_img.save(output, format="PNG")
             return output.getvalue()
-            
+
     async def sharpen_image(self, image_bytes: bytes, factor: int) -> bytes:
         return await self._run_in_executor(self._sharpen_image_sync, image_bytes, factor)
