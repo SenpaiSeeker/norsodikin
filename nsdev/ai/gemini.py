@@ -215,6 +215,13 @@ class ChatbotGemini:
 
             transcript_parts.append(f"{speaker}: {text}")
 
+        num_speakers = len(speaker_configs)
+        if num_speakers != 2:
+            raise ValueError(
+                f"Multi-speaker TTS requires exactly 2 speakers, but got {num_speakers}. "
+                f"Speakers found: {list(speakers_seen.keys())}"
+            )
+
         transcript = "\n".join(transcript_parts)
 
         config = types.GenerateContentConfig(
