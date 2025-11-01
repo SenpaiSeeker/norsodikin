@@ -7,7 +7,8 @@ from typing import Literal, Optional
 
 
 
-def pcm_to_wav(pcm_data: bytes, channels: int = 1, sample_rate: int = 24000, sample_width: int = 2) -> bytes:
+def pcm_to_wav(pcm_data: bytes, channels: int = 1, sample_rate: int = 24000, sample_width: int = 2) -> bytes:    
+    wav_buffer = io.BytesIO()
     with wave.open(wav_buffer, 'wb') as wav_file:
         wav_file.setnchannels(channels)
         wav_file.setsampwidth(sample_width)
