@@ -1,6 +1,5 @@
 from google import genai
 from google.genai import types
-import requests
 import base64
 from typing import Literal, Optional
 
@@ -124,112 +123,94 @@ class ChatbotGemini:
         audio_encoding: Literal["LINEAR16", "ALAW", "MULAW", "MP3", "OGG_OPUS"] = "LINEAR16",
         sample_rate: int = 24000
     ) -> dict:
+        config = types.GenerateContentConfig(
+            response_modalities=["AUDIO"],
+            speech_config=types.SpeechConfig(
+                voice_config=types.VoiceConfig(
+                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                        voice_name=voice_name
+                    )
+                )
+            )
+        )
         
-        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent"
-        
-        headers = {
-            "x-goog-api-key": self.api_key,
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "contents": [{
-                "parts": [{
-                    "text": text
-                }]
-            }],
-            "generationConfig": {
-                "responseModalities": ["AUDIO"],
-                "speechConfig": {
-                    "singleSpeakerVoiceConfig": {
-                        "voiceConfig": {
-                            "prebuiltVoiceConfig": {
-                                "voiceName": voice_name
-                            }
-                        }
-                    }
-                }
+        try:
+            response = await self.client.aio.models.generate_content(
+                model="gemini-2.5-flash-preview-tts",
+                contents=text,
+                config=config
+            )
+            
+            audio_data = response.candidates[0].content.parts[0].inline_data.data
+            
+            return {
+                "audio_bytes": audio_data,
+                "audio_base64": base64.b64encode(audio_data).decode('utf-8') if isinstance(audio_data, bytes) else audio_data,
+                "encoding": audio_encoding,
+                "sample_rate": sample_rate,
+                "voice_name": voice_name
             }
-        }
-        
-        response = requests.post(url, headers=headers, json=payload)
-        
-        if response.status_code != 200:
-            raise Exception(f"TTS API request failed: {response.status_code} - {response.text}")
-        
-        response_json = response.json()
-        
-        audio_data_base64 = response_json["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]
-        audio_bytes = base64.b64decode(audio_data_base64)
-        
-        return {
-            "audio_bytes": audio_bytes,
-            "audio_base64": audio_data_base64,
-            "encoding": audio_encoding,
-            "sample_rate": sample_rate,
-            "voice_name": voice_name
-        }
+        except Exception as e:
+            raise Exception(f"TTS generation failed: {e}")
 
     async def generate_multi_speaker_tts(
         self,
         conversations: list[dict],
         default_voice: str = "Kore"
-    ) -> dict:
+    ) -> dict:        
+        speaker_configs = []
+        speakers_seen = {}
         
-        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent"
+        transcript_parts = []
         
-        headers = {
-            "x-goog-api-key": self.api_key,
-            "Content-Type": "application/json"
-        }
-        
-        parts = []
         for conv in conversations:
-            parts.append({
-                "text": conv.get("text", ""),
-                "turn": conv.get("turn", "user"),
-                "voice": conv.get("voice", default_voice)
-            })
+            speaker = conv.get("speaker", "Speaker")
+            text = conv.get("text", "")
+            voice = conv.get("voice", default_voice)
+            
+            if speaker not in speakers_seen:
+                speakers_seen[speaker] = voice
+                speaker_configs.append(
+                    types.SpeakerVoiceConfig(
+                        speaker=speaker,
+                        voice_config=types.VoiceConfig(
+                            prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                voice_name=voice
+                            )
+                        )
+                    )
+                )
+            
+            transcript_parts.append(f"{speaker}: {text}")
         
-        payload = {
-            "contents": [{
-                "parts": parts
-            }],
-            "generationConfig": {
-                "responseModalities": ["AUDIO"],
-                "speechConfig": {
-                    "multiSpeakerVoiceConfig": {
-                        "turns": [
-                            {
-                                "turn": part.get("turn", "user"),
-                                "voiceConfig": {
-                                    "prebuiltVoiceConfig": {
-                                        "voiceName": part.get("voice", default_voice)
-                                    }
-                                }
-                            } for part in parts
-                        ]
-                    }
-                }
+        transcript = "\n".join(transcript_parts)
+        
+        config = types.GenerateContentConfig(
+            response_modalities=["AUDIO"],
+            speech_config=types.SpeechConfig(
+                multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
+                    speaker_voice_configs=speaker_configs
+                )
+            )
+        )
+        
+        try:
+            response = await self.client.aio.models.generate_content(
+                model="gemini-2.5-flash-preview-tts",
+                contents=transcript,
+                config=config
+            )
+            
+            audio_data = response.candidates[0].content.parts[0].inline_data.data
+            
+            return {
+                "audio_bytes": audio_data,
+                "audio_base64": base64.b64encode(audio_data).decode('utf-8') if isinstance(audio_data, bytes) else audio_data,
+                "encoding": "LINEAR16",
+                "sample_rate": 24000
             }
-        }
-        
-        response = requests.post(url, headers=headers, json=payload)
-        
-        if response.status_code != 200:
-            raise Exception(f"Multi-speaker TTS API request failed: {response.status_code} - {response.text}")
-        
-        response_json = response.json()
-        
-        audio_data_base64 = response_json["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]
-        audio_bytes = base64.b64decode(audio_data_base64)
-        
-        return {
-            "audio_bytes": audio_bytes,
-            "audio_base64": audio_data_base64,
-            "encoding": "LINEAR16",
-            "sample_rate": 24000
-        }
+        except Exception as e:
+            raise Exception(f"Multi-speaker TTS generation failed: {e}")
 
     async def send_chat_message_with_tts(
         self,
@@ -237,8 +218,7 @@ class ChatbotGemini:
         user_id: str,
         bot_name: str,
         voice_name: str = "Kore"
-    ) -> dict:
-        
+    ) -> dict:        
         text_reply = await self.send_chat_message(message, user_id, bot_name)
         
         tts_result = await self.generate_tts(text_reply, voice_name)
@@ -257,8 +237,7 @@ class ChatbotGemini:
         name: str,
         user_id: str,
         voice_name: str = "Fenrir"
-    ) -> dict:
-        
+    ) -> dict:        
         text_reply = await self.send_khodam_message(name, user_id)
         
         tts_result = await self.generate_tts(text_reply, voice_name)
