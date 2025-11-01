@@ -2,7 +2,7 @@ import math
 import re
 
 import pyrogram
-
+from typing import List, Dict
 
 class Button:
     def get_urls(self, text):
@@ -82,15 +82,13 @@ class Button:
     def remove_reply_keyboard(self, selective=False):
         return pyrogram.types.ReplyKeyboardRemove(selective=selective)
 
-    def build_button_grid(self, buttons, row_inline=None, row_width=2):
-        row_inline = row_inline or []
-        grid = [
-            [pyrogram.types.InlineKeyboardButton(**data) for data in buttons[i : i + row_width]]
-            for i in range(0, len(buttons), row_width)
-        ]
-        if row_inline:
-            grid.extend([[pyrogram.types.InlineKeyboardButton(**data)] for data in row_inline])
-        return pyrogram.types.InlineKeyboardMarkup(grid)
+    def build_button_grid(self, layout: List[List[Dict]]):
+        keyboard = []
+        for row_data in layout:
+            row = [pyrogram.types.InlineKeyboardButton(**button_info) for button_info in row_data]
+            if row:
+                keyboard.append(row)
+        return pyrogram.types.InlineKeyboardMarkup(keyboard) if keyboard else None
 
     def create_pagination_keyboard(
         self,
@@ -132,9 +130,8 @@ class Button:
             for item in page_items
         ]
 
-        layout = [
-            [pyrogram.types.InlineKeyboardButton(**data) for data in item_buttons_data[i : i + items_per_row]]
-            for i in range(0, len(item_buttons_data), items_per_row)
+        layout_grid = [
+            item_buttons_data[i : i + items_per_row] for i in range(0, len(item_buttons_data), items_per_row)
         ]
 
         nav_row_data = []
@@ -148,10 +145,10 @@ class Button:
             nav_row_data.append({"text": "➡️", "callback_data": f"{callback_prefix}_{current_page + 1}"})
 
         if nav_row_data:
-            layout.append([pyrogram.types.InlineKeyboardButton(**data) for data in nav_row_data])
+            layout_grid.append(nav_row_data)
 
         if extra_params:
             for button_data in extra_params:
-                layout.append([pyrogram.types.InlineKeyboardButton(**button_data)])
+                layout_grid.append([button_data])
 
-        return pyrogram.types.InlineKeyboardMarkup(layout) if layout else None
+        return self.build_button_grid(layout_grid)
