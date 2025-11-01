@@ -1,20 +1,20 @@
+import base64
+import io
+import wave
+from typing import Literal
+
 from google import genai
 from google.genai import types
-import base64
-import wave
-import io
-from typing import Literal, Optional
 
 
-
-def pcm_to_wav(pcm_data: bytes, channels: int = 1, sample_rate: int = 24000, sample_width: int = 2) -> bytes:    
+def pcm_to_wav(pcm_data: bytes, channels: int = 1, sample_rate: int = 24000, sample_width: int = 2) -> bytes:
     wav_buffer = io.BytesIO()
-    with wave.open(wav_buffer, 'wb') as wav_file:
+    with wave.open(wav_buffer, "wb") as wav_file:
         wav_file.setnchannels(channels)
         wav_file.setsampwidth(sample_width)
         wav_file.setframerate(sample_rate)
         wav_file.writeframes(pcm_data)
-    
+
     wav_buffer.seek(0)
     return wav_buffer.read()
 
@@ -126,152 +126,152 @@ class ChatbotGemini:
         return reply
 
     async def generate_tts(
-        self, 
-        text: str, 
+        self,
+        text: str,
         voice_name: Literal[
-            "Zephyr", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", 
-            "Aoede", "Callirrhoe", "Autonoe", "Enceladus", "Iapetus", "Umbriel",
-            "Algieba", "Despina", "Erinome", "Algenib", "Rasalgethi", "Laomedeia",
-            "Achernar", "Alnilam", "Schedar", "Gacrux", "Pulcherrima", "Achird",
-            "Zubenelgenubi", "Vindemiatrix", "Sadachbia", "Sadaltager", "Sulafat"
+            "Zephyr",
+            "Puck",
+            "Charon",
+            "Kore",
+            "Fenrir",
+            "Leda",
+            "Orus",
+            "Aoede",
+            "Callirrhoe",
+            "Autonoe",
+            "Enceladus",
+            "Iapetus",
+            "Umbriel",
+            "Algieba",
+            "Despina",
+            "Erinome",
+            "Algenib",
+            "Rasalgethi",
+            "Laomedeia",
+            "Achernar",
+            "Alnilam",
+            "Schedar",
+            "Gacrux",
+            "Pulcherrima",
+            "Achird",
+            "Zubenelgenubi",
+            "Vindemiatrix",
+            "Sadachbia",
+            "Sadaltager",
+            "Sulafat",
         ] = "Kore",
         audio_encoding: Literal["LINEAR16", "ALAW", "MULAW", "MP3", "OGG_OPUS"] = "LINEAR16",
-        sample_rate: int = 24000
+        sample_rate: int = 24000,
     ) -> dict:
-        
+
         config = types.GenerateContentConfig(
             response_modalities=["AUDIO"],
             speech_config=types.SpeechConfig(
-                voice_config=types.VoiceConfig(
-                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                        voice_name=voice_name
-                    )
-                )
-            )
+                voice_config=types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice_name))
+            ),
         )
-        
+
         try:
             response = await self.client.aio.models.generate_content(
-                model="gemini-2.5-flash-preview-tts",
-                contents=text,
-                config=config
+                model="gemini-2.5-flash-preview-tts", contents=text, config=config
             )
-            
+
             pcm_data = response.candidates[0].content.parts[0].inline_data.data
-            
+
             wav_data = pcm_to_wav(pcm_data, channels=1, sample_rate=sample_rate, sample_width=2)
-            
+
             return {
                 "audio_bytes": wav_data,
-                "audio_base64": base64.b64encode(wav_data).decode('utf-8'),
+                "audio_base64": base64.b64encode(wav_data).decode("utf-8"),
                 "encoding": audio_encoding,
                 "sample_rate": sample_rate,
-                "voice_name": voice_name
+                "voice_name": voice_name,
             }
         except Exception as e:
             raise Exception(f"TTS generation failed: {e}")
 
-    async def generate_multi_speaker_tts(
-        self,
-        conversations: list[dict],
-        default_voice: str = "Kore"
-    ) -> dict:
-        
+    async def generate_multi_speaker_tts(self, conversations: list[dict], default_voice: str = "Kore") -> dict:
+
         speaker_configs = []
         speakers_seen = {}
-        
+
         transcript_parts = []
-        
+
         for conv in conversations:
             speaker = conv.get("speaker", "Speaker")
             text = conv.get("text", "")
             voice = conv.get("voice", default_voice)
-            
+
             if speaker not in speakers_seen:
                 speakers_seen[speaker] = voice
                 speaker_configs.append(
                     types.SpeakerVoiceConfig(
                         speaker=speaker,
                         voice_config=types.VoiceConfig(
-                            prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                                voice_name=voice
-                            )
-                        )
+                            prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice)
+                        ),
                     )
                 )
-            
+
             transcript_parts.append(f"{speaker}: {text}")
-        
+
         transcript = "\n".join(transcript_parts)
-        
+
         config = types.GenerateContentConfig(
             response_modalities=["AUDIO"],
             speech_config=types.SpeechConfig(
-                multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
-                    speaker_voice_configs=speaker_configs
-                )
-            )
+                multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(speaker_voice_configs=speaker_configs)
+            ),
         )
-        
+
         try:
             response = await self.client.aio.models.generate_content(
-                model="gemini-2.5-flash-preview-tts",
-                contents=transcript,
-                config=config
+                model="gemini-2.5-flash-preview-tts", contents=transcript, config=config
             )
-            
+
             pcm_data = response.candidates[0].content.parts[0].inline_data.data
-            
+
             wav_data = pcm_to_wav(pcm_data, channels=1, sample_rate=24000, sample_width=2)
-            
+
             return {
                 "audio_bytes": wav_data,
-                "audio_base64": base64.b64encode(wav_data).decode('utf-8'),
+                "audio_base64": base64.b64encode(wav_data).decode("utf-8"),
                 "encoding": "LINEAR16",
-                "sample_rate": 24000
+                "sample_rate": 24000,
             }
         except Exception as e:
             raise Exception(f"Multi-speaker TTS generation failed: {e}")
 
     async def send_chat_message_with_tts(
-        self,
-        message: str,
-        user_id: str,
-        bot_name: str,
-        voice_name: str = "Kore"
+        self, message: str, user_id: str, bot_name: str, voice_name: str = "Kore"
     ) -> dict:
-        
+
         text_reply = await self.send_chat_message(message, user_id, bot_name)
-        
+
         tts_result = await self.generate_tts(text_reply, voice_name)
-        
+
         return {
             "text": text_reply,
             "audio_bytes": tts_result["audio_bytes"],
             "audio_base64": tts_result["audio_base64"],
             "voice_name": voice_name,
             "encoding": tts_result["encoding"],
-            "sample_rate": tts_result["sample_rate"]
+            "sample_rate": tts_result["sample_rate"],
         }
 
-    async def send_khodam_message_with_tts(
-        self,
-        name: str,
-        user_id: str,
-        voice_name: str = "Fenrir"
-    ) -> dict:
-        
+    async def send_khodam_message_with_tts(self, name: str, user_id: str, voice_name: str = "Fenrir") -> dict:
+
         text_reply = await self.send_khodam_message(name, user_id)
-        
+
         tts_result = await self.generate_tts(text_reply, voice_name)
-        
+
         return {
             "text": text_reply,
             "audio_bytes": tts_result["audio_bytes"],
             "audio_base64": tts_result["audio_base64"],
             "voice_name": voice_name,
             "encoding": tts_result["encoding"],
-            "sample_rate": tts_result["sample_rate"]
+            "sample_rate": tts_result["sample_rate"],
         }
 
     def get_available_voices(self) -> dict:
@@ -305,5 +305,5 @@ class ChatbotGemini:
             "Vindemiatrix": "Gentle",
             "Sadachbia": "Lively",
             "Sadaltager": "Knowledgeable",
-            "Sulafat": "Warm"
+            "Sulafat": "Warm",
         }
