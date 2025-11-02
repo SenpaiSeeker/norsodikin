@@ -51,19 +51,14 @@ class DataBase:
     def _register_backup_task(self):
         if self.auto_backup and self.scheduler and self.storage_type in ["local", "sqlite"]:
             if not self.backup_bot_token or not self.backup_chat_id:
-                self.cipher.log.print(
-                    f"{self.cipher.log.YELLOW}[BACKUP] Auto backup is disabled because token/chat_id is missing."
-                )
-                return
+                return self.cipher.log.warning"Auto backup is disabled because token/chat_id is missing.")
 
             @self.scheduler.cron(self.backup_cron_spec)
             async def scheduled_backup_task():
-                self.cipher.log.print(f"{self.cipher.log.CYAN}[BACKUP] Starting scheduled backup process...")
+                self.cipher.log.debug("Starting scheduled backup process...")
                 await self.perform_backup()
 
-            self.cipher.log.print(
-                f"{self.cipher.log.GREEN}[BACKUP] Backup task scheduled with spec: '{self.backup_cron_spec}'."
-            )
+            self.cipher.log.info("Backup task scheduled with spec: '{self.backup_cron_spec}'.")
 
     async def perform_backup(self):
         source_paths = []
@@ -71,15 +66,12 @@ class DataBase:
         if await self._run_sync(os.path.exists, db_path):
             source_paths.append(db_path)
         else:
-            self.cipher.log.print(
-                f"{self.cipher.log.YELLOW}[BACKUP] Database file not found. Skipping database backup."
-            )
+            self.cipher.log.warning("Database file not found. Skipping database backup.")
         env_files = await self._run_sync(glob.glob, "*.env")
         if env_files:
             source_paths.extend(env_files)
         if not source_paths:
-            self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] No files to back up. Aborting.")
-            return
+            return self.cipher.log.warning("No files to back up. Aborting.")
         zip_path = None
         try:
             zip_path = await self._run_sync(self._create_zip_archive, source_paths)
@@ -118,13 +110,11 @@ class DataBase:
             response.raise_for_status()
             response_data = response.json()
             if response_data.get("ok"):
-                self.cipher.log.print(f"{self.cipher.log.GREEN}[BACKUP] Successfully sent to Telegram.")
+                self.cipher.log.info("Successfully sent to Telegram.")
             else:
-                self.cipher.log.print(
-                    f"{self.cipher.log.RED}[BACKUP] Failed to send: {response_data.get('description')}"
-                )
+                self.cipher.log.error(f"Failed to send: {response_data.get('description')}")
         except Exception as e:
-            self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] Failed to send file to Telegram: {e}")
+            self.cipher.log.error(f"Failed to send file to Telegram: {e}")
 
     def _sync_load_data(self):
         try:
