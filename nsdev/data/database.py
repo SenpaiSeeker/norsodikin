@@ -51,7 +51,7 @@ class DataBase:
     def _register_backup_task(self):
         if self.auto_backup and self.scheduler and self.storage_type in ["local", "sqlite"]:
             if not self.backup_bot_token or not self.backup_chat_id:
-                return self.cipher.log.warning"Auto backup is disabled because token/chat_id is missing.")
+                return self.cipher.log.warning("Auto backup is disabled because token/chat_id is missing.")
 
             @self.scheduler.cron(self.backup_cron_spec)
             async def scheduled_backup_task():
@@ -96,7 +96,7 @@ class DataBase:
                     zf.write(path, os.path.basename(path))
             return zip_filename
         except Exception as e:
-            self.cipher.log.print(f"{self.cipher.log.RED}[BACKUP] Failed to create ZIP archive: {e}")
+            self.cipher.log.error(f"Failed to create ZIP archive: {e}")
             return None
 
     async def _send_zip_to_telegram(self, file_path, caption):
