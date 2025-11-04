@@ -58,7 +58,7 @@ class DataBase:
                 self.cipher.log.debug("Starting scheduled backup process...")
                 await self.perform_backup()
 
-            self.cipher.log.info("Backup task scheduled with spec: '{self.backup_cron_spec}'.")
+            self.cipher.log.info(f"Backup task scheduled with spec: '{self.backup_cron_spec}'.")
 
     async def perform_backup(self):
         source_paths = []
