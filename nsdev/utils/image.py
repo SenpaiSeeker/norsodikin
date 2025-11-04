@@ -138,7 +138,8 @@ class ImageManipulator(FontManager):
                 for component in (int(min(255, i * 1.2)), int(min(255, i * 1.0)), int(min(255, i * 0.8)))
             ]
             grayscale_img.putpalette(sepia_palette)
-            processed_img = grayscale_img.convert("RGB")
+            grayscale_img = grayscale_img.convert("RGB")
+            processed_img = grayscale_img
         elif filter_name == "invert":
             processed_img = ImageOps.invert(img)
         elif filter_name == "blur":
@@ -209,12 +210,16 @@ class ImageManipulator(FontManager):
         draw_mask.ellipse((0, 0) + pfp.size, fill=255)
         pfp.putalpha(mask)
 
-        with resources.as_file(resources.files("assets").joinpath("fonts", "NotoSans-Regular.ttf")) as font_path:
+        with resources.as_file(
+            resources.files("assets").joinpath("fonts").joinpath("NotoSans-Regular.ttf")
+        ) as font_path:
             font_name_path = str(font_path)
-        with resources.as_file(resources.files("assets").joinpath("fonts", "NotoColorEmoji-Regular.ttf")) as font_path:
+        with resources.as_file(
+            resources.files("assets").joinpath("fonts").joinpath("NotoColorEmoji-Regular.ttf")
+        ) as font_path:
             emoji_font_path = str(font_path)
         with resources.as_file(
-            resources.files("assets").joinpath("fonts", "NotoSansSymbols2-Regular.ttf")
+            resources.files("assets").joinpath("fonts").joinpath("NotoSansSymbols2-Regular.ttf")
         ) as font_path:
             symbol_font_path = str(font_path)
 
