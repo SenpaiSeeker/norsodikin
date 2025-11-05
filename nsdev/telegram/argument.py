@@ -59,17 +59,26 @@ class Argument:
         command_parts = message.command or text_content.split()
         replied = message.reply_to_message
 
-        replied_text = ""
+        replied_text = None
         if replied:
-            replied_text = replied.text or replied.caption
+            replied_text = getattr(replied, "text", None) or getattr(replied, "caption", None)
 
         quote_text = ""
         if hasattr(message, "quote") and message.quote:
-            quote_text = message.quote.text or ""
+            quote_text = getattr(message.quote, "text", None) or getattr(message.quote, "caption", None) or ""
 
         if is_tuple:
             part1 = command_parts[1] if len(command_parts) > 1 else None
-            part2 = " ".join(command_parts[2:]) if len(command_parts) > 2 else (replied_text or quote_text or None)
+            part2 = None
+            if len(command_parts) > 2:
+                part2 = " ".join(command_parts[2:]).strip()
+                if part2 == "":
+                    part2 = None
+            else:
+                if replied_text:
+                    part2 = replied_text
+                elif quote_text:
+                    part2 = quote_text
             return part1, part2
 
         if is_arg:
