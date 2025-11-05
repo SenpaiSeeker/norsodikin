@@ -110,7 +110,7 @@ class FontManager:
 
     def _get_font_from_package(self, font_filename, size):
         try:
-            font_resource = resources.files("assets").joinpath("fonts", font_filename)
+            font_resource = resources.files("assets").joinpath("fonts").joinpath(font_filename)
             with resources.as_file(font_resource) as font_path:
                 return ImageFont.truetype(str(font_path), size)
         except (IOError, FileNotFoundError):
