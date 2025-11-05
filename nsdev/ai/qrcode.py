@@ -70,17 +70,14 @@ class QrCodeGenerator(FontManager):
                     fill_color="black",
                     back_color=(0, 0, 0, 0)
                 ).convert("RGBA")
-
                 qr_size = qr_img.size[0]
                 padding = qr_size // 5
                 bg_size = qr_size + padding * 2
-
                 hue = random.random()
                 saturation = 0.95
                 value = 1.0
                 rgb_float = colorsys.hsv_to_rgb(hue, saturation, value)
                 glow_color = tuple(int(c * 255) for c in rgb_float)
-
                 background = self._sync_create_glow_background(bg_size, glow_color).convert("RGBA")
                 paste_position = (padding, padding)
                 background.paste(qr_img, paste_position, qr_img)
@@ -93,30 +90,46 @@ class QrCodeGenerator(FontManager):
                 return img_bytes.getvalue()
 
             qr_w, qr_h = img.size
+            
+            font_button = self._get_font_from_package("NotoSans-Bold.ttf", 30)
+            font_creator = self._get_font_from_package("NotoSans-Regular.ttf", 40)
+            
+            button_w, creator_w = 0, 0
+            if bottom_text:
+                button_w = font_button.getbbox(bottom_text)[2] + 80
+            if creator_text:
+                creator_w = font_creator.getbbox(creator_text)[2]
+            
+            horizontal_padding = 40
+            canvas_w = max(qr_w, button_w, creator_w) + horizontal_padding * 2
+            if canvas_w % 2 != 0:
+                canvas_w += 1
+
             padding_top = 40
             padding_between_qr_button = 30
             padding_between_button_creator = 20
             padding_bottom = 40
-            font_button = self._get_font_from_package("NotoSans-Bold.ttf", 30)
-            font_creator = self._get_font_from_package("NotoSans-Regular.ttf", 40)
+            
             button_h, creator_h = 0, 0
             if bottom_text:
                 button_h = 60
             if creator_text:
-                bbox = font_creator.getbbox(creator_text)
-                creator_h = bbox[3] - bbox[1]
+                creator_h = font_creator.getbbox(creator_text)[3] - font_creator.getbbox(creator_text)[1]
+
             total_h = (
                 padding_top + qr_h + padding_between_qr_button + button_h +
                 padding_between_button_creator + creator_h + padding_bottom
             )
-            final_canvas = Image.new("RGB", (qr_w, total_h), "#F0F0F0")
+            
+            final_canvas = Image.new("RGB", (canvas_w, total_h), "#F0F0F0")
             draw = ImageDraw.Draw(final_canvas)
-            final_canvas.paste(img, (0, padding_top))
+            
+            final_canvas.paste(img, (int((canvas_w - qr_w) / 2), padding_top))
+            
             current_y = padding_top + qr_h
             if bottom_text:
                 current_y += padding_between_qr_button
-                button_w = font_button.getbbox(bottom_text)[2] + 80
-                button_x = (qr_w - button_w) / 2
+                button_x = (canvas_w - button_w) / 2
                 draw.rounded_rectangle(
                     (button_x, current_y, button_x + button_w, current_y + button_h),
                     radius=30, fill="#F0F0F0", outline="black", width=2
@@ -135,8 +148,7 @@ class QrCodeGenerator(FontManager):
                 
             if creator_text:
                 current_y += padding_between_button_creator
-                creator_w = font_creator.getbbox(creator_text)[2]
-                text_x = (qr_w - creator_w) / 2
+                text_x = (canvas_w - creator_w) / 2
                 draw.text((text_x, current_y), creator_text, font=font_creator, fill="black")
                 
             img_bytes = io.BytesIO()
