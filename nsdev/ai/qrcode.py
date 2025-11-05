@@ -21,10 +21,8 @@ class QrCodeGenerator(FontManager):
     def _sync_create_glow_background(self, size: int, color: tuple) -> Image.Image:
         background = Image.new("RGB", (size, size))
         draw = ImageDraw.Draw(background)
-
         center_x, center_y = size / 2, size / 2
         max_dist = math.sqrt(center_x**2 + center_y**2)
-
         for y in range(size):
             for x in range(size):
                 distance = math.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
@@ -59,10 +57,18 @@ class QrCodeGenerator(FontManager):
             drawer_module = CircleModuleDrawer() if use_dots else None
 
             if not glow_background:
-                img = qr.make_image(image_factory=image_factory, module_drawer=drawer_module, fill_color="black", back_color="white")
+                img = qr.make_image(
+                    image_factory=image_factory,
+                    module_drawer=drawer_module,
+                    fill_color="black",
+                    back_color="white"
+                ).convert("RGB")
             else:
                 qr_img = qr.make_image(
-                    image_factory=StyledPilImage, module_drawer=drawer_module, fill_color="black", back_color=(0, 0, 0, 0)
+                    image_factory=StyledPilImage,
+                    module_drawer=drawer_module,
+                    fill_color="black",
+                    back_color=(0, 0, 0, 0)
                 ).convert("RGBA")
 
                 qr_size = qr_img.size[0]
@@ -75,9 +81,9 @@ class QrCodeGenerator(FontManager):
                 rgb_float = colorsys.hsv_to_rgb(hue, saturation, value)
                 glow_color = tuple(int(c * 255) for c in rgb_float)
 
-                background = self._sync_create_glow_background(bg_size, glow_color)
+                background = self._sync_create_glow_background(bg_size, glow_color).convert("RGBA")
                 paste_position = (padding, padding)
-                background.paste(qr_img, paste_position, qr_img)
+                background.alpha_composite(qr_img, paste_position)
                 img = background.convert("RGB")
 
             if not bottom_text and not creator_text:
@@ -91,66 +97,49 @@ class QrCodeGenerator(FontManager):
             padding_between_qr_button = 30
             padding_between_button_creator = 20
             padding_bottom = 40
-            
             font_button = self._get_font_from_package("NotoSans-Bold.ttf", 30)
             font_creator = self._get_font_from_package("NotoSans-Bold.ttf", 40)
-            
             button_h, creator_h = 0, 0
-            
             if bottom_text:
                 button_h = 60
-                
             if creator_text:
-                bbox = font_creator.getbbox(creator_text)
+                bbox = ImageDraw.Draw(Image.new("RGB", (1, 1))).textbbox((0, 0), creator_text, font=font_creator)
                 creator_h = bbox[3] - bbox[1]
-
             total_h = (
-                padding_top + qr_h + padding_between_qr_button + button_h + 
+                padding_top + qr_h + padding_between_qr_button + button_h +
                 padding_between_button_creator + creator_h + padding_bottom
             )
-            
             final_canvas = Image.new("RGB", (qr_w, total_h), "#F0F0F0")
             draw = ImageDraw.Draw(final_canvas)
-            
             final_canvas.paste(img, (0, padding_top))
-            
             current_y = padding_top + qr_h
-            
             if bottom_text:
                 current_y += padding_between_qr_button
-                bbox = font_button.getbbox(bottom_text)
+                bbox = draw.textbbox((0, 0), bottom_text, font=font_button)
                 button_text_w = bbox[2] - bbox[0]
-                
                 button_w = button_text_w + 80
                 button_x = (qr_w - button_w) / 2
-                
                 draw.rounded_rectangle(
                     (button_x, current_y, button_x + button_w, current_y + button_h),
                     radius=30, fill="#F0F0F0", outline="black", width=4
                 )
-                
                 text_x = button_x + (button_w - button_text_w) / 2
                 text_y = current_y + (button_h - (bbox[3] - bbox[1])) / 2
                 draw.text((text_x, text_y), bottom_text, font=font_button, fill="black")
                 current_y += button_h
-
             if creator_text:
                 current_y += padding_between_button_creator
-                bbox = font_creator.getbbox(creator_text)
+                bbox = draw.textbbox((0, 0), creator_text, font=font_creator)
                 creator_w = bbox[2] - bbox[0]
                 text_x = (qr_w - creator_w) / 2
-                
                 shadow_color = "black"
                 for offset in [(2, 2), (-2, 2), (2, -2), (-2, -2)]:
                     draw.text((text_x + offset[0], current_y + offset[1]), creator_text, font=font_creator, fill=shadow_color)
-                
                 draw.text((text_x, current_y), creator_text, font=font_creator, fill="white")
-
             img_bytes = io.BytesIO()
             final_canvas.save(img_bytes, format="PNG")
             img_bytes.seek(0)
             return img_bytes.getvalue()
-
         except Exception as e:
             raise e
 
