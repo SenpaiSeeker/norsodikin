@@ -101,15 +101,15 @@ class QrCodeGenerator(FontManager):
                 button_h = 60
                 
             if creator_text:
-                bbox = ImageDraw.Draw(Image.new("RGB", (1, 1))).textbbox((0, 0), creator_text, font=font_creator)
-                creator_h = bbox[3] - bbox[1]
+                bbox_creator = font_creator.getbbox(creator_text)
+                creator_h = bbox_creator[3] - bbox_creator[1]
 
             total_h = (
                 padding_top + qr_h + padding_between_qr_button + button_h + 
                 padding_between_button_creator + creator_h + padding_bottom
             )
             
-            final_canvas = Image.new("RGB", (qr_w, total_h), "#F0F0F0")
+            final_canvas = Image.new("RGB", (qr_w, int(total_h)), "#F0F0F0")
             draw = ImageDraw.Draw(final_canvas)
             
             final_canvas.paste(img, (0, padding_top))
@@ -118,8 +118,8 @@ class QrCodeGenerator(FontManager):
             
             if bottom_text:
                 current_y += padding_between_qr_button
-                bbox = draw.textbbox((0, 0), bottom_text, font=font_button)
-                button_text_w = bbox[2] - bbox[0]
+                button_text_w = font_button.getlength(bottom_text)
+                bbox_button = font_button.getbbox(bottom_text)
                 
                 button_w = button_text_w + 80
                 button_x = (qr_w - button_w) / 2
@@ -130,14 +130,13 @@ class QrCodeGenerator(FontManager):
                 )
                 
                 text_x = button_x + (button_w - button_text_w) / 2
-                text_y = current_y + (button_h - (bbox[3] - bbox[1])) / 2
+                text_y = current_y + (button_h - (bbox_button[3] - bbox_button[1])) / 2
                 draw.text((text_x, text_y), bottom_text, font=font_button, fill="black")
                 current_y += button_h
 
             if creator_text:
                 current_y += padding_between_button_creator
-                bbox = draw.textbbox((0, 0), creator_text, font=font_creator)
-                creator_w = bbox[2] - bbox[0]
+                creator_w = font_creator.getlength(creator_text)
                 text_x = (qr_w - creator_w) / 2
                 
                 shadow_color = "black"
