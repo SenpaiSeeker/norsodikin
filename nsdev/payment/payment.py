@@ -12,7 +12,7 @@ import re
 from typing import Optional, Tuple
 
 import aiofiles
-import cloudscraper
+import cloudscraper25 as cloudscraper
 import httpx
 from bs4 import BeautifulSoup
 
