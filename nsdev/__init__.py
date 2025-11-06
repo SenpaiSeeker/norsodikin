@@ -25,6 +25,7 @@ from .payment.payment import (
     PaymentMidtrans,
     PaymentTripay,
     SaweriaApi,
+    SaweriaScraper,
     VioletMediaPayClient,
 )
 from .schedule.manager import Scheduler
@@ -66,7 +67,7 @@ from .utils.url import UrlUtils
 from .utils.weather import WeatherWttr
 from .utils.wikipedia import WikipediaSearch
 
-__version__ = "2.3.45"
+__version__ = "2.3.46"
 __author__ = "@NorSodikin"
 
 
@@ -106,6 +107,7 @@ class NsDev:
             Cashify=PaymentCashify,
             Midtrans=PaymentMidtrans,
             Saweria=SaweriaApi,
+            SaweriaScraper=SaweriaScraper,
             Tripay=PaymentTripay,
             Violet=VioletMediaPayClient,
         )
