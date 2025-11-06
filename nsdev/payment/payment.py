@@ -396,7 +396,7 @@ class SaweriaScraper(QrCodeGenerator):
                 f"{self.BACKEND}/donations/qris/{transaction_id}", headers=self.HEADERS
             )
             if not res.ok:
-                raise Exception("Transaction ID not found")
+                raise Exception(f"Transaction ID not found: {res}")
             return res.json()["data"]["qr_string"] == ""
 
         return await asyncio.to_thread(_sync_get)
