@@ -336,14 +336,11 @@ class SaweriaScraper(QrCodeGenerator):
                         if next_data:
                             data = json.loads(next_data.text)
                             user_id = (
-                                data.get("props", {})
-                                .get("pageProps", {})
-                                .get("data", {})
-                                .get("id")
+                                data.get("props", {}).get("pageProps", {}).get("data", {}).get("id")
                             )
                             if user_id:
                                 return user_id
-                except Exception as e:
+                except Exception:
                     pass
                 time.sleep(delay)
             return None
@@ -358,7 +355,7 @@ class SaweriaScraper(QrCodeGenerator):
         email: str,
         message: str,
         creator_name: str = "nsdev",
-    ) -> Tuple[str, str, io.BytesIO]:
+    ) -> Tuple[str, str, io.BytesIO, int]:
         if amount < 1000:
             raise ValueError("Jumlah minimum donasi adalah 1000")
 
@@ -379,6 +376,7 @@ class SaweriaScraper(QrCodeGenerator):
         data = await asyncio.to_thread(_sync_post)
         qr_string = data["qr_string"]
         transaction_id = data["id"]
+        amount_raw = data["amount_raw"]
 
         qr_image_bytes = await self.generate(
             data=qr_string, use_dots=True, glow_background=False,
@@ -388,7 +386,7 @@ class SaweriaScraper(QrCodeGenerator):
         qr_image_stream = io.BytesIO(qr_image_bytes)
         qr_image_stream.name = f"{transaction_id}.png"
 
-        return qr_string, transaction_id, qr_image_stream, data
+        return qr_string, transaction_id, qr_image_stream, amount_raw
 
     async def check_paid_status(self, transaction_id: str) -> bool:
         def _sync_get():
@@ -396,7 +394,7 @@ class SaweriaScraper(QrCodeGenerator):
                 f"{self.BACKEND}/donations/qris/{transaction_id}", headers=self.HEADERS
             )
             if not res.ok:
-                raise Exception(f"Transaction ID not found: {res}")
+                raise Exception("Transaction ID not found")
             return res.json()["data"]["qr_string"] == ""
 
         return await asyncio.to_thread(_sync_get)
