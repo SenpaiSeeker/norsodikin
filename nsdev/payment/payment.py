@@ -388,7 +388,7 @@ class SaweriaScraper(QrCodeGenerator):
         qr_image_stream = io.BytesIO(qr_image_bytes)
         qr_image_stream.name = f"{transaction_id}.png"
 
-        return qr_string, transaction_id, qr_image_stream
+        return qr_string, transaction_id, qr_image_stream, data
 
     async def check_paid_status(self, transaction_id: str) -> bool:
         def _sync_get():
