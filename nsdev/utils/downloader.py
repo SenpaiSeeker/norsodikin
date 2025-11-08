@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 import wget
 from faker import Faker
-from yt_dlp import YoutubeDL
+from yt_dlp import YoutubeDL, utils as ytdl_utils
 
 from ..data.ymlreder import YamlHandler
 from .logger import LoggerHandler
@@ -47,19 +47,21 @@ class MediaDownloader:
         if not is_url:
             ydl_opts["default_search"] = f"ytsearch{limit}"
         
-        with YoutubeDL(ydl_opts) as ydl:
-            try:
+        try:
+            with YoutubeDL(ydl_opts) as ydl:
                 result = ydl.extract_info(query, download=False)
-                if not result:
-                    return []
-
-                entries = result.get("entries", [])
-                if not entries and "id" in result:
-                    entries = [result]
-
-                return [self.convert._convertToNamespace(entry) for entry in entries]
-            except Exception as e:
-                raise Exception(f"Gagal mencari video: {e}")
+            if not result: return []
+            entries = result.get("entries", [])
+            if not entries and "id" in result: entries = [result]
+            return [self.convert._convertToNamespace(entry) for entry in entries]
+        except ytdl_utils.DownloadError as e:
+            if "proxy" in ydl_opts and "Unable to connect to proxy" in str(e):
+                self.log.print(f"{self.log.YELLOW}Pencarian via proxy gagal, mencoba koneksi langsung...{self.log.RESET}")
+                del ydl_opts["proxy"]
+                return self._sync_extract_info(query, limit, ydl_opts)
+            raise Exception(f"Gagal mencari video: {e}")
+        except Exception as e:
+            raise Exception(f"Gagal mencari video: {e}")
 
     async def search_youtube(self, query: str, limit: int = 10, use_vpn_country: Optional[str] = None) -> List:
         ydl_opts = {
@@ -75,6 +77,7 @@ class MediaDownloader:
             best_server = await self.vpn_manager._get_best_vpn_server(country_code=use_vpn_country)
             if best_server:
                 ydl_opts['proxy'] = f"http://{best_server['IP']}:{best_server.get('port', '80')}"
+                self.log.print(f"{self.log.CYAN}Mencoba pencarian dengan proxy: {ydl_opts['proxy']}{self.log.RESET}")
 
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
             ydl_opts["cookiefile"] = self.cookies_file_path
@@ -107,9 +110,14 @@ class MediaDownloader:
                 with open(ovpn_path, 'w') as f:
                     f.write(config_data)
                 
-                self.log.print(f"{self.log.CYAN}Menggunakan konfigurasi VPN: {filename}. Ini memerlukan setup OpenVPN di level sistem. Yt-dlp akan mencoba direct connection.")
+                self.log.print(f"{self.log.CYAN}Konfigurasi VPN dibuat: {filename}. Ini memerlukan setup OpenVPN di level sistem.{self.log.RESET}")
+                
+                best_server = await self.vpn_manager._get_best_vpn_server(country_code=use_vpn_country)
+                if best_server:
+                    opts['proxy'] = f"http://{best_server['IP']}:{best_server.get('port', '80')}"
+                    self.log.print(f"{self.log.CYAN}Mencoba unduhan dengan proxy: {opts['proxy']}{self.log.RESET}")
             else:
-                self.log.print(f"{self.log.YELLOW}Tidak dapat menemukan server VPN yang cocok untuk negara: {use_vpn_country}")
+                self.log.print(f"{self.log.YELLOW}Tidak dapat menemukan server VPN yang cocok untuk negara: {use_vpn_country}{self.log.RESET}")
 
         if progress_callback:
             opts["progress_hooks"] = [_hook]
@@ -133,42 +141,35 @@ class MediaDownloader:
                     base, _ = os.path.splitext(filename)
                     filename = base + ".mp3"
 
-                thumb_path = None
-                thumb_url = None
+                thumb_path, thumb_url = None, None
                 
-                if hasattr(result_obj, 'thumbnail'):
-                    thumb_url = result_obj.thumbnail
-                elif hasattr(result_obj, 'id'):
-                    thumb_url = f"https://i.ytimg.com/vi/{result_obj.id}/maxresdefault.jpg"
+                if hasattr(result_obj, 'thumbnail'): thumb_url = result_obj.thumbnail
+                elif hasattr(result_obj, 'id'): thumb_url = f"https://i.ytimg.com/vi/{result_obj.id}/maxresdefault.jpg"
 
                 if thumb_url:
-                    try:
-                        thumb_path = wget.download(thumb_url, out=self.download_path)
-                    except Exception:
-                        thumb_path = None
+                    try: thumb_path = wget.download(thumb_url, out=self.download_path)
+                    except Exception: thumb_path = None
 
-                result_obj.downloaded_path = filename
-                result_obj.thumbnail_path = thumb_path
+                result_obj.downloaded_path, result_obj.thumbnail_path = filename, thumb_path
                 
-                if not hasattr(result_obj, "title"):
-                    result_obj.title = "Downloaded Media"
+                if not hasattr(result_obj, "title"): result_obj.title = "Downloaded Media"
 
                 return result_obj
+        except ytdl_utils.DownloadError as e:
+            if "proxy" in ydl_opts and ("Unable to connect to proxy" in str(e) or "timed out" in str(e)):
+                self.log.print(f"{self.log.YELLOW}Unduhan via proxy gagal, mencoba koneksi langsung...{self.log.RESET}")
+                del ydl_opts["proxy"]
+                return self._sync_download(url, ydl_opts)
+            raise Exception(f"Gagal mengunduh: {e}")
         except Exception as e:
-            if "HTTP Error 403" in str(e):
-                raise Exception("Akses ditolak (403). Perbarui cookies.txt atau pastikan video publik.")
-            else:
-                raise Exception(f"Gagal mengunduh: {e}")
+            raise Exception(f"Gagal mengunduh: {e}")
 
     async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None, use_vpn_country: Optional[str] = None) -> object:
         loop = asyncio.get_running_loop()
         ydl_opts = await self._build_ydl_opts(progress_callback, loop, use_vpn_country)
 
         if audio_only:
-            ydl_opts.update({
-                "format": "bestaudio[ext=m4a]/bestaudio/best",
-                "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}]
-            })
+            ydl_opts.update({"format": "bestaudio[ext=m4a]/bestaudio/best", "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}]})
         else:
             ydl_opts["format"] = "bestvideo[ext=mp4][height<=720][vcodec^=avc]+bestaudio/bestvideo[ext=mp4][height<=720]+bestaudio/best[ext=mp4][height<=720]/best"
         
@@ -179,10 +180,7 @@ class MediaDownloader:
         ydl_opts = await self._build_ydl_opts(progress_callback, loop, use_vpn_country)
 
         if audio_only:
-            ydl_opts.update({
-                "format": "bestaudio/best",
-                "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}]
-            })
+            ydl_opts.update({"format": "bestaudio/best", "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}]})
         else:
             ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best"
             
