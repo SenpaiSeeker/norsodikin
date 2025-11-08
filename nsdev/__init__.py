@@ -68,7 +68,7 @@ from .utils.vpn_manager import VPNManager
 from .utils.weather import WeatherWttr
 from .utils.wikipedia import WikipediaSearch
 
-__version__ = "2.3.57"
+__version__ = "2.3.58"
 __author__ = "@NorSodikin"
 
 
