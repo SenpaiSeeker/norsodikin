@@ -64,7 +64,6 @@ from .utils.ratelimit import RateLimiter
 from .utils.shell import ShellExecutor
 from .utils.splitter import AudioSplitter
 from .utils.url import UrlUtils
-from .utils.vpn_manager import VPNManager
 from .utils.weather import WeatherWttr
 from .utils.wikipedia import WikipediaSearch
 
@@ -153,7 +152,6 @@ class NsDev:
             shell=ShellExecutor(),
             splitter=AudioSplitter,
             url=UrlUtils(),
-            vpn=VPNManager,
             weather=WeatherWttr,
             wikipedia=WikipediaSearch,
         )
