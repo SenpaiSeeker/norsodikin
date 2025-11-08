@@ -1,23 +1,20 @@
+import asyncio
 import base64
 import hashlib
 import hmac
+import io
+import json
 import random
 import time
 import uuid
-import asyncio
-import io
-import json
-import os
-import re
 from typing import Optional, Tuple
 
-import aiofiles
 import cloudscraper25 as cloudscraper
 import httpx
 from bs4 import BeautifulSoup
 
-from ..data.ymlreder import YamlHandler
 from ..ai.qrcode import QrCodeGenerator
+from ..data.ymlreder import YamlHandler
 
 
 class PaymentMidtrans:
@@ -228,7 +225,14 @@ class PaymentCashify:
         self.convert = YamlHandler()
         self.qr_generator_url = "https://larabert-qrgen.hf.space/v1/create-qr-code"
         self.STYLISH_QR_COLORS = [
-            "ea580c", "3b82f6", "16a34a", "dc2626", "7c3aed", "db2777", "0d9488", "d97706",
+            "ea580c",
+            "3b82f6",
+            "16a34a",
+            "dc2626",
+            "7c3aed",
+            "db2777",
+            "0d9488",
+            "d97706",
         ]
 
     def _get_headers(self):
@@ -253,8 +257,11 @@ class PaymentCashify:
             expired_in_minutes = 1440
 
         payload = {
-            "id": qris_id, "amount": amount, "useUniqueCode": use_unique_code,
-            "packageIds": package_ids, "expiredInMinutes": expired_in_minutes,
+            "id": qris_id,
+            "amount": amount,
+            "useUniqueCode": use_unique_code,
+            "packageIds": package_ids,
+            "expiredInMinutes": expired_in_minutes,
         }
 
         try:
@@ -335,9 +342,7 @@ class SaweriaScraper(QrCodeGenerator):
                         next_data = soup.find(id="__NEXT_DATA__")
                         if next_data:
                             data = json.loads(next_data.text)
-                            user_id = (
-                                data.get("props", {}).get("pageProps", {}).get("data", {}).get("id")
-                            )
+                            user_id = data.get("props", {}).get("pageProps", {}).get("data", {}).get("id")
                             if user_id:
                                 return user_id
                 except Exception:
@@ -360,14 +365,21 @@ class SaweriaScraper(QrCodeGenerator):
             raise ValueError("Jumlah minimum donasi adalah 1000")
 
         payload = {
-            "agree": True, "notUnderage": True, "message": message,
-            "amount": amount, "payment_type": "qris", "vote": "", "currency": "IDR",
+            "agree": True,
+            "notUnderage": True,
+            "message": message,
+            "amount": amount,
+            "payment_type": "qris",
+            "vote": "",
+            "currency": "IDR",
             "customer_info": {"first_name": name, "email": email, "phone": ""},
         }
 
         def _sync_post():
             res = self.scraper.post(
-                f"{self.BACKEND}/donations/{user_id}", json=payload, headers=self.HEADERS,
+                f"{self.BACKEND}/donations/{user_id}",
+                json=payload,
+                headers=self.HEADERS,
             )
             if not res.ok:
                 raise Exception(f"Gagal membuat pembayaran: {res.text}")
@@ -379,8 +391,11 @@ class SaweriaScraper(QrCodeGenerator):
         amount_raw = data["amount_raw"]
 
         qr_image_bytes = await self.generate(
-            data=qr_string, use_dots=True, glow_background=False,
-            bottom_text="SCAN ME", creator_text=f"Created by: {creator_name}",
+            data=qr_string,
+            use_dots=True,
+            glow_background=False,
+            bottom_text="SCAN ME",
+            creator_text=f"Created by: {creator_name}",
         )
 
         qr_image_stream = io.BytesIO(qr_image_bytes)
@@ -390,9 +405,7 @@ class SaweriaScraper(QrCodeGenerator):
 
     async def check_paid_status(self, transaction_id: str) -> bool:
         def _sync_get():
-            res = self.scraper.get(
-                f"{self.BACKEND}/donations/qris/{transaction_id}", headers=self.HEADERS
-            )
+            res = self.scraper.get(f"{self.BACKEND}/donations/qris/{transaction_id}", headers=self.HEADERS)
             if not res.ok:
                 raise Exception("Transaction ID not found")
             return res.json()["data"]["qr_string"] == ""
