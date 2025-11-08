@@ -55,9 +55,9 @@ class MediaDownloader:
             if not entries and "id" in result: entries = [result]
             return [self.convert._convertToNamespace(entry) for entry in entries]
         except ytdl_utils.DownloadError as e:
-            if "proxy" in ydl_opts and "Unable to connect to proxy" in str(e):
+            if "proxy" in ydl_opts and ("Unable to connect to proxy" in str(e) or "timed out" in str(e)):
                 self.log.print(f"{self.log.YELLOW}Pencarian via proxy gagal, mencoba koneksi langsung...{self.log.RESET}")
-                del ydl_opts["--proxy"]
+                del ydl_opts["proxy"]
                 return self._sync_extract_info(query, limit, ydl_opts)
             raise Exception(f"Gagal mencari video: {e}")
         except Exception as e:
@@ -71,9 +71,11 @@ class MediaDownloader:
             "noplaylist": True,
             "extract_flat": "in_playlist",
             "user_agent": self.fake.user_agent(),
+            "force_ipv4": True,
         }
 
         if use_vpn_country:
+            ydl_opts["geo_bypass_country"] = use_vpn_country.upper()
             best_server = await self.vpn_manager._get_best_vpn_server(country_code=use_vpn_country)
             if best_server:
                 ydl_opts['proxy'] = f"http://{best_server['IP']}:{best_server.get('port', '80')}"
@@ -100,9 +102,11 @@ class MediaDownloader:
             "geo_bypass": True,
             "nocheckcertificate": True,
             "user_agent": self.fake.user_agent(),
+            "force_ipv4": True,
         }
         
         if use_vpn_country:
+            opts["geo_bypass_country"] = use_vpn_country.upper()
             ovpn_config_tuple = await self.vpn_manager.get_ovpn_config(country_code=use_vpn_country)
             if ovpn_config_tuple:
                 filename, config_data = ovpn_config_tuple
