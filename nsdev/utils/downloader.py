@@ -9,6 +9,7 @@ from faker import Faker
 from yt_dlp import YoutubeDL
 
 from ..data.ymlreder import YamlHandler
+from .logger import LoggerHandler
 from .vpn_manager import VPNManager
 
 
@@ -16,6 +17,7 @@ class MediaDownloader:
     def __init__(self, cookies_file_path: str = "cookies.txt", download_path: str = "downloads"):
         self.download_path = download_path
         self.cookies_file_path = cookies_file_path
+        self.log = LoggerHandler()
 
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
@@ -40,7 +42,26 @@ class MediaDownloader:
         parsed_url = urlparse(url)
         return parsed_url.netloc in ("www.tiktok.com", "tiktok.com", "vt.tiktok.com")
 
-    async def _sync_extract_info(self, query: str, limit: int = 10, use_vpn_country: Optional[str] = None):
+    def _sync_extract_info(self, query: str, limit: int, ydl_opts: dict):
+        is_url = query.startswith("http")
+        if not is_url:
+            ydl_opts["default_search"] = f"ytsearch{limit}"
+        
+        with YoutubeDL(ydl_opts) as ydl:
+            try:
+                result = ydl.extract_info(query, download=False)
+                if not result:
+                    return []
+
+                entries = result.get("entries", [])
+                if not entries and "id" in result:
+                    entries = [result]
+
+                return [self.convert._convertToNamespace(entry) for entry in entries]
+            except Exception as e:
+                raise Exception(f"Gagal mencari video: {e}")
+
+    async def search_youtube(self, query: str, limit: int = 10, use_vpn_country: Optional[str] = None) -> List:
         ydl_opts = {
             "format": "best",
             "quiet": True,
@@ -57,32 +78,11 @@ class MediaDownloader:
 
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
             ydl_opts["cookiefile"] = self.cookies_file_path
-
-        is_url = query.startswith("http")
-        if is_url:
-            ydl_opts["noplaylist"] = False
-        else:
-            ydl_opts["default_search"] = f"ytsearch{limit}"
-
-        with YoutubeDL(ydl_opts) as ydl:
-            try:
-                result = ydl.extract_info(query, download=False)
-                if not result:
-                    return []
-
-                entries = result.get("entries", [])
-                if not entries and "id" in result:
-                    entries = [result]
-
-                return [self.convert._convertToNamespace(entry) for entry in entries]
-            except Exception as e:
-                raise Exception(f"Gagal mencari video: {e}")
-
-    async def search_youtube(self, query: str, limit: int = 10, use_vpn_country: Optional[str] = None) -> List:
+            
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, partial(self._sync_extract_info, query, limit, use_vpn_country))
+        return await loop.run_in_executor(None, partial(self._sync_extract_info, query, limit, ydl_opts))
 
-    async def _build_ydl_opts(self, url: str, audio_only: bool, progress_callback, loop, use_vpn_country: Optional[str] = None):
+    async def _build_ydl_opts(self, progress_callback, loop, use_vpn_country: Optional[str] = None):
         def _hook(d):
             if d["status"] == "downloading" and progress_callback:
                 total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate")
@@ -107,39 +107,19 @@ class MediaDownloader:
                 with open(ovpn_path, 'w') as f:
                     f.write(config_data)
                 
-                print(f"Menggunakan konfigurasi VPN: {filename}. Ini memerlukan setup OpenVPN di level sistem. Yt-dlp akan mencoba direct connection.")
+                self.log.print(f"{self.log.CYAN}Menggunakan konfigurasi VPN: {filename}. Ini memerlukan setup OpenVPN di level sistem. Yt-dlp akan mencoba direct connection.")
             else:
-                print(f"Tidak dapat menemukan server VPN yang cocok untuk negara: {use_vpn_country}")
-
+                self.log.print(f"{self.log.YELLOW}Tidak dapat menemukan server VPN yang cocok untuk negara: {use_vpn_country}")
 
         if progress_callback:
             opts["progress_hooks"] = [_hook]
 
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
             opts["cookiefile"] = self.cookies_file_path
-
-        if audio_only:
-            opts.update(
-                {
-                    "format": "bestaudio[ext=m4a]/bestaudio/best",
-                    "postprocessors": [
-                        {
-                            "key": "FFmpegExtractAudio",
-                            "preferredcodec": "mp3",
-                            "preferredquality": "192",
-                        }
-                    ],
-                }
-            )
-        else:
-            opts["format"] = (
-                "bestvideo[ext=mp4][height<=720][vcodec^=avc]+bestaudio/bestvideo[ext=mp4][height<=720]+bestaudio/best[ext=mp4][height<=720]/best"
-            )
-
+        
         return opts
 
-    async def _sync_download(self, url, audio_only, progress_callback, loop, use_vpn_country):
-        ydl_opts = await self._build_ydl_opts(url, audio_only, progress_callback, loop, use_vpn_country)
+    def _sync_download(self, url: str, ydl_opts: dict):
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -147,86 +127,78 @@ class MediaDownloader:
 
                 filename = ydl.prepare_filename(info)
 
-                if audio_only and filename:
-                    base, _ = os.path.splitext(filename)
-                    filename = base + ".mp3"
+                is_audio = any(pp.get('key') == 'FFmpegExtractAudio' for pp in ydl_opts.get('postprocessors', []))
 
-                try:
-                    thumb_url = f"https://i.ytimg.com/vi/{result_obj.id}/maxresdefault.jpg"
-                    thumb_path = wget.download(thumb_url, out=self.download_path)
-                except Exception:
-                    thumb_path = None
-
-                result_obj.downloaded_path = filename
-                result_obj.thumbnail_path = thumb_path
-
-                return result_obj
-        except Exception as e:
-            if "HTTP Error 403" in str(e):
-                raise Exception("Akses ditolak (403). " "Perbarui cookies.txt atau pastikan video publik.")
-            else:
-                raise Exception(f"Gagal mengunduh: {e}")
-
-    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None, use_vpn_country: Optional[str] = None) -> object:
-        loop = asyncio.get_running_loop()
-        func_call = partial(self._sync_download, url, audio_only, progress_callback, loop, use_vpn_country)
-        return await loop.run_in_executor(None, func_call)
-
-    async def _sync_download_social(self, url, audio_only, progress_callback, loop, media_name, use_vpn_country):
-        ydl_opts = await self._build_ydl_opts(url, audio_only, progress_callback, loop, use_vpn_country)
-        ydl_opts["format"] = "best[ext=mp4]/best"
-        try:
-            with YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                result_obj = self.convert._convertToNamespace(info)
-
-                filename = ydl.prepare_filename(info)
-                if audio_only and filename:
+                if is_audio and filename:
                     base, _ = os.path.splitext(filename)
                     filename = base + ".mp3"
 
                 thumb_path = None
-                if hasattr(result_obj, "thumbnail") and result_obj.thumbnail:
+                thumb_url = None
+                
+                if hasattr(result_obj, 'thumbnail'):
+                    thumb_url = result_obj.thumbnail
+                elif hasattr(result_obj, 'id'):
+                    thumb_url = f"https://i.ytimg.com/vi/{result_obj.id}/maxresdefault.jpg"
+
+                if thumb_url:
                     try:
-                        thumb_url = result_obj.thumbnail
                         thumb_path = wget.download(thumb_url, out=self.download_path)
                     except Exception:
                         thumb_path = None
 
                 result_obj.downloaded_path = filename
                 result_obj.thumbnail_path = thumb_path
-
+                
                 if not hasattr(result_obj, "title"):
-                    result_obj.title = media_name
+                    result_obj.title = "Downloaded Media"
 
                 return result_obj
         except Exception as e:
             if "HTTP Error 403" in str(e):
-                raise Exception(f"❌ {media_name}: Akses ditolak (403). Gunakan cookies atau pastikan media publik.")
+                raise Exception("Akses ditolak (403). Perbarui cookies.txt atau pastikan video publik.")
             else:
-                raise Exception(f"❌ {media_name}: {e}")
+                raise Exception(f"Gagal mengunduh: {e}")
 
-    async def download_instagram(self, url, audio_only=False, progress_callback=None, use_vpn_country=None):
+    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None, use_vpn_country: Optional[str] = None) -> object:
         loop = asyncio.get_running_loop()
-        func_call = partial(self._sync_download_social, url, audio_only, progress_callback, loop, "Instagram Media", use_vpn_country)
-        return await loop.run_in_executor(None, func_call)
+        ydl_opts = await self._build_ydl_opts(progress_callback, loop, use_vpn_country)
 
-    async def download_twitter(self, url, audio_only=False, progress_callback=None, use_vpn_country=None):
-        loop = asyncio.get_running_loop()
-        func_call = partial(self._sync_download_social, url, audio_only, progress_callback, loop, "Twitter Media", use_vpn_country)
-        return await loop.run_in_executor(None, func_call)
-
-    async def download_tiktok(self, url, audio_only=False, progress_callback=None, use_vpn_country=None):
-        loop = asyncio.get_running_loop()
-        func_call = partial(self._sync_download_social, url, audio_only, progress_callback, loop, "TikTok Media", use_vpn_country)
-        return await loop.run_in_executor(None, func_call)
-
-    async def download_social_media(self, url, audio_only=False, progress_callback=None, use_vpn_country=None):
-        if self._is_instagram_url(url):
-            return await self.download_instagram(url, audio_only, progress_callback, use_vpn_country)
-        elif self._is_twitter_url(url):
-            return await self.download_twitter(url, audio_only, progress_callback, use_vpn_country)
-        elif self._is_tiktok_url(url):
-            return await self.download_tiktok(url, audio_only, progress_callback, use_vpn_country)
+        if audio_only:
+            ydl_opts.update({
+                "format": "bestaudio[ext=m4a]/bestaudio/best",
+                "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}]
+            })
         else:
-            raise Exception("URL tidak didukung. Gunakan URL Instagram, Twitter/X, atau TikTok.")
+            ydl_opts["format"] = "bestvideo[ext=mp4][height<=720][vcodec^=avc]+bestaudio/bestvideo[ext=mp4][height<=720]+bestaudio/best[ext=mp4][height<=720]/best"
+        
+        return await loop.run_in_executor(None, partial(self._sync_download, url, ydl_opts))
+
+    async def download_social_media(self, url: str, audio_only: bool = False, progress_callback: callable = None, use_vpn_country: Optional[str] = None):
+        loop = asyncio.get_running_loop()
+        ydl_opts = await self._build_ydl_opts(progress_callback, loop, use_vpn_country)
+
+        if audio_only:
+            ydl_opts.update({
+                "format": "bestaudio/best",
+                "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}]
+            })
+        else:
+            ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best"
+            
+        platform_name = "Social Media"
+        if self._is_instagram_url(url): platform_name = "Instagram"
+        elif self._is_twitter_url(url): platform_name = "Twitter/X"
+        elif self._is_tiktok_url(url): platform_name = "TikTok"
+        else: raise Exception("URL tidak didukung. Gunakan URL Instagram, Twitter/X, atau TikTok.")
+
+        try:
+            result = await loop.run_in_executor(None, partial(self._sync_download, url, ydl_opts))
+            if not hasattr(result, "title") or not result.title:
+                result.title = f"{platform_name} Media"
+            return result
+        except Exception as e:
+            if "HTTP Error 403" in str(e):
+                raise Exception(f"❌ {platform_name}: Akses ditolak (403). Gunakan cookies atau pastikan media publik.")
+            else:
+                raise Exception(f"❌ {platform_name}: {e}")
