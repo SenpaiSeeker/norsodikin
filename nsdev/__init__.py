@@ -64,10 +64,11 @@ from .utils.ratelimit import RateLimiter
 from .utils.shell import ShellExecutor
 from .utils.splitter import AudioSplitter
 from .utils.url import UrlUtils
+from .utils.vpn_manager import VPNManager
 from .utils.weather import WeatherWttr
 from .utils.wikipedia import WikipediaSearch
 
-__version__ = "2.3.52"
+__version__ = "2.3.53"
 __author__ = "@NorSodikin"
 
 
@@ -152,6 +153,7 @@ class NsDev:
             shell=ShellExecutor(),
             splitter=AudioSplitter,
             url=UrlUtils(),
+            vpn=VPNManager,
             weather=WeatherWttr,
             wikipedia=WikipediaSearch,
         )
