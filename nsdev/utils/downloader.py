@@ -57,7 +57,7 @@ class MediaDownloader:
         except ytdl_utils.DownloadError as e:
             if "proxy" in ydl_opts and "Unable to connect to proxy" in str(e):
                 self.log.print(f"{self.log.YELLOW}Pencarian via proxy gagal, mencoba koneksi langsung...{self.log.RESET}")
-                del ydl_opts["proxy"]
+                del ydl_opts["--proxy"]
                 return self._sync_extract_info(query, limit, ydl_opts)
             raise Exception(f"Gagal mencari video: {e}")
         except Exception as e:
