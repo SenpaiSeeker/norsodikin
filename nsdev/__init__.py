@@ -13,7 +13,6 @@ from .ai.upscaler import ImageUpscaler
 from .ai.vision import VisionAnalyzer
 from .ai.voicecloning import VoiceCloner
 from .ai.web_summarizer import WebSummarizer
-from .ai.animestyle import AnimeStyleConverter
 from .analytics.chat import ChatAnalyzer
 from .analytics.manager import AnalyticsManager
 from .auth.manager import AuthManager
@@ -89,7 +88,6 @@ class NsDev:
             vision=VisionAnalyzer,
             voicecloning=VoiceCloner,
             web=WebSummarizer,
-            animestyle=AnimeStyleConverter,
         )
         self.analytics = SimpleNamespace(
             manager=AnalyticsManager,
