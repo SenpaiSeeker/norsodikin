@@ -6,7 +6,7 @@ from ..utils.logger import LoggerHandler
 
 
 class AnimeStyleConverter:
-    def __init__(self, api_key: str, model_id: str = "akhaliq/Photo-to-Anime"):
+    def __init__(self, api_key: str, model_id: str = "cagliostrolab/animagine-xl-3.1"):
         self.api_url = f"https://api-inference.huggingface.co/models/{model_id}"
         self.headers = {"Authorization": f"Bearer {api_key}"}
         self.client = httpx.AsyncClient(headers=self.headers, timeout=300)
