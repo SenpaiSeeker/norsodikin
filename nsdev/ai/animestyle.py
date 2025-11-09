@@ -6,7 +6,7 @@ from ..utils.logger import LoggerHandler
 
 
 class AnimeStyleConverter:
-    def __init__(self, api_key: str, model_id: str = "hysts/anime-gibli-style-model"):
+    def __init__(self, api_key: str, model_id: str = "akhaliq/Photo-to-Anime"):
         self.api_url = f"https://api-inference.huggingface.co/models/{model_id}"
         self.headers = {"Authorization": f"Bearer {api_key}"}
         self.client = httpx.AsyncClient(headers=self.headers, timeout=300)
@@ -30,7 +30,11 @@ class AnimeStyleConverter:
                 return response.content
 
             except httpx.HTTPStatusError as e:
-                error_details = e.response.json().get("error", str(e.response.text))
+                error_details = str(e.response.text)
+                try:
+                    error_details = e.response.json().get("error", str(e.response.text))
+                except Exception:
+                    pass
                 raise Exception(f"Gagal mengonversi gambar: {e.response.status_code} - {error_details}")
             except Exception as e:
                 raise Exception(f"Terjadi kesalahan saat menghubungi Hugging Face API: {e}")
