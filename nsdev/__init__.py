@@ -13,6 +13,7 @@ from .ai.upscaler import ImageUpscaler
 from .ai.vision import VisionAnalyzer
 from .ai.voicecloning import VoiceCloner
 from .ai.web_summarizer import WebSummarizer
+from .ai.animestyle import AnimeStyleConverter
 from .analytics.chat import ChatAnalyzer
 from .analytics.manager import AnalyticsManager
 from .auth.manager import AuthManager
@@ -67,7 +68,7 @@ from .utils.url import UrlUtils
 from .utils.weather import WeatherWttr
 from .utils.wikipedia import WikipediaSearch
 
-__version__ = "2.3.60"
+__version__ = "2.3.61"
 __author__ = "@NorSodikin"
 
 
@@ -88,6 +89,7 @@ class NsDev:
             vision=VisionAnalyzer,
             voicecloning=VoiceCloner,
             web=WebSummarizer,
+            animestyle=AnimeStyleConverter,
         )
         self.analytics = SimpleNamespace(
             manager=AnalyticsManager,
