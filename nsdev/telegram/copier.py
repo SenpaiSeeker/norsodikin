@@ -1,7 +1,7 @@
 import asyncio
 import os
 import re
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 from urllib.parse import parse_qs, urlparse
 
 from pyrogram.errors import FloodWait, RPCError
@@ -17,7 +17,7 @@ class MessageCopier:
         self._log = LoggerHandler()
         self._peer_cache = {}
 
-    def _parse_link(self, link: str) -> Tuple[Optional[str or int], Optional[int]]:
+    def _parse_link(self, link: str) -> Tuple[Optional[Union[str, int]], Optional[int]]:
         link = link.strip()
 
         if link.startswith("tg://openmessage"):

@@ -59,7 +59,7 @@ Homepage = "https://github.com/SenpaiSeeker/norsodikin"
 
 [project.optional-dependencies]
 pyrogram = [
-    "pyrotgfork[fast]",
+    "navygram",
 ]
 all = [
     "norsodikin[pyrogram]",

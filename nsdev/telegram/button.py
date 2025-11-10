@@ -53,7 +53,7 @@ class Button:
                 button = pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
             elif is_copy:
                 button = pyrogram.types.InlineKeyboardButton(
-                    label, copy_text=pyrogram.types.CopyTextButton(text=cb_data)
+                    label, copy_text=text
                 )
             elif is_url:
                 button = pyrogram.types.InlineKeyboardButton(label, url=cb_data)

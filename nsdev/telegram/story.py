@@ -3,7 +3,7 @@ import os
 import uuid
 
 from pyrogram.errors import PeerIdInvalid, RPCError, UsernameInvalid
-from pyrogram.raw import functions, types
+from pyrogram.raw import functions, types, base
 from pyrogram.types import Document, Message, Photo
 
 from ..utils.logger import LoggerHandler
@@ -14,7 +14,7 @@ class StoryDownloader:
         self._client = client
         self._log = LoggerHandler()
 
-    async def _process_and_send_story(self, story_item: types.StoryItem, target_chat_id: int, msg_id: int):
+    async def _process_and_send_story(self, story_item: base.StoryItem, target_chat_id: int, msg_id: int):
         downloaded_path = None
         try:
             high_level_media = None
@@ -63,7 +63,7 @@ class StoryDownloader:
             peer = await self._client.resolve_peer(user.id)
             peer_stories = await self._client.invoke(functions.stories.GetPeerStories(peer=peer))
 
-            story_ids = [s.id for s in getattr(peer_stories.stories, "stories", []) if isinstance(s, types.StoryItem)]
+            story_ids = [s.id for s in getattr(peer_stories.stories, "stories", []) if isinstance(s, base.StoryItem)]
 
             if not story_ids:
                 return await status_message.edit_text(
@@ -86,7 +86,7 @@ class StoryDownloader:
                         continue
 
                     story = story_data.stories[0]
-                    if not isinstance(story, types.StoryItem):
+                    if not isinstance(story, base.StoryItem):
                         self._log.warning(f"Story ID {story_id} bukan tipe StoryItem, dilewati.")
                         continue
 
@@ -133,7 +133,7 @@ class StoryDownloader:
                 )
 
             story = story_data.stories[0]
-            if not isinstance(story, types.StoryItem):
+            if not isinstance(story, base.StoryItem):
                 return await status_message.edit_text("❌ Story ini tidak dapat diakses atau telah kedaluwarsa.")
 
             await status_message.edit_text("📥 Mengunduh story...")
