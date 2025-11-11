@@ -32,8 +32,8 @@ class ImageManipulator(FontManager):
             browser = await p.chromium.launch()
             page = await browser.new_page(viewport={"width": width, "height": 100})
             await page.set_content(html_content)
-            
-            element_handle = await page.query_selector('.container')
+
+            element_handle = await page.query_selector(".container")
             if not element_handle:
                 await browser.close()
                 raise RuntimeError("Could not find the '.container' element to screenshot.")
@@ -54,7 +54,7 @@ class ImageManipulator(FontManager):
             pfp_base64 = "data:image/png;base64," + base64.b64encode(default_pfp_bytes).decode()
 
         bg_color, text_color, name_color = (
-            ("#161616", "#FFFFFF", "#AAAAAA") if not invert else ("#FFFFFF", "#161616", "#555555")
+            ("transparent", "#FFFFFF", "#AAAAAA") if not invert else ("transparent", "#161616", "#555555")
         )
         link_color = "#88C0D0" if not invert else "#3B82F6"
 
@@ -128,9 +128,9 @@ class ImageManipulator(FontManager):
         )
 
         image_bytes = await self._render_html_with_playwright(html_template, 800)
-        
+
         output = BytesIO()
-        Image.open(BytesIO(image_bytes)).save(output, 'WEBP')
+        Image.open(BytesIO(image_bytes)).save(output, "WEBP")
         return output.getvalue()
 
     async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False) -> bytes:
