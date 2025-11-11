@@ -233,70 +233,42 @@ class ImageManipulator(FontManager):
             ("#161616", "#FFFFFF", "#AAAAAA", "#88C0D0") if not invert else ("#FFFFFF", "#161616", "#555555", "#3B82F6")
         )
 
-        soup = BeautifulSoup(text.replace("\n", "<br/>"), "html.parser")
-
         TEXT_LEFT, PADDING_RIGHT, MAX_WIDTH, MIN_WIDTH = 200, 80, 1280, 512
-        MAX_TEXT_WIDTH = MAX_WIDTH - TEXT_LEFT - PADDING_RIGHT
+        MAX_TEXT_WIDTH_CHARS = 40
 
-        lines_of_segments = []
-        current_line_segments = []
-        current_line_width = 0
-
-        def process_node(node):
-            nonlocal current_line_segments, current_line_width
-            for child in node.children:
-                if isinstance(child, NavigableString):
-                    text_content = str(child)
-                    is_link = child.parent.name == "a"
-                    
-                    words = text_content.split(' ')
-                    for i, word in enumerate(words):
-                        if not word: continue
-                        
-                        word_width = font_quote.getlength(word + (' ' if i < len(words) - 1 else ''))
-                        
-                        if current_line_width + word_width > MAX_TEXT_WIDTH:
-                            lines_of_segments.append(current_line_segments)
-                            current_line_segments = []
-                            current_line_width = 0
-                        
-                        current_line_segments.append({"text": word + (' ' if i < len(words) - 1 else ''), "is_link": is_link})
-                        current_line_width += word_width
-
-                elif child.name == 'br':
-                    lines_of_segments.append(current_line_segments)
-                    current_line_segments = []
-                    current_line_width = 0
-                elif hasattr(child, 'children'):
-                    process_node(child)
+        soup = BeautifulSoup(text, "html.parser")
         
-        process_node(soup)
-        if current_line_segments:
-            lines_of_segments.append(current_line_segments)
-
         longest_line_width = 0
-        for line_segments in lines_of_segments:
-            line_width = sum(font_quote.getlength(seg["text"]) for seg in line_segments)
-            longest_line_width = max(longest_line_width, line_width)
-        
         name_width = font_name.getlength(user_name)
         longest_line_width = max(longest_line_width, name_width)
 
+        wrapped_content = []
+        for content in soup.body.contents if soup.body else soup.contents:
+            is_link = content.name == "a"
+            text_to_wrap = content.get_text(separator=' ', strip=True)
+            
+            lines = textwrap.wrap(text_to_wrap, width=MAX_TEXT_WIDTH_CHARS)
+            for line in lines:
+                wrapped_content.append({"text": line, "is_link": is_link})
+                line_width = font_quote.getlength(line)
+                if line_width > longest_line_width:
+                    longest_line_width = line_width
+        
         image_w = min(MAX_WIDTH, max(MIN_WIDTH, int(TEXT_LEFT + longest_line_width + PADDING_RIGHT)))
 
         def get_line_height(font, text_line):
-            bbox = font.getbbox(text_line or " ")
+            if not text_line.strip():
+                bbox = font.getbbox("Tg")
+                return bbox[3] * 0.5
+            bbox = font.getbbox(text_line)
             return bbox[3] - bbox[1]
 
         line_height_name = get_line_height(font_name, user_name)
         line_spacing_quote = 15
+        total_quote_h = sum(
+            [get_line_height(font_quote, l["text"]) for l in wrapped_content]
+        ) + max(0, len(wrapped_content) - 1) * line_spacing_quote
         
-        total_quote_h = 0
-        for line_segments in lines_of_segments:
-            max_h = get_line_height(font_quote, "Tg")
-            total_quote_h += max_h + line_spacing_quote
-        total_quote_h -= line_spacing_quote
-
         PADDING_TOP_BOTTOM = 60
         total_content_h = total_quote_h + line_height_name + 20
         image_h = max(200, int(total_content_h + PADDING_TOP_BOTTOM * 2))
@@ -316,30 +288,24 @@ class ImageManipulator(FontManager):
             font_features=font_paths,
         )
         current_h += line_height_name + 20
-
-        for line_segments in lines_of_segments:
-            current_x = TEXT_LEFT
-            max_h_in_line = get_line_height(font_quote, "Tg")
-
-            for segment in line_segments:
-                segment_text = segment["text"]
-                segment_color = url_color if segment["is_link"] else text_color
-                draw.text(
-                    (current_x, current_h),
-                    segment_text,
-                    font=font_quote,
-                    fill=segment_color,
-                    features=["-liga"],
-                    font_features=font_paths,
-                )
-                current_x += font_quote.getlength(segment_text)
-            
-            current_h += max_h_in_line + line_spacing_quote
+        
+        current_x = TEXT_LEFT
+        for line_info in wrapped_content:
+            line_text = line_info["text"]
+            line_color = url_color if line_info["is_link"] else text_color
+            draw.text(
+                (TEXT_LEFT, current_h),
+                line_text,
+                font=font_quote,
+                fill=line_color,
+                features=["-liga"],
+                font_features=font_paths,
+            )
+            current_h += get_line_height(font_quote, line_text) + line_spacing_quote
 
         output = BytesIO()
         img.save(output, format="PNG")
         return output.getvalue()
-
 
     async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False) -> bytes:
         return await self._run_in_executor(self._sync_create_quote, text, user_name, pfp_bytes, invert)
