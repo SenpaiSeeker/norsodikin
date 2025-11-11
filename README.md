@@ -10,24 +10,30 @@ Selamat datang di `norsodikin`! Ini bukan sekadar pustaka Python biasa, melainka
 
 Instalasi `norsodikin` dilakukan langsung dari repositori GitHub untuk memastikan Anda mendapatkan versi terkini.
 
-**1. Instalasi Lengkap**
+**1. Instalasi Lengkap (Direkomendasikan)**
 
-Perintah ini menginstal `norsodikin` beserta `Pyrogram` dan semua dependensi yang diperlukan untuk menjalankan fitur-fitur seperti AI, media downloader, dan manajemen server. Ini adalah metode yang paling direkomendasikan.
+Metode ini menginstal `norsodikin` beserta `Pyrogram` dan semua dependensi yang diperlukan untuk menjalankan fitur-fitur seperti AI, media downloader, dan manajemen server.
 
+**Langkah 1: Instal Library Sistem**
+Beberapa fitur AI dan rendering gambar memerlukan dependensi sistem. Pada sistem berbasis Debian/Ubuntu, jalankan:
+```bash
+sudo apt-get update && sudo apt-get install -y libzbar0 ffmpeg
+```
+
+**Langkah 2: Instal Pustaka Python**
 ```bash
 pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[all]"
 ```
 
-> **Catatan Penting untuk Fitur AI:**
-> Beberapa fitur memerlukan library sistem. Pada Debian/Ubuntu, instal dengan:
-> ```bash
-> sudo apt-get update && sudo apt-get install -y libzbar0 ffmpeg
-> ```
+**Langkah 3: Instal Browser untuk Playwright**
+Fitur pembuatan gambar dari teks (seperti `.q`) menggunakan browser *headless*. Instal browser yang diperlukan dengan perintah ini:
+```bash
+python3 -m playwright install --with-deps
+```
 
 **2. Instalasi Pustaka Saja (Tanpa Pyrogram)**
 
 Gunakan perintah ini jika Anda hanya ingin menggunakan utilitas `norsodikin` di luar proyek Pyrogram.
-
 ```bash
 pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin"
 ```
