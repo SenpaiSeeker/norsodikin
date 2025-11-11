@@ -329,42 +329,88 @@ class ImageManipulator(FontManager):
         return await self._run_in_executor(self._sync_deepfry, image_bytes)
 
     def _sync_create_afk_card(self, pfp_bytes: bytes, name: str, reason: str, duration: str) -> bytes:
-        pfp_data = pfp_bytes
-        if not pfp_data:
+        return asyncio.run(self._async_create_afk_card(pfp_bytes, name, reason, duration))
+
+    async def _async_create_afk_card(self, pfp_bytes: bytes, name: str, reason: str, duration: str) -> bytes:
+        if pfp_bytes:
+            pfp_base64 = "data:image/png;base64," + base64.b64encode(pfp_bytes).decode()
+        else:
             initial = name[0].upper() if name else "U"
-            pfp_data = self._get_default_pfp(initial)
+            default_pfp_bytes = self._get_default_pfp(initial)
+            pfp_base64 = "data:image/png;base64," + base64.b64encode(default_pfp_bytes).decode()
+        
+        reason_html = f'<div class="detail">Alasan: {reason}</div>' if reason else ""
 
-        pfp = Image.open(BytesIO(pfp_data)).convert("RGBA").resize((128, 128))
-        mask = Image.new("L", pfp.size, 0)
-        draw_mask = ImageDraw.Draw(mask)
-        draw_mask.ellipse((0, 0) + pfp.size, fill=255)
-        pfp.putalpha(mask)
+        html_template = """
+        <html>
+        <head>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap');
+                body {{
+                    margin: 0;
+                    width: 800px;
+                }}
+                .container {{
+                    font-family: 'Noto Sans', sans-serif;
+                    background: #1C1C1E;
+                    padding: 40px;
+                    display: flex;
+                    align-items: center;
+                }}
+                .pfp {{
+                    width: 128px;
+                    height: 128px;
+                    border-radius: 50%;
+                    object-fit: cover;
+                    margin-right: 30px;
+                    flex-shrink: 0;
+                }}
+                .text-content {{
+                    display: flex;
+                    flex-direction: column;
+                }}
+                .name {{
+                    font-size: 36px;
+                    font-weight: 700;
+                    color: #FFFFFF;
+                }}
+                .status {{
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: #FF9500;
+                    margin-top: 5px;
+                }}
+                .detail {{
+                    font-size: 24px;
+                    color: #EBEBF599;
+                    margin-top: 15px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <img src="{pfp_base64}" class="pfp" />
+                <div class="text-content">
+                    <div class="name">{name}</div>
+                    <div class="status">SEDANG AFK</div>
+                    {reason_html}
+                    <div class="detail">Sejak: {duration}</div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """.format(
+            pfp_base64=pfp_base64,
+            name=name,
+            reason_html=reason_html,
+            duration=duration,
+        )
 
-        W, H = 800, 300
-        img = Image.new("RGB", (W, H), "#1C1C1E")
-        draw = ImageDraw.Draw(img)
-
-        font_name = self._get_font_from_package("NotoSans-Bold.ttf", 36)
-        font_status = self._get_font_from_package("NotoSans-Bold.ttf", 28)
-        font_text = self._get_font_from_package("NotoSans-Regular.ttf", 24)
-
-        img.paste(pfp, (40, (H - 128) // 2), pfp)
-
-        text_x = 200
-        draw.text((text_x, 60), name, font=font_name, fill="#FFFFFF")
-        draw.text((text_x, 110), "SEDANG AFK", font=font_status, fill="#FF9500")
-
-        if reason:
-            draw.text((text_x, 170), f"Alasan: {reason}", font=font_text, fill="#EBEBF599")
-
-        draw.text((text_x, 200), f"Sejak: {duration}", font=font_text, fill="#EBEBF599")
-
-        output = BytesIO()
-        img.save(output, format="PNG")
-        return output.getvalue()
+        image_bytes = await self._render_html_with_playwright(html_template, 800)
+        return image_bytes
 
     async def create_afk_card(self, pfp_bytes: bytes, name: str, reason: str, duration: str) -> bytes:
-        return await self._run_in_executor(self._sync_create_afk_card, pfp_bytes, name, reason, duration)
+        return await self._async_create_afk_card(pfp_bytes, name, reason, duration)
 
     def _sync_create_profile_card(
         self, pfp_bytes: bytes, name: str, username: str, user_id: int, bio: str, pfp_count: int, is_sudo: bool
