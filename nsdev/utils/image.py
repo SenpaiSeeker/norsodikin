@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import random
 import textwrap
 from functools import partial
@@ -40,11 +41,11 @@ class ImageManipulator(FontManager):
 
     async def _async_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
         if pfp_bytes:
-            pfp_base64 = "data:image/png;base64," + BytesIO(pfp_bytes).getvalue().hex()
+            pfp_base64 = "data:image/png;base64," + base64.b64encode(pfp_bytes).decode()
         else:
             initial = user_name[0].upper() if user_name else "U"
             default_pfp_bytes = self._get_default_pfp(initial)
-            pfp_base64 = "data:image/png;base64," + default_pfp_bytes.hex()
+            pfp_base64 = "data:image/png;base64," + base64.b64encode(default_pfp_bytes).decode()
 
         bg_color, text_color, name_color = (
             ("#161616", "#FFFFFF", "#AAAAAA") if not invert else ("#FFFFFF", "#161616", "#555555")
