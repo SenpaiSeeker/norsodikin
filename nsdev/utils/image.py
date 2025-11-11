@@ -233,50 +233,64 @@ class ImageManipulator(FontManager):
             ("#161616", "#FFFFFF", "#AAAAAA", "#88C0D0") if not invert else ("#FFFFFF", "#161616", "#555555", "#3B82F6")
         )
 
+        html_text = text.replace("\n", "<br>")
+        soup = BeautifulSoup(html_text, "html.parser")
+        
         TEXT_LEFT, PADDING_RIGHT, MAX_WIDTH, MIN_WIDTH = 200, 80, 1280, 512
         MAX_TEXT_WIDTH = MAX_WIDTH - TEXT_LEFT - PADDING_RIGHT
 
-        soup = BeautifulSoup(text.replace("\n", "<br/>"), "html.parser")
-        
         wrapped_lines = []
-        for element in soup.contents:
-            is_link = element.name == 'a'
-            text_content = element.get_text() if element.name else str(element)
+        for line_part in soup.prettify().split("<br/>"):
+            line_soup = BeautifulSoup(line_part, "html.parser")
             
-            for line in text_content.splitlines():
-                words = line.split(' ')
-                current_line = ""
-                for word in words:
-                    test_line = (current_line + " " + word).strip()
-                    if font_quote.getlength(test_line) > MAX_TEXT_WIDTH:
-                        wrapped_lines.append({"text": current_line, "is_link": is_link})
-                        current_line = word
-                    else:
-                        current_line = test_line
-                if current_line:
-                    wrapped_lines.append({"text": current_line, "is_link": is_link})
+            line_nodes = []
+            for element in line_soup.find_all(string=True):
+                is_link = element.find_parent('a') is not None
+                line_nodes.append({'text': str(element), 'is_link': is_link})
+            
+            words_info = []
+            for node in line_nodes:
+                for word in node['text'].split():
+                    words_info.append({'word': word, 'is_link': node['is_link']})
+
+            current_line = []
+            current_line_width = 0
+            for info in words_info:
+                word = info["word"]
+                word_width = font_quote.getlength(word + " ")
+                
+                if current_line and current_line_width + word_width > MAX_TEXT_WIDTH:
+                    wrapped_lines.append(current_line)
+                    current_line = [info]
+                    current_line_width = word_width
+                else:
+                    current_line.append(info)
+                    current_line_width += word_width
+            
+            if current_line:
+                wrapped_lines.append(current_line)
+            elif not words_info: 
+                wrapped_lines.append([])
 
         longest_line_width = 0
-        for line_info in wrapped_lines:
-            line_width = font_quote.getlength(line_info["text"])
+        for line in wrapped_lines:
+            line_width = sum(font_quote.getlength(info["word"] + " ") for info in line)
             if line_width > longest_line_width:
                 longest_line_width = line_width
-        
+
         name_width = font_name.getlength(user_name)
         longest_line_width = max(longest_line_width, name_width)
 
         image_w = min(MAX_WIDTH, max(MIN_WIDTH, int(TEXT_LEFT + longest_line_width + PADDING_RIGHT)))
 
-        def get_line_height(font, text_line="Tg"):
-            bbox = font.getbbox(text_line)
+        def get_line_height(font):
+            bbox = font.getbbox("Tg")
             return bbox[3] - bbox[1]
 
         line_height_name = get_line_height(font_name)
-        line_height_quote = get_line_height(font_quote)
         line_spacing_quote = 15
+        total_quote_h = (len(wrapped_lines) * get_line_height(font_quote)) + max(0, len(wrapped_lines) - 1) * line_spacing_quote
         
-        total_quote_h = len(wrapped_lines) * line_height_quote + max(0, len(wrapped_lines) - 1) * line_spacing_quote
-
         PADDING_TOP_BOTTOM = 60
         total_content_h = total_quote_h + line_height_name + 20
         image_h = max(200, int(total_content_h + PADDING_TOP_BOTTOM * 2))
@@ -298,18 +312,20 @@ class ImageManipulator(FontManager):
         current_h += line_height_name + 20
 
         for line_info in wrapped_lines:
-            line_text = line_info["text"]
-            line_color = url_color if line_info["is_link"] else text_color
-            
-            draw.text(
-                (TEXT_LEFT, current_h),
-                line_text,
-                font=font_quote,
-                fill=line_color,
-                features=["-liga"],
-                font_features=font_paths,
-            )
-            current_h += line_height_quote + line_spacing_quote
+            current_x = TEXT_LEFT
+            for info in line_info:
+                word = info["word"]
+                line_color = url_color if info["is_link"] else text_color
+                draw.text(
+                    (current_x, current_h),
+                    word,
+                    font=font_quote,
+                    fill=line_color,
+                    features=["-liga"],
+                    font_features=font_paths,
+                )
+                current_x += font_quote.getlength(word + " ")
+            current_h += get_line_height(font_quote) + line_spacing_quote
             
         output = BytesIO()
         img.save(output, format="PNG")
