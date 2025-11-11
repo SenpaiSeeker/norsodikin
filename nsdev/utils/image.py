@@ -27,12 +27,18 @@ class ImageManipulator(FontManager):
         loop = asyncio.get_running_loop()
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
 
-    async def _render_html_with_playwright(self, html_content: str, width: int, height: int) -> bytes:
+    async def _render_html_with_playwright(self, html_content: str, width: int) -> bytes:
         async with async_playwright() as p:
             browser = await p.chromium.launch()
-            page = await browser.new_page(viewport={"width": width, "height": height})
+            page = await browser.new_page(viewport={"width": width, "height": 100})
             await page.set_content(html_content)
-            screenshot_bytes = await page.screenshot(type="png", omit_background=True)
+            
+            element_handle = await page.query_selector('.container')
+            if not element_handle:
+                await browser.close()
+                raise RuntimeError("Could not find the '.container' element to screenshot.")
+
+            screenshot_bytes = await element_handle.screenshot(type="png", omit_background=True)
             await browser.close()
             return screenshot_bytes
 
@@ -65,19 +71,16 @@ class ImageManipulator(FontManager):
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap');
                 body {{
+                    margin: 0;
+                    width: 800px;
+                }}
+                .container {{
                     font-family: 'Noto Sans', sans-serif;
                     background: {bg_color};
                     color: {text_color};
-                    margin: 0;
                     padding: 40px;
-                    width: 800px;
                     display: flex;
                     align-items: flex-start;
-                }}
-                .container {{
-                    display: flex;
-                    align-items: flex-start;
-                    width: 100%;
                 }}
                 .pfp {{
                     width: 100px;
@@ -101,6 +104,7 @@ class ImageManipulator(FontManager):
                     font-size: 36px;
                     line-height: 1.4;
                     word-wrap: break-word;
+                    word-break: break-word;
                 }}
             </style>
         </head>
@@ -123,15 +127,10 @@ class ImageManipulator(FontManager):
             clean_html=clean_html,
         )
 
-        image_bytes = await self._render_html_with_playwright(html_template, 880, 500)
-
-        img = Image.open(BytesIO(image_bytes))
-        bbox = img.getbbox()
-        if bbox:
-            img = img.crop(bbox)
-
+        image_bytes = await self._render_html_with_playwright(html_template, 800)
+        
         output = BytesIO()
-        img.save(output, "WEBP")
+        Image.open(BytesIO(image_bytes)).save(output, 'WEBP')
         return output.getvalue()
 
     async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False) -> bytes:
