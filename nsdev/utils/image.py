@@ -7,6 +7,7 @@ from io import BytesIO
 from typing import Tuple
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
+from bs4 import BeautifulSoup
 
 from .font_manager import FontManager
 
@@ -236,8 +237,10 @@ class ImageManipulator(FontManager):
         TEXT_LEFT, PADDING_RIGHT, MAX_WIDTH, MIN_WIDTH = 200, 80, 1280, 512
         MAX_TEXT_WIDTH = MAX_WIDTH - TEXT_LEFT - PADDING_RIGHT
 
+        clean_text = BeautifulSoup(text, "html.parser").get_text()
+
         final_lines = []
-        for line in text.splitlines():
+        for line in clean_text.splitlines():
             words = (line if line else " ").split(" ")
             current_line = ""
             for word in words:
@@ -432,12 +435,13 @@ class ImageManipulator(FontManager):
         )
 
     def _sync_create_text_sticker(self, text: str) -> bytes:
+        clean_text = BeautifulSoup(text, "html.parser").get_text()
         font = self._get_font_from_package("NotoSans-Bold.ttf", 90)
 
         dummy_img = Image.new("RGBA", (1, 1))
         dummy_draw = ImageDraw.Draw(dummy_img)
 
-        bbox = dummy_draw.textbbox((0, 0), text, font=font)
+        bbox = dummy_draw.textbbox((0, 0), clean_text, font=font)
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
 
@@ -451,8 +455,8 @@ class ImageManipulator(FontManager):
         shadow_color = (0, 0, 0, 100)
         text_color = (255, 255, 255)
 
-        draw.text((padding + 3, padding + 3), text, font=font, fill=shadow_color)
-        draw.text((padding, padding), text, font=font, fill=text_color)
+        draw.text((padding + 3, padding + 3), clean_text, font=font, fill=shadow_color)
+        draw.text((padding, padding), clean_text, font=font, fill=text_color)
 
         if canvas.width > canvas.height:
             if canvas.width > 512:
