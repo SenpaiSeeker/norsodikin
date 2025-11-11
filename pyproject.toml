@@ -53,6 +53,7 @@ dependencies = [
     "demucs", 
     "torchcodec",
     "cloudscraper25",
+    "playwright",
 ]
 
 [project.urls]
