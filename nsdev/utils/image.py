@@ -229,16 +229,16 @@ class ImageManipulator(FontManager):
         layout_engine = ImageFont.Layout.RAQM
         font_name = ImageFont.truetype(font_name_path, 40, layout_engine=layout_engine)
         font_quote = ImageFont.truetype(font_name_path, 50, layout_engine=layout_engine)
-        font_url = ImageFont.truetype(font_name_path, 30, layout_engine=layout_engine)
 
-        bg_color, text_color, name_color, url_color = (
+        bg_color, default_text_color, name_color, url_color = (
             ("#161616", "#FFFFFF", "#AAAAAA", "#88C0D0") if not invert else ("#FFFFFF", "#161616", "#555555", "#3B82F6")
         )
-
+        
         soup = BeautifulSoup(text, "html.parser")
-        link_tag = soup.find("a")
-        url = link_tag["href"] if link_tag else None
+        has_link = bool(soup.find("a"))
         clean_text = soup.get_text()
+        
+        text_color = url_color if has_link else default_text_color
 
         TEXT_LEFT, PADDING_RIGHT, MAX_WIDTH, MIN_WIDTH = 200, 80, 1280, 512
         MAX_TEXT_WIDTH = MAX_WIDTH - TEXT_LEFT - PADDING_RIGHT
@@ -280,12 +280,8 @@ class ImageManipulator(FontManager):
             sum([get_line_height(font_quote, l) for l in final_lines]) + (len(final_lines) - 1) * line_spacing_quote
         )
 
-        url_h = 0
-        if url:
-            url_h = get_line_height(font_url, url) + 20
-
         PADDING_TOP_BOTTOM = 60
-        total_content_h = total_quote_h + line_height_name + url_h + 20
+        total_content_h = total_quote_h + line_height_name + 20
         image_h = max(200, int(total_content_h + PADDING_TOP_BOTTOM * 2))
 
         img = Image.new("RGB", (image_w, image_h), bg_color)
@@ -314,12 +310,6 @@ class ImageManipulator(FontManager):
                 font_features=font_paths,
             )
             current_h += get_line_height(font_quote, line) + line_spacing_quote
-
-        if url:
-            current_h += 10
-            draw.text(
-                (TEXT_LEFT, current_h), url, font=font_url, fill=url_color, features=["-liga"], font_features=font_paths
-            )
 
         output = BytesIO()
         img.save(output, format="PNG")
