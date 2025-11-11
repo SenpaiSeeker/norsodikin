@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import random
 import textwrap
 from functools import partial
@@ -6,8 +7,9 @@ from importlib import resources
 from io import BytesIO
 from typing import Tuple
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 from bs4 import BeautifulSoup
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
+from playwright.async_api import async_playwright
 
 from .font_manager import FontManager
 
@@ -24,6 +26,115 @@ class ImageManipulator(FontManager):
     def _run_in_executor(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
+
+    async def _render_html_with_playwright(self, html_content: str, width: int) -> bytes:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            page = await browser.new_page(viewport={"width": width, "height": 100})
+            await page.set_content(html_content)
+
+            element_handle = await page.query_selector(".container")
+            if not element_handle:
+                await browser.close()
+                raise RuntimeError("Could not find the '.container' element to screenshot.")
+
+            screenshot_bytes = await element_handle.screenshot(type="png", omit_background=True)
+            await browser.close()
+            return screenshot_bytes
+
+    def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
+        return asyncio.run(self._async_create_quote(text, user_name, pfp_bytes, invert))
+
+    async def _async_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
+        if pfp_bytes:
+            pfp_base64 = "data:image/png;base64," + base64.b64encode(pfp_bytes).decode()
+        else:
+            initial = user_name[0].upper() if user_name else "U"
+            default_pfp_bytes = self._get_default_pfp(initial)
+            pfp_base64 = "data:image/png;base64," + base64.b64encode(default_pfp_bytes).decode()
+
+        bg_color, text_color, name_color = (
+            ("transparent", "#FFFFFF", "#AAAAAA") if not invert else ("transparent", "#161616", "#555555")
+        )
+        link_color = "#88C0D0" if not invert else "#3B82F6"
+
+        soup = BeautifulSoup(text, "html.parser")
+        for tag in soup.find_all("a"):
+            tag.name = "span"
+            tag["style"] = f"color: {link_color};"
+
+        clean_html = str(soup).replace("\n", "<br>")
+
+        html_template = """
+        <html>
+        <head>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap');
+                body {{
+                    margin: 0;
+                    width: 800px;
+                }}
+                .container {{
+                    font-family: 'Noto Sans', sans-serif;
+                    background: {bg_color};
+                    color: {text_color};
+                    padding: 40px;
+                    display: flex;
+                    align-items: flex-start;
+                }}
+                .pfp {{
+                    width: 100px;
+                    height: 100px;
+                    border-radius: 50%;
+                    object-fit: cover;
+                    margin-right: 25px;
+                    flex-shrink: 0;
+                }}
+                .text-content {{
+                    display: flex;
+                    flex-direction: column;
+                }}
+                .name {{
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: {name_color};
+                    margin-bottom: 10px;
+                }}
+                .quote {{
+                    font-size: 36px;
+                    line-height: 1.4;
+                    word-wrap: break-word;
+                    word-break: break-word;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <img src="{pfp_base64}" class="pfp" />
+                <div class="text-content">
+                    <div class="name">{user_name}</div>
+                    <div class="quote">{clean_html}</div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """.format(
+            bg_color=bg_color,
+            text_color=text_color,
+            name_color=name_color,
+            pfp_base64=pfp_base64,
+            user_name=user_name,
+            clean_html=clean_html,
+        )
+
+        image_bytes = await self._render_html_with_playwright(html_template, 800)
+
+        output = BytesIO()
+        Image.open(BytesIO(image_bytes)).save(output, "WEBP")
+        return output.getvalue()
+
+    async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False) -> bytes:
+        return await self._async_create_quote(text, user_name, pfp_bytes, invert)
 
     def _sync_add_watermark(
         self,
@@ -196,143 +307,6 @@ class ImageManipulator(FontManager):
         output = BytesIO()
         img.save(output, format="PNG")
         return output.getvalue()
-
-    def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
-        pfp_data = pfp_bytes
-        if not pfp_data:
-            initial = user_name[0].upper()
-            pfp_data = self._get_default_pfp(initial)
-
-        pfp = Image.open(BytesIO(pfp_data)).convert("RGBA")
-        pfp = pfp.resize((120, 120))
-
-        mask = Image.new("L", pfp.size, 0)
-        draw_mask = ImageDraw.Draw(mask)
-        draw_mask.ellipse((0, 0) + pfp.size, fill=255)
-        pfp.putalpha(mask)
-
-        with resources.as_file(
-            resources.files("assets").joinpath("fonts").joinpath("NotoSans-Regular.ttf")
-        ) as font_path:
-            font_name_path = str(font_path)
-        with resources.as_file(
-            resources.files("assets").joinpath("fonts").joinpath("NotoColorEmoji-Regular.ttf")
-        ) as font_path:
-            emoji_font_path = str(font_path)
-        with resources.as_file(
-            resources.files("assets").joinpath("fonts").joinpath("NotoSansSymbols2-Regular.ttf")
-        ) as font_path:
-            symbol_font_path = str(font_path)
-
-        font_paths = [font_name_path, emoji_font_path, symbol_font_path]
-        layout_engine = ImageFont.Layout.RAQM
-        font_name = ImageFont.truetype(font_name_path, 40, layout_engine=layout_engine)
-        font_quote = ImageFont.truetype(font_name_path, 50, layout_engine=layout_engine)
-
-        bg_color, text_color, name_color, url_color = (
-            ("#161616", "#FFFFFF", "#AAAAAA", "#88C0D0") if not invert else ("#FFFFFF", "#161616", "#555555", "#3B82F6")
-        )
-
-        html_text = text.replace("\n", "<br>")
-        soup = BeautifulSoup(html_text, "html.parser")
-        
-        TEXT_LEFT, PADDING_RIGHT, MAX_WIDTH, MIN_WIDTH = 200, 80, 1280, 512
-        MAX_TEXT_WIDTH = MAX_WIDTH - TEXT_LEFT - PADDING_RIGHT
-
-        wrapped_lines = []
-        for line_part in soup.prettify().split("<br/>"):
-            line_soup = BeautifulSoup(line_part, "html.parser")
-            
-            line_nodes = []
-            for element in line_soup.find_all(string=True):
-                is_link = element.find_parent('a') is not None
-                line_nodes.append({'text': str(element), 'is_link': is_link})
-            
-            words_info = []
-            for node in line_nodes:
-                for word in node['text'].split():
-                    words_info.append({'word': word, 'is_link': node['is_link']})
-
-            current_line = []
-            current_line_width = 0
-            for info in words_info:
-                word = info["word"]
-                word_width = font_quote.getlength(word + " ")
-                
-                if current_line and current_line_width + word_width > MAX_TEXT_WIDTH:
-                    wrapped_lines.append(current_line)
-                    current_line = [info]
-                    current_line_width = word_width
-                else:
-                    current_line.append(info)
-                    current_line_width += word_width
-            
-            if current_line:
-                wrapped_lines.append(current_line)
-            elif not words_info: 
-                wrapped_lines.append([])
-
-        longest_line_width = 0
-        for line in wrapped_lines:
-            line_width = sum(font_quote.getlength(info["word"] + " ") for info in line)
-            if line_width > longest_line_width:
-                longest_line_width = line_width
-
-        name_width = font_name.getlength(user_name)
-        longest_line_width = max(longest_line_width, name_width)
-
-        image_w = min(MAX_WIDTH, max(MIN_WIDTH, int(TEXT_LEFT + longest_line_width + PADDING_RIGHT)))
-
-        def get_line_height(font):
-            bbox = font.getbbox("Tg")
-            return bbox[3] - bbox[1]
-
-        line_height_name = get_line_height(font_name)
-        line_spacing_quote = 15
-        total_quote_h = (len(wrapped_lines) * get_line_height(font_quote)) + max(0, len(wrapped_lines) - 1) * line_spacing_quote
-        
-        PADDING_TOP_BOTTOM = 60
-        total_content_h = total_quote_h + line_height_name + 20
-        image_h = max(200, int(total_content_h + PADDING_TOP_BOTTOM * 2))
-
-        img = Image.new("RGB", (image_w, image_h), bg_color)
-        draw = ImageDraw.Draw(img)
-        img.paste(pfp, (50, 60), pfp)
-
-        current_h = (image_h - total_content_h) / 2
-
-        draw.text(
-            (TEXT_LEFT, current_h),
-            user_name,
-            font=font_name,
-            fill=name_color,
-            features=["-liga"],
-            font_features=font_paths,
-        )
-        current_h += line_height_name + 20
-
-        for line_info in wrapped_lines:
-            current_x = TEXT_LEFT
-            for info in line_info:
-                word = info["word"]
-                line_color = url_color if info["is_link"] else text_color
-                draw.text(
-                    (current_x, current_h),
-                    word,
-                    font=font_quote,
-                    fill=line_color,
-                    features=["-liga"],
-                    font_features=font_paths,
-                )
-                current_x += font_quote.getlength(word + " ")
-            current_h += get_line_height(font_quote) + line_spacing_quote
-            
-        output = BytesIO()
-        img.save(output, format="PNG")
-        return output.getvalue()
-
-    async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False) -> bytes:
-        return await self._run_in_executor(self._sync_create_quote, text, user_name, pfp_bytes, invert)
 
     def _sync_deepfry(self, image_bytes: bytes) -> bytes:
         img = Image.open(BytesIO(image_bytes)).convert("RGB")
