@@ -27,10 +27,10 @@ class ImageManipulator(FontManager):
         loop = asyncio.get_running_loop()
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
 
-    async def _render_html_with_playwright(self, html_content: str, width: int) -> bytes:
+    async def _render_html_with_playwright(self, html_content: str) -> bytes:
         async with async_playwright() as p:
             browser = await p.chromium.launch()
-            page = await browser.new_page(viewport={"width": width, "height": 100})
+            page = await browser.new_page()
             await page.set_content(html_content)
 
             element_handle = await page.query_selector(".container")
@@ -72,7 +72,7 @@ class ImageManipulator(FontManager):
                 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap');
                 body {{
                     margin: 0;
-                    width: 800px;
+                    display: inline-block;
                 }}
                 .container {{
                     font-family: 'Noto Sans', sans-serif;
@@ -81,6 +81,8 @@ class ImageManipulator(FontManager):
                     padding: 40px;
                     display: flex;
                     align-items: flex-start;
+                    min-width: 400px;
+                    max-width: 800px;
                 }}
                 .pfp {{
                     width: 100px;
@@ -104,7 +106,7 @@ class ImageManipulator(FontManager):
                     font-size: 36px;
                     line-height: 1.4;
                     word-wrap: break-word;
-                    word-break: break-word;
+                    word-break: break-all;
                 }}
             </style>
         </head>
@@ -127,7 +129,7 @@ class ImageManipulator(FontManager):
             clean_html=clean_html,
         )
 
-        image_bytes = await self._render_html_with_playwright(html_template, 800)
+        image_bytes = await self._render_html_with_playwright(html_template)
 
         output = BytesIO()
         Image.open(BytesIO(image_bytes)).save(output, "WEBP")
