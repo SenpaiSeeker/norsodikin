@@ -82,7 +82,7 @@ class ImageManipulator(FontManager):
                     display: flex;
                     align-items: flex-start;
                     min-width: 400px;
-                    max-width: 800px;
+                    max-width: 1200px;
                 }}
                 .pfp {{
                     width: 100px;
@@ -106,7 +106,7 @@ class ImageManipulator(FontManager):
                     font-size: 36px;
                     line-height: 1.4;
                     word-wrap: break-word;
-                    word-break: break-word;
+                    word-break: break-all;
                 }}
             </style>
         </head>
@@ -350,7 +350,7 @@ class ImageManipulator(FontManager):
                 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap');
                 body {{
                     margin: 0;
-                    width: 800px;
+                    display: inline-block;
                 }}
                 .container {{
                     font-family: 'Noto Sans', sans-serif;
@@ -408,7 +408,7 @@ class ImageManipulator(FontManager):
             duration=duration,
         )
 
-        return await self._render_html_with_playwright(html_template, 800)
+        return await self._render_html_with_playwright(html_template)
 
     async def create_afk_card(self, pfp_bytes: bytes, name: str, reason: str, duration: str) -> bytes:
         return await self._async_create_afk_card(pfp_bytes, name, reason, duration)
@@ -444,7 +444,7 @@ class ImageManipulator(FontManager):
                 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap');
                 body {{
                     margin: 0;
-                    width: 900px;
+                    display: inline-block;
                 }}
                 .container {{
                     font-family: 'Noto Sans', sans-serif;
@@ -534,7 +534,7 @@ class ImageManipulator(FontManager):
             pfp_count=pfp_count,
         )
 
-        return await self._render_html_with_playwright(html_template, 900)
+        return await self._render_html_with_playwright(html_template)
 
     async def create_profile_card(
         self, pfp_bytes: bytes, name: str, username: str, user_id: int, bio: str, pfp_count: int, is_sudo: bool
