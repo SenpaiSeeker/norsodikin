@@ -106,7 +106,7 @@ class ImageManipulator(FontManager):
                     font-size: 36px;
                     line-height: 1.4;
                     word-wrap: break-word;
-                    word-break: break-all;
+                    word-break: break-word;
                 }}
             </style>
         </head>
@@ -408,8 +408,7 @@ class ImageManipulator(FontManager):
             duration=duration,
         )
 
-        image_bytes = await self._render_html_with_playwright(html_template, 800)
-        return image_bytes
+        return await self._render_html_with_playwright(html_template, 800)
 
     async def create_afk_card(self, pfp_bytes: bytes, name: str, reason: str, duration: str) -> bytes:
         return await self._async_create_afk_card(pfp_bytes, name, reason, duration)
