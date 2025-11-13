@@ -233,18 +233,27 @@ class DataBase:
         except (ValueError, KeyError):
             pass
 
-    async def removeAllVars(self, user_id):
+    async def removeAllVars(self, user_id, var_key=None):
         user_id_str = str(user_id)
-        if self.storage_type == "sqlite":
-            await self._run_sync(
-                lambda: (self.conn.execute("DELETE FROM vars WHERE user_id = ?", (user_id_str,)), self.conn.commit())
-            )
-        elif self.storage_type == "mongo":
-            await self._run_sync(lambda: self.data.vars.delete_one({"_id": user_id_str}))
+        if var_key:
+            user_data = await self._get_user_vars(user_id)
+            if var_key in user_data:
+                del user_data[var_key]
+                await self._set_user_vars(user_id, user_data)
         else:
-            full_data = await self._load_data()
-            full_data.get("vars", {}).pop(user_id_str, None)
-            await self._save_data(full_data)
+            if self.storage_type == "sqlite":
+                await self._run_sync(
+                    lambda: (
+                        self.conn.execute("DELETE FROM vars WHERE user_id = ?", (user_id_str,)),
+                        self.conn.commit(),
+                    )
+                )
+            elif self.storage_type == "mongo":
+                await self._run_sync(lambda: self.data.vars.delete_one({"_id": user_id_str}))
+            else:
+                full_data = await self._load_data()
+                full_data.get("vars", {}).pop(user_id_str, None)
+                await self._save_data(full_data)
 
     async def allVars(self, user_id, var_key="variabel"):
         user_data = await self._get_user_vars(user_id)
