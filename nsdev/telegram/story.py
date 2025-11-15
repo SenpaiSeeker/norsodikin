@@ -3,7 +3,7 @@ import os
 import uuid
 
 from pyrogram.errors import PeerIdInvalid, RPCError, UsernameInvalid
-from pyrogram.raw import functions, types, base
+from pyrogram.raw import base, functions, types
 from pyrogram.types import Document, Message, Photo
 
 from ..utils.logger import LoggerHandler

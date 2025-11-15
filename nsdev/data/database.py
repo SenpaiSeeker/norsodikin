@@ -57,9 +57,7 @@ class DataBase:
         if self.auto_backup and self.scheduler and self.storage_type in ["local", "sqlite"]:
 
             if not self.backup_bot_token or not self.backup_chat_id:
-                return self.cipher.log.warning(
-                    "Auto backup is disabled because token/chat_id is missing."
-                )
+                return self.cipher.log.warning("Auto backup is disabled because token/chat_id is missing.")
 
             @self.scheduler.cron(self.backup_cron_spec)
             async def scheduled_backup_task():
@@ -173,9 +171,7 @@ class DataBase:
     def _initialize_sqlite(self):
         cursor = self.conn.cursor()
 
-        cursor.execute(
-            "CREATE TABLE IF NOT EXISTS vars (user_id TEXT PRIMARY KEY, data TEXT)"
-        )
+        cursor.execute("CREATE TABLE IF NOT EXISTS vars (user_id TEXT PRIMARY KEY, data TEXT)")
 
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS bots (user_id TEXT PRIMARY KEY, api_id TEXT, api_hash TEXT, bot_token TEXT, session_string TEXT)"
@@ -188,17 +184,13 @@ class DataBase:
 
         if self.storage_type == "sqlite":
             row = await self._run_sync(
-                lambda: self.conn.cursor()
-                .execute("SELECT data FROM vars WHERE user_id = ?", (user_id_str,))
-                .fetchone()
+                lambda: self.conn.cursor().execute("SELECT data FROM vars WHERE user_id = ?", (user_id_str,)).fetchone()
             )
 
             return json.loads(self.cipher.decrypt(row[0])) if row else {}
 
         elif self.storage_type == "mongo":
-            data = await self._run_sync(
-                lambda: self.data.vars.find_one({"_id": user_id_str})
-            )
+            data = await self._run_sync(lambda: self.data.vars.find_one({"_id": user_id_str}))
 
             return data if data else {}
 
@@ -215,8 +207,7 @@ class DataBase:
             await self._run_sync(
                 lambda: (
                     self.conn.execute(
-                        "INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)",
-                        (user_id_str, encrypted_data)
+                        "INSERT OR REPLACE INTO vars (user_id, data) VALUES (?, ?)", (user_id_str, encrypted_data)
                     ),
                     self.conn.commit(),
                 )
@@ -224,11 +215,7 @@ class DataBase:
 
         elif self.storage_type == "mongo":
             await self._run_sync(
-                lambda: self.data.vars.update_one(
-                    {"_id": user_id_str},
-                    {"$set": user_data},
-                    upsert=True
-                )
+                lambda: self.data.vars.update_one({"_id": user_id_str}, {"$set": user_data}, upsert=True)
             )
 
         else:
@@ -237,9 +224,7 @@ class DataBase:
             await self._save_data(full_data)
 
     async def setVars(self, user_id, query_name, value, var_key="variabel"):
-        encrypted_value = self.cipher.encrypt(
-            json.dumps(value) if isinstance(value, (dict, list)) else str(value)
-        )
+        encrypted_value = self.cipher.encrypt(json.dumps(value) if isinstance(value, (dict, list)) else str(value))
 
         user_data = await self._get_user_vars(user_id)
         user_data.setdefault(var_key, {})[query_name] = encrypted_value
@@ -268,9 +253,7 @@ class DataBase:
             await self._set_user_vars(user_id, user_data)
 
     async def setListVars(self, user_id, query_name, value, var_key="variabel"):
-        encrypted_value = self.cipher.encrypt(
-            json.dumps(value) if isinstance(value, (dict, list)) else str(value)
-        )
+        encrypted_value = self.cipher.encrypt(json.dumps(value) if isinstance(value, (dict, list)) else str(value))
 
         user_data = await self._get_user_vars(user_id)
 
@@ -286,16 +269,12 @@ class DataBase:
         encrypted_list = user_data.get(var_key, {}).get(query_name, [])
 
         return [
-            json.loads(self.cipher.decrypt(v))
-            if v.startswith(("[", "{"))
-            else self.cipher.decrypt(v)
+            json.loads(self.cipher.decrypt(v)) if v.startswith(("[", "{")) else self.cipher.decrypt(v)
             for v in encrypted_list
         ]
 
     async def removeListVars(self, user_id, query_name, value, var_key="variabel"):
-        encrypted_value = self.cipher.encrypt(
-            json.dumps(value) if isinstance(value, (dict, list)) else str(value)
-        )
+        encrypted_value = self.cipher.encrypt(json.dumps(value) if isinstance(value, (dict, list)) else str(value))
 
         user_data = await self._get_user_vars(user_id)
 
@@ -312,18 +291,13 @@ class DataBase:
         if self.storage_type == "sqlite":
             await self._run_sync(
                 lambda: (
-                    self.conn.execute(
-                        "DELETE FROM vars WHERE user_id = ?",
-                        (user_id_str,)
-                    ),
+                    self.conn.execute("DELETE FROM vars WHERE user_id = ?", (user_id_str,)),
                     self.conn.commit(),
                 )
             )
 
         elif self.storage_type == "mongo":
-            await self._run_sync(
-                lambda: self.data.vars.delete_one({"_id": user_id_str})
-            )
+            await self._run_sync(lambda: self.data.vars.delete_one({"_id": user_id_str}))
 
         else:
             full_data = await self._load_data()
@@ -366,10 +340,7 @@ class DataBase:
 
         field = "bot_token" if is_token else "session_string"
 
-        bot_data = {
-            "api_id": self.cipher.encrypt(str(api_id)),
-            "api_hash": self.cipher.encrypt(api_hash)
-        }
+        bot_data = {"api_id": self.cipher.encrypt(str(api_id)), "api_hash": self.cipher.encrypt(api_hash)}
 
         if value:
             bot_data[field] = self.cipher.encrypt(value)
@@ -420,9 +391,7 @@ class DataBase:
         elif self.storage_type == "sqlite":
             rows = await self._run_sync(
                 lambda: self.conn.cursor()
-                .execute(
-                    "SELECT user_id, api_id, api_hash, bot_token, session_string FROM bots"
-                )
+                .execute("SELECT user_id, api_id, api_hash, bot_token, session_string FROM bots")
                 .fetchall()
             )
 
@@ -452,9 +421,7 @@ class DataBase:
                         value = self.cipher.decrypt(bot_data[key])
                         decrypted[key] = int(value) if key == "api_id" else value
 
-                if (is_token and "bot_token" in decrypted) or (
-                    not is_token and "session_string" in decrypted
-                ):
+                if (is_token and "bot_token" in decrypted) or (not is_token and "session_string" in decrypted):
                     decrypted_bots.append(decrypted)
 
             except (ValueError, TypeError):
@@ -466,25 +433,17 @@ class DataBase:
         user_id_str = str(user_id)
 
         if self.storage_type == "mongo":
-            await self._run_sync(
-                lambda: self.data.bot.delete_one({"_id": user_id_str})
-            )
+            await self._run_sync(lambda: self.data.bot.delete_one({"_id": user_id_str}))
 
         elif self.storage_type == "sqlite":
             await self._run_sync(
                 lambda: (
-                    self.conn.execute(
-                        "DELETE FROM bots WHERE user_id = ?",
-                        (user_id_str,)
-                    ),
+                    self.conn.execute("DELETE FROM bots WHERE user_id = ?", (user_id_str,)),
                     self.conn.commit(),
                 )
             )
 
         else:
             data = await self._load_data()
-            data["bots"] = [
-                b for b in data["bots"]
-                if b.get("user_id") != user_id_str
-            ]
+            data["bots"] = [b for b in data["bots"] if b.get("user_id") != user_id_str]
             await self._save_data(data)
