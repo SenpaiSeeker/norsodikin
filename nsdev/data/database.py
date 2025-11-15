@@ -120,11 +120,7 @@ class DataBase:
         try:
             with open(file_path, "rb") as doc:
                 files = {"document": doc}
-                params = {
-                    "chat_id": self.backup_chat_id,
-                    "caption": caption,
-                    "parse_mode": "Markdown"
-                }
+                params = {"chat_id": self.backup_chat_id, "caption": caption, "parse_mode": "Markdown"}
 
                 async with httpx.AsyncClient(timeout=60) as client:
                     response = await client.post(url, params=params, files=files)
@@ -347,11 +343,7 @@ class DataBase:
 
         if self.storage_type == "mongo":
             await self._run_sync(
-                lambda: self.data.bot.update_one(
-                    {"_id": user_id_str},
-                    {"$set": bot_data},
-                    upsert=True
-                )
+                lambda: self.data.bot.update_one({"_id": user_id_str}, {"$set": bot_data}, upsert=True)
             )
 
         elif self.storage_type == "sqlite":
@@ -396,13 +388,7 @@ class DataBase:
             )
 
             raw_bots = [
-                {
-                    "user_id": r[0],
-                    "api_id": r[1],
-                    "api_hash": r[2],
-                    "bot_token": r[3],
-                    "session_string": r[4]
-                }
+                {"user_id": r[0], "api_id": r[1], "api_hash": r[2], "bot_token": r[3], "session_string": r[4]}
                 for r in rows
             ]
 

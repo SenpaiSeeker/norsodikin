@@ -3,12 +3,11 @@ import base64
 import random
 import textwrap
 from functools import partial
-from importlib import resources
 from io import BytesIO
 from typing import Tuple
 
 from bs4 import BeautifulSoup
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 from playwright.async_api import async_playwright
 
 from .font_manager import FontManager
@@ -416,9 +415,7 @@ class ImageManipulator(FontManager):
     def _sync_create_profile_card(
         self, pfp_bytes: bytes, name: str, username: str, user_id: int, bio: str, pfp_count: int, is_sudo: bool
     ) -> bytes:
-        return asyncio.run(
-            self._async_create_profile_card(pfp_bytes, name, username, user_id, bio, pfp_count, is_sudo)
-        )
+        return asyncio.run(self._async_create_profile_card(pfp_bytes, name, username, user_id, bio, pfp_count, is_sudo))
 
     async def _async_create_profile_card(
         self, pfp_bytes: bytes, name: str, username: str, user_id: int, bio: str, pfp_count: int, is_sudo: bool
