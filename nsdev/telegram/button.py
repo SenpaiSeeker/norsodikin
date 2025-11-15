@@ -37,11 +37,12 @@ class Button:
         for label, payload in buttons:
             cb_data, *extra_params = payload.split(";")
 
-            is_url = bool(self.get_urls(cb_data))
+            is_url = bool(self.get_urls(cb_data)) and "webapp" not in extra_params
             is_copy = "copy" in extra_params
             is_user = "user" in extra_params
+            is_webapp = "webapp" in extra_params
 
-            if not is_url and not is_copy and not is_user:
+            if not is_url and not is_copy and not is_user and not is_webapp:
                 if cb_prefix:
                     cb_data = f"{cb_prefix}_{cb_data}"
                 elif inline_cmd and is_id:
@@ -55,6 +56,8 @@ class Button:
                 button = pyrogram.types.InlineKeyboardButton(
                     label, copy_text=pyrogram.types.CopyTextButton(text=cb_data)
                 )
+            elif is_webapp:
+                button = pyrogram.types.InlineKeyboardButton(label, web_app=pyrogram.types.WebAppInfo(url=cb_data))
             elif is_url:
                 button = pyrogram.types.InlineKeyboardButton(label, url=cb_data)
             else:
@@ -86,7 +89,11 @@ class Button:
     def build_button_grid(self, layout: List[List[Dict]]):
         keyboard = []
         for row_data in layout:
-            row = [pyrogram.types.InlineKeyboardButton(**button_info) for button_info in row_data]
+            row = []
+            for button_info in row_data:
+                if 'web_app' in button_info:
+                    button_info['web_app'] = pyrogram.types.WebAppInfo(url=button_info['web_app'])
+                row.append(pyrogram.types.InlineKeyboardButton(**button_info))
             if row:
                 keyboard.append(row)
         return pyrogram.types.InlineKeyboardMarkup(keyboard) if keyboard else None
@@ -150,6 +157,6 @@ class Button:
 
         if extra_params:
             for button_data in extra_params:
-                layout_grid.append([button_data])
+                layout_grid.append(button_data)
 
         return self.build_button_grid(layout_grid)
