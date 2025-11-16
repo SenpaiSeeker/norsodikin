@@ -57,11 +57,10 @@ class DataBase:
         if self.auto_backup and self.scheduler and self.storage_type in ["local", "sqlite"]:
 
             if not self.backup_bot_token or not self.backup_chat_id:
-                return self.cipher.log.warning("Auto backup is disabled because token/chat_id is missing.")
+                return self.cipher.log.print(f"{cipher.log.YELLOW}Auto backup is disabled because token/chat_id is missing.")
 
             @self.scheduler.cron(self.backup_cron_spec)
             async def scheduled_backup_task():
-                self.cipher.log.info("Starting scheduled backup process...")
                 await self.perform_backup()
 
     async def perform_backup(self):
@@ -71,14 +70,14 @@ class DataBase:
         if await self._run_sync(os.path.exists, db_path):
             source_paths.append(db_path)
         else:
-            self.cipher.log.warning("Database file not found. Skipping database backup.")
+            self.cipher.log.print(f"{cipher.log.YELLOW}Database file not found. Skipping database backup.")
 
         env_files = await self._run_sync(glob.glob, "*.env")
         if env_files:
             source_paths.extend(env_files)
 
         if not source_paths:
-            return self.cipher.log.warning("No files to back up. Aborting.")
+            return self.cipher.log.print(f"{cipher.log.YELLOW}No files to back up. Aborting.")
 
         zip_path = None
 
@@ -122,19 +121,19 @@ class DataBase:
                 files = {"document": doc}
                 params = {"chat_id": self.backup_chat_id, "caption": caption, "parse_mode": "Markdown"}
 
-                async with httpx.AsyncClient(timeout=60) as client:
+                async with httpx.AsyncClient(timeout=httpx.Timeout(60)) as client:
                     response = await client.post(url, params=params, files=files)
 
             response.raise_for_status()
             response_data = response.json()
 
             if response_data.get("ok"):
-                self.cipher.log.info("Successfully sent to Telegram.")
+                self.cipher.log.print(f"{cipher.log.CYAN}[AUTO_BACKUP] {cipher.log.GREEN}Successfully sent to Telegram.")
             else:
-                self.cipher.log.error(f"Failed to send: {response_data.get('description')}")
+                self.cipher.log.print(f"{ctx.log.RED}[BACKUP_ERROR] {cipher.log.YELLOW}Failed to send: {response_data.get('description')}")
 
         except Exception as e:
-            self.cipher.log.error(f"Failed to send file to Telegram: {e}")
+            self.cipher.log.print(f"{ctx.log.RED}[BACKUP_ERROR] {cipher.log.YELLOW}Failed to send file to Telegram: {e}")
 
     def _sync_load_data(self):
         try:
