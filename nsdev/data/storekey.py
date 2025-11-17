@@ -28,7 +28,6 @@ class KeyManager:
 
         self.hide_sensitive_args()
 
-        self.logger.print(f"{self.logger.GREEN}Berhasil memuat kunci dan file environment dari argumen baris perintah.")
         return args.key, args.env
 
     def hide_sensitive_args(self):
