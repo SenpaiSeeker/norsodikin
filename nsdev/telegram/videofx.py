@@ -4,9 +4,12 @@ import functools
 import math
 import os
 import random
+import shutil
 import subprocess
+import zipfile
 from typing import Dict, List, Tuple
 
+import httpx
 from PIL import Image, ImageDraw, ImageFilter
 
 from ..utils.font_manager import FontManager
@@ -97,14 +100,8 @@ class VideoFX(FontManager):
 
         return base
 
-    def _create_animated_video(
-        self,
-        text_lines: List[str],
-        output_path: str,
-        duration: float,
-        fps: int,
-        font_size: int,
-    ):
+    def _create_frames(self, text_lines: List[str], frames_dir: str, duration: float, fps: int, font_size: int):
+        os.makedirs(frames_dir, exist_ok=True)
         text_lines = [t.strip() for t in text_lines if t and t.strip()] or [" "]
         font = self._get_font(font_size)
         dummy_img = Image.new("RGBA", (1, 1))
@@ -143,56 +140,52 @@ class VideoFX(FontManager):
             "shake_decay": 0.92,
         }
 
-        cmd = [
-            "ffmpeg",
-            "-y",
-            "-f",
-            "rawvideo",
-            "-vcodec",
-            "rawvideo",
-            "-s",
-            f"{canvas_w}x{canvas_h}",
-            "-pix_fmt",
-            "rgba",
-            "-r",
-            str(fps),
-            "-i",
-            "-",
-            "-an",
-            "-c:v",
-            "libvpx-vp9",
-            "-pix_fmt",
-            "yuva420p",
-            "-auto-alt-ref",
-            "0",
-            "-crf",
-            "30",
-            "-b:v",
-            "0",
-            output_path,
-        ]
-        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-
         num_frames = int(duration * fps)
         for i in range(num_frames):
             t = i / float(fps)
             frame_img = self._make_frame_pil(t, state)
-            proc.stdin.write(frame_img.tobytes())
+            frame_img.save(os.path.join(frames_dir, f"frame_{i:04d}.png"))
+        
+        return frames_dir
 
-        _, stderr = proc.communicate()
-        if proc.returncode != 0:
-            raise RuntimeError(f"FFmpeg failed during video creation: {stderr.decode(errors='ignore')}")
+    async def _frames_to_tgs(self, frames_dir: str, output_path: str):
+        zip_path = shutil.make_archive("frames_for_tgs", "zip", frames_dir)
+        
+        url = "https://www.videos-to-gif.com/images-to-tgs"
+        
+        try:
+            async with httpx.AsyncClient(timeout=300) as client:
+                with open(zip_path, "rb") as f:
+                    files = {"upload[]": f}
+                    response = await client.post(url, files=files)
+                    response.raise_for_status()
+                    data = response.json()
+                
+                if "error" in data:
+                    raise RuntimeError(f"API Error: {data['error']}")
+                
+                if data.get("files") and data["files"][0].get("url"):
+                    tgs_url = data["files"][0]["url"]
+                    tgs_response = await client.get(tgs_url)
+                    tgs_response.raise_for_status()
+                    with open(output_path, "wb") as f:
+                        f.write(tgs_response.content)
+                    return output_path
+                else:
+                    raise RuntimeError("Invalid API response format.")
+        finally:
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
 
-    async def text_to_video(
-        self,
-        text: str,
-        output_path: str,
-        duration: float = 2.95,
-        fps: int = 30,
-        font_size: int = 90,
-    ):
+    async def text_to_tgs(self, text: str, output_path: str, duration: float = 2.95, fps: int = 60, font_size: int = 90):
         text_lines = text.split(";") if ";" in text else text.splitlines()
-        await self._run_in_executor(self._create_animated_video, text_lines, output_path, duration, fps, font_size)
+        temp_dir = f"temp_frames_{uuid.uuid4().hex}"
+        try:
+            frames_dir = await self._run_in_executor(self._create_frames, text_lines, temp_dir, duration, fps, font_size)
+            await self._frames_to_tgs(frames_dir, output_path)
+        finally:
+            if os.path.isdir(temp_dir):
+                shutil.rmtree(temp_dir)
         return output_path
 
     def _sync_create_afk_animation(self, text_lines: List[str], output_path: str):
@@ -264,7 +257,7 @@ class VideoFX(FontManager):
             duration = 3.0
 
         trim_duration = min(duration, 2.95)
-        scale_filter = "scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=black@0.0"
+        scale_filter = "scale='if(gt(a,1),512,-2)':'if(gt(a,1),-2,512)'"
 
         ffmpeg_cmd = [
             "ffmpeg",
@@ -295,7 +288,7 @@ class VideoFX(FontManager):
         return output_path
 
     def _convert_video_to_gif(self, video_path: str, output_path: str):
-        vf_filter = "fps=30,scale=512:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse"
+        vf_filter = "fps=15,scale=512:-1:flags=lanczos"
         ffmpeg_cmd = [
             "ffmpeg",
             "-y",
