@@ -232,6 +232,176 @@ class ImageManipulator(FontManager):
             height=800
         )
 
+    async def create_fake_ig_post(
+        self,
+        pfp_bytes: bytes,
+        name: str,
+        post_bytes: bytes,
+        caption: str,
+        likes: str,
+        time_ago: str,
+    ) -> bytes:
+        if pfp_bytes:
+            pfp_base64 = "data:image/png;base64," + base64.b64encode(pfp_bytes).decode()
+        else:
+            initial = name[0].upper() if name else "U"
+            default_pfp_bytes = self._get_default_pfp(initial)
+            pfp_base64 = "data:image/png;base64," + base64.b64encode(default_pfp_bytes).decode()
+
+        post_base64 = "data:image/png;base64," + base64.b64encode(post_bytes).decode()
+
+        svg_more = '<svg aria-label="More options" fill="#ffffff" height="24" role="img" viewBox="0 0 24 24" width="24"><circle cx="12" cy="12" r="1.5"></circle><circle cx="6" cy="12" r="1.5"></circle><circle cx="18" cy="12" r="1.5"></circle></svg>'
+        svg_like = '<svg aria-label="Like" fill="#ffffff" height="24" role="img" viewBox="0 0 24 24" width="24"><path d="M16.792 3.904A4.989 4.989 0 0 1 21.5 9.122c0 3.072-2.652 4.959-5.197 7.222-2.512 2.243-3.865 3.469-4.303 3.752-.477-.309-2.143-1.823-4.303-3.752C5.141 14.072 2.5 12.167 2.5 9.122a4.989 4.989 0 0 1 4.708-5.218 4.21 4.21 0 0 1 3.675 1.941c.84 1.175.98 1.763 1.12 1.763s.278-.588 1.11-1.766a4.17 4.17 0 0 1 3.679-1.938m0-2a6.04 6.04 0 0 0-4.797 2.127 6.052 6.052 0 0 0-4.787-2.127A6.985 6.985 0 0 0 .5 9.122c0 3.61 2.55 5.827 5.015 7.97.283.246.569.494.853.747l1.027.918a44.998 44.998 0 0 0 3.518 3.018 2 2 0 0 0 2.174 0 45.263 45.263 0 0 0 3.626-3.115l.922-.824c.293-.26.59-.519.885-.774 2.334-2.025 4.98-4.32 4.98-7.94a6.985 6.985 0 0 0-6.708-7.218Z"></path></svg>'
+        svg_comment = '<svg aria-label="Comment" fill="#ffffff" height="24" role="img" viewBox="0 0 24 24" width="24"><path d="M20.656 17.008a9.993 9.993 0 1 0-3.59 3.615L22 22Z" fill="none" stroke="#ffffff" stroke-linejoin="round" stroke-width="2"></path></svg>'
+        svg_share = '<svg aria-label="Share Post" fill="#ffffff" height="24" role="img" viewBox="0 0 24 24" width="24"><line fill="none" stroke="#ffffff" stroke-linejoin="round" stroke-width="2" x1="22" x2="9.218" y1="2" y2="10.083"></line><polygon fill="none" points="11.698 20.334 22 3.001 2 3.001 9.218 10.084 11.698 20.334" stroke="#ffffff" stroke-linejoin="round" stroke-width="2"></polygon></svg>'
+        svg_save = '<svg aria-label="Save" fill="#ffffff" height="24" role="img" viewBox="0 0 24 24" width="24"><polygon fill="none" points="20 21 12 13.44 4 21 4 3 20 3 20 21" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></polygon></svg>'
+
+        html_template = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+                
+                body {{
+                    margin: 0;
+                    padding: 0;
+                    background: transparent;
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                }}
+                
+                .ig-card {{
+                    background-color: #000000;
+                    color: #ffffff;
+                    width: 600px;
+                    box-sizing: border-box;
+                    display: inline-block;
+                    border: 1px solid #262626;
+                    border-radius: 8px;
+                    overflow: hidden;
+                }}
+                
+                .header {{
+                    display: flex;
+                    align-items: center;
+                    padding: 14px;
+                    border-bottom: 1px solid #262626;
+                }}
+                
+                .pfp {{
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    object-fit: cover;
+                    margin-right: 10px;
+                    border: 1px solid #262626;
+                }}
+                
+                .username {{
+                    font-weight: 600;
+                    font-size: 14px;
+                    flex-grow: 1;
+                }}
+                
+                .post-image {{
+                    width: 100%;
+                    height: auto;
+                    display: block;
+                    max-height: 750px; 
+                    object-fit: cover;
+                }}
+                
+                .actions {{
+                    padding: 12px 14px 0 14px;
+                    display: flex;
+                    align-items: center;
+                }}
+                
+                .icon-group {{
+                    display: flex;
+                    gap: 16px;
+                    margin-right: auto;
+                }}
+                
+                .likes {{
+                    padding: 0 14px;
+                    margin-top: 10px;
+                    font-weight: 600;
+                    font-size: 14px;
+                }}
+                
+                .caption-area {{
+                    padding: 8px 14px;
+                    font-size: 14px;
+                    line-height: 1.45;
+                }}
+                
+                .caption-user {{
+                    font-weight: 600;
+                    margin-right: 5px;
+                }}
+                
+                .time-ago {{
+                    padding: 0 14px 14px 14px;
+                    font-size: 12px;
+                    color: #a8a8a8;
+                    text-transform: uppercase;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="ig-card">
+                <div class="header">
+                    <img src="{pfp_base64}" class="pfp" />
+                    <span class="username">{name}</span>
+                    {svg_more}
+                </div>
+                
+                <img src="{post_base64}" class="post-image" />
+                
+                <div class="actions">
+                    <div class="icon-group">
+                        {svg_like}
+                        {svg_comment}
+                        {svg_share}
+                    </div>
+                    {svg_save}
+                </div>
+                
+                <div class="likes">{likes} likes</div>
+                
+                <div class="caption-area">
+                    <span class="caption-user">{name}</span>
+                    <span class="caption-text">{caption}</span>
+                </div>
+                
+                <div class="time-ago">{time_ago} AGO</div>
+            </div>
+        </body>
+        </html>
+        """.format(
+            pfp_base64=pfp_base64,
+            name=name,
+            post_base64=post_base64,
+            svg_more=svg_more,
+            svg_like=svg_like,
+            svg_comment=svg_comment,
+            svg_share=svg_share,
+            svg_save=svg_save,
+            likes=likes,
+            caption=caption,
+            time_ago=time_ago
+        )
+
+        return await self._render_html_with_playwright(
+            html_content=html_template, 
+            selector=".ig-card", 
+            scale_factor=3.0, 
+            width=650, 
+            height=1200
+        )
+
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
         return asyncio.run(self._async_create_quote(text, user_name, pfp_bytes, invert))
 
