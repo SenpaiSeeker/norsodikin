@@ -3,14 +3,15 @@ import colorsys
 import functools
 import math
 import os
-import uuid 
 import random
 import shutil
 import subprocess
-import zipfile
+import uuid
 from typing import Dict, List, Tuple
 
-import httpx
+import lottie
+from lottie.parsers.raster import parse_raster_folder
+from lottie.utils.main import script_main
 from PIL import Image, ImageDraw, ImageFilter
 
 from ..utils.font_manager import FontManager
@@ -111,13 +112,11 @@ class VideoFX(FontManager):
         bboxes = [dummy_draw.textbbox((0, 0), line, font=font) for line in text_lines]
         text_widths = [bbox[2] - bbox[0] for bbox in bboxes]
         text_heights = [bbox[3] - bbox[1] for bbox in bboxes]
-
-        base_w = max(max(text_widths) + 80, 512)
-        canvas_w = base_w - (base_w % 2)
+        
+        canvas_w, canvas_h = 512, 512
+        
         total_text_h = sum(text_heights) + (len(text_lines) - 1) * 20
-        base_h = max(total_text_h, 512)
-        canvas_h = base_h - (base_h % 2)
-
+        
         hue = random.random()
         rgb_float = colorsys.hsv_to_rgb(hue, 0.9, 1.0)
         text_color = tuple(int(c * 255) for c in rgb_float)
@@ -149,41 +148,16 @@ class VideoFX(FontManager):
         
         return frames_dir
 
-    async def _frames_to_tgs(self, frames_dir: str, output_path: str):
-        zip_path = shutil.make_archive("frames_for_tgs", "zip", frames_dir)
-        
-        url = "https://www.videos-to-gif.com/images-to-tgs"
-        
-        try:
-            async with httpx.AsyncClient(timeout=300) as client:
-                with open(zip_path, "rb") as f:
-                    files = {"upload[]": f}
-                    response = await client.post(url, files=files)
-                    response.raise_for_status()
-                    data = response.json()
-                
-                if "error" in data:
-                    raise RuntimeError(f"API Error: {data['error']}")
-                
-                if data.get("files") and data["files"][0].get("url"):
-                    tgs_url = data["files"][0]["url"]
-                    tgs_response = await client.get(tgs_url)
-                    tgs_response.raise_for_status()
-                    with open(output_path, "wb") as f:
-                        f.write(tgs_response.content)
-                    return output_path
-                else:
-                    raise RuntimeError("Invalid API response format.")
-        finally:
-            if os.path.exists(zip_path):
-                os.remove(zip_path)
+    def _frames_to_tgs(self, frames_dir: str, output_path: str, fps: int):
+        animation = parse_raster_folder(frames_dir, fps=fps)
+        script_main([animation], output_path)
 
     async def text_to_tgs(self, text: str, output_path: str, duration: float = 2.95, fps: int = 60, font_size: int = 90):
         text_lines = text.split(";") if ";" in text else text.splitlines()
         temp_dir = f"temp_frames_{uuid.uuid4().hex}"
         try:
             frames_dir = await self._run_in_executor(self._create_frames, text_lines, temp_dir, duration, fps, font_size)
-            await self._frames_to_tgs(frames_dir, output_path)
+            await self._run_in_executor(self._frames_to_tgs, frames_dir, output_path, fps)
         finally:
             if os.path.isdir(temp_dir):
                 shutil.rmtree(temp_dir)
