@@ -26,7 +26,14 @@ class ImageManipulator(FontManager):
         loop = asyncio.get_running_loop()
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
 
-    async def _render_html_with_playwright(self, html_content: str, selector: str = ".container", scale_factor: float = 1.0, width: int = 800, height: int = 1000) -> bytes:
+    async def _render_html_with_playwright(
+        self, 
+        html_content: str, 
+        selector: str = ".container", 
+        scale_factor: float = 1.0, 
+        width: int = 800, 
+        height: int = 1000
+    ) -> bytes:
         async with async_playwright() as p:
             browser = await p.chromium.launch()
             context = await browser.new_context(
@@ -217,7 +224,13 @@ class ImageManipulator(FontManager):
             bookmarks=stats.get("bookmarks", "0")
         )
 
-        return await self._render_html_with_playwright(html_content, selector=".tweet-card", scale_factor=3.0, width=700, height=800)
+        return await self._render_html_with_playwright(
+            html_content=html_template, 
+            selector=".tweet-card", 
+            scale_factor=3.0, 
+            width=700, 
+            height=800
+        )
 
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
         return asyncio.run(self._async_create_quote(text, user_name, pfp_bytes, invert))
@@ -306,11 +319,7 @@ class ImageManipulator(FontManager):
             clean_html=clean_html,
         )
 
-        image_bytes = await self._render_html_with_playwright(html_template, selector=".container")
-
-        output = BytesIO()
-        Image.open(BytesIO(image_bytes)).save(output, "WEBP")
-        return output.getvalue()
+        return await self._render_html_with_playwright(html_content=html_template, selector=".container")
 
     async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False) -> bytes:
         return await self._async_create_quote(text, user_name, pfp_bytes, invert)
@@ -585,7 +594,7 @@ class ImageManipulator(FontManager):
             duration=duration,
         )
 
-        return await self._render_html_with_playwright(html_template, selector=".container")
+        return await self._render_html_with_playwright(html_content=html_template, selector=".container")
 
     async def create_afk_card(self, pfp_bytes: bytes, name: str, reason: str, duration: str) -> bytes:
         return await self._async_create_afk_card(pfp_bytes, name, reason, duration)
@@ -709,7 +718,7 @@ class ImageManipulator(FontManager):
             pfp_count=pfp_count,
         )
 
-        return await self._render_html_with_playwright(html_template, selector=".container")
+        return await self._render_html_with_playwright(html_content=html_template, selector=".container")
 
     async def create_profile_card(
         self, pfp_bytes: bytes, name: str, username: str, user_id: int, bio: str, pfp_count: int, is_sudo: bool
