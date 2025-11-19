@@ -8,9 +8,9 @@ import subprocess
 from typing import List
 
 from lottie.exporters.core import export_tgs
-from lottie.importers.core import import_json
 from lottie.objects import Animation, assets, layers, aind, shapes
 from lottie.utils.font import Font
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from ..utils.font_manager import FontManager
 
