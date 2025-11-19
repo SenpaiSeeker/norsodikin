@@ -160,9 +160,15 @@ class VideoFX(FontManager):
             "-",
             "-an",
             "-c:v",
-            "png",
-            "-preset",
-            "fast",
+            "libvpx-vp9",
+            "-pix_fmt",
+            "yuva420p",
+            "-auto-alt-ref",
+            "0",
+            "-crf",
+            "30",
+            "-b:v",
+            "0",
             output_path,
         ]
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
@@ -182,7 +188,7 @@ class VideoFX(FontManager):
         text: str,
         output_path: str,
         duration: float = 2.95,
-        fps: int = 60,
+        fps: int = 30,
         font_size: int = 90,
     ):
         text_lines = text.split(";") if ";" in text else text.splitlines()
@@ -258,7 +264,7 @@ class VideoFX(FontManager):
             duration = 3.0
 
         trim_duration = min(duration, 2.95)
-        scale_filter = "scale='if(gt(a,1),512,-2)':'if(gt(a,1),-2,512)'"
+        scale_filter = "scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=black@0.0"
 
         ffmpeg_cmd = [
             "ffmpeg",
@@ -289,7 +295,7 @@ class VideoFX(FontManager):
         return output_path
 
     def _convert_video_to_gif(self, video_path: str, output_path: str):
-        vf_filter = "fps=15,scale=512:-1:flags=lanczos"
+        vf_filter = "fps=30,scale=512:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse"
         ffmpeg_cmd = [
             "ffmpeg",
             "-y",
