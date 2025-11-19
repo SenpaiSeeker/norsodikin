@@ -26,20 +26,198 @@ class ImageManipulator(FontManager):
         loop = asyncio.get_running_loop()
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
 
-    async def _render_html_with_playwright(self, html_content: str) -> bytes:
+    async def _render_html_with_playwright(self, html_content: str, selector: str = ".container", scale_factor: float = 1.0, width: int = 800, height: int = 1000) -> bytes:
         async with async_playwright() as p:
             browser = await p.chromium.launch()
-            page = await browser.new_page()
+            context = await browser.new_context(
+                viewport={"width": width, "height": height},
+                device_scale_factor=scale_factor
+            )
+            page = await context.new_page()
             await page.set_content(html_content)
+            await page.wait_for_load_state("networkidle")
 
-            element_handle = await page.query_selector(".container")
+            element_handle = await page.query_selector(selector)
             if not element_handle:
                 await browser.close()
-                raise RuntimeError("Could not find the '.container' element to screenshot.")
+                raise RuntimeError(f"Could not find the '{selector}' element to screenshot.")
 
             screenshot_bytes = await element_handle.screenshot(type="png", omit_background=True)
             await browser.close()
             return screenshot_bytes
+
+    async def create_fake_tweet(
+        self,
+        pfp_bytes: bytes,
+        name: str,
+        username: str,
+        text: str,
+        time_str: str,
+        date_str: str,
+        stats: dict,
+    ) -> bytes:
+        if pfp_bytes:
+            pfp_base64 = "data:image/png;base64," + base64.b64encode(pfp_bytes).decode()
+        else:
+            initial = name[0].upper() if name else "U"
+            default_pfp_bytes = self._get_default_pfp(initial)
+            pfp_base64 = "data:image/png;base64," + base64.b64encode(default_pfp_bytes).decode()
+
+        svg_verified = '<svg viewBox="0 0 22 22" width="20" height="20"><g><path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.603.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.294-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.604-.223-1.264-.27-1.896-.14-.635.13-1.218.436-1.687.882-.445.468-.751 1.053-.882 1.687-.13.633-.083 1.294.14 1.897-.14.273.587.705 1.086 1.245 1.44.54.354 1.17.55 1.816.569.647-.016 1.276-.214 1.817-.568.54-.354.972-.853 1.245-1.44.604.224 1.264.27 1.896.14.635-.13 1.219-.436 1.687-.882.445-.468.75-1.053.882-1.687.13-.633.083-1.294-.14-1.897.587-.273 1.086-.705 1.44-1.245.355-.54.55-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#1d9bf0"></path></g></svg>'
+        
+        html_template = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+                
+                body {{
+                    margin: 0;
+                    padding: 0;
+                    background: transparent;
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                }}
+                
+                .tweet-card {{
+                    background-color: #000000;
+                    color: #e7e9ea;
+                    padding: 30px;
+                    width: 700px;
+                    box-sizing: border-box;
+                    display: inline-block;
+                }}
+                
+                .header {{
+                    display: flex;
+                    align-items: flex-start;
+                    margin-bottom: 15px;
+                }}
+                
+                .pfp {{
+                    width: 56px;
+                    height: 56px;
+                    border-radius: 50%;
+                    object-fit: cover;
+                    margin-right: 12px;
+                }}
+                
+                .user-info {{
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    margin-top: 4px;
+                }}
+                
+                .name-row {{
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                }}
+                
+                .name {{
+                    font-weight: 700;
+                    font-size: 17px;
+                    color: #e7e9ea;
+                    line-height: 20px;
+                }}
+                
+                .username {{
+                    color: #71767b;
+                    font-size: 16px;
+                    line-height: 20px;
+                }}
+                
+                .content {{
+                    font-size: 26px;
+                    line-height: 1.4;
+                    margin-top: 10px;
+                    margin-bottom: 20px;
+                    white-space: pre-wrap;
+                    color: #e7e9ea;
+                    font-weight: 400;
+                }}
+                
+                .meta {{
+                    color: #71767b;
+                    font-size: 16px;
+                    margin-bottom: 15px;
+                    padding-bottom: 15px;
+                    border-bottom: 1px solid #2f3336;
+                    display: flex;
+                    gap: 6px;
+                    align-items: center;
+                    font-weight: 500;
+                }}
+                
+                .views-container {{
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    margin-left: auto; 
+                }}
+                
+                .stats {{
+                    display: flex;
+                    gap: 24px;
+                    color: #71767b;
+                    font-size: 16px;
+                    padding-bottom: 8px;
+                    margin-bottom: 0;
+                }}
+                
+                .stat-item strong {{
+                    color: #e7e9ea;
+                    font-weight: 700;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="tweet-card">
+                <div class="header">
+                    <img src="{pfp_base64}" class="pfp" />
+                    <div class="user-info">
+                        <div class="name-row">
+                            <span class="name">{name}</span>
+                            {svg_verified}
+                        </div>
+                        <span class="username">@{username}</span>
+                    </div>
+                </div>
+                <div class="content">{text}</div>
+                <div class="meta">
+                    <span>{time_str}</span> · <span>{date_str}</span>
+                    <div class="views-container">
+                         <span style="font-weight: 700; color: #e7e9ea;">{views}</span>
+                         <span>Views</span>
+                    </div>
+                </div>
+                <div class="stats">
+                    <div class="stat-item"><strong>{retweets}</strong> Retweets</div>
+                    <div class="stat-item"><strong>{quotes}</strong> Quotes</div>
+                    <div class="stat-item"><strong>{likes}</strong> Likes</div>
+                    <div class="stat-item"><strong>{bookmarks}</strong> Bookmarks</div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """.format(
+            pfp_base64=pfp_base64,
+            name=name,
+            svg_verified=svg_verified,
+            username=username,
+            text=text,
+            time_str=time_str,
+            date_str=date_str,
+            views=stats.get("views", "0"),
+            retweets=stats.get("retweets", "0"),
+            quotes=stats.get("quotes", "0"),
+            likes=stats.get("likes", "0"),
+            bookmarks=stats.get("bookmarks", "0")
+        )
+
+        return await self._render_html_with_playwright(html_content, selector=".tweet-card", scale_factor=3.0, width=700, height=800)
 
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
         return asyncio.run(self._async_create_quote(text, user_name, pfp_bytes, invert))
@@ -128,7 +306,7 @@ class ImageManipulator(FontManager):
             clean_html=clean_html,
         )
 
-        image_bytes = await self._render_html_with_playwright(html_template)
+        image_bytes = await self._render_html_with_playwright(html_template, selector=".container")
 
         output = BytesIO()
         Image.open(BytesIO(image_bytes)).save(output, "WEBP")
@@ -407,7 +585,7 @@ class ImageManipulator(FontManager):
             duration=duration,
         )
 
-        return await self._render_html_with_playwright(html_template)
+        return await self._render_html_with_playwright(html_template, selector=".container")
 
     async def create_afk_card(self, pfp_bytes: bytes, name: str, reason: str, duration: str) -> bytes:
         return await self._async_create_afk_card(pfp_bytes, name, reason, duration)
@@ -531,7 +709,7 @@ class ImageManipulator(FontManager):
             pfp_count=pfp_count,
         )
 
-        return await self._render_html_with_playwright(html_template)
+        return await self._render_html_with_playwright(html_template, selector=".container")
 
     async def create_profile_card(
         self, pfp_bytes: bytes, name: str, username: str, user_id: int, bio: str, pfp_count: int, is_sudo: bool
