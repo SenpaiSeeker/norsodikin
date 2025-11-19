@@ -67,7 +67,7 @@ from .utils.url import UrlUtils
 from .utils.weather import WeatherWttr
 from .utils.wikipedia import WikipediaSearch
 
-__version__ = "0.7"
+__version__ = "0.8"
 __author__ = "@NorSodikin"
 
 
