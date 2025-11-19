@@ -413,6 +413,238 @@ class ImageManipulator(FontManager):
             height=1200
         )
 
+    async def create_fake_wa_chat(
+        self,
+        pfp_bytes: bytes,
+        name: str,
+        message: str,
+        time_str: str,
+    ) -> bytes:
+        if pfp_bytes:
+            pfp_base64 = "data:image/png;base64," + base64.b64encode(pfp_bytes).decode()
+        else:
+            initial = name[0].upper() if name else "U"
+            default_pfp_bytes = self._get_default_pfp(initial)
+            pfp_base64 = "data:image/png;base64," + base64.b64encode(default_pfp_bytes).decode()
+
+        svg_back = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="#aebac1" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>'
+        svg_video = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="#aebac1" d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"></path></svg>'
+        svg_call = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="#aebac1" d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.44-5.15-3.75-6.59-6.59l1.97-1.57c.26-.27.36-.66.24-1.01-.37-1.11-.56-2.3-.56-3.53 0-.55-.45-1-1-1H4.39c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-4.61c0-.55-.45-1-1-1z"></path></svg>'
+        svg_more = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="#aebac1" d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path></svg>'
+        svg_smiley = '<svg viewBox="0 0 24 24" width="26" height="26"><path fill="#8696a0" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"></path></svg>'
+        svg_attach = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="#8696a0" d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5a2.5 2.5 0 0 0 5 0V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"></path></svg>'
+        svg_cam = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="#8696a0" d="M12 15c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm7-8h-1.5v-.5c0-1.38-1.12-2.5-2.5-2.5H9c-1.38 0-2.5 1.12-2.5 2.5v.5H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm-7 12c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"></path></svg>'
+        svg_mic = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="#00a884" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"></path><path fill="#00a884" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"></path></svg>'
+
+        html_template = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Helvetica+Now+Text:wght@400;500&display=swap');
+                
+                body {{
+                    margin: 0;
+                    padding: 0;
+                    background: transparent;
+                    font-family: 'Helvetica Now Text', Helvetica, Arial, sans-serif;
+                }}
+                
+                .wa-container {{
+                    width: 500px;
+                    height: 900px;
+                    background-color: #0b141a;
+                    background-image: url('https://i.imgur.com/4801n6r.png'); 
+                    background-repeat: repeat;
+                    background-size: 400px;
+                    display: flex;
+                    flex-direction: column;
+                    position: relative;
+                    overflow: hidden;
+                }}
+                
+                .header {{
+                    background-color: #1f2c34;
+                    padding: 10px 16px;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    height: 60px;
+                    z-index: 10;
+                }}
+                
+                .pfp {{
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    object-fit: cover;
+                }}
+                
+                .user-info {{
+                    flex-grow: 1;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                }}
+                
+                .name {{
+                    color: #e9edef;
+                    font-size: 16px;
+                    font-weight: 500;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }}
+                
+                .status {{
+                    color: #8696a0;
+                    font-size: 13px;
+                }}
+                
+                .icons {{
+                    display: flex;
+                    gap: 20px;
+                }}
+                
+                .chat-area {{
+                    flex-grow: 1;
+                    padding: 20px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: flex-end; 
+                }}
+                
+                .message-bubble {{
+                    background-color: #1f2c34;
+                    color: #e9edef;
+                    padding: 10px 14px;
+                    border-radius: 0px 12px 12px 12px;
+                    max-width: 75%;
+                    align-self: flex-start;
+                    position: relative;
+                    box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+                    margin-bottom: 10px;
+                }}
+                
+                .message-bubble::before {{
+                    content: "";
+                    position: absolute;
+                    top: 0;
+                    left: -8px;
+                    width: 0;
+                    height: 0;
+                    border: 8px solid transparent;
+                    border-top-color: #1f2c34;
+                    border-right-color: #1f2c34;
+                    border-bottom: 0;
+                }}
+                
+                .message-text {{
+                    font-size: 16px;
+                    line-height: 1.4;
+                }}
+                
+                .message-time {{
+                    font-size: 11px;
+                    color: #8696a0;
+                    float: right;
+                    margin-left: 10px;
+                    margin-top: 6px;
+                    position: relative;
+                    top: 4px;
+                }}
+                
+                .footer {{
+                    background-color: #1f2c34;
+                    padding: 10px;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    height: 62px;
+                }}
+                
+                .input-box {{
+                    flex-grow: 1;
+                    background-color: #2a3942;
+                    border-radius: 8px;
+                    height: 40px;
+                    display: flex;
+                    align-items: center;
+                    padding: 0 12px;
+                    color: #8696a0;
+                    font-size: 15px;
+                }}
+
+                .mic-circle {{
+                    background-color: #00a884;
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    display: none; 
+                }}
+                
+            </style>
+        </head>
+        <body>
+            <div class="wa-container">
+                <div class="header">
+                    {svg_back}
+                    <img src="{pfp_base64}" class="pfp" />
+                    <div class="user-info">
+                        <div class="name">{name}</div>
+                        <div class="status">online</div>
+                    </div>
+                    <div class="icons">
+                        {svg_video}
+                        {svg_call}
+                        {svg_more}
+                    </div>
+                </div>
+                
+                <div class="chat-area">
+                    <div class="message-bubble">
+                        <div class="message-text">{message}</div>
+                        <div class="message-time">{time_str}</div>
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    {svg_smiley}
+                    <div class="input-box">Message</div>
+                    {svg_attach}
+                    {svg_cam}
+                    {svg_mic}
+                </div>
+            </div>
+        </body>
+        </html>
+        """.format(
+            pfp_base64=pfp_base64,
+            name=name,
+            message=message,
+            time_str=time_str,
+            svg_back=svg_back,
+            svg_video=svg_video,
+            svg_call=svg_call,
+            svg_more=svg_more,
+            svg_smiley=svg_smiley,
+            svg_attach=svg_attach,
+            svg_cam=svg_cam,
+            svg_mic=svg_mic
+        )
+
+        return await self._render_html_with_playwright(
+            html_content=html_template, 
+            selector=".wa-container", 
+            scale_factor=3.0, 
+            width=500, 
+            height=900
+        )
+
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
         return asyncio.run(self._async_create_quote(text, user_name, pfp_bytes, invert))
 
