@@ -2,86 +2,87 @@ import asyncio
 import httpx
 import json
 import re
-from typing import List, Any, Dict
+from typing import List
 
 class Pinterest:
     def __init__(self):
-        self.base_url = "https://www.pinterest.com/search/pins/"
+        self.base_url = "https://www.pinterest.com/resource/BaseSearchResource/get/"
         self.headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Referer": "https://www.pinterest.com/",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "same-origin",
-            "Upgrade-Insecure-Requests": "1",
+            "X-Pinterest-AppState": "active",
+            "X-Requested-With": "XMLHttpRequest",
         }
 
-    def _find_image_urls_in_json(self, data: Any, found_urls: List[str], limit: int):
-        if len(found_urls) >= limit:
-            return
-
-        if isinstance(data, dict):
-            if "images" in data and isinstance(data["images"], dict):
-                images = data["images"]
-                url = (
-                    images.get("orig", {}).get("url") or 
-                    images.get("1200x", {}).get("url") or
-                    images.get("600x315", {}).get("url") or
-                    images.get("474x", {}).get("url") or 
-                    images.get("236x", {}).get("url")
-                )
-                if url:
-                    hd_url = url.replace("/236x/", "/originals/").replace("/474x/", "/originals/").replace("/564x/", "/originals/").replace("/736x/", "/originals/")
-                    if hd_url not in found_urls:
-                        found_urls.append(hd_url)
-            
-            for key, value in data.items():
-                self._find_image_urls_in_json(value, found_urls, limit)
-        
-        elif isinstance(data, list):
-            for item in data:
-                self._find_image_urls_in_json(item, found_urls, limit)
-
     async def search(self, query: str, limit: int = 9) -> List[str]:
-        encoded_query = query.replace(" ", "%20")
-        url = f"{self.base_url}?q={encoded_query}&rs=typed"
+        data_json = {
+            "options": {
+                "isPrefetch": False,
+                "query": query,
+                "scope": "pins",
+                "no_fetch_context_on_resource": False
+            },
+            "context": {}
+        }
+        
+        params = {
+            "source_url": f"/search/pins/?q={query}&rs=typed",
+            "data": json.dumps(data_json),
+            "_": "1631234567890"
+        }
 
         async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
             try:
-                response = await client.get(url, headers=self.headers)
+                response = await client.get(self.base_url, headers=self.headers, params=params)
                 
-                html_content = response.text
-                image_urls = []
-
-                match = re.search(r'<script id="__PWS_DATA__" type="application/json">(.+?)</script>', html_content)
-                if match:
-                    try:
-                        json_data = json.loads(match.group(1))
-                        self._find_image_urls_in_json(json_data, image_urls, limit)
-                    except Exception:
-                        pass
-                
-                if len(image_urls) < limit:
-                    pattern_general = r'https://i\.pinimg\.com/[0-9x]+/[^"]+?\.jpg'
-                    fallback_urls = re.findall(pattern_general, html_content)
+                if response.status_code == 200:
+                    data = response.json()
+                    results = data.get('resource_response', {}).get('data', {}).get('results', [])
                     
-                    for u in fallback_urls:
-                        if len(image_urls) >= limit:
-                            break
+                    urls = []
+                    for item in results:
+                        images = item.get('images', {})
+                        url = images.get('orig', {}).get('url')
+                        if not url:
+                             for size in ['1200x', '736x', '474x', '236x']:
+                                  if size in images:
+                                      url = images[size]['url']
+                                      break
                         
-                        hd_url = u.replace("/236x/", "/originals/").replace("/474x/", "/originals/").replace("/564x/", "/originals/").replace("/736x/", "/originals/")
-                        
-                        if hd_url not in image_urls:
-                            image_urls.append(hd_url)
+                        if url and url not in urls:
+                            urls.append(url)
+                        if len(urls) >= limit:
+                            return urls
+                            
+                    if urls:
+                        return urls
 
-                if not image_urls:
-                     raise ValueError("Tidak ditemukan gambar.")
-
-                return image_urls[:limit]
+                search_url = f"https://www.pinterest.com/search/pins/?q={query}&rs=typed"
+                web_headers = {
+                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+                }
+                
+                page_response = await client.get(search_url, headers=web_headers)
+                html_content = page_response.text
+                
+                raw_urls = re.findall(r'https://i\.pinimg\.com/[0-9x]+/[^\s"]+\.jpg', html_content)
+                
+                unique_urls = []
+                for u in raw_urls:
+                    hd_url = re.sub(r'/\d+x/', '/originals/', u)
+                    if hd_url not in unique_urls:
+                        unique_urls.append(hd_url)
+                    if len(unique_urls) >= limit:
+                        break
+                
+                if unique_urls:
+                    return unique_urls
+                
+                raise ValueError("Tidak ditemukan gambar (Metode API & Scraping Gagal).")
 
             except Exception as e:
-                raise Exception(f"Gagal mengambil data Pinterest: {e}")
+                raise Exception(f"Pinterest Error: {e}")
 
     async def get_image_bytes(self, url: str) -> bytes:
         async with httpx.AsyncClient(timeout=20) as client:
