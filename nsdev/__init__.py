@@ -65,9 +65,10 @@ from .utils.shell import ShellExecutor
 from .utils.splitter import AudioSplitter
 from .utils.url import UrlUtils
 from .utils.weather import WeatherWttr
+from .utils.web import WebAutomation
 from .utils.wikipedia import WikipediaSearch
 
-__version__ = "2.3.63"
+__version__ = "0.11"
 __author__ = "@NorSodikin"
 
 
@@ -153,6 +154,7 @@ class NsDev:
             splitter=AudioSplitter,
             url=UrlUtils(),
             weather=WeatherWttr,
+            web=WebAutomation(),
             wikipedia=WikipediaSearch,
         )
 
