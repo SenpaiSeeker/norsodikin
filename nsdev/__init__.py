@@ -69,7 +69,7 @@ from .utils.weather import WeatherWttr
 from .utils.web import WebAutomation
 from .utils.wikipedia import WikipediaSearch
 
-__version__ = "0.19"
+__version__ = "0.20"
 __author__ = "@NorSodikin"
 
 
