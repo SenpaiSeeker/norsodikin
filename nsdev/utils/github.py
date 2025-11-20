@@ -1,4 +1,5 @@
 import datetime
+from io import BytesIO
 from types import SimpleNamespace
 from urllib.parse import urljoin, urlparse, urlunparse
 
@@ -7,7 +8,7 @@ import httpx
 
 
 class GitHubInfo:
-    def __init__(self, timeout: int = 15):
+    def __init__(self, timeout: int = 30):
         self.timeout = timeout
         self.base_url = "https://github.com"
         self.api_base_url = "https://api.github.com"
@@ -65,3 +66,47 @@ class GitHubInfo:
             profile_url=user_data.get("html_url", profile_url),
             avatar_url=avatar_url,
         )
+
+    async def download_repo(self, repo_url: str) -> tuple[BytesIO, str, str]:
+        parsed = urlparse(repo_url)
+        path_parts = parsed.path.strip("/").split("/")
+        
+        if len(path_parts) < 2:
+            raise ValueError("URL tidak valid. Format harus: https://github.com/username/repository")
+        
+        username = path_parts[0]
+        repo_name = path_parts[1]
+        
+        api_repo_url = f"{self.api_base_url}/repos/{username}/{repo_name}"
+
+        async with httpx.AsyncClient(follow_redirects=True, timeout=self.timeout) as client:
+            try:
+                info_res = await client.get(api_repo_url, headers=self.headers)
+                if info_res.status_code == 404:
+                    raise ValueError("Repository tidak ditemukan atau bersifat privat.")
+                info_res.raise_for_status()
+                
+                repo_data = info_res.json()
+                default_branch = repo_data.get("default_branch", "main")
+                description = repo_data.get("description", "Tidak ada deskripsi.")
+                
+                zip_url = f"{self.base_url}/{username}/{repo_name}/archive/refs/heads/{default_branch}.zip"
+                
+                download_res = await client.get(zip_url, headers=self.headers)
+                download_res.raise_for_status()
+                
+                file_buffer = BytesIO(download_res.content)
+                file_buffer.name = f"{repo_name}-{default_branch}.zip"
+                
+                caption = f"📦 **{repo_name}**\n"
+                caption += f"👤 Owner: {username}\n"
+                caption += f"🌿 Branch: {default_branch}\n"
+                caption += f"📝 Desc: {description}\n"
+                caption += f"🔗 Link: {repo_url}"
+                
+                return file_buffer, caption, default_branch
+
+            except httpx.RequestError as e:
+                raise Exception(f"Gagal menghubungi GitHub: {e}")
+            except httpx.HTTPStatusError as e:
+                raise Exception(f"GitHub Error: {e.response.status_code}")
