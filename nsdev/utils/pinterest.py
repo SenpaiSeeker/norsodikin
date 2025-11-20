@@ -8,9 +8,13 @@ class Pinterest:
     def __init__(self):
         self.base_url = "https://www.pinterest.com/search/pins/"
         self.headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
             "Referer": "https://www.pinterest.com/",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+            "Upgrade-Insecure-Requests": "1",
         }
 
     def _find_image_urls_in_json(self, data: Any, found_urls: List[str], limit: int):
@@ -27,8 +31,10 @@ class Pinterest:
                     images.get("474x", {}).get("url") or 
                     images.get("236x", {}).get("url")
                 )
-                if url and url not in found_urls:
-                    found_urls.append(url)
+                if url:
+                    hd_url = url.replace("/236x/", "/originals/").replace("/474x/", "/originals/").replace("/564x/", "/originals/").replace("/736x/", "/originals/")
+                    if hd_url not in found_urls:
+                        found_urls.append(hd_url)
             
             for key, value in data.items():
                 self._find_image_urls_in_json(value, found_urls, limit)
@@ -44,9 +50,8 @@ class Pinterest:
         async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
             try:
                 response = await client.get(url, headers=self.headers)
-                response.raise_for_status()
+                
                 html_content = response.text
-
                 image_urls = []
 
                 match = re.search(r'<script id="__PWS_DATA__" type="application/json">(.+?)</script>', html_content)
@@ -57,22 +62,18 @@ class Pinterest:
                     except Exception:
                         pass
                 
-                if not image_urls:
-                    pattern_originals = r'https://i\.pinimg\.com/originals/[a-f0-9]+/[a-f0-9]+/[a-f0-9]+/[a-f0-9]+\.jpg'
-                    fallback_urls = re.findall(pattern_originals, html_content)
+                if len(image_urls) < limit:
+                    pattern_general = r'https://i\.pinimg\.com/[0-9x]+/[^"]+?\.jpg'
+                    fallback_urls = re.findall(pattern_general, html_content)
                     
-                    if not fallback_urls:
-                         pattern_general = r'https://i\.pinimg\.com/\d+x/[a-f0-9]+/[a-f0-9]+/[a-f0-9]+/[a-f0-9]+\.jpg'
-                         fallback_urls = re.findall(pattern_general, html_content)
-
-                    seen = set()
                     for u in fallback_urls:
-                        if u not in seen:
-                            hd_url = re.sub(r'/\d+x/', '/originals/', u)
+                        if len(image_urls) >= limit:
+                            break
+                        
+                        hd_url = u.replace("/236x/", "/originals/").replace("/474x/", "/originals/").replace("/564x/", "/originals/").replace("/736x/", "/originals/")
+                        
+                        if hd_url not in image_urls:
                             image_urls.append(hd_url)
-                            seen.add(u)
-                            if len(image_urls) >= limit:
-                                break
 
                 if not image_urls:
                      raise ValueError("Tidak ditemukan gambar.")
