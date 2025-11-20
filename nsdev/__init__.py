@@ -59,6 +59,7 @@ from .utils.lookup import TMDbClient
 from .utils.mediainfo import MediaInspector
 from .utils.osint import OsintTools
 from .utils.paste import PasteClient
+from .utils.pinterest import Pinterest
 from .utils.progress import TelegramProgressBar
 from .utils.ratelimit import RateLimiter
 from .utils.shell import ShellExecutor
@@ -68,7 +69,7 @@ from .utils.weather import WeatherWttr
 from .utils.web import WebAutomation
 from .utils.wikipedia import WikipediaSearch
 
-__version__ = "0.14"
+__version__ = "0.15"
 __author__ = "@NorSodikin"
 
 
@@ -148,6 +149,7 @@ class NsDev:
             mediainfo=MediaInspector(),
             osint=OsintTools,
             paste=PasteClient,
+            pinterest=Pinterest(),
             progress=TelegramProgressBar,
             ratelimit=RateLimiter(self._client),
             shell=ShellExecutor(),
