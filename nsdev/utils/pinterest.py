@@ -1,49 +1,57 @@
 import asyncio
 import httpx
 import re
-from types import SimpleNamespace
 from typing import List
 
 class Pinterest:
     def __init__(self):
-        self.base_url = "https://www.pinterest.com/resource/BaseSearchResource/get/"
+        self.base_url = "https://www.pinterest.com/search/pins/"
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
             "Referer": "https://www.pinterest.com/",
         }
 
     async def search(self, query: str, limit: int = 9) -> List[str]:
-        params = {
-            "source_url": f"/search/pins/?q={query}",
-            "data": '{"options":{"isPrefetch":false,"query":"' + query + '","scope":"pins","no_fetch_context_on_resource":false},"context":{}}',
-            "module_path": f"App()>SearchPage(resource=BaseSearchResource(options={{query:{query},scope:pins,no_fetch_context_on_resource:false}}))",
-        }
+        encoded_query = query.replace(" ", "%20")
+        url = f"{self.base_url}?q={encoded_query}&rs=typed"
 
-        async with httpx.AsyncClient(timeout=20) as client:
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
             try:
-                response = await client.get(self.base_url, headers=self.headers, params=params)
+                response = await client.get(url, headers=self.headers)
                 response.raise_for_status()
                 
-                data = response.json()
-                results = data.get("resource_response", {}).get("data", {}).get("results", [])
+                html_content = response.text
+
+                pattern = r'https://i\.pinimg\.com/\d+x/[a-f0-9]+/[a-f0-9]+/[a-f0-9]+/[a-f0-9]+\.jpg'
                 
-                images = []
-                for item in results:
-                    if len(images) >= limit:
+                found_urls = re.findall(pattern, html_content)
+                
+                unique_urls = []
+                seen = set()
+                
+                for img_url in found_urls:
+                    high_res_url = re.sub(r'/\d+x/', '/originals/', img_url)
+                    
+                    if high_res_url not in seen:
+                        unique_urls.append(high_res_url)
+                        seen.add(high_res_url)
+                    
+                    if len(unique_urls) >= limit:
                         break
-                        
-                    images_obj = item.get("images", {})
-                    
-                    url = (
-                        images_obj.get("orig", {}).get("url") or 
-                        images_obj.get("474x", {}).get("url") or 
-                        images_obj.get("236x", {}).get("url")
-                    )
-                    
-                    if url:
-                        images.append(url)
                 
-                return images
+                if not unique_urls:
+                    pattern_std = r'https://i\.pinimg\.com/564x/[a-f0-9]+/[a-f0-9]+/[a-f0-9]+/[a-f0-9]+\.jpg'
+                    found_std = re.findall(pattern_std, html_content)
+                    for img_url in found_std:
+                         if img_url not in seen:
+                            unique_urls.append(img_url)
+                            seen.add(img_url)
+                         if len(unique_urls) >= limit:
+                            break
+                
+                return unique_urls
 
             except Exception as e:
                 raise Exception(f"Gagal mengambil data dari Pinterest: {e}")
