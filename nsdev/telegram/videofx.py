@@ -1,8 +1,6 @@
 import asyncio
 import colorsys
 import functools
-import gzip
-import json
 import math
 import os
 import random
