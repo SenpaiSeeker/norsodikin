@@ -1,413 +1,91 @@
 import asyncio
-import base64
-import hashlib
-import hmac
-import io
 import json
-import random
-import time
-import uuid
-from typing import Optional, Tuple
-
+import re
+from typing import List
 import cloudscraper25 as cloudscraper
-import httpx
 from bs4 import BeautifulSoup
 
-from ..ai.qrcode import QrCodeGenerator
-from ..data.ymlreder import YamlHandler
-
-
-class PaymentMidtrans:
-    def __init__(
-        self,
-        server_key,
-        client_key,
-        callback_url="https://SenpaiSeeker.github.io/payment",
-        is_production=True,
-    ):
-        self.convert = YamlHandler()
-        self.server_key = server_key
-        self.callback_url = callback_url
-        if is_production:
-            self.snap_base_url = "https://app.midtrans.com/snap/v1"
-            self.core_api_base_url = "https://api.midtrans.com/v2"
-        else:
-            self.snap_base_url = "https://app.sandbox.midtrans.com/snap/v1"
-            self.core_api_base_url = "https://api.sandbox.midtrans.com/v2"
-        auth_string = f"{self.server_key}:".encode("utf-8")
-        encoded_auth = base64.b64encode(auth_string).decode("utf-8")
-        self.headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "Authorization": f"Basic {encoded_auth}",
-        }
-
-    def create_payment(self, order_id, gross_amount):
-        url = f"{self.snap_base_url}/transactions"
-        payload = {
-            "transaction_details": {"order_id": order_id, "gross_amount": gross_amount},
-            "enabled_payments": ["other_qris"],
-            "callbacks": {"finish": self.callback_url},
-        }
-        try:
-            response = httpx.post(url, headers=self.headers, json=payload, timeout=httpx.Timeout(30.0))
-            response.raise_for_status()
-            return self.convert._convertToNamespace(response.json())
-        except httpx.RequestError as e:
-            raise Exception(f"Error communicating with Midtrans API: {e}")
-        except Exception as e:
-            raise Exception(f"Error creating Midtrans transaction: {e}")
-
-    def check_transaction(self, order_id):
-        url = f"{self.core_api_base_url}/{order_id}/status"
-        try:
-            response = httpx.get(url, headers=self.headers, timeout=httpx.Timeout(30.0))
-            response.raise_for_status()
-            return self.convert._convertToNamespace(response.json())
-        except httpx.RequestError as e:
-            raise Exception(f"Error communicating with Midtrans API: {e}")
-        except Exception as e:
-            raise Exception(f"Error checking Midtrans transaction status: {e}")
-
-
-class PaymentTripay:
-    def __init__(self, api_key):
-        self.api_key = api_key
-        self.base_url = "https://tripay.co.id/api"
-        self.convert = YamlHandler()
-
-    def create_payment(self, method, amount, order_id, customer_name):
-        url = f"{self.base_url}/transaction/create"
-        headers = {"Authorization": f"Bearer {self.api_key}"}
-        payload = {
-            "method": method,
-            "merchant_ref": order_id,
-            "amount": amount,
-            "customer_name": customer_name,
-        }
-        response = httpx.post(url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        return self.convert._convertToNamespace(response.json())
-
-    def check_transaction(self, reference):
-        url = f"{self.base_url}/transaction/detail"
-        headers = {"Authorization": f"Bearer {self.api_key}"}
-        params = {"reference": reference}
-        response = httpx.get(url, headers=headers, params=params, timeout=30)
-        response.raise_for_status()
-        return self.convert._convertToNamespace(response.json())
-
-
-class VioletMediaPayClient:
-    def __init__(self, api_key: str, secret_key: str, live: bool = False):
-        self.convert = YamlHandler()
-        self.api_key = api_key
-        self.secret_key = secret_key
-        self.base_url = "https://violetmediapay.com/api/live" if live else "https://violetmediapay.com/api/sanbox"
-
-    def _generate_signature(self, ref_kode: str, amount: str) -> str:
-        message = f"{ref_kode}{self.api_key}{amount}"
-        signature = hmac.new(self.secret_key.encode(), message.encode(), hashlib.sha256).hexdigest()
-        return signature
-
-    async def create_payment(
-        self,
-        channel_payment: str = "QRIS",
-        amount: str = "1000",
-        produk: str = "payment_bot",
-        expired: int = 900,
-        url_redirect: str = "https://example.com/redirect",
-        url_callback: str = "https://example.com/callback",
-    ):
-        url = f"{self.base_url}/create"
-        ref_kode = str(uuid.uuid4().hex)
-        signature = self._generate_signature(ref_kode, amount)
-        expired_time = int(time.time()) + expired
-
-        random_id = str(random.randint(1000, 9999))
-        payload = {
-            "api_key": self.api_key,
-            "secret_key": self.secret_key,
-            "channel_payment": channel_payment,
-            "ref_kode": ref_kode,
-            "nominal": amount,
-            "cus_nama": f"User {random_id}",
-            "cus_email": f"user{random_id}@example.com",
-            "cus_phone": f"0812{str(random.randint(10000000, 99999999))}",
-            "produk": produk,
-            "url_redirect": url_redirect,
-            "url_callback": url_callback,
-            "expired_time": expired_time,
-            "signature": signature,
-        }
-        try:
-            async with httpx.AsyncClient(verify=True, timeout=httpx.Timeout(30.0)) as client:
-                response = await client.post(url, data=payload)
-                response.raise_for_status()
-                return self.convert._convertToNamespace(response.json())
-        except Exception as e:
-            raise Exception(f"Error creating VioletMediaPay payment: {e}")
-
-    async def check_transaction(self, ref: str, ref_id: str):
-        url = f"{self.base_url}/transactions"
-        payload = {"api_key": self.api_key, "secret_key": self.secret_key, "ref": ref, "ref_id": ref_id}
-        try:
-            async with httpx.AsyncClient(verify=True, timeout=httpx.Timeout(30.0)) as client:
-                response = await client.post(url, data=payload)
-                response.raise_for_status()
-                return self.convert._convertToNamespace(response.json())
-        except Exception as e:
-            raise Exception(f"Error checking VioletMediaPay transaction: {e}")
-
-
-class SaweriaApi:
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-        self.base_url = "https://api.maelyn.sbs/api/saweria"
-        self.convert = YamlHandler()
-
-    async def get_user_id(self, username: str):
-        url = f"{self.base_url}/check/user"
-        headers = {"Content-Type": "application/json", "mg-apikey": self.api_key}
-        payload = {"username": username.strip()}
-
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.post(url, headers=headers, json=payload)
-                response.raise_for_status()
-                return self.convert._convertToNamespace(response.json())
-        except Exception as e:
-            raise Exception(
-                self.convert._convertToNamespace({"status": "error", "message": f"Failed to get user ID: {str(e)}"})
-            )
-
-    async def create_payment(self, user_id: str, amount: int, name: str, email: str, message: str = ""):
-        url = f"{self.base_url}/create/payment"
-        headers = {"Content-Type": "application/json", "mg-apikey": self.api_key}
-        payload = {
-            "user_id": user_id.strip(),
-            "amount": str(amount),
-            "name": name.strip(),
-            "email": email.strip(),
-            "msg": message.strip(),
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.post(url, headers=headers, json=payload)
-                response.raise_for_status()
-                return self.convert._convertToNamespace(response.json())
-        except Exception as e:
-            raise Exception(
-                self.convert._convertToNamespace({"status": "error", "message": f"Failed to create payment: {str(e)}"})
-            )
-
-    async def check_payment(self, user_id: str, payment_id: str):
-        url = f"{self.base_url}/check/payment"
-        headers = {"Content-Type": "application/json", "mg-apikey": self.api_key}
-        payload = {"user_id": user_id.strip(), "payment_id": payment_id.strip()}
-
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.post(url, headers=headers, json=payload)
-                response.raise_for_status()
-                return self.convert._convertToNamespace(response.json())
-        except Exception as e:
-            raise Exception(
-                self.convert._convertToNamespace({"status": "error", "message": f"Failed to check payment: {str(e)}"})
-            )
-
-
-class PaymentCashify:
-    def __init__(self, license_key: str):
-        self.license_key = license_key
-        self.base_url = "https://cashify.my.id/api"
-        self.convert = YamlHandler()
-        self.qr_generator_url = "https://larabert-qrgen.hf.space/v1/create-qr-code"
-        self.STYLISH_QR_COLORS = [
-            "ea580c",
-            "3b82f6",
-            "16a34a",
-            "dc2626",
-            "7c3aed",
-            "db2777",
-            "0d9488",
-            "d97706",
-        ]
-
-    def _get_headers(self):
-        return {"x-license-key": self.license_key, "content-type": "application/json"}
-
-    async def generate_qris(
-        self,
-        qris_id: str,
-        amount: int,
-        use_unique_code: bool = True,
-        package_ids: list = None,
-        expired_in_minutes: int = 15,
-    ):
-        url = f"{self.base_url}/generate/qris"
-
-        if package_ids is None:
-            package_ids = ["id.dana"]
-
-        if expired_in_minutes < 15:
-            expired_in_minutes = 15
-        elif expired_in_minutes > 1440:
-            expired_in_minutes = 1440
-
-        payload = {
-            "id": qris_id,
-            "amount": amount,
-            "useUniqueCode": use_unique_code,
-            "packageIds": package_ids,
-            "expiredInMinutes": expired_in_minutes,
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
-                response = await client.post(url, headers=self._get_headers(), json=payload)
-                response.raise_for_status()
-                return self.convert._convertToNamespace(response.json())
-        except httpx.HTTPStatusError as e:
-            raise Exception(f"HTTP error from Cashify API: {e.response.status_code} - {e.response.text}")
-        except httpx.RequestError as e:
-            raise Exception(f"Error communicating with Cashify API: {e}")
-        except Exception as e:
-            raise Exception(f"Error generating Cashify QRIS: {e}")
-
-    async def check_status(self, payment_id: str):
-        url = f"{self.base_url}/generate/check-status"
-        payload = {"transactionId": payment_id}
-
-        try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
-                response = await client.post(url, headers=self._get_headers(), json=payload)
-                response.raise_for_status()
-                return self.convert._convertToNamespace(response.json())
-        except httpx.HTTPStatusError as e:
-            raise Exception(f"HTTP error from Cashify API: {e.response.status_code} - {e.response.text}")
-        except httpx.RequestError as e:
-            raise Exception(f"Error communicating with Cashify API: {e}")
-        except Exception as e:
-            raise Exception(f"Error checking Cashify payment status: {e}")
-
-    def generate_stylish_qr(self, data: str, size: str = "500x500", style: int = None, color: str = None):
-        style = style if style else random.choice([1, 2, 3])
-        color = color if color else random.choice(self.STYLISH_QR_COLORS)
-        qr_url = f"{self.qr_generator_url}?size={size}&style={style}&color={color}&data={data}"
-        return qr_url
-
-    async def download_qr_image(self, data: str, size: str = "500x500", style: int = None, color: str = None):
-        qr_url = self.generate_stylish_qr(data, size, style, color)
-
-        try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
-                response = await client.get(qr_url)
-                response.raise_for_status()
-                return response.content
-        except httpx.HTTPStatusError as e:
-            raise Exception(f"HTTP error downloading QR image: {e.response.status_code}")
-        except httpx.RequestError as e:
-            raise Exception(f"Error downloading QR image: {e}")
-        except Exception as e:
-            raise Exception(f"Error generating QR image: {e}")
-
-
-class SaweriaScraper(QrCodeGenerator):
-    BACKEND = "https://backend.saweria.co"
-    FRONTEND = "https://saweria.co"
-
-    HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Referer": "https://saweria.co/",
-    }
-
+class Pinterest:
     def __init__(self):
-        super().__init__()
-        self.scraper = cloudscraper.create_scraper()
+        self.base_search_url = "https://www.pinterest.com/search/pins/"
+        self.scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'linux', 'desktop': True})
 
-    async def get_user_id(self, username: str) -> Optional[str]:
-        if not username or not isinstance(username, str):
-            raise ValueError("Username harus berupa string dan tidak boleh kosong.")
+    async def search(self, query: str, limit: int = 9) -> List[str]:
+        unique_urls = set()
+        formatted_query = query.replace(" ", "%20")
+        url = f"{self.base_search_url}?q={formatted_query}&rs=typed"
 
-        def _sync_get_with_retries(retries=3, delay=5):
-            url = f"{self.FRONTEND}/{username}"
-            for attempt in range(retries):
-                try:
-                    res = self.scraper.get(url, headers=self.HEADERS, timeout=15)
-                    if res.status_code == 200:
-                        soup = BeautifulSoup(res.text, "html.parser")
-                        next_data = soup.find(id="__NEXT_DATA__")
-                        if next_data:
-                            data = json.loads(next_data.text)
-                            user_id = data.get("props", {}).get("pageProps", {}).get("data", {}).get("id")
-                            if user_id:
-                                return user_id
-                except Exception:
-                    pass
-                time.sleep(delay)
-            return None
+        def _fetch(target_url):
+            return self.scraper.get(target_url, timeout=30)
 
-        return await asyncio.to_thread(_sync_get_with_retries)
+        for page in range(1, 4):
+            if len(unique_urls) >= limit:
+                break
 
-    async def create_payment(
-        self,
-        user_id: str,
-        amount: int,
-        name: str,
-        email: str,
-        message: str,
-        creator_name: str = "nsdev",
-    ) -> Tuple[str, str, io.BytesIO, int]:
-        if amount < 1000:
-            raise ValueError("Jumlah minimum donasi adalah 1000")
+            try:
+                response = await asyncio.to_thread(_fetch, url)
+                
+                if response.status_code != 200:
+                    continue
 
-        payload = {
-            "agree": True,
-            "notUnderage": True,
-            "message": message,
-            "amount": amount,
-            "payment_type": "qris",
-            "vote": "",
-            "currency": "IDR",
-            "customer_info": {"first_name": name, "email": email, "phone": ""},
-        }
+                html_text = response.text
+                soup = BeautifulSoup(html_text, "html.parser")
+                
+                data_scripts = soup.find_all("script", {"id": "__PWS_DATA__"})
+                for script in data_scripts:
+                    try:
+                        json_data = json.loads(script.string)
+                        self._extract_from_pws_data(json_data, unique_urls)
+                    except Exception:
+                        pass
 
-        def _sync_post():
-            res = self.scraper.post(
-                f"{self.BACKEND}/donations/{user_id}",
-                json=payload,
-                headers=self.HEADERS,
-            )
-            if not res.ok:
-                raise Exception(f"Gagal membuat pembayaran: {res.text}")
-            return res.json()["data"]
+                regex_pattern = r'https://i\.pinimg\.com/(?:\d+x|originals)/[a-z0-9/]+\.(?:jpg|jpeg|png|webp)'
+                raw_urls = re.findall(regex_pattern, html_text)
+                
+                for img_url in raw_urls:
+                    if len(unique_urls) >= limit:
+                        break
+                    
+                    if "75x75" in img_url or "32x32" in img_url:
+                        continue
 
-        data = await asyncio.to_thread(_sync_post)
-        qr_string = data["qr_string"]
-        transaction_id = data["id"]
-        amount_raw = data["amount_raw"]
+                    hd_url = re.sub(r'/\d+x/', '/originals/', img_url)
+                    unique_urls.add(hd_url)
 
-        qr_image_bytes = await self.generate(
-            data=qr_string,
-            use_dots=True,
-            glow_background=False,
-            bottom_text="SCAN ME",
-            creator_text=f"Created by: {creator_name}",
-        )
+            except Exception:
+                continue
 
-        qr_image_stream = io.BytesIO(qr_image_bytes)
-        qr_image_stream.name = f"{transaction_id}.png"
+            await asyncio.sleep(0.5)
 
-        return qr_string, transaction_id, qr_image_stream, amount_raw
+        final_list = list(unique_urls)[:limit]
+        
+        if not final_list:
+            raise ValueError(f"Tidak ditemukan gambar untuk query: '{query}'. Pinterest mungkin membatasi akses tanpa login.")
+            
+        return final_list
 
-    async def check_paid_status(self, transaction_id: str) -> bool:
-        def _sync_get():
-            res = self.scraper.get(f"{self.BACKEND}/donations/qris/{transaction_id}", headers=self.HEADERS)
-            if not res.ok:
-                raise Exception("Transaction ID not found")
-            return res.json()["data"]["qr_string"] == ""
+    def _extract_from_pws_data(self, data, url_set):
+        if isinstance(data, dict):
+            if 'images' in data:
+                images = data['images']
+                target = images.get('originals') or images.get('orig') or images.get('736x')
+                if target and 'url' in target:
+                    url_set.add(target['url'])
+            
+            for k, v in data.items():
+                self._extract_from_pws_data(v, url_set)
+                
+        elif isinstance(data, list):
+            for item in data:
+                self._extract_from_pws_data(item, url_set)
 
-        return await asyncio.to_thread(_sync_get)
+    async def get_image_bytes(self, url: str) -> bytes:
+        def _download(target_url):
+            return self.scraper.get(target_url, timeout=30)
+
+        try:
+            response = await asyncio.to_thread(_download, url)
+            response.raise_for_status()
+            return response.content
+        except Exception as e:
+            raise Exception(f"Error downloading image: {e}")
