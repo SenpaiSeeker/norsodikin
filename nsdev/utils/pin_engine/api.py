@@ -1,150 +1,122 @@
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+import json
+import re
+import time
+import requests
+from urllib.parse import quote_plus, unquote_plus, urlencode
+from .models import PinterestMedia
 
-@dataclass
-class VideoStreamInfo:
-    url: str
-    resolution: Tuple[int, int]
-    duration: int
+class Endpoint:
+    _BASE = "https://www.pinterest.com"
+    GET_RELATED_MODULES = f"{_BASE}/resource/RelatedModulesResource/get/"
+    GET_MAIN_IMAGE = f"{_BASE}/resource/ApiResource/get/"
+    GET_BOARD_RESOURCE = f"{_BASE}/resource/BoardResource/get/"
+    GET_BOARD_FEED_RESOURCE = f"{_BASE}/resource/BoardFeedResource/get/"
+    GET_SEARCH_RESOURCE = f"{_BASE}/resource/BaseSearchResource/get/"
 
-class PinterestMedia:
-    def __init__(
-        self,
-        id: int,
-        src: str,
-        alt: Optional[str],
-        origin: Optional[str],
-        resolution: Tuple[int, int],
-        video_stream: Optional[VideoStreamInfo] = None,
-    ) -> None:
-        self.id = id
-        self.src = src
-        self.alt = alt
-        self.origin = origin
-        self.resolution = resolution
-        self.video_stream = video_stream
-        self.local_path = None
-
-    def to_dict(self) -> Dict[str, Any]:
-        data = {
-            "id": self.id,
-            "src": self.src,
-            "alt": self.alt,
-            "origin": self.origin,
-            "resolution": {
-                "x": self.resolution[0] if self.resolution else None,
-                "y": self.resolution[1] if self.resolution else None,
-            },
-        }
-        if self.video_stream:
-            data["media_stream"] = {
-                "video": {
-                    "url": self.video_stream.url,
-                    "resolution": self.video_stream.resolution,
-                    "duration": self.video_stream.duration,
-                }
-            }
-        return data
-
+class RequestBuilder:
     @staticmethod
-    def from_dict(data: Dict[str, Any]) -> "PinterestMedia":
-        return PinterestMedia(
-            data["id"],
-            data["src"],
-            data["alt"],
-            data["origin"],
-            (data["resolution"]["x"], data["resolution"]["y"]) if "resolution" in data else (0, 0),
-            data.get("is_stream", False),
+    def build_post(options, source_url="/", context=None) -> str:
+        return RequestBuilder.url_encode(
+            {
+                "source_url": source_url,
+                "data": json.dumps({"options": options, "context": context}),
+                "_": "%s" % int(time.time() * 1000),
+            }
         )
 
-    @classmethod
-    def from_responses(
-        cls,
-        response_data: List[Dict[str, Any]],
-        min_resolution: Tuple[int, int] = (0, 0),
-        caption_from_title: bool = False,
-    ) -> List["PinterestMedia"]:
-        if not response_data:
-            return []
-        min_width, min_height = min_resolution
-
-        images: List["PinterestMedia"] = []
-        for item in response_data:
-            if not isinstance(item, dict):
-                continue
-
-            orig = item.get("images", {}).get("orig")
-            if not orig:
-                continue
-
-            try:
-                width = int(orig.get("width", 0))
-                height = int(orig.get("height", 0))
-            except (TypeError, ValueError):
-                continue
-
-            if width < min_width or height < min_height:
-                continue
-
-            src = orig.get("url")
-            if not src:
-                continue
-            id = item.get("id", 0)
-            
-            if caption_from_title:
-                alt = item.get("title", item.get("auto_alt_text", ""))
-            else:
-                alt = item.get("auto_alt_text", "")
-            
-            origin = f"https://www.pinterest.com/pin/{id}/"
-
-            is_stream = bool(item.get("should_open_in_stream", False))
-            video_stream = None
-            if is_stream:
-                stream_variant = cls._get_best_video_variant(item)
-                if stream_variant and stream_variant.get("url", None):
-                    video_stream = VideoStreamInfo(
-                        url=stream_variant["url"],
-                        resolution=(stream_variant.get("width", 0), stream_variant.get("height", 0)),
-                        duration=stream_variant.get("duration", 0),
-                    )
-
-            images.append(
-                cls(
-                    id,
-                    src,
-                    alt,
-                    origin,
-                    resolution=(width, height),
-                    video_stream=video_stream,
-                )
-            )
-
-        return images
+    @staticmethod
+    def build_get(endpoint: str, options: dict, source_url: str = "/", context: dict = {}) -> str:
+        query = RequestBuilder.url_encode(
+            {
+                "source_url": source_url,
+                "data": json.dumps({"options": options, "context": context}),
+                "_": "%s" % int(time.time() * 1000),
+            }
+        )
+        url = f"{endpoint}?{query}"
+        return url
 
     @staticmethod
-    def _extract_video_list(data_raw: Dict[str, Any]) -> Dict[str, Dict]:
+    def url_encode(query: str | dict) -> str:
+        if isinstance(query, str):
+            query = quote_plus(query)
+        else:
+            query = urlencode(query)
+        query = query.replace("+", "%20")
+        return query
+
+    @staticmethod
+    def url_decode(query: str) -> str:
+        return unquote_plus(query)
+
+class PinterestAPI:
+    USER_AGENT = (
+        "Mozilla/5.0 (Windows NT 6.1; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36"
+    )
+
+    def __init__(self, timeout: float = 10) -> None:
+        self.timeout = timeout
+        self.endpoint = Endpoint()
+        self._session = requests.Session()
+        self._session.headers.update({"User-Agent": self.USER_AGENT})
+        self._session.headers.update(
+            {"x-pinterest-pws-handler": "www/pin/[id].js"}
+        )
+        self._init_cookies()
+
+    def _init_cookies(self):
         try:
-            video_list = data_raw["story_pin_data"]["pages"][0]["blocks"][0]["video"]["video_list"]
-        except (KeyError, IndexError, TypeError):
-            return {}
-        if not isinstance(video_list, dict):
-            return {}
-        return video_list
+            self._session.get(self.endpoint._BASE, timeout=self.timeout)
+        except Exception:
+            pass
 
-    @staticmethod
-    def _choose_highest_resolution(video_list: Dict[str, Dict]) -> Optional[Dict[str, Any]]:
-        if not video_list:
+    def _parse_search_query(self, url: str) -> str:
+        result = re.search(r"/search/pins/\?q=([A-Za-z0-9%]+)", url)
+        if not result:
             return None
+        query = result.group(1)
+        return RequestBuilder.url_decode(query)
 
-        def resolution(entry: Dict[str, Any]) -> int:
-            return (entry.get("width") or 0) * (entry.get("height") or 0)
+    def get_search(self, query: str, num: int, bookmark: str = None) -> dict:
+        source_url = f"/search/pins/?q={query}&rs=typed"
+        endpoint = self.endpoint.GET_SEARCH_RESOURCE
+        options = {
+            "appliedProductFilters": "---",
+            "auto_correction_disabled": False,
+            "bookmarks": [bookmark] if bookmark else [],
+            "page_size": num,
+            "query": query,
+            "redux_normalize_feed": True,
+            "rs": "typed",
+            "scope": "pins",
+            "source_url": source_url,
+        }
 
-        return max(video_list.values(), key=resolution)
+        try:
+            request_url = RequestBuilder.build_get(endpoint, options, source_url)
+            response_raw = self._session.get(request_url, timeout=self.timeout)
+            return response_raw.json()
+        except Exception as e:
+            raise Exception(f"Failed to request search: {e}")
 
-    @classmethod
-    def _get_best_video_variant(cls, data_raw: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        video_variant = cls._choose_highest_resolution(cls._extract_video_list(data_raw))
-        if not video_variant:
-            return None
-        return video_variant
+    def get_related_images(self, pin_id: str, num: int, bookmark: str = None) -> dict:
+        endpoint = self.endpoint.GET_RELATED_MODULES
+        source_url = f"/pin/{pin_id}/"
+        options = {
+            "pin_id": f"{pin_id}",
+            "context_pin_ids": [],
+            "page_size": num,
+            "bookmarks": [bookmark] if bookmark else [],
+            "search_query": "",
+            "source": "deep_linking",
+            "top_level_source": "deep_linking",
+            "top_level_source_depth": 1,
+            "is_pdp": False,
+        }
+        try:
+            request_url = RequestBuilder.build_get(endpoint, options, source_url)
+            response_raw = self._session.get(request_url, timeout=self.timeout)
+            return response_raw.json()
+        except Exception as e:
+            raise Exception(f"Failed to request related images: {e}")
