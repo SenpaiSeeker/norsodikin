@@ -57,10 +57,11 @@ class DataBase:
         if self.auto_backup and self.scheduler and self.storage_type in ["local", "sqlite"]:
 
             if not self.backup_bot_token or not self.backup_chat_id:
-                return self.cipher.log.print(f"{cipher.log.YELLOW}Auto backup is disabled because token/chat_id is missing.")
+                return self.cipher.log.warning("Auto backup is disabled because token/chat_id is missing.")
 
             @self.scheduler.cron(self.backup_cron_spec)
             async def scheduled_backup_task():
+                self.cipher.log.info("Starting scheduled backup process...")
                 await self.perform_backup()
 
     async def perform_backup(self):
@@ -70,14 +71,14 @@ class DataBase:
         if await self._run_sync(os.path.exists, db_path):
             source_paths.append(db_path)
         else:
-            self.cipher.log.print(f"{cipher.log.YELLOW}Database file not found. Skipping database backup.")
+            self.cipher.log.warning("Database file not found. Skipping database backup.")
 
         env_files = await self._run_sync(glob.glob, "*.env")
         if env_files:
             source_paths.extend(env_files)
 
         if not source_paths:
-            return self.cipher.log.print(f"{cipher.log.YELLOW}No files to back up. Aborting.")
+            return self.cipher.log.warning("No files to back up. Aborting.")
 
         zip_path = None
 
@@ -119,21 +120,25 @@ class DataBase:
         try:
             with open(file_path, "rb") as doc:
                 files = {"document": doc}
-                params = {"chat_id": self.backup_chat_id, "caption": caption, "parse_mode": "Markdown"}
+                params = {
+                    "chat_id": self.backup_chat_id,
+                    "caption": caption,
+                    "parse_mode": "Markdown",
+                }
 
-                async with httpx.AsyncClient(timeout=httpx.Timeout(60)) as client:
+                async with httpx.AsyncClient(timeout=60) as client:
                     response = await client.post(url, params=params, files=files)
 
             response.raise_for_status()
             response_data = response.json()
 
             if response_data.get("ok"):
-                self.cipher.log.print(f"{cipher.log.CYAN}[AUTO_BACKUP] {cipher.log.GREEN}Successfully sent to Telegram.")
+                self.cipher.log.info("Successfully sent to Telegram.")
             else:
-                self.cipher.log.print(f"{ctx.log.RED}[BACKUP_ERROR] {cipher.log.YELLOW}Failed to send: {response_data.get('description')}")
+                self.cipher.log.error(f"Failed to send: {response_data.get('description')}")
 
         except Exception as e:
-            self.cipher.log.print(f"{ctx.log.RED}[BACKUP_ERROR] {cipher.log.YELLOW}Failed to send file to Telegram: {e}")
+            self.cipher.log.error(f"Failed to send file to Telegram: {e}")
 
     def _sync_load_data(self):
         try:
@@ -342,7 +347,11 @@ class DataBase:
 
         if self.storage_type == "mongo":
             await self._run_sync(
-                lambda: self.data.bot.update_one({"_id": user_id_str}, {"$set": bot_data}, upsert=True)
+                lambda: self.data.bot.update_one(
+                    {"_id": user_id_str},
+                    {"$set": bot_data},
+                    upsert=True,
+                )
             )
 
         elif self.storage_type == "sqlite":
@@ -387,7 +396,13 @@ class DataBase:
             )
 
             raw_bots = [
-                {"user_id": r[0], "api_id": r[1], "api_hash": r[2], "bot_token": r[3], "session_string": r[4]}
+                {
+                    "user_id": r[0],
+                    "api_id": r[1],
+                    "api_hash": r[2],
+                    "bot_token": r[3],
+                    "session_string": r[4],
+                }
                 for r in rows
             ]
 
