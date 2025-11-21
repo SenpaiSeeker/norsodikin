@@ -7,7 +7,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 
-class PinterestAPI:
+class Pinterest:
     def __init__(self, base_url: str = "https://www.pinterest.com", timeout: int = 20):
         self.base_url = base_url
         self.headers = {
