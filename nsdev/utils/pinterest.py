@@ -1,8 +1,7 @@
 import asyncio
 import re
 from typing import List, Optional
-from .pin_engine.api import PinterestAPI
-from .pin_engine.models import PinterestMedia
+from .pin_engine import PinterestAPI, PinterestMedia
 
 class Pinterest:
     def __init__(self):
