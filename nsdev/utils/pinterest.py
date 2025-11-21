@@ -85,20 +85,30 @@ class Pinterest:
                         if len(unique_urls) >= limit:
                             break
                 
-                if not unique_urls:
-                    script_tags = soup.find_all('script', string=re.compile(r'https://i\.pinimg\.com/'))
+                if len(unique_urls) < limit:
+                    script_tags = soup.find_all('script')
                     for script in script_tags:
-                        urls_in_script = re.findall(r'https://i\.pinimg\.com/[0-9x]+/[^\s"]+\.jpg', script.string)
-                        for u in urls_in_script:
-                            hd_url = re.sub(r'/\d+x/', '/originals/', u)
-                            unique_urls.add(hd_url)
-                            if len(unique_urls) >= limit:
-                                break
+                        if script.string:
+                            urls_in_script = re.findall(r'https://i\.pinimg\.com/[0-9x]+/[^\s"]+\.(jpg|jpeg|png)', script.string)
+                            for u in urls_in_script:
+                                hd_url = re.sub(r'/\d+x/', '/originals/', u[0] if isinstance(u, tuple) else u)
+                                unique_urls.add(hd_url)
+                                if len(unique_urls) >= limit:
+                                    break
+                
+                if len(unique_urls) < limit:
+                    json_scripts = soup.find_all('script', {'type': 'application/json'})
+                    for script in json_scripts:
+                        try:
+                            json_data = json.loads(script.string)
+                            self._extract_urls_from_json(json_data, unique_urls, limit)
+                        except json.JSONDecodeError:
+                            continue
                 
                 if unique_urls:
                     return list(unique_urls)
                 
-                raise ValueError("Tidak ditemukan gambar (Metode API & Scraping Gagal). Coba query lain atau periksa koneksi internet.")
+                raise ValueError("Tidak ditemukan gambar (Metode API & Scraping Gagal). Coba query lain atau periksa koneksi internet. Pinterest mungkin memerlukan autentikasi atau struktur telah berubah.")
 
             except httpx.RequestError as e:
                 raise Exception(f"Pinterest Network Error: {e}")
@@ -106,6 +116,23 @@ class Pinterest:
                 raise Exception(f"Pinterest JSON Parse Error: {e}")
             except Exception as e:
                 raise Exception(f"Pinterest Error: {e}")
+
+    def _extract_urls_from_json(self, data, unique_urls, limit):
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if key == 'images' and isinstance(value, dict):
+                    for size, img_data in value.items():
+                        if isinstance(img_data, dict) and 'url' in img_data:
+                            url = img_data['url']
+                            hd_url = re.sub(r'/\d+x/', '/originals/', url)
+                            unique_urls.add(hd_url)
+                            if len(unique_urls) >= limit:
+                                return
+                else:
+                    self._extract_urls_from_json(value, unique_urls, limit)
+        elif isinstance(data, list):
+            for item in data:
+                self._extract_urls_from_json(item, unique_urls, limit)
 
     async def get_image_bytes(self, url: str) -> bytes:
         async with httpx.AsyncClient(timeout=20) as client:
