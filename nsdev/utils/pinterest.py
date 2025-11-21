@@ -1,8 +1,9 @@
 import asyncio
 import re
-from typing import List, Optional
-from .pin_engine.api import PinterestAPI
-from .pin_engine.models import PinterestMedia
+from typing import List
+
+from .pin_engine import PinterestAPI, PinterestMedia
+
 
 class Pinterest:
     def __init__(self):
@@ -16,14 +17,14 @@ class Pinterest:
         response = await self._run_sync(self.api.get_search, query, limit)
         if not response:
             return []
-        
+
         resource_response = response.get("resource_response", {})
         data = resource_response.get("data", {})
         results = data.get("results", [])
-        
+
         medias = PinterestMedia.from_responses(results)
         urls = [media.src for media in medias if media.src]
-        
+
         unique_urls = list(dict.fromkeys(urls))
         return unique_urls[:limit]
 
@@ -32,31 +33,31 @@ class Pinterest:
         if pin_match:
             pin_id = pin_match.group(1)
             response = await self._run_sync(self.api.get_related_images, pin_id, limit)
-            
+
             resource_response = response.get("resource_response", {})
             data = resource_response.get("data", [])
-            
+
             medias = PinterestMedia.from_responses(data)
             urls = [media.src for media in medias if media.src]
-            
+
             unique_urls = list(dict.fromkeys(urls))
             return unique_urls[:limit]
-        
+
         elif "search" in url:
             query_match = re.search(r"q=([^&]+)", url)
             if query_match:
                 query = query_match.group(1)
                 return await self.search(query, limit)
-        
+
         return await self.search(url, limit)
 
     async def get_media_objects(self, query: str, limit: int = 10) -> List[PinterestMedia]:
         response = await self._run_sync(self.api.get_search, query, limit)
         if not response:
             return []
-            
+
         resource_response = response.get("resource_response", {})
         data = resource_response.get("data", {})
         results = data.get("results", [])
-        
+
         return PinterestMedia.from_responses(results)[:limit]
