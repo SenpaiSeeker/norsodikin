@@ -2,104 +2,111 @@ import asyncio
 import httpx
 import json
 import re
-import os
-from http.cookiejar import MozillaCookieJar
 from typing import List
-from bs4 import BeautifulSoup
+from urllib.parse import urlencode
 
 class Pinterest:
-    def __init__(self, cookies_file_path: str = "cookies/Pinterest.txt"):
-        self.base_search_url = "https://www.pinterest.com/search/pins/"
-        self.cookies_file_path = cookies_file_path
+    def __init__(self):
+        self.base_url = "https://www.pinterest.com"
+        self.resource_url = "https://www.pinterest.com/resource/BaseSearchResource/get/"
         self.headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
             "Accept-Language": "en-US,en;q=0.9",
             "Referer": "https://www.pinterest.com/",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
+            "X-Requested-With": "XMLHttpRequest",
+            "X-APP-VERSION": "c642044",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-origin",
-            "Sec-Fetch-User": "?1",
         }
-
-    def _load_cookies(self):
-        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
-            try:
-                jar = MozillaCookieJar(self.cookies_file_path)
-                jar.load(ignore_discard=True, ignore_expires=True)
-                return jar
-            except Exception:
-                pass
-        return None
 
     async def search(self, query: str, limit: int = 9) -> List[str]:
         unique_urls = set()
-        formatted_query = query.replace(" ", "%20")
-        cookie_jar = self._load_cookies()
         
-        async with httpx.AsyncClient(timeout=20, follow_redirects=True, cookies=cookie_jar) as client:
-            for page in range(1, 4):
-                if len(unique_urls) >= limit:
-                    break
+        data_payload = {
+            "options": {
+                "article": None,
+                "appliedProductFilters": "---",
+                "query": query,
+                "scope": "pins",
+                "auto_correction_disabled": False,
+                "top_pin_id": "",
+                "filters": None
+            },
+            "context": {}
+        }
 
-                url = f"{self.base_search_url}?q={formatted_query}&rs=typed"
+        params = {
+            "source_url": f"/search/pins/?q={query}&rs=typed",
+            "data": json.dumps(data_payload),
+            "_": "1635864321234"
+        }
+
+        async with httpx.AsyncClient(timeout=25, follow_redirects=True) as client:
+            try:
+                initial_resp = await client.get(self.base_url, headers=self.headers)
+                csrf_token = "123456" 
+                for cookie in initial_resp.cookies:
+                    if cookie.name == "csrftoken":
+                        csrf_token = cookie.value
+                
+                headers = self.headers.copy()
+                headers["X-CSRFToken"] = csrf_token
+                
+                response = await client.get(self.resource_url, params=params, headers=headers, cookies=initial_resp.cookies)
                 
                 try:
-                    response = await client.get(url, headers=self.headers)
-                    response.raise_for_status()
-                    html_text = response.text
+                    response_json = response.json()
+                except json.JSONDecodeError:
+                    raise ValueError(f"Gagal decode JSON. Status: {response.status_code}. Pinterest mungkin memblokir IP atau meminta captcha.")
 
-                    soup = BeautifulSoup(html_text, "html.parser")
-                    data_script = soup.find("script", {"id": "__PWS_DATA__"})
+                if "resource_response" in response_json:
+                    data = response_json["resource_response"].get("data", {})
+                    results = data.get("results", [])
                     
-                    if data_script:
-                        try:
-                            json_data = json.loads(data_script.string)
-                            self._extract_from_pws_data(json_data, unique_urls)
-                        except Exception:
-                            pass
-
-                    if len(unique_urls) < limit:
-                        regex_pattern = r'https://i\.pinimg\.com/(?:[0-9]+x|originals)/([a-z0-9]{32,})\.(?:jpg|jpeg|png|webp)'
-                        raw_matches = re.findall(regex_pattern, html_text)
+                    for item in results:
+                        if len(unique_urls) >= limit:
+                            break
+                            
+                        images = item.get("images")
+                        if not images:
+                            continue
+                            
+                        target_img = images.get("orig") or images.get("originals") or images.get("736x")
                         
-                        for hash_id in raw_matches:
-                            hd_url = f"https://i.pinimg.com/originals/{hash_id[:2]}/{hash_id[2:4]}/{hash_id[4:6]}/{hash_id}.jpg"
+                        if target_img and "url" in target_img:
+                            url = target_img["url"]
+                            if not url.endswith((".jpg", ".png", ".jpeg", ".webp")):
+                                continue
+                                
+                            if "d53b014d86a6b6761bf649a0ed813c2b" in url or "s-media-cache" in url:
+                                continue
+                                
+                            hd_url = re.sub(r'/\d+x/', '/originals/', url)
                             unique_urls.add(hd_url)
 
-                except httpx.RequestError:
-                    continue
-                except Exception:
-                    continue
+                if not unique_urls and response.status_code == 200:
+                    regex_pattern = r'https://i\.pinimg\.com/(?:[0-9]+x|originals)/[^"\'\s]+\.(?:jpg|jpeg|png|webp)'
+                    raw_matches = re.findall(regex_pattern, response.text)
+                    for m in raw_matches:
+                        if len(unique_urls) >= limit:
+                            break
+                        if "d53b01" in m:
+                            continue
+                        unique_urls.add(re.sub(r'/\d+x/', '/originals/', m))
 
-                await asyncio.sleep(0.5)
+            except httpx.RequestError as e:
+                raise Exception(f"Network Error: {e}")
+            except Exception as e:
+                raise Exception(f"Pinterest Error: {e}")
 
         final_list = list(unique_urls)[:limit]
         
         if not final_list:
-            if not cookie_jar:
-                raise ValueError(f"Gagal mengambil gambar. Cookie Pinterest tidak ditemukan atau kadaluarsa. Query: '{query}'")
-            raise ValueError(f"Tidak ditemukan gambar untuk query: '{query}'. Pastikan cookie valid.")
+            raise ValueError("Tidak ditemukan gambar (Scraping Kosong). Pinterest mungkin merespons dengan halaman login/captcha.")
             
         return final_list
-
-    def _extract_from_pws_data(self, data, url_set):
-        if isinstance(data, dict):
-            if 'images' in data and 'orig' in data['images']:
-                img_data = data['images']['orig']
-                if 'url' in img_data:
-                    url = img_data['url']
-                    if "i.pinimg.com" in url and "75x75" not in url:
-                        url_set.add(url)
-            
-            for k, v in data.items():
-                self._extract_from_pws_data(v, url_set)
-                
-        elif isinstance(data, list):
-            for item in data:
-                self._extract_from_pws_data(item, url_set)
 
     async def get_image_bytes(self, url: str) -> bytes:
         async with httpx.AsyncClient(timeout=30) as client:
