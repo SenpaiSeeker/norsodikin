@@ -1,11 +1,13 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
+
 @dataclass
 class VideoStreamInfo:
     url: str
     resolution: Tuple[int, int]
     duration: int
+
 
 class PinterestMedia:
     def __init__(
@@ -90,12 +92,12 @@ class PinterestMedia:
             if not src:
                 continue
             id = item.get("id", 0)
-            
+
             if caption_from_title:
                 alt = item.get("title", item.get("auto_alt_text", ""))
             else:
                 alt = item.get("auto_alt_text", "")
-            
+
             origin = f"https://www.pinterest.com/pin/{id}/"
 
             is_stream = bool(item.get("should_open_in_stream", False))

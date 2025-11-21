@@ -82,11 +82,11 @@ class WikipediaSearch:
                 summary_response = await client.get(self.api_url, params=summary_params, headers=self.headers)
                 summary_response.raise_for_status()
                 summary_data = summary_response.json()
-                
+
                 pages = summary_data.get("query", {}).get("pages", {})
                 if not pages:
-                     raise ValueError(f"Gagal mengambil detail halaman untuk '{page_title}'.")
-                     
+                    raise ValueError(f"Gagal mengambil detail halaman untuk '{page_title}'.")
+
                 page = next(iter(pages.values()))
 
                 summary = page.get("extract")

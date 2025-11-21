@@ -91,8 +91,8 @@ class Button:
         for row_data in layout:
             row = []
             for button_info in row_data:
-                if 'web_app' in button_info:
-                    button_info['web_app'] = pyrogram.types.WebAppInfo(url=button_info['web_app'])
+                if "web_app" in button_info:
+                    button_info["web_app"] = pyrogram.types.WebAppInfo(url=button_info["web_app"])
                 row.append(pyrogram.types.InlineKeyboardButton(**button_info))
             if row:
                 keyboard.append(row)

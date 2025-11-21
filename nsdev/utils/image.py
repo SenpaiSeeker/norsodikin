@@ -27,18 +27,17 @@ class ImageManipulator(FontManager):
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
 
     async def _render_html_with_playwright(
-        self, 
-        html_content: str, 
-        selector: str = ".container", 
-        scale_factor: float = 1.0, 
-        width: int = 800, 
-        height: int = 1000
+        self,
+        html_content: str,
+        selector: str = ".container",
+        scale_factor: float = 1.0,
+        width: int = 800,
+        height: int = 1000,
     ) -> bytes:
         async with async_playwright() as p:
             browser = await p.chromium.launch()
             context = await browser.new_context(
-                viewport={"width": width, "height": height},
-                device_scale_factor=scale_factor
+                viewport={"width": width, "height": height}, device_scale_factor=scale_factor
             )
             page = await context.new_page()
             await page.set_content(html_content)
@@ -221,15 +220,11 @@ class ImageManipulator(FontManager):
             retweets=stats.get("retweets", "0"),
             quotes=stats.get("quotes", "0"),
             likes=stats.get("likes", "0"),
-            bookmarks=stats.get("bookmarks", "0")
+            bookmarks=stats.get("bookmarks", "0"),
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template, 
-            selector=".tweet-card", 
-            scale_factor=3.0, 
-            width=700, 
-            height=800
+            html_content=html_template, selector=".tweet-card", scale_factor=3.0, width=700, height=800
         )
 
     async def create_fake_ig_post(
@@ -402,15 +397,11 @@ class ImageManipulator(FontManager):
             svg_save=svg_save,
             likes=likes,
             caption=caption,
-            time_ago=time_ago
+            time_ago=time_ago,
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template, 
-            selector=".ig-card", 
-            scale_factor=3.0, 
-            width=650, 
-            height=1200
+            html_content=html_template, selector=".ig-card", scale_factor=3.0, width=650, height=1200
         )
 
     async def create_fake_wa_chat(
@@ -634,15 +625,11 @@ class ImageManipulator(FontManager):
             svg_smiley=svg_smiley,
             svg_attach=svg_attach,
             svg_cam=svg_cam,
-            svg_mic=svg_mic
+            svg_mic=svg_mic,
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template, 
-            selector=".wa-container", 
-            scale_factor=3.0, 
-            width=500, 
-            height=900
+            html_content=html_template, selector=".wa-container", scale_factor=3.0, width=500, height=900
         )
 
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
