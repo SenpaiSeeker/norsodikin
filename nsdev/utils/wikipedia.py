@@ -2,13 +2,16 @@ from types import SimpleNamespace
 from typing import List
 from urllib.parse import quote
 
+import fake_useragent
 import httpx
 
 
 class WikipediaSearch:
     def __init__(self, lang: str = "id", timeout: int = 15):
+        self.lang = lang
         self.api_url = f"https://{lang}.wikipedia.org/w/api.php"
         self.timeout = timeout
+        self.headers = {"User-Agent": fake_useragent.UserAgent().random}
 
     async def search(self, query: str, limit: int = 1) -> List[SimpleNamespace]:
         if limit == 1:
@@ -25,9 +28,9 @@ class WikipediaSearch:
             "srlimit": limit,
             "srprop": "snippet",
         }
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
             try:
-                search_response = await client.get(self.api_url, params=search_params, timeout=self.timeout)
+                search_response = await client.get(self.api_url, params=search_params, headers=self.headers)
                 search_response.raise_for_status()
                 search_data = search_response.json()
 
@@ -38,12 +41,14 @@ class WikipediaSearch:
                         SimpleNamespace(
                             title=item.get("title"),
                             summary=snippet + "...",
-                            url=f"https://id.wikipedia.org/wiki/{quote(item.get('title'))}",
+                            url=f"https://{self.lang}.wikipedia.org/wiki/{quote(item.get('title'))}",
                         )
                     )
                 return results
+            except httpx.HTTPStatusError as e:
+                raise Exception(f"Wikipedia API Error ({e.response.status_code}): {e.response.text}")
             except httpx.RequestError as e:
-                raise Exception(f"Failed to connect to Wikipedia API: {e}")
+                raise Exception(f"Gagal terhubung ke Wikipedia API: {e}")
 
     async def _get_top_article(self, query: str) -> SimpleNamespace:
         search_params = {
@@ -54,14 +59,14 @@ class WikipediaSearch:
             "srlimit": 1,
         }
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
             try:
-                search_response = await client.get(self.api_url, params=search_params, timeout=self.timeout)
+                search_response = await client.get(self.api_url, params=search_params, headers=self.headers)
                 search_response.raise_for_status()
                 search_data = search_response.json()
 
-                if not search_data["query"]["search"]:
-                    raise ValueError(f"No Wikipedia article found for '{query}'.")
+                if not search_data.get("query", {}).get("search"):
+                    raise ValueError(f"Tidak ada artikel Wikipedia ditemukan untuk '{query}'.")
 
                 page_title = search_data["query"]["search"][0]["title"]
 
@@ -74,19 +79,24 @@ class WikipediaSearch:
                     "explaintext": True,
                     "pithumbsize": 500,
                 }
-                summary_response = await client.get(self.api_url, params=summary_params, timeout=self.timeout)
+                summary_response = await client.get(self.api_url, params=summary_params, headers=self.headers)
                 summary_response.raise_for_status()
                 summary_data = summary_response.json()
-                page = next(iter(summary_data["query"]["pages"].values()))
+                
+                pages = summary_data.get("query", {}).get("pages", {})
+                if not pages:
+                     raise ValueError(f"Gagal mengambil detail halaman untuk '{page_title}'.")
+                     
+                page = next(iter(pages.values()))
 
                 summary = page.get("extract")
-                if not summary or "may refer to" in summary:
-                    raise ValueError(f"'{query}' is ambiguous or has no summary.")
+                if not summary or "may refer to" in summary or "dapat mengacu pada" in summary.lower():
+                    raise ValueError(f"'{query}' ambigu atau tidak memiliki ringkasan yang jelas.")
 
                 summary = " ".join(summary.split("\n")[0].split()[:60]) + "..."
 
                 image_url = page.get("thumbnail", {}).get("source")
-                page_url = f"https://id.wikipedia.org/wiki/{quote(page_title)}"
+                page_url = f"https://{self.lang}.wikipedia.org/wiki/{quote(page_title)}"
 
                 return SimpleNamespace(
                     title=page.get("title"),
@@ -95,5 +105,7 @@ class WikipediaSearch:
                     image_url=image_url,
                 )
 
+            except httpx.HTTPStatusError as e:
+                raise Exception(f"Wikipedia API Error ({e.response.status_code}): {e.response.text}")
             except httpx.RequestError as e:
-                raise Exception(f"Failed to connect to Wikipedia API: {e}")
+                raise Exception(f"Gagal terhubung ke Wikipedia API: {e}")
