@@ -4,47 +4,42 @@ import json
 import re
 import os
 from http.cookiejar import MozillaCookieJar
-from typing import List, Optional, Dict
+from typing import List
 from bs4 import BeautifulSoup
 
 class Pinterest:
-    def __init__(self, cookie_path: str = "pinterest.txt"):
+    def __init__(self, cookies_file_path: str = "cookies/Pinterest.txt"):
         self.base_search_url = "https://www.pinterest.com/search/pins/"
+        self.cookies_file_path = cookies_file_path
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
-            "Cache-Control": "no-cache",
-            "Pragma": "no-cache",
-            "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-            "Sec-Ch-Ua-Mobile": "?0",
-            "Sec-Ch-Ua-Platform": '"Windows"',
+            "Referer": "https://www.pinterest.com/",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
             "Sec-Fetch-Dest": "document",
             "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-Site": "same-origin",
             "Sec-Fetch-User": "?1",
-            "Upgrade-Insecure-Requests": "1"
         }
-        self.cookie_path = cookie_path
-        self.cookies = self._load_cookies()
 
-    def _load_cookies(self) -> Dict[str, str]:
-        cookie_dict = {}
-        if os.path.exists(self.cookie_path):
+    def _load_cookies(self):
+        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
             try:
-                cj = MozillaCookieJar(self.cookie_path)
-                cj.load(ignore_discard=True, ignore_expires=True)
-                for cookie in cj:
-                    cookie_dict[cookie.name] = cookie.value
+                jar = MozillaCookieJar(self.cookies_file_path)
+                jar.load(ignore_discard=True, ignore_expires=True)
+                return jar
             except Exception:
                 pass
-        return cookie_dict
+        return None
 
     async def search(self, query: str, limit: int = 9) -> List[str]:
         unique_urls = set()
         formatted_query = query.replace(" ", "%20")
+        cookie_jar = self._load_cookies()
         
-        async with httpx.AsyncClient(timeout=20, follow_redirects=True, cookies=self.cookies) as client:
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True, cookies=cookie_jar) as client:
             for page in range(1, 4):
                 if len(unique_urls) >= limit:
                     break
@@ -56,9 +51,6 @@ class Pinterest:
                     response.raise_for_status()
                     html_text = response.text
 
-                    if "pinterest.com/login" in str(response.url):
-                        pass
-
                     soup = BeautifulSoup(html_text, "html.parser")
                     data_script = soup.find("script", {"id": "__PWS_DATA__"})
                     
@@ -69,18 +61,13 @@ class Pinterest:
                         except Exception:
                             pass
 
-                    regex_pattern = r'https://i\.pinimg\.com/(?:originals|736x)/[a-z0-9/]+\.(?:jpg|jpeg|png|webp)'
-                    raw_urls = re.findall(regex_pattern, html_text)
-                    
-                    for url in raw_urls:
-                        if len(unique_urls) >= limit:
-                            break
+                    if len(unique_urls) < limit:
+                        regex_pattern = r'https://i\.pinimg\.com/(?:[0-9]+x|originals)/([a-z0-9]{32,})\.(?:jpg|jpeg|png|webp)'
+                        raw_matches = re.findall(regex_pattern, html_text)
                         
-                        if "s-media-cache" in url or "75x75" in url or "236x" in url:
-                            continue
-
-                        hd_url = re.sub(r'/\d+x/', '/originals/', url)
-                        unique_urls.add(hd_url)
+                        for hash_id in raw_matches:
+                            hd_url = f"https://i.pinimg.com/originals/{hash_id[:2]}/{hash_id[2:4]}/{hash_id[4:6]}/{hash_id}.jpg"
+                            unique_urls.add(hd_url)
 
                 except httpx.RequestError:
                     continue
@@ -92,25 +79,23 @@ class Pinterest:
         final_list = list(unique_urls)[:limit]
         
         if not final_list:
-            if not self.cookies:
-                raise ValueError(f"Tidak ada gambar ditemukan. Login Pinterest diperlukan. Silakan simpan cookies Netscape di '{self.cookie_path}'")
-            raise ValueError(f"Tidak ditemukan gambar valid untuk query: '{query}'. Struktur Pinterest mungkin berubah.")
+            if not cookie_jar:
+                raise ValueError(f"Gagal mengambil gambar. Cookie Pinterest tidak ditemukan atau kadaluarsa. Query: '{query}'")
+            raise ValueError(f"Tidak ditemukan gambar untuk query: '{query}'. Pastikan cookie valid.")
             
         return final_list
 
     def _extract_from_pws_data(self, data, url_set):
         if isinstance(data, dict):
-            if 'images' in data and isinstance(data['images'], dict):
-                images = data['images']
-                target = images.get('originals') or images.get('orig') or images.get('736x')
-                if target and 'url' in target:
-                    img_url = target['url']
-                    if "i.pinimg.com" in img_url and not img_url.endswith(".gif"):
-                        url_set.add(img_url)
+            if 'images' in data and 'orig' in data['images']:
+                img_data = data['images']['orig']
+                if 'url' in img_data:
+                    url = img_data['url']
+                    if "i.pinimg.com" in url and "75x75" not in url:
+                        url_set.add(url)
             
             for k, v in data.items():
-                if k != "user" and k != "owner": 
-                    self._extract_from_pws_data(v, url_set)
+                self._extract_from_pws_data(v, url_set)
                 
         elif isinstance(data, list):
             for item in data:
