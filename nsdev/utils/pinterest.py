@@ -1,4 +1,5 @@
 import asyncio
+import random
 import re
 from typing import List
 
@@ -14,7 +15,7 @@ class Pinterest:
         return await loop.run_in_executor(None, lambda: func(*args, **kwargs))
 
     async def search(self, query: str, limit: int = 10) -> List[str]:
-        response = await self._run_sync(self.api.get_search, query, limit)
+        response = await self._run_sync(self.api.get_search, query, limit * 10)
         if not response:
             return []
 
@@ -26,13 +27,14 @@ class Pinterest:
         urls = [media.src for media in medias if media.src]
 
         unique_urls = list(dict.fromkeys(urls))
+        random.shuffle(unique_urls)
         return unique_urls[:limit]
 
     async def get_images(self, url: str, limit: int = 10) -> List[str]:
         pin_match = re.search(r"pin/(\d+)", url)
         if pin_match:
             pin_id = pin_match.group(1)
-            response = await self._run_sync(self.api.get_related_images, pin_id, limit)
+            response = await self._run_sync(self.api.get_related_images, pin_id, limit * 10)
 
             resource_response = response.get("resource_response", {})
             data = resource_response.get("data", [])
@@ -41,6 +43,7 @@ class Pinterest:
             urls = [media.src for media in medias if media.src]
 
             unique_urls = list(dict.fromkeys(urls))
+            random.shuffle(unique_urls)
             return unique_urls[:limit]
 
         elif "search" in url:
@@ -52,7 +55,7 @@ class Pinterest:
         return await self.search(url, limit)
 
     async def get_media_objects(self, query: str, limit: int = 10) -> List[PinterestMedia]:
-        response = await self._run_sync(self.api.get_search, query, limit)
+        response = await self._run_sync(self.api.get_search, query, limit * 10)
         if not response:
             return []
 
@@ -60,4 +63,10 @@ class Pinterest:
         data = resource_response.get("data", {})
         results = data.get("results", [])
 
-        return PinterestMedia.from_responses(results)[:limit]
+        all_medias = PinterestMedia.from_responses(results)
+
+        unique_medias = list({media.src: media for media in all_medias}.values())
+
+        random.shuffle(unique_medias)
+
+        return unique_medias[:limit]
