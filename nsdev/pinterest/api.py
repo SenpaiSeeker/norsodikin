@@ -1,8 +1,10 @@
 import json
 import re
 import time
-import requests
 from urllib.parse import quote_plus, unquote_plus, urlencode
+
+import requests
+
 
 class Endpoint:
     _BASE = "https://www.pinterest.com"
@@ -11,6 +13,7 @@ class Endpoint:
     GET_BOARD_RESOURCE = f"{_BASE}/resource/BoardResource/get/"
     GET_BOARD_FEED_RESOURCE = f"{_BASE}/resource/BoardFeedResource/get/"
     GET_SEARCH_RESOURCE = f"{_BASE}/resource/BaseSearchResource/get/"
+
 
 class RequestBuilder:
     @staticmethod
@@ -48,6 +51,7 @@ class RequestBuilder:
     def url_decode(query: str) -> str:
         return unquote_plus(query)
 
+
 class PinterestAPI:
     USER_AGENT = (
         "Mozilla/5.0 (Windows NT 6.1; Win64; x64) "
@@ -59,9 +63,7 @@ class PinterestAPI:
         self.endpoint = Endpoint()
         self._session = requests.Session()
         self._session.headers.update({"User-Agent": self.USER_AGENT})
-        self._session.headers.update(
-            {"x-pinterest-pws-handler": "www/pin/[id].js"}
-        )
+        self._session.headers.update({"x-pinterest-pws-handler": "www/pin/[id].js"})
         self._init_cookies()
 
     def _init_cookies(self):

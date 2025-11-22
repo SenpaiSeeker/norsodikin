@@ -1,4 +1,3 @@
-import re
 import asyncio
 import base64
 import hashlib
@@ -6,6 +5,7 @@ import hmac
 import io
 import json
 import random
+import re
 import time
 import uuid
 from typing import Optional, Tuple
@@ -423,4 +423,3 @@ class SaweriaScraper(QrCodeGenerator):
             return int(value)
         except ValueError:
             return None
-
