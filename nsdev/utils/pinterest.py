@@ -62,6 +62,9 @@ class Pinterest:
         results = data.get("results", [])
         
         all_medias = PinterestMedia.from_responses(results)
-        random.shuffle(all_medias)
         
-        return all_medias[:limit]
+        unique_medias = list({media.src: media for media in all_medias}.values())
+        
+        random.shuffle(unique_medias)
+        
+        return unique_medias[:limit]
