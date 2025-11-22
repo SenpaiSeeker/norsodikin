@@ -28,6 +28,7 @@ from .payment.payment import (
     SaweriaScraper,
     VioletMediaPayClient,
 )
+from .pinterest import Pinterest
 from .schedule.manager import Scheduler
 from .server.addUser import SSHUserManager
 from .server.monitor import ServerMonitor
@@ -59,7 +60,6 @@ from .utils.lookup import TMDbClient
 from .utils.mediainfo import MediaInspector
 from .utils.osint import OsintTools
 from .utils.paste import PasteClient
-from .utils.pinterest import Pinterest
 from .utils.progress import TelegramProgressBar
 from .utils.ratelimit import RateLimiter
 from .utils.shell import ShellExecutor
@@ -69,7 +69,7 @@ from .utils.weather import WeatherWttr
 from .utils.web import WebAutomation
 from .utils.wikipedia import WikipediaSearch
 
-__version__ = "0.40"
+__version__ = "0.41"
 __author__ = "@NorSodikin"
 
 
@@ -113,6 +113,7 @@ class NsDev:
             Tripay=PaymentTripay,
             Violet=VioletMediaPayClient,
         )
+        self.pinterest = Pinterest()
         self.schedule = Scheduler()
         self.server = SimpleNamespace(
             monitor=ServerMonitor(),
@@ -149,7 +150,6 @@ class NsDev:
             mediainfo=MediaInspector(),
             osint=OsintTools,
             paste=PasteClient,
-            pinterest=Pinterest(),
             progress=TelegramProgressBar,
             ratelimit=RateLimiter(self._client),
             shell=ShellExecutor(),
