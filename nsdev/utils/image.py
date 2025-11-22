@@ -27,18 +27,17 @@ class ImageManipulator(FontManager):
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
 
     async def _render_html_with_playwright(
-        self, 
-        html_content: str, 
-        selector: str = ".container", 
-        scale_factor: float = 1.0, 
-        width: int = 800, 
-        height: int = 1000
+        self,
+        html_content: str,
+        selector: str = ".container",
+        scale_factor: float = 1.0,
+        width: int = 800,
+        height: int = 1000,
     ) -> bytes:
         async with async_playwright() as p:
             browser = await p.chromium.launch()
             context = await browser.new_context(
-                viewport={"width": width, "height": height},
-                device_scale_factor=scale_factor
+                viewport={"width": width, "height": height}, device_scale_factor=scale_factor
             )
             page = await context.new_page()
             await page.set_content(html_content)
@@ -221,15 +220,11 @@ class ImageManipulator(FontManager):
             retweets=stats.get("retweets", "0"),
             quotes=stats.get("quotes", "0"),
             likes=stats.get("likes", "0"),
-            bookmarks=stats.get("bookmarks", "0")
+            bookmarks=stats.get("bookmarks", "0"),
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template, 
-            selector=".tweet-card", 
-            scale_factor=3.0, 
-            width=700, 
-            height=800
+            html_content=html_template, selector=".tweet-card", scale_factor=3.0, width=700, height=800
         )
 
     async def create_fake_ig_post(
@@ -402,15 +397,11 @@ class ImageManipulator(FontManager):
             svg_save=svg_save,
             likes=likes,
             caption=caption,
-            time_ago=time_ago
+            time_ago=time_ago,
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template, 
-            selector=".ig-card", 
-            scale_factor=3.0, 
-            width=650, 
-            height=1200
+            html_content=html_template, selector=".ig-card", scale_factor=3.0, width=650, height=1200
         )
 
     async def create_fake_wa_chat(
@@ -634,21 +625,17 @@ class ImageManipulator(FontManager):
             svg_smiley=svg_smiley,
             svg_attach=svg_attach,
             svg_cam=svg_cam,
-            svg_mic=svg_mic
+            svg_mic=svg_mic,
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template, 
-            selector=".wa-container", 
-            scale_factor=3.0, 
-            width=500, 
-            height=900
+            html_content=html_template, selector=".wa-container", scale_factor=3.0, width=500, height=900
         )
 
-    def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool, message_obj=None) -> bytes:
-        return asyncio.run(self._async_create_quote(text, user_name, pfp_bytes, invert, message_obj))
+    def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
+        return asyncio.run(self._async_create_quote(text, user_name, pfp_bytes, invert))
 
-    async def _async_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool, message_obj=None) -> bytes:
+    async def _async_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
         if pfp_bytes:
             pfp_base64 = "data:image/png;base64," + base64.b64encode(pfp_bytes).decode()
         else:
@@ -661,40 +648,7 @@ class ImageManipulator(FontManager):
         )
         link_color = "#88C0D0" if not invert else "#3B82F6"
 
-        final_text = text
-        if message_obj and message_obj.entities:
-            final_text_list = []
-            last_offset = 0
-            entities = sorted(message_obj.entities, key=lambda e: e.offset)
-            
-            for entity in entities:
-                if entity.offset > last_offset:
-                    final_text_list.append(text[last_offset:entity.offset])
-                
-                chunk = text[entity.offset:entity.offset + entity.length]
-                if entity.type.name == "CUSTOM_EMOJI":
-                    emoji_id = str(entity.custom_emoji_id)
-                    try:
-                        stickers = await message_obj._client.get_custom_emoji_stickers([int(emoji_id)])
-                        if stickers:
-                            sticker_bytes = await message_obj._client.download_media(stickers[0].file_id, in_memory=True)
-                            b64_sticker = base64.b64encode(sticker_bytes.getvalue()).decode()
-                            final_text_list.append(f'<img src="data:image/webp;base64,{b64_sticker}" style="width:1.2em;height:1.2em;vertical-align:middle;" onerror="this.style.display=\'none\'">')
-                        else:
-                            final_text_list.append(chunk)
-                    except Exception:
-                        final_text_list.append(chunk)
-                else:
-                    final_text_list.append(chunk)
-                
-                last_offset = entity.offset + entity.length
-            
-            if last_offset < len(text):
-                final_text_list.append(text[last_offset:])
-            
-            final_text = "".join(final_text_list)
-        
-        soup = BeautifulSoup(final_text, "html.parser")
+        soup = BeautifulSoup(text, "html.parser")
         for tag in soup.find_all("a"):
             tag.name = "span"
             tag["style"] = f"color: {link_color};"
@@ -767,8 +721,8 @@ class ImageManipulator(FontManager):
 
         return await self._render_html_with_playwright(html_content=html_template, selector=".container")
 
-    async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False, message_obj=None) -> bytes:
-        return await self._async_create_quote(text, user_name, pfp_bytes, invert, message_obj)
+    async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False) -> bytes:
+        return await self._async_create_quote(text, user_name, pfp_bytes, invert)
 
     def _sync_add_watermark(
         self,
