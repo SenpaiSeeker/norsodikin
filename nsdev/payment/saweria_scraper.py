@@ -104,3 +104,14 @@ class SaweriaScraper(QrCodeGenerator):
             return res.json()["data"]["qr_string"] == ""
 
         return await asyncio.to_thread(_sync_get)
+
+    def get_amount(self, qr_text: str):
+        match = re.search(r"54(\d{2})(\d+)", qr_text)
+        if not match:
+            return None
+        length = int(match.group(1))
+        value = match.group(2)[:length]
+        try:
+            return int(value)
+        except ValueError:
+            return None
