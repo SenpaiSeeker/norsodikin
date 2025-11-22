@@ -1,1 +1,13 @@
-
+from .bing import ImageGenerator
+from .gemini import ChatbotGemini
+from .huggingface import HuggingFaceGenerator
+from .ocr import OCR
+from .qrcode import QrCodeGenerator
+from .search import WebSearch
+from .stt import SpeechToText
+from .translate import Translator
+from .tts import TextToSpeech
+from .upscaler import ImageUpscaler
+from .vision import VisionAnalyzer
+from .voicecloning import VoiceCloner
+from .web_summarizer import WebSummarizer
