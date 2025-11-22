@@ -28,6 +28,7 @@ from .payment.payment import (
     SaweriaScraper,
     VioletMediaPayClient,
 )
+from .pinterest import Pinterest
 from .schedule.manager import Scheduler
 from .server.addUser import SSHUserManager
 from .server.monitor import ServerMonitor
@@ -112,6 +113,7 @@ class NsDev:
             Tripay=PaymentTripay,
             Violet=VioletMediaPayClient,
         )
+        self.pinterest = Pinterest()
         self.schedule = Scheduler()
         self.server = SimpleNamespace(
             monitor=ServerMonitor(),
