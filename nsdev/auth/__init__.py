@@ -1,1 +1,1 @@
-
+from .manager import AuthManager
