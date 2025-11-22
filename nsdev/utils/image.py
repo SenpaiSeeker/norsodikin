@@ -27,18 +27,18 @@ class ImageManipulator(FontManager):
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
 
     async def _render_html_with_playwright(
-        self,
-        html_content: str,
-        selector: str = ".container",
-        scale_factor: float = 1.0,
-        width: int = 800,
-        height: int = 1000,
+        self, 
+        html_content: str, 
+        selector: str = ".container", 
+        scale_factor: float = 1.0, 
+        width: int = 800, 
+        height: int = 1000
     ) -> bytes:
         async with async_playwright() as p:
             browser = await p.chromium.launch()
             context = await browser.new_context(
                 viewport={"width": width, "height": height},
-                device_scale_factor=scale_factor,
+                device_scale_factor=scale_factor
             )
             page = await context.new_page()
             await page.set_content(html_content)
@@ -221,15 +221,15 @@ class ImageManipulator(FontManager):
             retweets=stats.get("retweets", "0"),
             quotes=stats.get("quotes", "0"),
             likes=stats.get("likes", "0"),
-            bookmarks=stats.get("bookmarks", "0"),
+            bookmarks=stats.get("bookmarks", "0")
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template,
-            selector=".tweet-card",
-            scale_factor=3.0,
-            width=700,
-            height=800,
+            html_content=html_template, 
+            selector=".tweet-card", 
+            scale_factor=3.0, 
+            width=700, 
+            height=800
         )
 
     async def create_fake_ig_post(
@@ -402,15 +402,15 @@ class ImageManipulator(FontManager):
             svg_save=svg_save,
             likes=likes,
             caption=caption,
-            time_ago=time_ago,
+            time_ago=time_ago
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template,
-            selector=".ig-card",
-            scale_factor=3.0,
-            width=650,
-            height=1200,
+            html_content=html_template, 
+            selector=".ig-card", 
+            scale_factor=3.0, 
+            width=650, 
+            height=1200
         )
 
     async def create_fake_wa_chat(
@@ -634,21 +634,21 @@ class ImageManipulator(FontManager):
             svg_smiley=svg_smiley,
             svg_attach=svg_attach,
             svg_cam=svg_cam,
-            svg_mic=svg_mic,
+            svg_mic=svg_mic
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template,
-            selector=".wa-container",
-            scale_factor=3.0,
-            width=500,
-            height=900,
+            html_content=html_template, 
+            selector=".wa-container", 
+            scale_factor=3.0, 
+            width=500, 
+            height=900
         )
 
-    def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
-        return asyncio.run(self._async_create_quote(text, user_name, pfp_bytes, invert))
+    def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool, message_obj) -> bytes:
+        return asyncio.run(self._async_create_quote(text, user_name, pfp_bytes, invert, message_obj))
 
-    async def _async_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
+    async def _async_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool, message_obj=None) -> bytes:
         if pfp_bytes:
             pfp_base64 = "data:image/png;base64," + base64.b64encode(pfp_bytes).decode()
         else:
@@ -661,17 +661,35 @@ class ImageManipulator(FontManager):
         )
         link_color = "#88C0D0" if not invert else "#3B82F6"
 
-        soup = BeautifulSoup(text, "html.parser")
+        final_text = text
+        if message_obj and message_obj.entities:
+            final_text_list = []
+            last_offset = 0
+            entities = sorted(message_obj.entities, key=lambda e: e.offset)
+            
+            for entity in entities:
+                if entity.offset > last_offset:
+                    final_text_list.append(text[last_offset:entity.offset])
+                
+                chunk = text[entity.offset:entity.offset + entity.length]
+                if entity.type.name == "CUSTOM_EMOJI":
+                    emoji_id = str(entity.custom_emoji_id)
+                    emoji_url = f"https://cdn.jsdelivr.net/gh/Telegram/CustomEmoji@{emoji_id}/emoji.png" 
+                    final_text_list.append(f'<img src="{emoji_url}" style="width:1.2em;height:1.2em;vertical-align:middle;" onerror="this.style.display=\'none\'">')
+                else:
+                    final_text_list.append(chunk)
+                
+                last_offset = entity.offset + entity.length
+            
+            if last_offset < len(text):
+                final_text_list.append(text[last_offset:])
+            
+            final_text = "".join(final_text_list)
         
+        soup = BeautifulSoup(final_text, "html.parser")
         for tag in soup.find_all("a"):
             tag.name = "span"
             tag["style"] = f"color: {link_color};"
-
-        for tag in soup.find_all("custom-emoji"):
-            emoji_id = tag.get("document-id")
-            if emoji_id:
-                img_tag = soup.new_tag("img", src=f"https://cache.hyogmon.org/file/{emoji_id}", style="width: 24px; height: 24px; vertical-align: middle;")
-                tag.replace_with(img_tag)
 
         clean_html = str(soup).replace("\n", "<br>")
 
@@ -718,9 +736,6 @@ class ImageManipulator(FontManager):
                     word-wrap: break-word;
                     word-break: break-all;
                 }}
-                .quote img {{
-                    vertical-align: middle;
-                }}
             </style>
         </head>
         <body>
@@ -744,8 +759,8 @@ class ImageManipulator(FontManager):
 
         return await self._render_html_with_playwright(html_content=html_template, selector=".container")
 
-    async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False) -> bytes:
-        return await self._async_create_quote(text, user_name, pfp_bytes, invert)
+    async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False, message_obj=None) -> bytes:
+        return await self._async_create_quote(text, user_name, pfp_bytes, invert, message_obj)
 
     def _sync_add_watermark(
         self,
@@ -762,12 +777,7 @@ class ImageManipulator(FontManager):
         font = self._get_font(font_size)
         draw = ImageDraw.Draw(txt_layer)
 
-        random_color = (
-            random.randint(150, 255),
-            random.randint(150, 255),
-            random.randint(150, 255),
-            opacity,
-        )
+        random_color = (random.randint(150, 255), random.randint(150, 255), random.randint(150, 255), opacity)
         outline_color = (0, 0, 0, opacity)
 
         text_bbox = draw.textbbox((0, 0), text, font=font)
@@ -797,9 +807,7 @@ class ImageManipulator(FontManager):
         font_size: int = 30,
         opacity: int = 200,
     ) -> bytes:
-        return await self._run_in_executor(
-            self._sync_add_watermark, image_bytes, text, position, font_size, opacity
-        )
+        return await self._run_in_executor(self._sync_add_watermark, image_bytes, text, position, font_size, opacity)
 
     def _sync_resize(self, image_bytes: bytes, size: Tuple[int, int], keep_aspect_ratio: bool = True) -> bytes:
         img = Image.open(BytesIO(image_bytes))
@@ -865,11 +873,7 @@ class ImageManipulator(FontManager):
             sepia_palette = [
                 component
                 for i in range(256)
-                for component in (
-                    int(min(255, i * 1.2)),
-                    int(min(255, i * 1.0)),
-                    int(min(255, i * 0.8)),
-                )
+                for component in (int(min(255, i * 1.2)), int(min(255, i * 1.0)), int(min(255, i * 0.8)))
             ]
             grayscale_img.putpalette(sepia_palette)
             grayscale_img = grayscale_img.convert("RGB")
@@ -884,9 +888,7 @@ class ImageManipulator(FontManager):
             enhancer = ImageEnhance.Contrast(img)
             img_contrasted = enhancer.enhance(1.5)
             img_gray = ImageOps.grayscale(img_contrasted)
-            processed_img = ImageOps.colorize(
-                img_gray, black=(20, 0, 0), mid=(200, 50, 0), white=(255, 220, 50)
-            )
+            processed_img = ImageOps.colorize(img_gray, black=(20, 0, 0), mid=(200, 50, 0), white=(255, 220, 50))
         else:
             raise ValueError(f"Filter '{filter_name}' tidak dikenal.")
         output_buffer = BytesIO()
@@ -898,9 +900,7 @@ class ImageManipulator(FontManager):
 
     def _sync_remove_background(self, image_bytes: bytes) -> bytes:
         if not remove_bg:
-            raise ImportError(
-                "Pustaka 'rembg' tidak terinstal. Silakan instal dengan `pip install norsodikin[ai]`"
-            )
+            raise ImportError("Pustaka 'rembg' tidak terinstal. Silakan instal dengan `pip install norsodikin[ai]`")
         return remove_bg(image_bytes)
 
     async def remove_background(self, image_bytes: bytes) -> bytes:
@@ -944,10 +944,7 @@ class ImageManipulator(FontManager):
         draw = ImageDraw.Draw(noise)
         for y in range(img.height):
             for x in range(img.width):
-                draw.point(
-                    (x, y),
-                    (random.randint(0, 50), random.randint(0, 50), random.randint(0, 50)),
-                )
+                draw.point((x, y), (random.randint(0, 50), random.randint(0, 50), random.randint(0, 50)))
         img = Image.blend(img, noise, 0.15)
 
         output_buffer = BytesIO()
@@ -960,9 +957,7 @@ class ImageManipulator(FontManager):
     def _sync_create_afk_card(self, pfp_bytes: bytes, name: str, reason: str, duration: str) -> bytes:
         return asyncio.run(self._async_create_afk_card(pfp_bytes, name, reason, duration))
 
-    async def _async_create_afk_card(
-        self, pfp_bytes: bytes, name: str, reason: str, duration: str
-    ) -> bytes:
+    async def _async_create_afk_card(self, pfp_bytes: bytes, name: str, reason: str, duration: str) -> bytes:
         if pfp_bytes:
             pfp_base64 = "data:image/png;base64," + base64.b64encode(pfp_bytes).decode()
         else:
@@ -1037,38 +1032,18 @@ class ImageManipulator(FontManager):
             duration=duration,
         )
 
-        return await self._render_html_with_playwright(
-            html_content=html_template, selector=".container"
-        )
+        return await self._render_html_with_playwright(html_content=html_template, selector=".container")
 
     async def create_afk_card(self, pfp_bytes: bytes, name: str, reason: str, duration: str) -> bytes:
         return await self._async_create_afk_card(pfp_bytes, name, reason, duration)
 
     def _sync_create_profile_card(
-        self,
-        pfp_bytes: bytes,
-        name: str,
-        username: str,
-        user_id: int,
-        bio: str,
-        pfp_count: int,
-        is_sudo: bool,
+        self, pfp_bytes: bytes, name: str, username: str, user_id: int, bio: str, pfp_count: int, is_sudo: bool
     ) -> bytes:
-        return asyncio.run(
-            self._async_create_profile_card(
-                pfp_bytes, name, username, user_id, bio, pfp_count, is_sudo
-            )
-        )
+        return asyncio.run(self._async_create_profile_card(pfp_bytes, name, username, user_id, bio, pfp_count, is_sudo))
 
     async def _async_create_profile_card(
-        self,
-        pfp_bytes: bytes,
-        name: str,
-        username: str,
-        user_id: int,
-        bio: str,
-        pfp_count: int,
-        is_sudo: bool,
+        self, pfp_bytes: bytes, name: str, username: str, user_id: int, bio: str, pfp_count: int, is_sudo: bool
     ) -> bytes:
         if pfp_bytes:
             pfp_base64 = "data:image/png;base64," + base64.b64encode(pfp_bytes).decode()
@@ -1181,23 +1156,12 @@ class ImageManipulator(FontManager):
             pfp_count=pfp_count,
         )
 
-        return await self._render_html_with_playwright(
-            html_content=html_template, selector=".container"
-        )
+        return await self._render_html_with_playwright(html_content=html_template, selector=".container")
 
     async def create_profile_card(
-        self,
-        pfp_bytes: bytes,
-        name: str,
-        username: str,
-        user_id: int,
-        bio: str,
-        pfp_count: int,
-        is_sudo: bool,
+        self, pfp_bytes: bytes, name: str, username: str, user_id: int, bio: str, pfp_count: int, is_sudo: bool
     ) -> bytes:
-        return await self._async_create_profile_card(
-            pfp_bytes, name, username, user_id, bio, pfp_count, is_sudo
-        )
+        return await self._async_create_profile_card(pfp_bytes, name, username, user_id, bio, pfp_count, is_sudo)
 
     def _sync_create_text_sticker(self, text: str) -> bytes:
         clean_text = BeautifulSoup(text, "html.parser").get_text()
