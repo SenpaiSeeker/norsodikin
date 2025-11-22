@@ -27,7 +27,7 @@ dependencies = [
     "aiohttp",
     "aiofiles",
     "pyyaml",
-    "httpx",
+    "httpx[http2]",
     "python-dotenv",
     "tornado",
     "requests",
