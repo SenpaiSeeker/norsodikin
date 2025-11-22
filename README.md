@@ -26,7 +26,7 @@ pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[all]
 ```
 
 **Langkah 3: Instal Browser untuk Playwright**
-Fitur pembuatan gambar dari teks (seperti `.q`) menggunakan browser *headless*. Instal browser yang diperlukan dengan perintah ini:
+Fitur pembuatan gambar dari teks (seperti `.q` atau `.tweet`) menggunakan browser *headless*. Instal browser yang diperlukan dengan perintah ini:
 ```bash
 python3 -m playwright install --with-deps
 ```
@@ -43,17 +43,18 @@ pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin"
 Keajaiban `norsodikin` terletak pada integrasi `monkey-patching` yang mulus dengan Pyrogram. Cukup dengan mengimpor `nsdev` sekali di skrip utama Anda, semua fungsionalitas akan otomatis "menempel" pada objek `client` Anda melalui namespace `ns`.
 
 Semua modul dikelompokkan secara logis:
-- `client.ns.ai`: Semua yang berhubungan dengan Kecerdasan Buatan.
+- `client.ns.ai`: Semua yang berhubungan dengan Kecerdasan Buatan (Gemini, Bing, OCR, TTS, dll.).
 - `client.ns.analytics`: Analitik penggunaan bot dan statistik chat.
 - `client.ns.auth`: Manajemen pengguna dan hak akses (peran).
-- `client.ns.telegram`: Utilitas spesifik untuk Telegram (tombol, format teks, dll.).
-- `client.ns.data`: Manajemen data (database, file config YAML).
-- `client.ns.utils`: Perkakas umum (logger, downloader, OSINT, pastebin, dll.).
+- `client.ns.telegram`: Utilitas spesifik untuk Telegram (tombol, format teks, auto-action, dll.).
+- `client.ns.data`: Manajemen data (database, file config YAML, enkripsi).
+- `client.ns.utils`: Perkakas umum (logger, downloader, OSINT, pastebin, konversi media).
 - `client.ns.schedule`: Penjadwalan tugas otomatis (cron).
-- `client.ns.server`: Manajemen server Linux (proses, monitor).
-- `client.ns.code`: Enkripsi dan dekripsi.
-- `client.ns.payment`: Integrasi payment gateway.
-- `client.ns.tempmail`: Generate temporary mail.
+- `client.ns.server`: Manajemen server Linux (proses, monitor, speedtest, SSH user).
+- `client.ns.code`: Enkripsi dan dekripsi string/kode.
+- `client.ns.payment`: Integrasi payment gateway (Midtrans, Tripay, Saweria, Cashify, Violet).
+- `client.ns.tempmail`: Generator email sementara.
+- `client.ns.pinterest`: Pencari dan pengunduh media Pinterest yang canggih.
 
 **Struktur Kode Dasar**:
 
@@ -67,11 +68,16 @@ import nsdev  # Voila! Integrasi .ns langsung aktif untuk pyrogram.Client
 # Sekarang, semua modul siap pakai dalam namespace masing-masing:
 client.ns.utils.log.info("Logger canggih siap mencatat progres bot!")
 
-# Contoh memuat konfigurasi dari file .yml
-# config = client.ns.data.yaml.loadAndConvert("config.yml")
-# api_key = config.api.gemini_key
+# Contoh penggunaan fitur AI
+# response = await client.ns.ai.gemini(api_key="...").send_chat_message("Halo AI!")
+
+# Contoh penggunaan Pinterest
+# images = await client.ns.pinterest.search("anime aesthetic")
 ```
----
+
+## Fitur Baru: Pinterest Engine
+Modul Pinterest kini lebih handal dengan engine khusus yang mendukung pencarian, unduhan gambar/video, dan penanganan media yang lebih baik untuk menghindari error format.
+
 ## Lisensi
 
 Pustaka ini dirilis di bawah [Lisensi MIT](https://opensource.org/licenses/MIT). Artinya, Anda bebas menggunakan, memodifikasi, dan mendistribusikan kode ini untuk proyek komersial maupun non-komersial.
