@@ -60,9 +60,6 @@ pyrogram = [
     "navygram",
     "TgCrypto2",
 ]
-all = [
-    "norsodikin[pyrogram]",
-]
 
 [tool.setuptools]
 include-package-data = true
