@@ -58,9 +58,6 @@ Homepage = "https://github.com/SenpaiSeeker/norsodikin"
 [project.optional-dependencies]
 pyrogram = [
     "pyrotgfork[fast]",
- ]
-all = [
-    "norsodikin[pyrogram]",
 ]
 
 [tool.setuptools]
