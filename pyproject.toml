@@ -25,11 +25,9 @@ classifiers = [
 
 dependencies = [
     "aiohttp",
-    "aiofiles",
     "pyyaml",
     "httpx[http2]",
     "python-dotenv",
-    "tornado",
     "requests",
     "wget",
     "faker",
@@ -48,10 +46,8 @@ dependencies = [
     "pymongo",
     "pyfiglet",
     "yt-dlp",
-    "ffmpeg-python",
     "aiocron",
-    "demucs", 
-    "torchcodec",
+    "demucs",
     "cloudscraper25",
     "playwright",
 ]
