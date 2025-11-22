@@ -645,7 +645,7 @@ class ImageManipulator(FontManager):
             height=900
         )
 
-    def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool, message_obj) -> bytes:
+    def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool, message_obj=None) -> bytes:
         return asyncio.run(self._async_create_quote(text, user_name, pfp_bytes, invert, message_obj))
 
     async def _async_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool, message_obj=None) -> bytes:
@@ -674,8 +674,16 @@ class ImageManipulator(FontManager):
                 chunk = text[entity.offset:entity.offset + entity.length]
                 if entity.type.name == "CUSTOM_EMOJI":
                     emoji_id = str(entity.custom_emoji_id)
-                    emoji_url = f"https://cdn.jsdelivr.net/gh/Telegram/CustomEmoji@{emoji_id}/emoji.png" 
-                    final_text_list.append(f'<img src="{emoji_url}" style="width:1.2em;height:1.2em;vertical-align:middle;" onerror="this.style.display=\'none\'">')
+                    try:
+                        stickers = await message_obj._client.get_custom_emoji_stickers([int(emoji_id)])
+                        if stickers:
+                            sticker_bytes = await message_obj._client.download_media(stickers[0].file_id, in_memory=True)
+                            b64_sticker = base64.b64encode(sticker_bytes.getvalue()).decode()
+                            final_text_list.append(f'<img src="data:image/webp;base64,{b64_sticker}" style="width:1.2em;height:1.2em;vertical-align:middle;" onerror="this.style.display=\'none\'">')
+                        else:
+                            final_text_list.append(chunk)
+                    except Exception:
+                        final_text_list.append(chunk)
                 else:
                     final_text_list.append(chunk)
                 
