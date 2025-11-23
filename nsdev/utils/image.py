@@ -1227,10 +1227,8 @@ class ImageManipulator(FontManager):
 
     def _sync_create_quote_carbon(self, text, user_name, pfp_bytes):
 
-        font_code_path = "assets/font/JetBrainsMono-Regular.ttf"
-        font_name_path = "assets/font/NotoSans-Regular.ttf"
-        font_code = ImageFont.truetype(font_code_path, 32)
-        font_name = ImageFont.truetype(font_name_path, 36)
+        font_code = self._get_font_from_package("JetBrainsMono-Regular.ttf", 32)
+        font_name = self._get_font_from_package("NotoSans-Regular.ttf", 36)
 
         if not pfp_bytes:
             pfp_data = self._get_default_pfp(user_name[0].upper())
