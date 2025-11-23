@@ -427,6 +427,8 @@ class ImageManipulator(FontManager):
         svg_cam = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="#8696a0" d="M12 15c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm7-8h-1.5v-.5c0-1.38-1.12-2.5-2.5-2.5H9c-1.38 0-2.5 1.12-2.5 2.5v.5H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm-7 12c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"></path></svg>'
         svg_mic = '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="#00a884" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"></path><path fill="#00a884" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"></path></svg>'
 
+        formatted_message = textwrap.fill(message, width=35).replace("\n", "<br>")
+
         html_template = """
         <!DOCTYPE html>
         <html lang="en">
@@ -444,7 +446,8 @@ class ImageManipulator(FontManager):
                 
                 .wa-container {{
                     width: 500px;
-                    height: 900px;
+                    min-height: 800px; 
+                    height: auto;
                     background-color: #0b141a;
                     background-image: url('https://i.imgur.com/4801n6r.png'); 
                     background-repeat: repeat;
@@ -516,6 +519,8 @@ class ImageManipulator(FontManager):
                     position: relative;
                     box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
                     margin-bottom: 10px;
+                    display: inline-block;
+                    word-wrap: break-word;
                 }}
                 
                 .message-bubble::before {{
@@ -616,7 +621,7 @@ class ImageManipulator(FontManager):
         """.format(
             pfp_base64=pfp_base64,
             name=name,
-            message=message,
+            message=formatted_message,
             time_str=time_str,
             svg_back=svg_back,
             svg_video=svg_video,
@@ -625,7 +630,7 @@ class ImageManipulator(FontManager):
             svg_smiley=svg_smiley,
             svg_attach=svg_attach,
             svg_cam=svg_cam,
-            svg_mic=svg_mic,
+            svg_mic=svg_mic
         )
 
         return await self._render_html_with_playwright(
