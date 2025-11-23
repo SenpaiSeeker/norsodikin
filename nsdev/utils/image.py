@@ -6,6 +6,7 @@ from functools import partial
 from io import BytesIO
 from typing import Tuple
 
+import httpx
 from bs4 import BeautifulSoup
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 from playwright.async_api import async_playwright
@@ -27,17 +28,18 @@ class ImageManipulator(FontManager):
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
 
     async def _render_html_with_playwright(
-        self,
-        html_content: str,
-        selector: str = ".container",
-        scale_factor: float = 1.0,
-        width: int = 800,
-        height: int = 1000,
+        self, 
+        html_content: str, 
+        selector: str = ".container", 
+        scale_factor: float = 1.0, 
+        width: int = 800, 
+        height: int = 1000
     ) -> bytes:
         async with async_playwright() as p:
             browser = await p.chromium.launch()
             context = await browser.new_context(
-                viewport={"width": width, "height": height}, device_scale_factor=scale_factor
+                viewport={"width": width, "height": height},
+                device_scale_factor=scale_factor
             )
             page = await context.new_page()
             await page.set_content(html_content)
@@ -220,11 +222,15 @@ class ImageManipulator(FontManager):
             retweets=stats.get("retweets", "0"),
             quotes=stats.get("quotes", "0"),
             likes=stats.get("likes", "0"),
-            bookmarks=stats.get("bookmarks", "0"),
+            bookmarks=stats.get("bookmarks", "0")
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template, selector=".tweet-card", scale_factor=3.0, width=700, height=800
+            html_content=html_template, 
+            selector=".tweet-card", 
+            scale_factor=3.0, 
+            width=700, 
+            height=800
         )
 
     async def create_fake_ig_post(
@@ -397,11 +403,15 @@ class ImageManipulator(FontManager):
             svg_save=svg_save,
             likes=likes,
             caption=caption,
-            time_ago=time_ago,
+            time_ago=time_ago
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template, selector=".ig-card", scale_factor=3.0, width=650, height=1200
+            html_content=html_template, 
+            selector=".ig-card", 
+            scale_factor=3.0, 
+            width=650, 
+            height=1200
         )
 
     async def create_fake_wa_chat(
@@ -625,17 +635,21 @@ class ImageManipulator(FontManager):
             svg_smiley=svg_smiley,
             svg_attach=svg_attach,
             svg_cam=svg_cam,
-            svg_mic=svg_mic,
+            svg_mic=svg_mic
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template, selector=".wa-container", scale_factor=3.0, width=500, height=900
+            html_content=html_template, 
+            selector=".wa-container", 
+            scale_factor=3.0, 
+            width=500, 
+            height=900
         )
 
-    def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
-        return asyncio.run(self._async_create_quote(text, user_name, pfp_bytes, invert))
+    def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool, custom_emoji_url: str = None) -> bytes:
+        return asyncio.run(self._async_create_quote(text, user_name, pfp_bytes, invert, custom_emoji_url))
 
-    async def _async_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
+    async def _async_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool, custom_emoji_url: str = None) -> bytes:
         if pfp_bytes:
             pfp_base64 = "data:image/png;base64," + base64.b64encode(pfp_bytes).decode()
         else:
@@ -654,6 +668,17 @@ class ImageManipulator(FontManager):
             tag["style"] = f"color: {link_color};"
 
         clean_html = str(soup).replace("\n", "<br>")
+        
+        custom_emoji_html = ""
+        if custom_emoji_url:
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(custom_emoji_url)
+                    if response.status_code == 200:
+                         emoji_base64 = base64.b64encode(response.content).decode()
+                         custom_emoji_html = f'<img src="data:image/png;base64,{emoji_base64}" class="custom-emoji" />'
+            except Exception:
+                pass
 
         html_template = """
         <html>
@@ -686,11 +711,21 @@ class ImageManipulator(FontManager):
                     display: flex;
                     flex-direction: column;
                 }}
+                .name-container {{
+                     display: flex;
+                     align-items: center;
+                     margin-bottom: 10px;
+                }}
                 .name {{
                     font-size: 28px;
                     font-weight: 700;
                     color: {name_color};
-                    margin-bottom: 10px;
+                    margin-right: 8px;
+                }}
+                .custom-emoji {{
+                    width: 28px;
+                    height: 28px;
+                    vertical-align: middle;
                 }}
                 .quote {{
                     font-size: 36px;
@@ -704,7 +739,10 @@ class ImageManipulator(FontManager):
             <div class="container">
                 <img src="{pfp_base64}" class="pfp" />
                 <div class="text-content">
-                    <div class="name">{user_name}</div>
+                    <div class="name-container">
+                        <span class="name">{user_name}</span>
+                        {custom_emoji_html}
+                    </div>
                     <div class="quote">{clean_html}</div>
                 </div>
             </div>
@@ -717,12 +755,13 @@ class ImageManipulator(FontManager):
             pfp_base64=pfp_base64,
             user_name=user_name,
             clean_html=clean_html,
+            custom_emoji_html=custom_emoji_html
         )
 
         return await self._render_html_with_playwright(html_content=html_template, selector=".container")
 
-    async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False) -> bytes:
-        return await self._async_create_quote(text, user_name, pfp_bytes, invert)
+    async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False, custom_emoji_url: str = None) -> bytes:
+        return await self._async_create_quote(text, user_name, pfp_bytes, invert, custom_emoji_url)
 
     def _sync_add_watermark(
         self,
