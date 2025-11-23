@@ -7,7 +7,7 @@ from io import BytesIO
 from typing import Tuple
 
 from bs4 import BeautifulSoup
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps, ImageFont
 from playwright.async_api import async_playwright
 
 from .font_manager import FontManager
@@ -1224,3 +1224,84 @@ class ImageManipulator(FontManager):
 
     async def sharpen_image(self, image_bytes: bytes, factor: int) -> bytes:
         return await self._run_in_executor(self._sharpen_image_sync, image_bytes, factor)
+
+    def _sync_create_quote_carbon(self, text, user_name, pfp_bytes):
+
+        font_code_path = "assets/font/JetBrainsMono-Regular.ttf"
+        font_name_path = "assets/font/NotoSans-Regular.ttf"
+        font_code = ImageFont.truetype(font_code_path, 32)
+        font_name = ImageFont.truetype(font_name_path, 36)
+
+        if not pfp_bytes:
+            pfp_data = self._get_default_pfp(user_name[0].upper())
+        else:
+            pfp_data = pfp_bytes
+        pfp = Image.open(BytesIO(pfp_data)).convert("RGBA").resize((80, 80))
+        mask = Image.new("L", pfp.size, 0)
+        ImageDraw.Draw(mask).ellipse((0, 0) + pfp.size, fill=255)
+        pfp.putalpha(mask)
+
+        lines = text.splitlines() or [" "]
+        max_width = max(font_code.getlength(line) for line in lines)
+        line_height = font_code.getbbox("Hg")[3]
+        code_height = (line_height + 10) * len(lines)
+        code_width = int(max_width + 160)
+        padding = 100
+
+        img_w = code_width + padding * 2
+        img_h = code_height + 280
+
+        gradient = Image.new("RGBA", (img_w, img_h + 60), (0, 0, 0, 0))
+        draw_gradient = ImageDraw.Draw(gradient)
+
+        for y in range(img_h + 90):
+            r = int(80 + (120 - 80) * y / img_h)
+            g = int(70 + (95 - 70) * y / img_h)
+            b = int(190 + (255 - 190) * y / img_h)
+            draw_gradient.line([(0, y), (img_w, y)], fill=(r, g, b, 255))
+
+        img = Image.new("RGBA", (img_w, img_h + 60), (0, 0, 0, 0))
+        img = Image.alpha_composite(img, gradient)
+        draw = ImageDraw.Draw(img)
+
+        margin = 60
+        box_x, box_y = margin, 40
+        box_w, box_h = img_w - (margin * 2), img_h
+
+        box_layer = Image.new("RGBA", (img_w, img_h + 60), (0, 0, 0, 0))
+        draw_box = ImageDraw.Draw(box_layer)
+        draw_box.rounded_rectangle(
+            [box_x, box_y, box_x + box_w, box_y + box_h],
+            radius=25,
+            fill=(24, 24, 24, 180),
+        )
+        img = Image.alpha_composite(img, box_layer)
+        draw = ImageDraw.Draw(img)
+
+        bar_y = box_y + 20
+        draw.ellipse((box_x + 20, bar_y, box_x + 50, bar_y + 30), fill="#FF5F56")
+        draw.ellipse((box_x + 60, bar_y, box_x + 90, bar_y + 30), fill="#FFBD2E")
+        draw.ellipse((box_x + 100, bar_y, box_x + 130, bar_y + 30), fill="#27C93F")
+
+        pfp_y = bar_y + 50
+        pfp_x = box_x + 30
+        img.paste(pfp, (pfp_x, pfp_y), pfp)
+        draw.text((pfp_x + 100, pfp_y + 25), user_name, font=font_name, fill="#FFFFFF")
+
+        start_y = pfp_y + 120
+        y = start_y
+        for i, line in enumerate(lines, 1):
+            draw.text((box_x + 20, y), f"{i}".rjust(2), font=font_code, fill="#555")
+            draw.text((box_x + 90, y), line, font=font_code, fill="#EAEAEA")
+            y += line_height + 10
+
+        output = BytesIO()
+        img.save(output, format="PNG")
+        return output.getvalue()
+
+    async def create_quote_carbon(self, text, user_name, pfp_bytes) -> bytes:
+        return await self._run_in_executor(
+            self._sync_create_quote_carbon, text, user_name, pfp_bytes
+        )
+
+    
