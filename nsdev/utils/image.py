@@ -6,7 +6,6 @@ from functools import partial
 from io import BytesIO
 from typing import Tuple
 
-import httpx
 from bs4 import BeautifulSoup
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 from playwright.async_api import async_playwright
@@ -28,18 +27,17 @@ class ImageManipulator(FontManager):
         return loop.run_in_executor(None, partial(func, *args, **kwargs))
 
     async def _render_html_with_playwright(
-        self, 
-        html_content: str, 
-        selector: str = ".container", 
-        scale_factor: float = 1.0, 
-        width: int = 800, 
-        height: int = 1000
+        self,
+        html_content: str,
+        selector: str = ".container",
+        scale_factor: float = 1.0,
+        width: int = 800,
+        height: int = 1000,
     ) -> bytes:
         async with async_playwright() as p:
             browser = await p.chromium.launch()
             context = await browser.new_context(
-                viewport={"width": width, "height": height},
-                device_scale_factor=scale_factor
+                viewport={"width": width, "height": height}, device_scale_factor=scale_factor
             )
             page = await context.new_page()
             await page.set_content(html_content)
@@ -222,15 +220,11 @@ class ImageManipulator(FontManager):
             retweets=stats.get("retweets", "0"),
             quotes=stats.get("quotes", "0"),
             likes=stats.get("likes", "0"),
-            bookmarks=stats.get("bookmarks", "0")
+            bookmarks=stats.get("bookmarks", "0"),
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template, 
-            selector=".tweet-card", 
-            scale_factor=3.0, 
-            width=700, 
-            height=800
+            html_content=html_template, selector=".tweet-card", scale_factor=3.0, width=700, height=800
         )
 
     async def create_fake_ig_post(
@@ -251,7 +245,7 @@ class ImageManipulator(FontManager):
 
         post_base64 = "data:image/png;base64," + base64.b64encode(post_bytes).decode()
 
-        svg_verified = '<svg viewBox="0 0 22 22" width="20" height="20"><g><path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.603.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.294-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.604-.223-1.264-.27-1.896-.14-.635.13-1.218.436-1.687.882-.445.468-.751 1.053-.882 1.687-.13.633-.083 1.294.14 1.897-.587.273-1.086.705 1.44-1.245.355-.54.55-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#1d9bf0"></path></g></svg>'
+        svg_verified = '<svg viewBox="0 0 22 22" width="20" height="20"><g><path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.603.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.294-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.604-.223-1.264-.27-1.896-.14-.635.13-1.218.436-1.687.882-.445.468-.751 1.053-.882 1.687-.13.633-.083 1.294.14 1.897-.587.273-1.086.705-1.44 1.245-.354.54-.55 1.17-.569 1.816.017.647.215 1.276.568 1.817.354.54.853.972 1.44 1.245-.224.604-.27 1.264-.14 1.896.13.635.436 1.219.882 1.687.468.445 1.053.75 1.687.882.633.13 1.294.083 1.897-.14.273.587.705 1.086 1.245 1.44.54.354 1.17.55 1.816.569.647-.016 1.276-.214 1.817-.568.54-.354.972-.853 1.245-1.44.604.224 1.264.27 1.896.14.635-.13 1.219-.436 1.687-.882.445-.468.75-1.053.882-1.687.13-.633.083-1.294-.14-1.897.587-.273 1.086-.705 1.44-1.245.355-.54.55-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#1d9bf0"></path></g></svg>'
         svg_more = '<svg aria-label="More options" fill="#ffffff" height="24" role="img" viewBox="0 0 24 24" width="24"><circle cx="12" cy="12" r="1.5"></circle><circle cx="6" cy="12" r="1.5"></circle><circle cx="18" cy="12" r="1.5"></circle></svg>'
         svg_like = '<svg aria-label="Like" fill="#ffffff" height="24" role="img" viewBox="0 0 24 24" width="24"><path d="M16.792 3.904A4.989 4.989 0 0 1 21.5 9.122c0 3.072-2.652 4.959-5.197 7.222-2.512 2.243-3.865 3.469-4.303 3.752-.477-.309-2.143-1.823-4.303-3.752C5.141 14.072 2.5 12.167 2.5 9.122a4.989 4.989 0 0 1 4.708-5.218 4.21 4.21 0 0 1 3.675 1.941c.84 1.175.98 1.763 1.12 1.763s.278-.588 1.11-1.766a4.17 4.17 0 0 1 3.679-1.938m0-2a6.04 6.04 0 0 0-4.797 2.127 6.052 6.052 0 0 0-4.787-2.127A6.985 6.985 0 0 0 .5 9.122c0 3.61 2.55 5.827 5.015 7.97.283.246.569.494.853.747l1.027.918a44.998 44.998 0 0 0 3.518 3.018 2 2 0 0 0 2.174 0 45.263 45.263 0 0 0 3.626-3.115l.922-.824c.293-.26.59-.519.885-.774 2.334-2.025 4.98-4.32 4.98-7.94a6.985 6.985 0 0 0-6.708-7.218Z"></path></svg>'
         svg_comment = '<svg aria-label="Comment" fill="#ffffff" height="24" role="img" viewBox="0 0 24 24" width="24"><path d="M20.656 17.008a9.993 9.993 0 1 0-3.59 3.615L22 22Z" fill="none" stroke="#ffffff" stroke-linejoin="round" stroke-width="2"></path></svg>'
@@ -403,15 +397,11 @@ class ImageManipulator(FontManager):
             svg_save=svg_save,
             likes=likes,
             caption=caption,
-            time_ago=time_ago
+            time_ago=time_ago,
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template, 
-            selector=".ig-card", 
-            scale_factor=3.0, 
-            width=650, 
-            height=1200
+            html_content=html_template, selector=".ig-card", scale_factor=3.0, width=650, height=1200
         )
 
     async def create_fake_wa_chat(
@@ -635,21 +625,17 @@ class ImageManipulator(FontManager):
             svg_smiley=svg_smiley,
             svg_attach=svg_attach,
             svg_cam=svg_cam,
-            svg_mic=svg_mic
+            svg_mic=svg_mic,
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template, 
-            selector=".wa-container", 
-            scale_factor=3.0, 
-            width=500, 
-            height=900
+            html_content=html_template, selector=".wa-container", scale_factor=3.0, width=500, height=900
         )
 
-    def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool, custom_emoji_url: str = None) -> bytes:
-        return asyncio.run(self._async_create_quote(text, user_name, pfp_bytes, invert, custom_emoji_url))
+    def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
+        return asyncio.run(self._async_create_quote(text, user_name, pfp_bytes, invert))
 
-    async def _async_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool, custom_emoji_url: str = None) -> bytes:
+    async def _async_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
         if pfp_bytes:
             pfp_base64 = "data:image/png;base64," + base64.b64encode(pfp_bytes).decode()
         else:
@@ -668,19 +654,6 @@ class ImageManipulator(FontManager):
             tag["style"] = f"color: {link_color};"
 
         clean_html = str(soup).replace("\n", "<br>")
-        
-        custom_emoji_html = ""
-        if custom_emoji_url:
-            try:
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(custom_emoji_url)
-                    if response.status_code == 200:
-                         emoji_base64 = base64.b64encode(response.content).decode()
-                         custom_emoji_html = f'<img src="data:image/png;base64,{emoji_base64}" class="custom-emoji" />'
-            except Exception:
-                pass
-        elif custom_emoji_url and custom_emoji_url.startswith("data:image"):
-            custom_emoji_html = f'<img src="{custom_emoji_url}" class="custom-emoji" />'
 
         html_template = """
         <html>
@@ -713,21 +686,11 @@ class ImageManipulator(FontManager):
                     display: flex;
                     flex-direction: column;
                 }}
-                .name-container {{
-                     display: flex;
-                     align-items: center;
-                     margin-bottom: 10px;
-                }}
                 .name {{
                     font-size: 28px;
                     font-weight: 700;
                     color: {name_color};
-                    margin-right: 8px;
-                }}
-                .custom-emoji {{
-                    width: 28px;
-                    height: 28px;
-                    vertical-align: middle;
+                    margin-bottom: 10px;
                 }}
                 .quote {{
                     font-size: 36px;
@@ -741,10 +704,7 @@ class ImageManipulator(FontManager):
             <div class="container">
                 <img src="{pfp_base64}" class="pfp" />
                 <div class="text-content">
-                    <div class="name-container">
-                        <span class="name">{user_name}</span>
-                        {custom_emoji_html}
-                    </div>
+                    <div class="name">{user_name}</div>
                     <div class="quote">{clean_html}</div>
                 </div>
             </div>
@@ -757,13 +717,12 @@ class ImageManipulator(FontManager):
             pfp_base64=pfp_base64,
             user_name=user_name,
             clean_html=clean_html,
-            custom_emoji_html=custom_emoji_html
         )
 
         return await self._render_html_with_playwright(html_content=html_template, selector=".container")
 
-    async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False, custom_emoji_url: str = None) -> bytes:
-        return await self._async_create_quote(text, user_name, pfp_bytes, invert, custom_emoji_url)
+    async def create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool = False) -> bytes:
+        return await self._async_create_quote(text, user_name, pfp_bytes, invert)
 
     def _sync_add_watermark(
         self,
