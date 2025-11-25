@@ -115,7 +115,7 @@ class Argument:
         return ""
 
     async def getReasonAndId(
-        self, message: pyrogram.types.Message, sender_chat: bool = False6
+        self, message: pyrogram.types.Message, sender_chat: bool = False
     ) -> Tuple[Optional[int], Optional[str]]:
 
         args = (message.text or "").strip().split()
