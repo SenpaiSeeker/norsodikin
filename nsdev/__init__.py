@@ -70,7 +70,7 @@ from .utils import (
     memoize,
 )
 
-__version__ = "0.36"
+__version__ = "0.37"
 __author__ = "@NorSodikin"
 
 
