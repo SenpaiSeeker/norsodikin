@@ -5,6 +5,7 @@ from typing import Optional, Tuple, Union
 
 import pyrogram
 
+
 class Argument:
     def __init__(self, client):
         self.client: pyrogram.Client = client
@@ -86,17 +87,25 @@ class Argument:
                 return quote_text
             if len(command_parts) > 1:
                 command_str = command_parts[0]
-                args_html = full_html[len(command_str):].strip() if command_str else ""
+                
+                try:
+                    args_html = full_html[len(command_str):].strip()
+                except (IndexError, TypeError, AttributeError):
+                    args_html = " ".join(command_parts[1:])
+                
                 return args_html
             if replied and replied_text:
-                return replied_text.html
+                return getattr(replied_text, 'html', str(replied_text))
             return ""
 
         if replied:
             return replied
         if len(command_parts) > 1:
             command_str = command_parts[0]
-            args_html = full_html[len(command_str):].strip() if command_str else ""
+            try:
+                args_html = full_html[len(command_str):].strip()
+            except (IndexError, TypeError, AttributeError):
+                args_html = " ".join(command_parts[1:])
             return args_html
 
         return ""
@@ -405,7 +414,7 @@ class Argument:
                 5258138266456045276,
                 5305638199568123955,
                 5456260417716243300,
-                5199750359320370821,
+                51999750359320370821,
                 5204326728578649609,
                 5287739803830327916,
                 5240007783570486716,
