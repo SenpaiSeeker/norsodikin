@@ -85,21 +85,25 @@ class Argument:
         if is_arg:
             if quote_text:
                 return quote_text
+            
             if len(command_parts) > 1:
                 command_str = command_parts[0]
-                
                 try:
-                    args_html = full_html[len(command_str):].strip()
+                    source_text = full_html if isinstance(full_html, str) else full_text
+                    args_html = source_text[len(command_str):].strip()
                 except (IndexError, TypeError, AttributeError):
                     args_html = " ".join(command_parts[1:])
                 
                 return args_html
+            
             if replied and replied_text:
                 return getattr(replied_text, 'html', str(replied_text))
+                
             return ""
 
         if replied:
             return replied
+            
         if len(command_parts) > 1:
             command_str = command_parts[0]
             try:
@@ -111,7 +115,7 @@ class Argument:
         return ""
 
     async def getReasonAndId(
-        self, message: pyrogram.types.Message, sender_chat: bool = False
+        self, message: pyrogram.types.Message, sender_chat: bool = False6
     ) -> Tuple[Optional[int], Optional[str]]:
 
         args = (message.text or "").strip().split()
@@ -414,7 +418,7 @@ class Argument:
                 5258138266456045276,
                 5305638199568123955,
                 5456260417716243300,
-                51999750359320370821,
+                5199750359320370821,
                 5204326728578649609,
                 5287739803830327916,
                 5240007783570486716,
