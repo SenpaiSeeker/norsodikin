@@ -128,7 +128,7 @@ class MessageCopier:
                 if path and os.path.exists(path):
                     os.remove(path)
 
-    async def copy_from_links(
+    async def copy_from_links(
         self, user_chat_id: int, links_text: str, status_message: Message, custom_thumb_message_id: int = None, **extra_params,
     ):
         links_to_process = []
