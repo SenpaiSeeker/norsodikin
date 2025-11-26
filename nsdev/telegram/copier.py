@@ -60,7 +60,11 @@ class MessageCopier:
         return await self._client.get_messages(chat_id, msg_id)
 
     async def _process_single_message(
-        self, message: Message, user_chat_id: int, status_message: Message, custom_thumb_path: str = None
+        self, 
+        message: Message,
+        user_chat_id: int, 
+        status_message: Message, 
+        custom_thumb_path: str = None,
     ):
         original_thumb_path = None
         file_path = None
