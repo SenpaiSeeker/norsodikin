@@ -4,9 +4,12 @@ import json
 import re
 import time
 from typing import Optional, Tuple
+
 import cloudscraper25 as cloudscraper
 from bs4 import BeautifulSoup
+
 from ..ai.qrcode import QrCodeGenerator
+
 
 class SaweriaScraper(QrCodeGenerator):
     BACKEND = "https://backend.saweria.co"

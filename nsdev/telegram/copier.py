@@ -59,9 +59,13 @@ class MessageCopier:
 
         return await self._client.get_messages(chat_id, msg_id)
 
-
     async def _process_single_message(
-        self, message: Message, user_chat_id: int, status_message: Message, custom_thumb_path: str = None, **extra_params,
+        self,
+        message: Message,
+        user_chat_id: int,
+        status_message: Message,
+        custom_thumb_path: str = None,
+        **extra_params,
     ):
         original_thumb_path = None
         file_path = None
@@ -108,7 +112,7 @@ class MessageCopier:
                     "chat_id": user_chat_id,
                     "caption": caption,
                     "progress": upload_progress.update,
-                    **extra_params
+                    **extra_params,
                 }
 
                 kwargs[media_type] = file_path
@@ -193,7 +197,7 @@ class MessageCopier:
                         user_chat_id,
                         status_message,
                         custom_thumb_path=custom_thumb_path,
-                        **extra_params
+                        **extra_params,
                     )
 
                     await asyncio.sleep(1.5)
@@ -211,7 +215,7 @@ class MessageCopier:
                                 user_chat_id,
                                 status_message,
                                 custom_thumb_path=custom_thumb_path,
-                                **extra_params
+                                **extra_params,
                             )
                     except Exception as retry_e:
                         self._log.error(f"Gagal retry setelah FloodWait ({chat_id}/{msg_id}): {retry_e}")

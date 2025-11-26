@@ -7,7 +7,7 @@ from io import BytesIO
 from typing import Tuple
 
 from bs4 import BeautifulSoup
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 from playwright.async_api import async_playwright
 
 from .font_manager import FontManager
@@ -630,7 +630,7 @@ class ImageManipulator(FontManager):
             svg_smiley=svg_smiley,
             svg_attach=svg_attach,
             svg_cam=svg_cam,
-            svg_mic=svg_mic
+            svg_mic=svg_mic,
         )
 
         return await self._render_html_with_playwright(
@@ -1303,8 +1303,4 @@ class ImageManipulator(FontManager):
         return output.getvalue()
 
     async def create_quote_carbon(self, text, user_name, pfp_bytes) -> bytes:
-        return await self._run_in_executor(
-            self._sync_create_quote_carbon, text, user_name, pfp_bytes
-        )
-
-    
+        return await self._run_in_executor(self._sync_create_quote_carbon, text, user_name, pfp_bytes)
