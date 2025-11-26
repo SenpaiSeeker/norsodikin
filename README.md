@@ -22,7 +22,7 @@ sudo apt-get update && sudo apt-get install -y libzbar0 ffmpeg
 
 **Langkah 2: Instal Pustaka Python**
 ```bash
-pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[all]"
+pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[pyrogram]"
 ```
 
 **Langkah 3: Instal Browser untuk Playwright**
