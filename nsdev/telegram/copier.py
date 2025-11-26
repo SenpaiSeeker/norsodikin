@@ -129,81 +129,100 @@ class MessageCopier:
                     os.remove(path)
 
     async def copy_from_links(
-        self, user_chat_id: int, links_text: str, status_message: Message, custom_thumb_message_id: int = None, **extra_params,
-    ):
-        links_to_process = []
-        custom_thumb_path = None
+        self,
+        user_chat_id: int,
+        links_text: str,
+        status_message: Message,
+        custom_thumb_message_id: int = None,
+        **extra_params,
+    ):
+        links_to_process = []
+        custom_thumb_path = None
 
-        try:
-            if custom_thumb_message_id:
-                await status_message.edit("📥 Mengunduh thumbnail kustom...")
-                thumb_message = await self._client.get_messages(user_chat_id, custom_thumb_message_id)
-                if thumb_message.photo:
-                    custom_thumb_path = await self._client.download_media(thumb_message)
-                else:
-                    await status_message.edit("⚠️ Balasan bukan foto, thumbnail kustom diabaikan.")
-                    await asyncio.sleep(2)
+        try:
+            if custom_thumb_message_id:
+                await status_message.edit("📥 Mengunduh thumbnail kustom...")
+                thumb_message = await self._client.get_messages(user_chat_id, custom_thumb_message_id)
+                if thumb_message.photo:
+                    custom_thumb_path = await self._client.download_media(thumb_message)
+                else:
+                    await status_message.edit("⚠️ Balasan bukan foto, thumbnail kustom diabaikan.")
+                    await asyncio.sleep(2)
 
-            if "|" in links_text:
-                parts = [p.strip() for p in links_text.split("|")]
-                if len(parts) != 2:
-                    raise ValueError("Format rentang tidak valid.")
+            if "|" in links_text:
+                parts = [p.strip() for p in links_text.split("|")]
+                if len(parts) != 2:
+                    raise ValueError("Format rentang tidak valid.")
 
-                chat_id1, msg_id1 = self._parse_link(parts[0])
-                chat_id2, msg_id2 = self._parse_link(parts[1])
+                chat_id1, msg_id1 = self._parse_link(parts[0])
+                chat_id2, msg_id2 = self._parse_link(parts[1])
 
-                if not chat_id1 or not chat_id2 or chat_id1 != chat_id2:
-                    raise ValueError("Link tidak valid atau bukan dari chat yang sama.")
+                if not chat_id1 or not chat_id2 or chat_id1 != chat_id2:
+                    raise ValueError("Link tidak valid atau bukan dari chat yang sama.")
 
-                for msg_id in range(min(msg_id1, msg_id2), max(msg_id1, msg_id2) + 1):
-                    links_to_process.append((chat_id1, msg_id))
-            else:
-                for link in links_text.split():
-                    chat_id, msg_id = self._parse_link(link)
-                    if not chat_id or not msg_id:
-                        self._log.error(f"Link tidak valid: {link}")
-                        continue
-                    links_to_process.append((chat_id, msg_id))
+                start, end = sorted([msg_id1, msg_id2])
+                for msg_id in range(start, end + 1):
+                    links_to_process.append((chat_id1, msg_id))
 
-            if not links_to_process:
-                raise ValueError("Tidak ada link valid yang ditemukan.")
+            else:
+                for link in links_text.split():
+                    chat_id, msg_id = self._parse_link(link)
+                    if not chat_id or not msg_id:
+                        self._log.error(f"Link tidak valid: {link}")
+                        continue
+                    links_to_process.append((chat_id, msg_id))
 
-            await status_message.edit(f"Siap menyalin {len(links_to_process)} pesan...")
-            await asyncio.sleep(2)
+            if not links_to_process:
+                raise ValueError("Tidak ada link valid yang ditemukan.")
 
-            total = len(links_to_process)
-            for i, (chat_id, msg_id) in enumerate(links_to_process):
-                try:
-                    await status_message.edit(f"Memproses pesan {i+1}/{total} (ID: {msg_id})...")
+            await status_message.edit(f"Siap menyalin {len(links_to_process)} pesan...")
+            await asyncio.sleep(1.5)
 
-                    target_message = await self._get_and_verify_message(chat_id, msg_id)
-                    if target_message.empty:
-                        continue
+            total = len(links_to_process)
 
-                    await self._process_single_message(
-                        target_message, user_chat_id, status_message, custom_thumb_path=custom_thumb_path, **extra_params
-                    )
-                    await asyncio.sleep(1.5)
+            for i, (chat_id, msg_id) in enumerate(links_to_process):
+                try:
+                    await status_message.edit(f"Memproses pesan {i+1}/{total} (ID: {msg_id})...")
 
-                except FloodWait as e:
-                    wait_time = e.value + 5
-                    self._log.print(f"{self._log.YELLOW}FloodWait: tunggu {wait_time} detik...{self._log.RESET}")
-                    await asyncio.sleep(wait_time)
-                    try:
-                        target_message = await self._get_and_verify_message(chat_id, msg_id)
-                        if not target_message.empty:
-                            await self._process_single_message(
-                                target_message, user_chat_id, status_message, custom_thumb_path=custom_thumb_path, **extra_params,
-                            )
-                    except Exception as retry_e:
-                        self._log.error(f"Gagal retry setelah FloodWait ({chat_id}/{msg_id}): {retry_e}")
-                except Exception as e:
-                    self._log.error(f"Gagal memproses ({chat_id}/{msg_id}): {e}")
+                    target_message = await self._get_and_verify_message(chat_id, msg_id)
+                    if not target_message:
+                        continue
 
-            await status_message.edit("✅ **Selesai!**")
-            await asyncio.sleep(3)
-            await status_message.delete()
+                    await self._process_single_message(
+                        target_message,
+                        user_chat_id,
+                        status_message,
+                        custom_thumb_path=custom_thumb_path,
+                        **extra_params
+                    )
 
-        finally:
-            if custom_thumb_path and os.path.exists(custom_thumb_path):
-                os.remove(custom_thumb_path)
+                    await asyncio.sleep(1.5)
+
+                except FloodWait as e:
+                    wait_time = e.value + 5
+                    self._log.print(f"{self._log.YELLOW}FloodWait: tunggu {wait_time} detik...{self._log.RESET}")
+                    await asyncio.sleep(wait_time)
+
+                    try:
+                        target_message = await self._get_and_verify_message(chat_id, msg_id)
+                        if target_message:
+                            await self._process_single_message(
+                                target_message,
+                                user_chat_id,
+                                status_message,
+                                custom_thumb_path=custom_thumb_path,
+                                **extra_params
+                            )
+                    except Exception as retry_e:
+                        self._log.error(f"Gagal retry setelah FloodWait ({chat_id}/{msg_id}): {retry_e}")
+
+                except Exception as e:
+                    self._log.error(f"Gagal memproses ({chat_id}/{msg_id}): {e}")
+
+            await status_message.edit("✅ **Selesai!**")
+            await asyncio.sleep(3)
+            await status_message.delete()
+
+        finally:
+            if custom_thumb_path and os.path.exists(custom_thumb_path):
+                os.remove(custom_thumb_path)
