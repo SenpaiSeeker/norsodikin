@@ -59,6 +59,7 @@ Homepage = "https://github.com/SenpaiSeeker/norsodikin"
 pyrogram = [
     "navygram",
     "TgCrypto2",
+    "uvloop",
 ]
 
 [tool.setuptools]
