@@ -1,6 +1,7 @@
 import asyncio
 import io
 import json
+import re
 import time
 from typing import Optional, Tuple
 import cloudscraper25 as cloudscraper
