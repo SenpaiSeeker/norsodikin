@@ -55,8 +55,9 @@ class Argument:
         is_tuple: bool = False,
     ) -> Union[str, pyrogram.types.Message, Tuple[Optional[str], Optional[str]]]:
 
-        text_content = message.text or message.caption or ""
-        command_parts = message.command or text_content.split()
+        full_text = message.text or message.caption or ""
+        full_html = getattr(full_text, 'html', full_text)
+        command_parts = full_text.split()
         replied = message.reply_to_message
 
         replied_text = None
@@ -84,16 +85,32 @@ class Argument:
         if is_arg:
             if quote_text:
                 return quote_text
+            
             if len(command_parts) > 1:
-                return text_content.split(None, 1)[1]
+                command_str = command_parts[0]
+                try:
+                    source_text = full_html if isinstance(full_html, str) else full_text
+                    args_html = source_text[len(command_str):].strip()
+                except (IndexError, TypeError, AttributeError):
+                    args_html = " ".join(command_parts[1:])
+                
+                return args_html
+            
             if replied and replied_text:
-                return replied_text
+                return getattr(replied_text, 'html', str(replied_text))
+                
             return ""
 
         if replied:
             return replied
+            
         if len(command_parts) > 1:
-            return text_content.split(None, 1)[1]
+            command_str = command_parts[0]
+            try:
+                args_html = full_html[len(command_str):].strip()
+            except (IndexError, TypeError, AttributeError):
+                args_html = " ".join(command_parts[1:])
+            return args_html
 
         return ""
 
@@ -164,7 +181,7 @@ class Argument:
                 5046509860389126442,
                 5046589136895476101,
             ]
-        elif is_premium:
+        else:
             list_id_effect = [
                 5170169077011841524,
                 5170166362592510656,
@@ -857,5 +874,4 @@ class Argument:
                 5303040994189515406,
                 5303274812209110229,
             ]
-
         return random.choice(list_id_effect)
