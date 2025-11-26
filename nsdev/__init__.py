@@ -1,11 +1,11 @@
 from types import SimpleNamespace
 
 from .ai import (
+    OCR,
     ChatbotGemini,
     HuggingFaceGenerator,
     ImageGenerator,
     ImageUpscaler,
-    OCR,
     QrCodeGenerator,
     SpeechToText,
     TextToSpeech,

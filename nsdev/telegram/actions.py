@@ -46,30 +46,30 @@ class TelegramActions:
 
     def record_voice(self, chat_id):
         return self._action_context(chat_id, ChatAction.RECORD_AUDIO)
-    
+
     def choose_contact(self, chat_id):
         return self._action_context(chat_id, ChatAction.CHOOSE_CONTACT)
-    
+
     def choose_sticker(self, chat_id):
         return self._action_context(chat_id, ChatAction.CHOOSE_STICKER)
-    
+
     def find_location(self, chat_id):
         return self._action_context(chat_id, ChatAction.FIND_LOCATION)
-    
+
     def playing(self, chat_id):
         return self._action_context(chat_id, ChatAction.PLAYING)
-    
+
     def record_video_note(self, chat_id):
         return self._action_context(chat_id, ChatAction.RECORD_VIDEO_NOTE)
-    
+
     def speaking(self, chat_id):
         return self._action_context(chat_id, ChatAction.SPEAKING)
-    
+
     def upload_audio(self, chat_id):
         return self._action_context(chat_id, ChatAction.UPLOAD_AUDIO)
-    
+
     def upload_document(self, chat_id):
         return self._action_context(chat_id, ChatAction.UPLOAD_DOCUMENT)
-    
+
     def upload_video_note(self, chat_id):
         return self._action_context(chat_id, ChatAction.UPLOAD_VIDEO_NOTE)

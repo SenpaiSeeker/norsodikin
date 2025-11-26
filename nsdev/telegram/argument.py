@@ -56,7 +56,7 @@ class Argument:
     ) -> Union[str, pyrogram.types.Message, Tuple[Optional[str], Optional[str]]]:
 
         full_text = message.text or message.caption or ""
-        full_html = getattr(full_text, 'html', full_text)
+        full_html = getattr(full_text, "html", full_text)
         command_parts = full_text.split()
         replied = message.reply_to_message
 
@@ -85,29 +85,29 @@ class Argument:
         if is_arg:
             if quote_text:
                 return quote_text
-            
+
             if len(command_parts) > 1:
                 command_str = command_parts[0]
                 try:
                     source_text = full_html if isinstance(full_html, str) else full_text
-                    args_html = source_text[len(command_str):].strip()
+                    args_html = source_text[len(command_str) :].strip()
                 except (IndexError, TypeError, AttributeError):
                     args_html = " ".join(command_parts[1:])
-                
+
                 return args_html
-            
+
             if replied and replied_text:
-                return getattr(replied_text, 'html', str(replied_text))
-                
+                return getattr(replied_text, "html", str(replied_text))
+
             return ""
 
         if replied:
             return replied
-            
+
         if len(command_parts) > 1:
             command_str = command_parts[0]
             try:
-                args_html = full_html[len(command_str):].strip()
+                args_html = full_html[len(command_str) :].strip()
             except (IndexError, TypeError, AttributeError):
                 args_html = " ".join(command_parts[1:])
             return args_html

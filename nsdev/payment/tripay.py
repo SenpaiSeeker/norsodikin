@@ -1,5 +1,7 @@
 import httpx
+
 from ..data.ymlreder import YamlHandler
+
 
 class PaymentTripay:
     def __init__(self, api_key):
