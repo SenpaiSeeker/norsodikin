@@ -46,7 +46,7 @@ class MessageCopier:
         return None, None
 
     async def _get_and_verify_message(self, chat_id, msg_id):
-        if isinstance(chat_id, str) and chat_id.isdigit():
+        if isinstance(chat_id, str) and chat_id.lstrip("-").isdigit():
             chat_id = int(chat_id)
 
         if isinstance(chat_id, int) and chat_id < 0:
@@ -59,8 +59,9 @@ class MessageCopier:
 
         return await self._client.get_messages(chat_id, msg_id)
 
+
     async def _process_single_message(
-        self, message: Message, user_chat_id: int, status_message: Message, custom_thumb_path: str = None
+        self, message: Message, user_chat_id: int, status_message: Message, custom_thumb_path: str = None, **extra_params,
     ):
         original_thumb_path = None
         file_path = None
@@ -102,10 +103,12 @@ class MessageCopier:
 
             if media_type in send_map:
                 send_func = send_map[media_type]
+                caption = message.caption.html if hasattr(message.caption, "html") else (message.caption or "")
                 kwargs = {
                     "chat_id": user_chat_id,
-                    "caption": message.caption.html if message.caption else "",
+                    "caption": caption,
                     "progress": upload_progress.update,
+                    **extra_params
                 }
 
                 kwargs[media_type] = file_path
@@ -124,83 +127,3 @@ class MessageCopier:
             for path in [file_path, original_thumb_path]:
                 if path and os.path.exists(path):
                     os.remove(path)
-
-    async def copy_from_links(
-        self, user_chat_id: int, links_text: str, status_message: Message, custom_thumb_message_id: int = None
-    ):
-        links_to_process = []
-        custom_thumb_path = None
-
-        try:
-            if custom_thumb_message_id:
-                await status_message.edit("📥 Mengunduh thumbnail kustom...")
-                thumb_message = await self._client.get_messages(user_chat_id, custom_thumb_message_id)
-                if thumb_message.photo:
-                    custom_thumb_path = await self._client.download_media(thumb_message)
-                else:
-                    await status_message.edit("⚠️ Balasan bukan foto, thumbnail kustom diabaikan.")
-                    await asyncio.sleep(2)
-
-            if "|" in links_text:
-                parts = [p.strip() for p in links_text.split("|")]
-                if len(parts) != 2:
-                    raise ValueError("Format rentang tidak valid.")
-
-                chat_id1, msg_id1 = self._parse_link(parts[0])
-                chat_id2, msg_id2 = self._parse_link(parts[1])
-
-                if not chat_id1 or not chat_id2 or chat_id1 != chat_id2:
-                    raise ValueError("Link tidak valid atau bukan dari chat yang sama.")
-
-                for msg_id in range(min(msg_id1, msg_id2), max(msg_id1, msg_id2) + 1):
-                    links_to_process.append((chat_id1, msg_id))
-            else:
-                for link in links_text.split():
-                    chat_id, msg_id = self._parse_link(link)
-                    if not chat_id or not msg_id:
-                        self._log.error(f"Link tidak valid: {link}")
-                        continue
-                    links_to_process.append((chat_id, msg_id))
-
-            if not links_to_process:
-                raise ValueError("Tidak ada link valid yang ditemukan.")
-
-            await status_message.edit(f"Siap menyalin {len(links_to_process)} pesan...")
-            await asyncio.sleep(2)
-
-            total = len(links_to_process)
-            for i, (chat_id, msg_id) in enumerate(links_to_process):
-                try:
-                    await status_message.edit(f"Memproses pesan {i+1}/{total} (ID: {msg_id})...")
-
-                    target_message = await self._get_and_verify_message(chat_id, msg_id)
-                    if target_message.empty:
-                        continue
-
-                    await self._process_single_message(
-                        target_message, user_chat_id, status_message, custom_thumb_path=custom_thumb_path
-                    )
-                    await asyncio.sleep(1.5)
-
-                except FloodWait as e:
-                    wait_time = e.value + 5
-                    self._log.print(f"{self._log.YELLOW}FloodWait: tunggu {wait_time} detik...{self._log.RESET}")
-                    await asyncio.sleep(wait_time)
-                    try:
-                        target_message = await self._get_and_verify_message(chat_id, msg_id)
-                        if not target_message.empty:
-                            await self._process_single_message(
-                                target_message, user_chat_id, status_message, custom_thumb_path=custom_thumb_path
-                            )
-                    except Exception as retry_e:
-                        self._log.error(f"Gagal retry setelah FloodWait ({chat_id}/{msg_id}): {retry_e}")
-                except Exception as e:
-                    self._log.error(f"Gagal memproses ({chat_id}/{msg_id}): {e}")
-
-            await status_message.edit("✅ **Selesai!**")
-            await asyncio.sleep(3)
-            await status_message.delete()
-
-        finally:
-            if custom_thumb_path and os.path.exists(custom_thumb_path):
-                os.remove(custom_thumb_path)
