@@ -22,7 +22,7 @@ sudo apt-get update && sudo apt-get install -y libzbar0 ffmpeg
 
 **Langkah 2: Instal Pustaka Python**
 ```bash
-pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[all]"
+pip3 install "git+https://github.com/SenpaiSeeker/norsodikin#egg=norsodikin[pyrogram]"
 ```
 
 **Langkah 3: Instal Browser untuk Playwright**
@@ -74,9 +74,6 @@ client.ns.utils.log.info("Logger canggih siap mencatat progres bot!")
 # Contoh penggunaan Pinterest
 # images = await client.ns.pinterest.search("anime aesthetic")
 ```
-
-## Fitur Baru: Pinterest Engine
-Modul Pinterest kini lebih handal dengan engine khusus yang mendukung pencarian, unduhan gambar/video, dan penanganan media yang lebih baik untuk menghindari error format.
 
 ## Lisensi
 
