@@ -125,7 +125,7 @@ class MessageCopier:
 
                 await send_func(**kwargs)
             else:
-                await message.copy(user_chat_id)
+                await message.copy(user_chat_id, **extra_params)
 
         finally:
             for path in [file_path, original_thumb_path]:
