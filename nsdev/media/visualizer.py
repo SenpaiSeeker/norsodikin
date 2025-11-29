@@ -3,9 +3,6 @@ import os
 import subprocess
 
 class AudioVisualizer:
-    def __init__(self):
-        pass
-
     async def _run_ffmpeg(self, command):
         process = await asyncio.create_subprocess_exec(
             *command,
