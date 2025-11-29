@@ -1,3 +1,4 @@
+from .archiver import WebArchiver
 from .audiofx import AudioFX
 from .cache import memoize
 from .carbon import CarbonClient
