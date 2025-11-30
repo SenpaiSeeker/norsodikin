@@ -52,7 +52,7 @@ class VioletMediaPayClient:
             "signature": signature,
         }
         try:
-            async with httpx.AsyncClient(verify=True, timeout=httpx.Timeout(30.0)) as client:
+            async with httpx.AsyncClient(verify=True, follow_redirects=True, timeout=httpx.Timeout(30.0)) as client:
                 response = await client.post(url, data=payload)
                 response.raise_for_status()
                 return self.convert._convertToNamespace(response.json())
@@ -63,7 +63,7 @@ class VioletMediaPayClient:
         url = f"{self.base_url}/transactions"
         payload = {"api_key": self.api_key, "secret_key": self.secret_key, "ref": ref, "ref_id": ref_id}
         try:
-            async with httpx.AsyncClient(verify=True, timeout=httpx.Timeout(30.0)) as client:
+            async with httpx.AsyncClient(verify=True, follow_redirects=True, timeout=httpx.Timeout(30.0)) as client:
                 response = await client.post(url, data=payload)
                 response.raise_for_status()
                 return self.convert._convertToNamespace(response.json())
