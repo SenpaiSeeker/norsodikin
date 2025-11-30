@@ -21,6 +21,7 @@ from .ratelimit import RateLimiter
 from .shell import ShellExecutor
 from .splitter import AudioSplitter
 from .url import UrlUtils
+from .visualizer import AudioVisualizer
 from .weather import WeatherWttr
 from .web import WebAutomation
 from .wikipedia import WikipediaSearch
