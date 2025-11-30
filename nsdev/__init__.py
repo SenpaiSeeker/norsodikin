@@ -100,6 +100,7 @@ class NsDev:
         self.code = SimpleNamespace(
             Ascii=AsciiManager,
             Cipher=CipherHandler,
+            Render=LocalCodeRenderer,
         )
         self.data = SimpleNamespace(
             db=DataBase,
