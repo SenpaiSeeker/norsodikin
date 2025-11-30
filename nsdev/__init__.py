@@ -17,7 +17,7 @@ from .ai import (
 )
 from .analytics import AnalyticsManager, ChatAnalyzer
 from .auth import AuthManager
-from .code import AsciiManager, CipherHandler
+from .code import AsciiManager, CipherHandler, LocalCodeRenderer
 from .data import DataBase, KeyManager, YamlHandler
 from .payment import (
     PaymentCashify,
@@ -70,7 +70,7 @@ from .utils import (
     memoize,
 )
 
-__version__ = "0.39"
+__version__ = "0.40"
 __author__ = "@NorSodikin"
 
 
