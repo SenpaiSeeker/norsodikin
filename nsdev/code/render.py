@@ -1,62 +1,89 @@
-from io import BytesIO
-from pygments import highlight
-from pygments.lexers import get_lexer_by_name, guess_lexer
-from pygments.formatters import ImageFormatter
-from pygments.styles import get_all_styles
-from PIL import Image, ImageDraw
+import asyncio
+from playwright.async_api import async_playwright
+from urllib.parse import quote
 
-class LocalCodeRenderer:
-    def __init__(self):
-        self.default_style = "monokai"
+class CodeRenderer:
+    async def render(self, code: str, language: str = "auto", theme: str = "dracula", line_numbers: bool = True) -> bytes:
+        html_content = self._generate_html(code, language, theme, line_numbers)
+        
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            page = await browser.new_page(viewport={"width": 1920, "height": 1080}, device_scale_factor=2)
+            
+            await page.set_content(html_content)
+            await page.wait_for_selector(".code-container")
+            
+            element = await page.query_selector(".code-container")
+            screenshot_bytes = await element.screenshot(omit_background=True)
+            
+            await browser.close()
+            return screenshot_bytes
 
-    def get_available_styles(self):
-        return list(get_all_styles())
-
-    def render(self, code: str, language: str = None, theme: str = "monokai", line_numbers: bool = True) -> BytesIO:
-        try:
-            if language:
-                lexer = get_lexer_by_name(language, stripall=True)
-            else:
-                lexer = guess_lexer(code)
-        except Exception:
-            lexer = get_lexer_by_name("text", stripall=True)
-
-        formatter_opts = {
-            "style": theme if theme in self.get_available_styles() else self.default_style,
-            "line_numbers": line_numbers,
-            "font_size": 24,
-            "font_name": "DejaVu Sans Mono",
-            "image_pad": 30,
-            "line_number_bg": "#202020",
-            "line_number_fg": "#aaaaaa"
-        }
-
-        image_data = highlight(code, lexer, ImageFormatter(**formatter_opts))
+    def _generate_html(self, code: str, language: str, theme: str, line_numbers: bool) -> str:
+        line_numbers_class = "line-numbers" if line_numbers else ""
         
-        code_image = Image.open(BytesIO(image_data))
-        
-        bg_color = (40, 44, 52)
-        padding = 50
-        title_bar_height = 60
-        
-        final_width = code_image.width + (padding * 2)
-        final_height = code_image.height + padding + title_bar_height
-        
-        canvas = Image.new("RGB", (final_width, final_height), bg_color)
-        draw = ImageDraw.Draw(canvas)
-        
-        button_y = padding // 2 + 10
-        button_spacing = 30
-        start_x = padding
-        
-        draw.ellipse((start_x, button_y, start_x + 20, button_y + 20), fill="#ff5f56")
-        draw.ellipse((start_x + button_spacing, button_y, start_x + button_spacing + 20, button_y + 20), fill="#ffbd2e")
-        draw.ellipse((start_x + button_spacing * 2, button_y, start_x + button_spacing * 2 + 20, button_y + 20), fill="#27c93f")
-        
-        canvas.paste(code_image, (padding, title_bar_height))
-        
-        output = BytesIO()
-        canvas.save(output, format="PNG")
-        output.seek(0)
-        
-        return output
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/{theme}.min.css">
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+            <style>
+                body {{
+                    margin: 0;
+                    padding: 50px;
+                    background: transparent;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    font-family: 'Fira Code', monospace;
+                }}
+                .code-container {{
+                    background: #282a36;
+                    border-radius: 12px;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+                    overflow: hidden;
+                    min-width: 400px;
+                    max-width: 1200px;
+                }}
+                .window-header {{
+                    background: #21222c;
+                    padding: 12px 16px;
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                }}
+                .dot {{
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 50%;
+                }}
+                .red {{ background: #ff5f56; }}
+                .yellow {{ background: #ffbd2e; }}
+                .green {{ background: #27c93f; }}
+                
+                pre {{
+                    margin: 0;
+                    padding: 20px;
+                    overflow-x: auto;
+                }}
+                code {{
+                    font-family: 'Consolas', 'Monaco', monospace;
+                    font-size: 16px;
+                    line-height: 1.5;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="code-container">
+                <div class="window-header">
+                    <div class="dot red"></div>
+                    <div class="dot yellow"></div>
+                    <div class="dot green"></div>
+                </div>
+                <pre><code class="language-{language} {line_numbers_class}">{code}</code></pre>
+            </div>
+            <script>hljs.highlightAll();</script>
+        </body>
+        </html>
+        """
