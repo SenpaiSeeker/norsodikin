@@ -1,6 +1,7 @@
 import asyncio
 from playwright.async_api import async_playwright
 
+
 class CodeRenderer:
     async def render(self, code: str, language: str = "auto", theme: str = "dracula", line_numbers: bool = True) -> bytes:
         html_content = self._generate_html(code, language, theme, line_numbers)
@@ -22,7 +23,6 @@ class CodeRenderer:
             await page.wait_for_selector(".window-container")
             
             element = await page.query_selector(".window-container")
-            
             screenshot_bytes = await element.screenshot(omit_background=True)
             
             await browser.close()
@@ -51,7 +51,7 @@ class CodeRenderer:
                 
                 body {{
                     margin: 0;
-                    padding: 40px;
+                    padding: 60px;
                     background-color: transparent;
                     display: inline-flex;
                     justify-content: center;
@@ -60,10 +60,11 @@ class CodeRenderer:
 
                 .window-container {{
                     background-color: #282a36;
+                    color: #f8f8f2 !important;
                     border-radius: 12px;
-                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+                    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.65);
                     overflow: hidden;
-                    min-width: 400px;
+                    min-width: 450px;
                     max-width: 1400px;
                     display: flex;
                     flex-direction: column;
@@ -72,16 +73,16 @@ class CodeRenderer:
 
                 .window-header {{
                     background: #191A21;
-                    padding: 15px 20px;
+                    padding: 18px 24px;
                     display: flex;
                     align-items: center;
-                    gap: 8px;
+                    gap: 10px;
                     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
                 }}
 
                 .dot {{
-                    width: 12px;
-                    height: 12px;
+                    width: 14px;
+                    height: 14px;
                     border-radius: 50%;
                 }}
 
@@ -93,14 +94,16 @@ class CodeRenderer:
                     flex-grow: 1;
                     text-align: center;
                     font-family: 'JetBrains Mono', monospace;
-                    font-size: 12px;
+                    font-size: 13px;
                     color: #6272a4;
-                    opacity: 0.8;
+                    font-weight: 500;
+                    letter-spacing: 0.5px;
+                    text-transform: uppercase;
                 }}
 
                 pre {{
                     margin: 0;
-                    padding: 20px 25px;
+                    padding: 25px 30px;
                     overflow: hidden;
                     background: transparent !important;
                 }}
@@ -110,6 +113,13 @@ class CodeRenderer:
                     font-size: 16px;
                     line-height: 1.6;
                     tab-size: 4;
+                    background: transparent !important;
+                    color: #f8f8f2 !important;
+                }}
+
+                .hljs {{
+                    background: transparent !important;
+                    color: #f8f8f2 !important;
                 }}
 
                 .hljs-ln-numbers {{
@@ -128,7 +138,7 @@ class CodeRenderer:
                 }}
 
                 .hljs-ln-code {{
-                    padding-left: 15px !important;
+                    padding-left: 10px !important;
                 }}
             </style>
         </head>
@@ -138,16 +148,18 @@ class CodeRenderer:
                     <div class="dot red"></div>
                     <div class="dot yellow"></div>
                     <div class="dot green"></div>
-                    <div class="title">python</div>
+                    <div class="title">{language if language != 'auto' else 'Code'}</div>
                 </div>
                 <pre><code class="language-{language} {line_numbers_class}">{code}</code></pre>
             </div>
 
             <script>
-                hljs.highlightAll();
-                if ({str(line_numbers).lower()}) {{
-                    hljs.initLineNumbersOnLoad();
-                }}
+                document.addEventListener('DOMContentLoaded', (event) => {{
+                    hljs.highlightAll();
+                    if ({str(line_numbers).lower()}) {{
+                        hljs.initLineNumbersOnLoad();
+                    }}
+                }});
             </script>
         </body>
         </html>
