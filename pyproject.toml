@@ -44,7 +44,6 @@ dependencies = [
     "psutil",
     "speedtest-cli",
     "pymongo",
-    "pygments",
     "pyfiglet",
     "yt-dlp",
     "aiocron",
