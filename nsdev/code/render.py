@@ -1,6 +1,5 @@
 import asyncio
 from playwright.async_api import async_playwright
-from urllib.parse import quote
 
 class CodeRenderer:
     async def render(self, code: str, language: str = "auto", theme: str = "dracula", line_numbers: bool = True) -> bytes:
@@ -8,12 +7,22 @@ class CodeRenderer:
         
         async with async_playwright() as p:
             browser = await p.chromium.launch()
-            page = await browser.new_page(viewport={"width": 1920, "height": 1080}, device_scale_factor=2)
+            
+            context = await browser.new_context(
+                viewport={"width": 1920, "height": 1080},
+                device_scale_factor=3
+            )
+            
+            page = await context.new_page()
             
             await page.set_content(html_content)
-            await page.wait_for_selector(".code-container")
             
-            element = await page.query_selector(".code-container")
+            await page.wait_for_load_state("networkidle")
+            
+            await page.wait_for_selector(".window-container")
+            
+            element = await page.query_selector(".window-container")
+            
             screenshot_bytes = await element.screenshot(omit_background=True)
             
             await browser.close()
@@ -26,64 +35,120 @@ class CodeRenderer:
         <!DOCTYPE html>
         <html>
         <head>
+            <meta charset="utf-8">
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+            
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/{theme}.min.css">
             <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script>
+            
             <style>
+                * {{
+                    box-sizing: border-box;
+                }}
+                
                 body {{
                     margin: 0;
-                    padding: 50px;
-                    background: transparent;
-                    display: flex;
+                    padding: 40px;
+                    background-color: transparent;
+                    display: inline-flex;
                     justify-content: center;
                     align-items: center;
-                    font-family: 'Fira Code', monospace;
                 }}
-                .code-container {{
-                    background: #282a36;
+
+                .window-container {{
+                    background-color: #282a36;
                     border-radius: 12px;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
                     overflow: hidden;
                     min-width: 400px;
-                    max-width: 1200px;
-                }}
-                .window-header {{
-                    background: #21222c;
-                    padding: 12px 16px;
+                    max-width: 1400px;
                     display: flex;
-                    gap: 8px;
-                    align-items: center;
+                    flex-direction: column;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
                 }}
+
+                .window-header {{
+                    background: #191A21;
+                    padding: 15px 20px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                }}
+
                 .dot {{
                     width: 12px;
                     height: 12px;
                     border-radius: 50%;
                 }}
-                .red {{ background: #ff5f56; }}
-                .yellow {{ background: #ffbd2e; }}
-                .green {{ background: #27c93f; }}
-                
+
+                .red {{ background-color: #ff5f56; }}
+                .yellow {{ background-color: #ffbd2e; }}
+                .green {{ background-color: #27c93f; }}
+
+                .title {{
+                    flex-grow: 1;
+                    text-align: center;
+                    font-family: 'JetBrains Mono', monospace;
+                    font-size: 12px;
+                    color: #6272a4;
+                    opacity: 0.8;
+                }}
+
                 pre {{
                     margin: 0;
-                    padding: 20px;
-                    overflow-x: auto;
+                    padding: 20px 25px;
+                    overflow: hidden;
+                    background: transparent !important;
                 }}
+
                 code {{
-                    font-family: 'Consolas', 'Monaco', monospace;
+                    font-family: 'JetBrains Mono', monospace !important;
                     font-size: 16px;
-                    line-height: 1.5;
+                    line-height: 1.6;
+                    tab-size: 4;
+                }}
+
+                .hljs-ln-numbers {{
+                    -webkit-touch-callout: none;
+                    -webkit-user-select: none;
+                    -khtml-user-select: none;
+                    -moz-user-select: none;
+                    -ms-user-select: none;
+                    user-select: none;
+                    text-align: right;
+                    color: #6272a4;
+                    border-right: 1px solid rgba(255, 255, 255, 0.1);
+                    vertical-align: top;
+                    padding-right: 15px !important;
+                    margin-right: 15px !important;
+                }}
+
+                .hljs-ln-code {{
+                    padding-left: 15px !important;
                 }}
             </style>
         </head>
         <body>
-            <div class="code-container">
+            <div class="window-container">
                 <div class="window-header">
                     <div class="dot red"></div>
                     <div class="dot yellow"></div>
                     <div class="dot green"></div>
+                    <div class="title">python</div>
                 </div>
                 <pre><code class="language-{language} {line_numbers_class}">{code}</code></pre>
             </div>
-            <script>hljs.highlightAll();</script>
+
+            <script>
+                hljs.highlightAll();
+                if ({str(line_numbers).lower()}) {{
+                    hljs.initLineNumbersOnLoad();
+                }}
+            </script>
         </body>
         </html>
         """
