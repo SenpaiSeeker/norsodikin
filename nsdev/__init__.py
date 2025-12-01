@@ -17,7 +17,7 @@ from .ai import (
 )
 from .analytics import AnalyticsManager, ChatAnalyzer
 from .auth import AuthManager
-from .code import AsciiManager, CipherHandler, LocalCodeRenderer
+from .code import AsciiManager, CipherHandler, CodeRenderer
 from .data import DataBase, KeyManager, YamlHandler
 from .payment import (
     PaymentCashify,
@@ -100,7 +100,7 @@ class NsDev:
         self.code = SimpleNamespace(
             Ascii=AsciiManager,
             Cipher=CipherHandler,
-            Render=LocalCodeRenderer,
+            Render=CodeRenderer,
         )
         self.data = SimpleNamespace(
             db=DataBase,
