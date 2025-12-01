@@ -19,6 +19,7 @@ from .analytics import AnalyticsManager, ChatAnalyzer
 from .auth import AuthManager
 from .code import AsciiManager, CipherHandler, CodeRenderer
 from .data import DataBase, KeyManager, YamlHandler
+from .game import GameEngine
 from .payment import (
     PaymentCashify,
     PaymentMidtrans,
@@ -29,15 +30,24 @@ from .payment import (
 )
 from .pinterest import Pinterest
 from .schedule import Scheduler
-from .server import ProcessManager, ServerMonitor, SpeedtestRunner, SSHUserManager
+from .server import (
+    FirewallManager,
+    ProcessManager,
+    RemoteExecutor,
+    ServerMonitor,
+    SpeedtestRunner,
+    SSHUserManager,
+)
 from .telegram import (
     Argument,
     Button,
+    CalendarUI,
     ErrorHandler,
     MessageCopier,
     StoryDownloader,
     TelegramActions,
     TextFormatter,
+    ThemeGenerator,
     VideoFX,
 )
 from .tempmail import TempMailManager
@@ -45,8 +55,10 @@ from .utils import (
     AnsiColors,
     AudioFX,
     AudioSplitter,
+    AudioVisualizer,
     CarbonClient,
     CustomLogHandler,
+    DeviceMockup,
     FakeInfoGenerator,
     FileManager,
     FontChanger,
@@ -65,6 +77,7 @@ from .utils import (
     TMDbClient,
     UrlUtils,
     WeatherWttr,
+    WebArchiver,
     WebAutomation,
     WikipediaSearch,
     memoize,
@@ -107,6 +120,9 @@ class NsDev:
             key=KeyManager,
             yaml=YamlHandler(),
         )
+        self.game = SimpleNamespace(
+            engine=GameEngine(),
+        )
         self.payment = SimpleNamespace(
             Cashify=PaymentCashify,
             Midtrans=PaymentMidtrans,
@@ -122,6 +138,8 @@ class NsDev:
             process=ProcessManager(),
             speedtest=SpeedtestRunner(),
             user=SSHUserManager,
+            remote=RemoteExecutor(),
+            firewall=FirewallManager(),
         )
         self.telegram = SimpleNamespace(
             actions=TelegramActions(self._client),
@@ -132,10 +150,14 @@ class NsDev:
             formatter=TextFormatter,
             story=StoryDownloader(self._client),
             videofx=VideoFX(),
+            calendar=CalendarUI(),
+            theme=ThemeGenerator(),
         )
         self.tempmail = TempMailManager()
         self.utils = SimpleNamespace(
+            archiver=WebArchiver(),
             audiofx=AudioFX(),
+            visualizer=AudioVisualizer(),
             cache=memoize,
             carbon=CarbonClient,
             color=AnsiColors(),
@@ -147,6 +169,7 @@ class NsDev:
             gofile=GoFileUploader(),
             grad=Gradient(),
             image=ImageManipulator(),
+            mockup=DeviceMockup(),
             log=LoggerHandler,
             lookup=TMDbClient,
             mediainfo=MediaInspector(),
