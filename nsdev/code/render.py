@@ -1,165 +1,63 @@
-import asyncio
-from playwright.async_api import async_playwright
+from io import BytesIO
+from pygments import highlight
+from pygments.lexers import get_lexer_by_name, guess_lexer
+from pygments.formatters import ImageFormatter
+from pygments.styles import get_all_styles
+from PIL import Image, ImageDraw
+
 
 class CodeRenderer:
-    async def render(self, code: str, language: str = "auto", theme: str = "dracula", line_numbers: bool = True) -> bytes:
-        html_content = self._generate_html(code, language, theme, line_numbers)
+    def __init__(self):
+        self.default_style = "monokai"
+
+    def get_available_styles(self):
+        return list(get_all_styles())
+
+    def render(self, code: str, language: str = None, theme: str = "monokai", line_numbers: bool = True) -> BytesIO:
+        try:
+            if language:
+                lexer = get_lexer_by_name(language, stripall=True)
+            else:
+                lexer = guess_lexer(code)
+        except Exception:
+            lexer = get_lexer_by_name("text", stripall=True)
+
+        formatter_opts = {
+            "style": theme if theme in self.get_available_styles() else self.default_style,
+            "line_numbers": line_numbers,
+            "font_size": 24,
+            "font_name": "DejaVu Sans Mono",
+            "image_pad": 30,
+            "line_number_bg": "#202020",
+            "line_number_fg": "#aaaaaa"
+        }
+
+        image_data = highlight(code, lexer, ImageFormatter(**formatter_opts))
         
-        async with async_playwright() as p:
-            browser = await p.chromium.launch()
-            
-            context = await browser.new_context(
-                viewport={"width": 1920, "height": 1080},
-                device_scale_factor=3
-            )
-            
-            page = await context.new_page()
-            
-            await page.set_content(html_content)
-            
-            await page.wait_for_load_state("networkidle")
-            
-            await page.wait_for_selector(".window-container")
-            
-            element = await page.query_selector(".window-container")
-            screenshot_bytes = await element.screenshot(omit_background=True)
-            
-            await browser.close()
-            return screenshot_bytes
-
-    def _generate_html(self, code: str, language: str, theme: str, line_numbers: bool) -> str:
-        line_numbers_class = "line-numbers" if line_numbers else ""
+        code_image = Image.open(BytesIO(image_data))
         
-        lang_class = f"language-{language}" if language and language != "auto" else ""
-
-        return f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <link rel="preconnect" href="https://fonts.googleapis.com">
-            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-            <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-            
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/{theme}.min.css">
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script>
-            
-            <style>
-                * {{
-                    box-sizing: border-box;
-                }}
-                
-                body {{
-                    margin: 0;
-                    padding: 60px;
-                    background-color: transparent;
-                    display: inline-flex;
-                    justify-content: center;
-                    align-items: center;
-                }}
-
-                .window-container {{
-                    background-color: #282a36;
-                    color: #f8f8f2;
-                    border-radius: 12px;
-                    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.65);
-                    overflow: hidden;
-                    min-width: 450px;
-                    max-width: 1400px;
-                    display: flex;
-                    flex-direction: column;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    font-family: 'JetBrains Mono', monospace;
-                }}
-
-                .window-header {{
-                    background: #191A21;
-                    padding: 18px 24px;
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-                }}
-
-                .dot {{
-                    width: 14px;
-                    height: 14px;
-                    border-radius: 50%;
-                }}
-
-                .red {{ background-color: #ff5f56; }}
-                .yellow {{ background-color: #ffbd2e; }}
-                .green {{ background-color: #27c93f; }}
-
-                .title {{
-                    flex-grow: 1;
-                    text-align: center;
-                    font-size: 13px;
-                    color: #6272a4;
-                    font-weight: 500;
-                    letter-spacing: 0.5px;
-                    text-transform: uppercase;
-                }}
-
-                pre {{
-                    margin: 0;
-                    padding: 25px 30px;
-                    overflow: hidden;
-                    background: transparent !important;
-                }}
-
-                code {{
-                    font-family: 'JetBrains Mono', monospace !important;
-                    font-size: 16px;
-                    line-height: 1.6;
-                    tab-size: 4;
-                    background: transparent !important;
-                }}
-
-                .hljs {{
-                    background: transparent !important;
-                }}
-
-                .hljs-ln-numbers {{
-                    -webkit-touch-callout: none;
-                    -webkit-user-select: none;
-                    -khtml-user-select: none;
-                    -moz-user-select: none;
-                    -ms-user-select: none;
-                    user-select: none;
-                    text-align: right;
-                    color: #6272a4 !important;
-                    border-right: 1px solid rgba(255, 255, 255, 0.1);
-                    vertical-align: top;
-                    padding-right: 15px !important;
-                    margin-right: 15px !important;
-                }}
-
-                .hljs-ln-code {{
-                    padding-left: 10px !important;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="window-container">
-                <div class="window-header">
-                    <div class="dot red"></div>
-                    <div class="dot yellow"></div>
-                    <div class="dot green"></div>
-                    <div class="title">{language if language != 'auto' else 'Code'}</div>
-                </div>
-                <pre><code class="{lang_class} {line_numbers_class}">{code}</code></pre>
-            </div>
-
-            <script>
-                document.addEventListener('DOMContentLoaded', (event) => {{
-                    hljs.highlightAll();
-                    if ({str(line_numbers).lower()}) {{
-                        hljs.initLineNumbersOnLoad();
-                    }}
-                }});
-            </script>
-        </body>
-        </html>
-        """
+        bg_color = (40, 44, 52)
+        padding = 50
+        title_bar_height = 60
+        
+        final_width = code_image.width + (padding * 2)
+        final_height = code_image.height + padding + title_bar_height
+        
+        canvas = Image.new("RGB", (final_width, final_height), bg_color)
+        draw = ImageDraw.Draw(canvas)
+        
+        button_y = padding // 2 + 10
+        button_spacing = 30
+        start_x = padding
+        
+        draw.ellipse((start_x, button_y, start_x + 20, button_y + 20), fill="#ff5f56")
+        draw.ellipse((start_x + button_spacing, button_y, start_x + button_spacing + 20, button_y + 20), fill="#ffbd2e")
+        draw.ellipse((start_x + button_spacing * 2, button_y, start_x + button_spacing * 2 + 20, button_y + 20), fill="#27c93f")
+        
+        canvas.paste(code_image, (padding, title_bar_height))
+        
+        output = BytesIO()
+        canvas.save(output, format="PNG")
+        output.seek(0)
+        
+        return output
