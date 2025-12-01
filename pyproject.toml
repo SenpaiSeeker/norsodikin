@@ -47,6 +47,7 @@ dependencies = [
     "pyfiglet",
     "yt-dlp",
     "aiocron",
+    "asyncssh",
     "demucs",
     "cloudscraper25",
     "playwright",
