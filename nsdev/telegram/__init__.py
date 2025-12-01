@@ -6,4 +6,5 @@ from .copier import MessageCopier
 from .errors import ErrorHandler
 from .formatter import TextFormatter
 from .story import StoryDownloader
+from .theme import ThemeGenerator
 from .videofx import VideoFX
