@@ -14,6 +14,7 @@ from .image import ImageManipulator
 from .logger import CustomLogHandler, LoggerHandler
 from .lookup import TMDbClient
 from .mediainfo import MediaInspector
+from .mockup import DeviceMockup
 from .osint import OsintTools
 from .paste import PasteClient
 from .progress import TelegramProgressBar
