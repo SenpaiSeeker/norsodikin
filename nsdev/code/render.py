@@ -1,7 +1,6 @@
 import asyncio
 from playwright.async_api import async_playwright
 
-
 class CodeRenderer:
     async def render(self, code: str, language: str = "auto", theme: str = "dracula", line_numbers: bool = True) -> bytes:
         html_content = self._generate_html(code, language, theme, line_numbers)
@@ -31,6 +30,8 @@ class CodeRenderer:
     def _generate_html(self, code: str, language: str, theme: str, line_numbers: bool) -> str:
         line_numbers_class = "line-numbers" if line_numbers else ""
         
+        lang_class = f"language-{language}" if language and language != "auto" else ""
+
         return f"""
         <!DOCTYPE html>
         <html>
@@ -60,7 +61,7 @@ class CodeRenderer:
 
                 .window-container {{
                     background-color: #282a36;
-                    color: #f8f8f2 !important;
+                    color: #f8f8f2;
                     border-radius: 12px;
                     box-shadow: 0 25px 80px rgba(0, 0, 0, 0.65);
                     overflow: hidden;
@@ -69,6 +70,7 @@ class CodeRenderer:
                     display: flex;
                     flex-direction: column;
                     border: 1px solid rgba(255, 255, 255, 0.1);
+                    font-family: 'JetBrains Mono', monospace;
                 }}
 
                 .window-header {{
@@ -93,7 +95,6 @@ class CodeRenderer:
                 .title {{
                     flex-grow: 1;
                     text-align: center;
-                    font-family: 'JetBrains Mono', monospace;
                     font-size: 13px;
                     color: #6272a4;
                     font-weight: 500;
@@ -114,12 +115,10 @@ class CodeRenderer:
                     line-height: 1.6;
                     tab-size: 4;
                     background: transparent !important;
-                    color: #f8f8f2 !important;
                 }}
 
                 .hljs {{
                     background: transparent !important;
-                    color: #f8f8f2 !important;
                 }}
 
                 .hljs-ln-numbers {{
@@ -130,7 +129,7 @@ class CodeRenderer:
                     -ms-user-select: none;
                     user-select: none;
                     text-align: right;
-                    color: #6272a4;
+                    color: #6272a4 !important;
                     border-right: 1px solid rgba(255, 255, 255, 0.1);
                     vertical-align: top;
                     padding-right: 15px !important;
@@ -150,7 +149,7 @@ class CodeRenderer:
                     <div class="dot green"></div>
                     <div class="title">{language if language != 'auto' else 'Code'}</div>
                 </div>
-                <pre><code class="language-{language} {line_numbers_class}">{code}</code></pre>
+                <pre><code class="{lang_class} {line_numbers_class}">{code}</code></pre>
             </div>
 
             <script>
