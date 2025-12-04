@@ -56,6 +56,7 @@ class MessageCopier:
                     self._peer_cache[chat_id] = True
                 except Exception as e:
                     raise RPCError(f"Gagal akses chat {chat_id}: {e}")
+
         return await self._client.get_messages(chat_id, msg_id)
 
     async def _process_single_message(
@@ -71,7 +72,6 @@ class MessageCopier:
 
         try:
             return await message.copy(user_chat_id, **extra_params)
-
         except ChatForwardsRestricted:
             await status_message.edit(f"🔒 Konten Terproteksi ({message.id}). Mengunduh manual...")
         except Exception as e:
@@ -148,7 +148,8 @@ class MessageCopier:
                 await status_message.edit("Thumbnail invalid, dilewati.")
 
         try:
-            if "--photo" in links_text or "--video" in links_text:
+            lower_args = links_text.lower()
+            if "--photo" in lower_args or "--video" in lower_args:
                 parts = links_text.split()
                 target_arg = parts[0]
                 limit = 20
@@ -157,12 +158,12 @@ class MessageCopier:
                 if len(parts) >= 2 and parts[1].isdigit():
                     limit = int(parts[1])
                 
-                if "--photo" in links_text:
+                if "--photo" in lower_args:
                     media_type_filter = "photo"
-                elif "--video" in links_text:
+                elif "--video" in lower_args:
                     media_type_filter = "video"
 
-                await self.copy_mass_media(
+                return await self.copy_mass_media(
                     user_chat_id, 
                     target_arg, 
                     limit, 
@@ -170,7 +171,6 @@ class MessageCopier:
                     status_message, 
                     **extra_params
                 )
-                return
 
             links_to_process = []
             if "|" in links_text:
@@ -188,7 +188,7 @@ class MessageCopier:
                         links_to_process.append((c, m))
 
             if not links_to_process:
-                raise ValueError("Tidak ada link valid.")
+                raise ValueError("Tidak ada link valid yang ditemukan (atau format perintah mass copy salah).")
 
             total = len(links_to_process)
             for i, (cid, mid) in enumerate(links_to_process):
@@ -234,14 +234,23 @@ class MessageCopier:
             chat = await self._client.get_chat(target_source)
             chat_id = chat.id
         except Exception:
-            if str(target_source).lstrip("-").isdigit():
-                chat_id = int(target_source)
+            clean_id = str(target_source)
+            if clean_id.startswith("100") and clean_id.isdigit() and len(clean_id) > 10:
+                clean_id = f"-{clean_id}"
+            
+            if clean_id.lstrip("-").isdigit():
+                chat_id = int(clean_id)
             else:
                 chat_id = target_source
 
+        try:
+             await self._client.resolve_peer(chat_id)
+        except Exception as e:
+             raise ValueError(f"Tidak dapat mengakses chat {chat_id}. Pastikan Userbot sudah join.\nError: {e}")
+
         pyro_filter = MessageMediaType.PHOTO if filter_type == "photo" else MessageMediaType.VIDEO
 
-        await status_message.edit(f"📥 Mengunduh {limit} {filter_type} dari {target_source}...")
+        await status_message.edit(f"📥 Mengunduh {limit} {filter_type} dari {chat_id}...")
 
         processed = 0
         
