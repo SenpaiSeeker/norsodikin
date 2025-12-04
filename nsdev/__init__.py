@@ -66,6 +66,7 @@ from .utils import (
     GoFileUploader,
     Gradient,
     ImageManipulator,
+    ImageInpainter
     LoggerHandler,
     MediaDownloader,
     MediaInspector,
@@ -83,7 +84,7 @@ from .utils import (
     memoize,
 )
 
-__version__ = "0.52"
+__version__ = "0.53"
 __author__ = "@NorSodikin"
 
 
@@ -169,6 +170,7 @@ class NsDev:
             gofile=GoFileUploader(),
             grad=Gradient(),
             image=ImageManipulator(),
+            inpainter=ImageInpainter(),
             mockup=DeviceMockup(),
             log=LoggerHandler,
             lookup=TMDbClient,
