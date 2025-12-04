@@ -1,50 +1,59 @@
-import cv2
-import numpy as np
-from io import BytesIO
 import asyncio
-from functools import partial
+from io import BytesIO
+import httpx
+import uuid
+import random
 
 class ImageInpainter:
-    def _sync_remove_watermark(self, image_bytes: bytes) -> bytes:
-        np_arr = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        
-        if img is None:
-            raise ValueError("Gagal membaca data gambar.")
-
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        
-        gradient = cv2.morphologyEx(gray, cv2.MORPH_GRADIENT, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)))
-        
-        _, mask = cv2.threshold(gradient, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        
-        h, w = img.shape[:2]
-        roi_mask = np.zeros_like(mask)
-        
-        padding_x = int(w * 0.02)
-        padding_y = int(h * 0.02)
-        corner_w = int(w * 0.3) 
-        corner_h = int(h * 0.15)
-
-        cv2.rectangle(roi_mask, (padding_x, padding_y), (padding_x + corner_w, padding_y + corner_h), 255, -1)
-        cv2.rectangle(roi_mask, (w - corner_w - padding_x, padding_y), (w - padding_x, padding_y + corner_h), 255, -1)
-        cv2.rectangle(roi_mask, (padding_x, h - corner_h - padding_y), (padding_x + corner_w, h - padding_y), 255, -1)
-        cv2.rectangle(roi_mask, (w - corner_w - padding_x, h - corner_h - padding_y), (w - padding_x, h - padding_y), 255, -1)
-        
-        mask = cv2.bitwise_and(mask, roi_mask)
-        
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 1)) 
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-        mask = cv2.dilate(mask, kernel, iterations=2) 
-
-        res = cv2.inpaint(img, mask, 3, cv2.INPAINT_NS) 
-        
-        is_success, buffer = cv2.imencode(".jpg", res, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
-        if not is_success:
-            raise ValueError("Gagal encode gambar hasil.")
-            
-        return buffer.tobytes()
+    def __init__(self):
+        self.user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0"
+        ]
 
     async def remove_watermark(self, image_bytes: bytes) -> bytes:
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, partial(self._sync_remove_watermark, image_bytes))
+        return await self._remove_via_pixelbin(image_bytes)
+
+    async def _remove_via_pixelbin(self, image_bytes: bytes) -> bytes:
+        boundary = f"----WebKitFormBoundary{uuid.uuid4().hex}"
+        
+        headers = {
+            "User-Agent": random.choice(self.user_agents),
+            "Origin": "https://www.watermarkremover.io",
+            "Referer": "https://www.watermarkremover.io/",
+            "Content-Type": f"multipart/form-data; boundary={boundary}"
+        }
+        
+        files_data = (
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="image"; filename="image.jpg"\r\n'
+            f"Content-Type: image/jpeg\r\n\r\n"
+        ).encode("utf-8") + image_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
+
+        async with httpx.AsyncClient(timeout=60) as client:
+            try:
+                response = await client.post(
+                    "https://api.pixelbin.io/v2/remove-watermark",
+                    content=files_data,
+                    headers=headers
+                )
+                response.raise_for_status()
+                
+                response_data = response.json()
+                if not response_data.get("url"):
+                    raise ValueError("API tidak mengembalikan URL gambar hasil.")
+                    
+                result_url = response_data["url"]
+                
+                img_response = await client.get(result_url)
+                img_response.raise_for_status()
+                
+                return img_response.content
+                
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 403 or e.response.status_code == 401:
+                    raise ValueError(f"Gagal mengakses API (Blokir/Auth): {e}")
+                raise e
+            except Exception as e:
+                raise ValueError(f"Gagal memproses penghapusan watermark: {e}")
