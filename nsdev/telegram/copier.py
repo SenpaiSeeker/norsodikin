@@ -4,7 +4,7 @@ import re
 from typing import Optional, Tuple, Union
 from urllib.parse import parse_qs, urlparse
 
-from pyrogram.errors import FloodWait, RPCError
+from pyrogram.errors import FloodWait, RPCError, ChatForwardsRestricted
 from pyrogram.types import Message
 
 from ..utils.logger import LoggerHandler
@@ -71,14 +71,25 @@ class MessageCopier:
         file_path = None
 
         try:
-            download_progress = TelegramProgressBar(self._client, status_message, "Downloading")
+            return await message.copy(user_chat_id, **extra_params)
 
+        except ChatForwardsRestricted:
+            await status_message.edit(f"🔒 Konten Terproteksi ({message.id}). Mengunduh manual...")
+
+        except Exception as e:
+            await status_message.edit(f"❌ Gagal menyalin langsung ({e}). Mencoba mengunduh...")
+
+        try:
             if not message.media:
-                return await message.copy(user_chat_id, **extra_params)
+                if message.text:
+                    await self._client.send_message(user_chat_id, message.text.html, **extra_params)
+                return
 
+            download_progress = TelegramProgressBar(self._client, status_message, "Downloading Restricted Media")
             file_path = await self._client.download_media(message, progress=download_progress.update)
+            
             if not file_path or not os.path.exists(file_path):
-                return await message.copy(user_chat_id, **extra_params)
+                raise ValueError("Gagal mengunduh media terproteksi.")
 
             media_obj = getattr(message, message.media.value, None)
 
@@ -92,7 +103,7 @@ class MessageCopier:
                 except Exception:
                     pass
 
-            upload_progress = TelegramProgressBar(self._client, status_message, "Uploading")
+            upload_progress = TelegramProgressBar(self._client, status_message, "Uploading Restricted Media")
             send_map = {
                 "video": self._client.send_video,
                 "audio": self._client.send_audio,
@@ -125,7 +136,10 @@ class MessageCopier:
 
                 await send_func(**kwargs)
             else:
-                await message.copy(user_chat_id, **extra_params)
+                 self._log.error(f"Tipe media {media_type} tidak didukung untuk upload manual.")
+
+        except Exception as dl_err:
+            self._log.error(f"Gagal mengunduh konten terproteksi: {dl_err}")
 
         finally:
             for path in [file_path, original_thumb_path]:
@@ -223,7 +237,7 @@ class MessageCopier:
                 except Exception as e:
                     self._log.error(f"Gagal memproses ({chat_id}/{msg_id}): {e}")
 
-            await status_message.edit("✅ **Selesai!**")
+            await status_msg.edit("✅ **Selesai!**")
             await asyncio.sleep(3)
             await status_message.delete()
 
