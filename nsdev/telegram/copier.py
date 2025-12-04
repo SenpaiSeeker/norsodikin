@@ -253,7 +253,6 @@ class MessageCopier:
         await status_message.edit(f"📥 Mengunduh {limit} {filter_type} dari {chat_id}...")
 
         processed = 0
-        progress = TelegramProgressBar(self._client, status_message)
         
         async for msg in self._client.search_messages(chat_id, limit=limit, filter=pyro_filter):
             file_path = None
@@ -262,8 +261,8 @@ class MessageCopier:
 
             try:
                 if filter_type == "photo":
-                    progress.reset(new_task_name=f"Downloading Photo {processed + 1}")
-                    file_path = await self._client.download_media(msg, progress=progress.update)
+                    progress.reset(new_task_name=f"Downloading Photo {processed + 1} tunggu ya...")
+                    file_path = await self._client.download_media(msg)
                     if file_path:
                         collected_files.append(
                             InputMediaPhoto(file_path, caption=caption)
@@ -271,8 +270,8 @@ class MessageCopier:
                         processed += 1
 
                 elif filter_type == "video":
-                    progress.reset(new_task_name=f"Downloading Video {processed + 1}")
-                    file_path = await self._client.download_media(msg, progress=progress.update)
+                    progress.reset(new_task_name=f"Downloading Video {processed + 1} tunggu ya...")
+                    file_path = await self._client.download_media(msg)
                     
                     if msg.video.thumbs:
                         try:
