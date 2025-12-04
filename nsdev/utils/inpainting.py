@@ -1,81 +1,59 @@
 import asyncio
+from io import BytesIO
+import httpx
 import uuid
 import random
-import json
-import httpx
 
 class ImageInpainter:
     def __init__(self):
         self.user_agents = [
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0"
         ]
 
     async def remove_watermark(self, image_bytes: bytes) -> bytes:
+        return await self._remove_via_pixelbin(image_bytes)
+
+    async def _remove_via_pixelbin(self, image_bytes: bytes) -> bytes:
+        boundary = f"----WebKitFormBoundary{uuid.uuid4().hex}"
+    
         headers = {
             "User-Agent": random.choice(self.user_agents),
-            "Origin": "https://dewatermark.ai",
-            "Referer": "https://dewatermark.ai/",
+            "Origin": "https://www.watermarkremover.io",
+            "Referer": "https://www.watermarkremover.io/",
+            "Content-Type": f"multipart/form-data; boundary={boundary}"
         }
+    
+        files_data = (
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="image"; filename="image.jpg"\r\n'
+            f"Content-Type: image/jpeg\r\n\r\n"
+        ).encode("utf-8") + image_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
 
-        async with httpx.AsyncClient(timeout=120) as client:
-            files = {'file': ('image.jpg', image_bytes, 'image/jpeg')}
-            
-            try:
-                upload_resp = await client.post(
-                    "https://api.dewatermark.ai/api/image-upload", 
-                    files=files, 
-                    headers=headers
-                )
-                upload_resp.raise_for_status()
-                upload_data = upload_resp.json()
-                
-                if "code" in upload_data and upload_data["code"] != 0:
-                    raise ValueError(f"Upload gagal: {upload_data}")
-                    
-                image_url = upload_data["data"]["url"]
-                uid = upload_data["data"]["uid"]
-                
-                process_payload = {"url": image_url, "uid": uid}
-                process_resp = await client.post(
-                    "https://api.dewatermark.ai/api/remove-watermark",
-                    json=process_payload,
-                    headers=headers
-                )
-                process_resp.raise_for_status()
-                
-                proc_data = process_resp.json()
-                if "code" in proc_data and proc_data["code"] != 0:
-                     raise ValueError(f"Proses gagal: {proc_data}")
-
-                result_url = proc_data["data"]["url"]
-                
-                final_img = await client.get(result_url)
-                final_img.raise_for_status()
-                
-                return final_img.content
-
-            except Exception:
-                return await self._fallback_remove(image_bytes)
-
-    async def _fallback_remove(self, image_bytes: bytes) -> bytes:
         async with httpx.AsyncClient(timeout=60) as client:
-             files = {'file': ('image.jpg', image_bytes, 'image/jpeg')}
-             try:
-                 response = await client.post(
-                     "https://zhn.top/api/removeWatermark",
-                     files=files
-                 )
-                 response.raise_for_status()
-                 
-                 if response.headers.get('content-type', '').startswith('image/'):
-                     return response.content
-                 
-                 data = response.json()
-                 if 'url' in data:
-                     res = await client.get(data['url'])
-                     return res.content
-                     
-                 raise ValueError("Fallback gagal")
-             except Exception as e:
-                 raise ValueError(f"Semua metode gagal. Error: {e}")
+            try:
+                response = await client.post(
+                    "https://api.pixelbin.io/v2/pixelbin/remove-watermark",
+                    content=files_data,
+                    headers=headers
+                )
+                response.raise_for_status()
+            
+                response_data = response.json()
+                if not response_data.get("url"):
+                    raise ValueError("API tidak mengembalikan URL gambar hasil.")
+                
+                result_url = response_data["url"]
+            
+                img_response = await client.get(result_url)
+                img_response.raise_for_status()
+            
+                return img_response.content
+            
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 403 or e.response.status_code == 401:
+                    raise ValueError(f"Gagal mengakses API (Blokir/Auth): {e}")
+                raise e
+        except Exception as e:
+            raise ValueError(f"Gagal memproses penghapusan watermark: {e}")
