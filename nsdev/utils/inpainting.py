@@ -1,59 +1,45 @@
 import asyncio
-from io import BytesIO
-import httpx
-import uuid
-import random
+import base64
+import json
+import aiohttp
+from typing import Optional
 
 class ImageInpainter:
     def __init__(self):
-        self.user_agents = [
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0"
-        ]
+        self.api_url = "https://fdguigo-remove-watermark.hf.space/run/predict"
 
     async def remove_watermark(self, image_bytes: bytes) -> bytes:
-        return await self._remove_via_pixelbin(image_bytes)
+        b64_image = base64.b64encode(image_bytes).decode("utf-8")
+        data_uri = f"data:image/jpeg;base64,{b64_image}"
 
-    async def _remove_via_pixelbin(self, image_bytes: bytes) -> bytes:
-        boundary = f"----WebKitFormBoundary{uuid.uuid4().hex}"
-    
-        headers = {
-            "User-Agent": random.choice(self.user_agents),
-            "Origin": "https://www.watermarkremover.io",
-            "Referer": "https://www.watermarkremover.io/",
-            "Content-Type": f"multipart/form-data; boundary={boundary}"
+        payload = {
+            "data": [
+                data_uri
+            ]
         }
-    
-        files_data = (
-            f"--{boundary}\r\n"
-            f'Content-Disposition: form-data; name="image"; filename="image.jpg"\r\n'
-            f"Content-Type: image/jpeg\r\n\r\n"
-        ).encode("utf-8") + image_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
 
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with aiohttp.ClientSession() as session:
             try:
-                response = await client.post(
-                    "https://api.pixelbin.io/v2/pixelbin/remove-watermark",
-                    content=files_data,
-                    headers=headers
-                )
-                response.raise_for_status()
-            
-                response_data = response.json()
-                if not response_data.get("url"):
-                    raise ValueError("API tidak mengembalikan URL gambar hasil.")
-                
-                result_url = response_data["url"]
-            
-                img_response = await client.get(result_url)
-                img_response.raise_for_status()
-            
-                return img_response.content
-            
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 403 or e.response.status_code == 401:
-                    raise ValueError(f"Gagal mengakses API (Blokir/Auth): {e}")
-                raise e
+                async with session.post(self.api_url, json=payload, timeout=60) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        raise Exception(f"API Error {response.status}: {error_text}")
+
+                    result = await response.json()
+                    data_list = result.get("data", [])
+
+                    if not data_list:
+                        raise Exception("API tidak mengembalikan data gambar.")
+
+                    result_uri = data_list[0]
+                    if "," in result_uri:
+                        base64_data = result_uri.split(",")[1]
+                    else:
+                        base64_data = result_uri
+
+                    return base64.b64decode(base64_data)
+
+            except asyncio.TimeoutError:
+                raise Exception("Waktu habis saat menghubungi server AI penghapus watermark.")
             except Exception as e:
-                raise ValueError(f"Gagal memproses penghapusan watermark: {e}")
+                raise Exception(f"Gagal menghapus watermark: {e}")
