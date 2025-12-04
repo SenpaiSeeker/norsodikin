@@ -55,5 +55,5 @@ class ImageInpainter:
                 if e.response.status_code == 403 or e.response.status_code == 401:
                     raise ValueError(f"Gagal mengakses API (Blokir/Auth): {e}")
                 raise e
-        except Exception as e:
-            raise ValueError(f"Gagal memproses penghapusan watermark: {e}")
+            except Exception as e:
+                raise ValueError(f"Gagal memproses penghapusan watermark: {e}")
