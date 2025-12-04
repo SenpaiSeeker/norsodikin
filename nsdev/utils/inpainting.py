@@ -11,31 +11,35 @@ class ImageInpainter:
         
         if img is None:
             raise ValueError("Gagal membaca data gambar.")
-            
+
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
-        _, mask_white = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY)
-        _, mask_black = cv2.threshold(gray, 15, 255, cv2.THRESH_BINARY_INV)
+        gradient = cv2.morphologyEx(gray, cv2.MORPH_GRADIENT, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)))
         
-        mask = cv2.bitwise_or(mask_white, mask_black)
+        _, mask = cv2.threshold(gradient, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         
-        h, w = mask.shape
+        h, w = img.shape[:2]
         roi_mask = np.zeros_like(mask)
-        corner_size = 150 
         
-        roi_mask[0:corner_size, 0:corner_size] = 255
-        roi_mask[0:corner_size, w-corner_size:w] = 255
-        roi_mask[h-corner_size:h, 0:corner_size] = 255
-        roi_mask[h-corner_size:h, w-corner_size:w] = 255
+        padding_x = int(w * 0.02)
+        padding_y = int(h * 0.02)
+        corner_w = int(w * 0.3) 
+        corner_h = int(h * 0.15)
+
+        cv2.rectangle(roi_mask, (padding_x, padding_y), (padding_x + corner_w, padding_y + corner_h), 255, -1)
+        cv2.rectangle(roi_mask, (w - corner_w - padding_x, padding_y), (w - padding_x, padding_y + corner_h), 255, -1)
+        cv2.rectangle(roi_mask, (padding_x, h - corner_h - padding_y), (padding_x + corner_w, h - padding_y), 255, -1)
+        cv2.rectangle(roi_mask, (w - corner_w - padding_x, h - corner_h - padding_y), (w - padding_x, h - padding_y), 255, -1)
         
-        final_mask = cv2.bitwise_and(mask, roi_mask)
+        mask = cv2.bitwise_and(mask, roi_mask)
         
-        kernel = np.ones((3,3), np.uint8)
-        final_mask = cv2.dilate(final_mask, kernel, iterations=1)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 1)) 
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        mask = cv2.dilate(mask, kernel, iterations=2) 
+
+        res = cv2.inpaint(img, mask, 3, cv2.INPAINT_NS) 
         
-        res = cv2.inpaint(img, final_mask, 3, cv2.INPAINT_TELEA)
-        
-        is_success, buffer = cv2.imencode(".jpg", res)
+        is_success, buffer = cv2.imencode(".jpg", res, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
         if not is_success:
             raise ValueError("Gagal encode gambar hasil.")
             
