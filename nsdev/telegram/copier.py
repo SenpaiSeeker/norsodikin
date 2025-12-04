@@ -1,11 +1,13 @@
 import asyncio
 import os
 import re
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 from urllib.parse import parse_qs, urlparse
 
-from pyrogram.errors import FloodWait, RPCError, ChatForwardsRestricted
-from pyrogram.types import Message
+import pyrogram
+from pyrogram.enums import MessageMediaType
+from pyrogram.errors import ChatForwardsRestricted, FloodWait, RPCError
+from pyrogram.types import InputMediaPhoto, InputMediaVideo, Message
 
 from ..utils.logger import LoggerHandler
 from ..utils.progress import TelegramProgressBar
@@ -19,7 +21,6 @@ class MessageCopier:
 
     def _parse_link(self, link: str) -> Tuple[Optional[Union[str, int]], Optional[int]]:
         link = link.strip()
-
         if link.startswith("tg://openmessage"):
             parsed_url = urlparse(link)
             query_params = parse_qs(parsed_url.query)
@@ -42,7 +43,6 @@ class MessageCopier:
                 return int(f"-100{chat_id_str}"), message_id
             else:
                 return chat_id_str, message_id
-
         return None, None
 
     async def _get_and_verify_message(self, chat_id, msg_id):
@@ -55,8 +55,7 @@ class MessageCopier:
                     await self._client.resolve_peer(chat_id)
                     self._peer_cache[chat_id] = True
                 except Exception as e:
-                    raise RPCError(f"Gagal akses chat {chat_id}. Pastikan Anda anggota. Detail: {e}")
-
+                    raise RPCError(f"Gagal akses chat {chat_id}: {e}")
         return await self._client.get_messages(chat_id, msg_id)
 
     async def _process_single_message(
@@ -67,84 +66,69 @@ class MessageCopier:
         custom_thumb_path: str = None,
         **extra_params,
     ):
-        original_thumb_path = None
         file_path = None
+        original_thumb_path = None
 
         try:
             return await message.copy(user_chat_id, **extra_params)
 
         except ChatForwardsRestricted:
             await status_message.edit(f"🔒 Konten Terproteksi ({message.id}). Mengunduh manual...")
-
         except Exception as e:
             await status_message.edit(f"❌ Gagal menyalin langsung ({e}). Mencoba mengunduh...")
 
         try:
             if not message.media:
                 if message.text:
-                    await self._client.send_message(user_chat_id, message.text.html, **extra_params)
-                return
+                    return await self._client.send_message(user_chat_id, message.text.html, **extra_params)
 
-            download_progress = TelegramProgressBar(self._client, status_message, "Downloading Restricted Media")
-            file_path = await self._client.download_media(message, progress=download_progress.update)
-            
+            dl_prog = TelegramProgressBar(self._client, status_message, "Downloading Restricted")
+            file_path = await self._client.download_media(message, progress=dl_prog.update)
+
             if not file_path or not os.path.exists(file_path):
                 raise ValueError("Gagal mengunduh media terproteksi.")
 
             media_obj = getattr(message, message.media.value, None)
+            thumb_to_use = custom_thumb_path
 
-            thumb_to_use = None
-            if custom_thumb_path:
-                thumb_to_use = custom_thumb_path
-            elif media_obj and hasattr(media_obj, "thumbs") and media_obj.thumbs:
+            if not thumb_to_use and media_obj and getattr(media_obj, "thumbs", None):
                 try:
-                    original_thumb_path = await self._client.download_media(media_obj.thumbs[0].file_id)
+                    original_thumb_path = await self._client.download_media(media_obj.thumbs[-1].file_id)
                     thumb_to_use = original_thumb_path
                 except Exception:
                     pass
 
-            upload_progress = TelegramProgressBar(self._client, status_message, "Uploading Restricted Media")
-            send_map = {
-                "video": self._client.send_video,
-                "audio": self._client.send_audio,
-                "document": self._client.send_document,
-                "photo": self._client.send_photo,
-                "voice": self._client.send_voice,
-                "animation": self._client.send_animation,
-                "sticker": self._client.send_sticker,
+            upl_prog = TelegramProgressBar(self._client, status_message, "Uploading Restricted")
+            
+            send_func_name = f"send_{message.media.value}"
+            if not hasattr(self._client, send_func_name):
+                return 
+
+            send_func = getattr(self._client, send_func_name)
+            
+            caption = message.caption.html if message.caption else ""
+            
+            kwargs = {
+                "chat_id": user_chat_id,
+                "caption": caption,
+                "progress": upl_prog.update,
+                message.media.value: file_path,
+                **extra_params
             }
+            
+            if hasattr(media_obj, "duration"):
+                kwargs["duration"] = media_obj.duration
+            if thumb_to_use and message.media.value in ["video", "audio", "document"]:
+                kwargs["thumb"] = thumb_to_use
 
-            media_type = message.media.value
+            await send_func(**kwargs)
 
-            if media_type in send_map:
-                send_func = send_map[media_type]
-                caption = message.caption.html if hasattr(message.caption, "html") else (message.caption or "")
-                kwargs = {
-                    "chat_id": user_chat_id,
-                    "caption": caption,
-                    "progress": upload_progress.update,
-                    **extra_params,
-                }
-
-                kwargs[media_type] = file_path
-
-                if hasattr(media_obj, "duration"):
-                    kwargs["duration"] = media_obj.duration
-
-                if thumb_to_use and media_type in ["video", "audio", "document"]:
-                    kwargs["thumb"] = thumb_to_use
-
-                await send_func(**kwargs)
-            else:
-                 self._log.error(f"Tipe media {media_type} tidak didukung untuk upload manual.")
-
-        except Exception as dl_err:
-            self._log.error(f"Gagal mengunduh konten terproteksi: {dl_err}")
-
+        except Exception as e:
+            self._log.error(f"Gagal process manual: {e}")
         finally:
-            for path in [file_path, original_thumb_path]:
-                if path and os.path.exists(path):
-                    os.remove(path)
+            for p in [file_path, original_thumb_path]:
+                if p and os.path.exists(p):
+                    os.remove(p)
 
     async def copy_from_links(
         self,
@@ -154,93 +138,180 @@ class MessageCopier:
         custom_thumb_message_id: int = None,
         **extra_params,
     ):
-        links_to_process = []
         custom_thumb_path = None
+        if custom_thumb_message_id:
+            await status_message.edit("📥 Mengunduh thumbnail kustom...")
+            thumb_msg = await self._client.get_messages(user_chat_id, custom_thumb_message_id)
+            if thumb_msg.photo:
+                custom_thumb_path = await self._client.download_media(thumb_msg)
+            else:
+                await status_message.edit("Thumbnail invalid, dilewati.")
 
         try:
-            if custom_thumb_message_id:
-                await status_message.edit("📥 Mengunduh thumbnail kustom...")
-                thumb_message = await self._client.get_messages(user_chat_id, custom_thumb_message_id)
-                if thumb_message.photo:
-                    custom_thumb_path = await self._client.download_media(thumb_message)
-                else:
-                    await status_message.edit("⚠️ Balasan bukan foto, thumbnail kustom diabaikan.")
-                    await asyncio.sleep(2)
+            if "--photo" in links_text or "--video" in links_text:
+                parts = links_text.split()
+                target_arg = parts[0]
+                limit = 20
+                media_type_filter = None
+                
+                if len(parts) >= 2 and parts[1].isdigit():
+                    limit = int(parts[1])
+                
+                if "--photo" in links_text:
+                    media_type_filter = "photo"
+                elif "--video" in links_text:
+                    media_type_filter = "video"
 
+                await self.copy_mass_media(
+                    user_chat_id, 
+                    target_arg, 
+                    limit, 
+                    media_type_filter, 
+                    status_message, 
+                    **extra_params
+                )
+                return
+
+            links_to_process = []
             if "|" in links_text:
-                parts = [p.strip() for p in links_text.split("|")]
-                if len(parts) != 2:
-                    raise ValueError("Format rentang tidak valid.")
-
-                chat_id1, msg_id1 = self._parse_link(parts[0])
-                chat_id2, msg_id2 = self._parse_link(parts[1])
-
-                if not chat_id1 or not chat_id2 or chat_id1 != chat_id2:
-                    raise ValueError("Link tidak valid atau bukan dari chat yang sama.")
-
-                start, end = sorted([msg_id1, msg_id2])
-                for msg_id in range(start, end + 1):
-                    links_to_process.append((chat_id1, msg_id))
-
+                raw_parts = [p.strip() for p in links_text.split("|")]
+                if len(raw_parts) == 2:
+                    cid1, mid1 = self._parse_link(raw_parts[0])
+                    cid2, mid2 = self._parse_link(raw_parts[1])
+                    if cid1 and cid2 and cid1 == cid2:
+                        start, end = sorted([mid1, mid2])
+                        links_to_process = [(cid1, i) for i in range(start, end + 1)]
             else:
                 for link in links_text.split():
-                    chat_id, msg_id = self._parse_link(link)
-                    if not chat_id or not msg_id:
-                        self._log.error(f"Link tidak valid: {link}")
-                        continue
-                    links_to_process.append((chat_id, msg_id))
+                    c, m = self._parse_link(link)
+                    if c and m:
+                        links_to_process.append((c, m))
 
             if not links_to_process:
-                raise ValueError("Tidak ada link valid yang ditemukan.")
-
-            await status_message.edit(f"Siap menyalin {len(links_to_process)} pesan...")
-            await asyncio.sleep(1.5)
+                raise ValueError("Tidak ada link valid.")
 
             total = len(links_to_process)
-
-            for i, (chat_id, msg_id) in enumerate(links_to_process):
+            for i, (cid, mid) in enumerate(links_to_process):
+                await status_message.edit(f"Menyalin {i+1}/{total}...")
                 try:
-                    await status_message.edit(f"Memproses pesan {i+1}/{total} (ID: {msg_id})...")
+                    msg = await self._get_and_verify_message(cid, mid)
+                    if msg:
+                        await self._process_single_message(
+                            msg, user_chat_id, status_message, custom_thumb_path, **extra_params
+                        )
+                    await asyncio.sleep(2)
+                except FloodWait as fw:
+                    await asyncio.sleep(fw.value + 5)
+                    msg = await self._get_and_verify_message(cid, mid)
+                    if msg:
+                        await self._process_single_message(
+                            msg, user_chat_id, status_message, custom_thumb_path, **extra_params
+                        )
+                except Exception:
+                    pass
 
-                    target_message = await self._get_and_verify_message(chat_id, msg_id)
-                    if not target_message:
-                        continue
-
-                    await self._process_single_message(
-                        target_message,
-                        user_chat_id,
-                        status_message,
-                        custom_thumb_path=custom_thumb_path,
-                        **extra_params,
-                    )
-
-                    await asyncio.sleep(1.5)
-
-                except FloodWait as e:
-                    wait_time = e.value + 5
-                    self._log.print(f"{self._log.YELLOW}FloodWait: tunggu {wait_time} detik...{self._log.RESET}")
-                    await asyncio.sleep(wait_time)
-
-                    try:
-                        target_message = await self._get_and_verify_message(chat_id, msg_id)
-                        if target_message:
-                            await self._process_single_message(
-                                target_message,
-                                user_chat_id,
-                                status_message,
-                                custom_thumb_path=custom_thumb_path,
-                                **extra_params,
-                            )
-                    except Exception as retry_e:
-                        self._log.error(f"Gagal retry setelah FloodWait ({chat_id}/{msg_id}): {retry_e}")
-
-                except Exception as e:
-                    self._log.error(f"Gagal memproses ({chat_id}/{msg_id}): {e}")
-
-            await status_msg.edit("✅ **Selesai!**")
+            await status_message.edit("✅ Selesai.")
             await asyncio.sleep(3)
             await status_message.delete()
 
         finally:
             if custom_thumb_path and os.path.exists(custom_thumb_path):
                 os.remove(custom_thumb_path)
+
+    async def copy_mass_media(
+        self,
+        dest_chat_id: int,
+        target_source: Union[str, int],
+        limit: int,
+        filter_type: str,
+        status_message: Message,
+        **kwargs
+    ):
+        collected_files = []
+        thumb_files = []
+
+        try:
+            chat = await self._client.get_chat(target_source)
+            chat_id = chat.id
+        except Exception:
+            if str(target_source).lstrip("-").isdigit():
+                chat_id = int(target_source)
+            else:
+                chat_id = target_source
+
+        pyro_filter = MessageMediaType.PHOTO if filter_type == "photo" else MessageMediaType.VIDEO
+
+        await status_message.edit(f"📥 Mengunduh {limit} {filter_type} dari {target_source}...")
+
+        processed = 0
+        
+        async for msg in self._client.search_messages(chat_id, limit=limit, filter=pyro_filter):
+            file_path = None
+            thumb_path = None
+            caption = msg.caption.html if msg.caption else ""
+
+            try:
+                if filter_type == "photo":
+                    file_path = await self._client.download_media(msg)
+                    if file_path:
+                        collected_files.append(
+                            InputMediaPhoto(file_path, caption=caption)
+                        )
+                        processed += 1
+
+                elif filter_type == "video":
+                    file_path = await self._client.download_media(msg)
+                    
+                    if msg.video.thumbs:
+                        try:
+                            thumb_path = await self._client.download_media(msg.video.thumbs[-1].file_id)
+                            thumb_files.append(thumb_path)
+                        except Exception:
+                            pass
+
+                    if file_path:
+                        collected_files.append(
+                            InputMediaVideo(
+                                media=file_path, 
+                                caption=caption,
+                                duration=msg.video.duration or 0,
+                                thumb=thumb_path
+                            )
+                        )
+                        processed += 1
+                
+                if len(collected_files) >= 9:
+                    await self._client.send_media_group(dest_chat_id, collected_files, **kwargs)
+                    
+                    for item in collected_files:
+                        if os.path.exists(item.media):
+                            os.remove(item.media)
+                    for t_path in thumb_files:
+                        if t_path and os.path.exists(t_path):
+                            os.remove(t_path)
+                    
+                    collected_files = []
+                    thumb_files = []
+                    await asyncio.sleep(4)
+
+            except FloodWait as fw:
+                await asyncio.sleep(fw.value + 3)
+            except Exception as e:
+                self._log.error(f"Error processing mass media: {e}")
+
+        if collected_files:
+            try:
+                await self._client.send_media_group(dest_chat_id, collected_files, **kwargs)
+            except Exception as e:
+                self._log.error(f"Error sending final batch: {e}")
+            finally:
+                for item in collected_files:
+                    if os.path.exists(item.media):
+                        os.remove(item.media)
+                for t_path in thumb_files:
+                    if t_path and os.path.exists(t_path):
+                        os.remove(t_path)
+
+        await status_message.edit(f"✅ Proses salin massal selesai. Total {processed} file terkirim.")
+        await asyncio.sleep(3)
+        await status_message.delete()
