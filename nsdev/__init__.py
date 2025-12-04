@@ -66,7 +66,7 @@ from .utils import (
     GoFileUploader,
     Gradient,
     ImageManipulator,
-    ImageInpainter
+    ImageInpainter,
     LoggerHandler,
     MediaDownloader,
     MediaInspector,
