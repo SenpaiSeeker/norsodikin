@@ -248,7 +248,7 @@ class MessageCopier:
         except Exception as e:
              raise ValueError(f"Tidak dapat mengakses chat {chat_id}. Pastikan Userbot sudah join.\nError: {e}")
 
-        pyro_filter = MessageMediaType.PHOTO if filter_type == "photo" else MessageMediaType.VIDEO
+        pyro_filter = MessagesFilter.PHOTO if filter_type == "photo" else MessagesFilter.VIDEO
 
         await status_message.edit(f"📥 Mengunduh {limit} {filter_type} dari {chat_id}...")
 
