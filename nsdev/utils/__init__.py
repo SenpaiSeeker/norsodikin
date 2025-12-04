@@ -11,6 +11,7 @@ from .github import GitHubInfo
 from .gofile import GoFileUploader
 from .gradient import Gradient
 from .image import ImageManipulator
+from .inpainting import ImageInpainter
 from .logger import CustomLogHandler, LoggerHandler
 from .lookup import TMDbClient
 from .mediainfo import MediaInspector
