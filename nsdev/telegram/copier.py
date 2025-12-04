@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple, Union
 from urllib.parse import parse_qs, urlparse
 
 import pyrogram
-from pyrogram.enums import MessageMediaType
+from pyrogram.enums import MessagesFilter
 from pyrogram.errors import ChatForwardsRestricted, FloodWait, RPCError
 from pyrogram.types import InputMediaPhoto, InputMediaVideo, Message
 
