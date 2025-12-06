@@ -101,7 +101,7 @@ class MediaDownloader:
         if audio_only:
             opts.update(
                 {
-                    "format": "bestaudio[ext=m4a]/bestaudio/best",
+                    "format": "bestaudio/best",
                     "postprocessors": [
                         {
                             "key": "FFmpegExtractAudio",
@@ -112,8 +112,11 @@ class MediaDownloader:
                 }
             )
         else:
-            opts["format"] = (
-                "bestvideo[ext=mp4][height<=720][vcodec^=avc]+bestaudio/bestvideo[ext=mp4][height<=720]+bestaudio/best[ext=mp4][height<=720]/best"
+            opts.update(
+                {
+                    "format": "bestvideo[ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/best[ext=mp4][vcodec^=avc]/best[ext=mp4]/best",
+                    "merge_output_format": "mp4",
+                }
             )
 
         return opts
@@ -131,11 +134,16 @@ class MediaDownloader:
                     base, _ = os.path.splitext(filename)
                     filename = base + ".mp3"
 
-                try:
-                    thumb_url = f"https://i.ytimg.com/vi/{result_obj.id}/maxresdefault.jpg"
-                    thumb_path = wget.download(thumb_url, out=self.download_path)
-                except Exception:
-                    thumb_path = None
+                if not audio_only and not filename.endswith(".mp4"):
+                    filename = os.path.splitext(filename)[0] + ".mp4"
+
+                thumb_path = None
+                if hasattr(result_obj, "id"):
+                    try:
+                        thumb_url = f"https://i.ytimg.com/vi/{result_obj.id}/maxresdefault.jpg"
+                        thumb_path = wget.download(thumb_url, out=self.download_path)
+                    except Exception:
+                        thumb_path = None
 
                 result_obj.downloaded_path = filename
                 result_obj.thumbnail_path = thumb_path
@@ -143,7 +151,7 @@ class MediaDownloader:
                 return result_obj
         except Exception as e:
             if "HTTP Error 403" in str(e):
-                raise Exception("Akses ditolak (403). " "Perbarui cookies.txt atau pastikan video publik.")
+                raise Exception("Akses ditolak (403). Perbarui cookies.txt atau pastikan video publik.")
             else:
                 raise Exception(f"Gagal mengunduh: {e}")
 
@@ -154,7 +162,9 @@ class MediaDownloader:
 
     def _sync_download_social(self, url, audio_only, progress_callback, loop, media_name):
         ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop)
-        ydl_opts["format"] = "best[ext=mp4]/best"
+        if not audio_only:
+            ydl_opts["format"] = "bestvideo[ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -164,6 +174,9 @@ class MediaDownloader:
                 if audio_only and filename:
                     base, _ = os.path.splitext(filename)
                     filename = base + ".mp3"
+                
+                if not audio_only and not filename.endswith(".mp4"):
+                    filename = os.path.splitext(filename)[0] + ".mp4"
 
                 thumb_path = None
                 if hasattr(result_obj, "thumbnail") and result_obj.thumbnail:
