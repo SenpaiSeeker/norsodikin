@@ -89,12 +89,11 @@ class Argument:
             if len(command_parts) > 1:
                 command_str = command_parts[0]
                 try:
-                    source_text = full_html if isinstance(full_html, str) else full_text
-                    args_html = source_text[len(command_str) :].strip()
+                    source_text = full_text[len(command_str) :].strip()
                 except (IndexError, TypeError, AttributeError):
-                    args_html = " ".join(command_parts[1:])
+                    source_text = " ".join(command_parts[1:])
 
-                return args_html
+                return source_text
 
             if replied and replied_text:
                 return getattr(replied_text, "html", str(replied_text))
@@ -107,10 +106,10 @@ class Argument:
         if len(command_parts) > 1:
             command_str = command_parts[0]
             try:
-                args_html = full_html[len(command_str) :].strip()
+                source_text = full_text[len(command_str) :].strip()
             except (IndexError, TypeError, AttributeError):
-                args_html = " ".join(command_parts[1:])
-            return args_html
+                source_text = " ".join(command_parts[1:])
+            return source_text
 
         return ""
 
