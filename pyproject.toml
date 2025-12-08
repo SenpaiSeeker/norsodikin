@@ -42,6 +42,7 @@ dependencies = [
     "google-genai",
     "rembg[cpu]",
     "psutil",
+    "aiofiles",
     "speedtest-cli",
     "pymongo",
     "pygments",
