@@ -114,7 +114,7 @@ class MediaDownloader:
         else:
             opts.update(
                 {
-                    "format": "(bestvideo[height<=?720][width<=?1280][ext=mp4])+(bestaudio[ext=m4a])",
+                    "format": "bestvideo[height<=?720][width<=?1280][ext=mp4]+bestaudio[ext=m4a]",
                     "merge_output_format": "mp4",
                 }
             )
