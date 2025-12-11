@@ -429,6 +429,15 @@ class ImageManipulator(FontManager):
 
         formatted_message = textwrap.fill(message, width=35).replace("\n", "<br>")
 
+        background_css = """
+        background-color: #0b141a;
+        background-image: 
+            radial-gradient(circle at 10% 20%, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.03) 2%, transparent 2%, transparent 100%),
+            radial-gradient(circle at 90% 80%, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.03) 2%, transparent 2%, transparent 100%),
+            linear-gradient(135deg, rgba(255,255,255,0.02) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.02) 50%, rgba(255,255,255,0.02) 75%, transparent 75%, transparent);
+        background-size: 60px 60px;
+        """
+
         html_template = """
         <!DOCTYPE html>
         <html lang="en">
@@ -448,10 +457,7 @@ class ImageManipulator(FontManager):
                     width: 500px;
                     min-height: 800px; 
                     height: auto;
-                    background-color: #0b141a;
-                    background-image: url('https://i.imgur.com/4801n6r.png'); 
-                    background-repeat: repeat;
-                    background-size: 400px;
+                    %s
                     display: flex;
                     flex-direction: column;
                     position: relative;
@@ -471,7 +477,7 @@ class ImageManipulator(FontManager):
                 .pfp {{
                     width: 40px;
                     height: 40px;
-                    border-radius: 50%;
+                    border-radius: 50%%;
                     object-fit: cover;
                 }}
                 
@@ -514,7 +520,7 @@ class ImageManipulator(FontManager):
                     color: #e9edef;
                     padding: 10px 14px;
                     border-radius: 0px 12px 12px 12px;
-                    max-width: 75%;
+                    max-width: 75%%;
                     align-self: flex-start;
                     position: relative;
                     box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
@@ -571,17 +577,6 @@ class ImageManipulator(FontManager):
                     color: #8696a0;
                     font-size: 15px;
                 }}
-
-                .mic-circle {{
-                    background-color: #00a884;
-                    width: 48px;
-                    height: 48px;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    display: none; 
-                }}
                 
             </style>
         </head>
@@ -618,7 +613,9 @@ class ImageManipulator(FontManager):
             </div>
         </body>
         </html>
-        """.format(
+        """ % background_css
+        
+        formatted_html = html_template.format(
             pfp_base64=pfp_base64,
             name=name,
             message=formatted_message,
@@ -634,7 +631,7 @@ class ImageManipulator(FontManager):
         )
 
         return await self._render_html_with_playwright(
-            html_content=html_template, selector=".wa-container", scale_factor=3.0, width=500, height=900
+            html_content=formatted_html, selector=".wa-container", scale_factor=3.0, width=500, height=900
         )
 
     def _sync_create_quote(self, text: str, user_name: str, pfp_bytes: bytes, invert: bool) -> bytes:
