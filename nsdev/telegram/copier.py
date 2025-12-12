@@ -261,7 +261,6 @@ class MessageCopier:
 
             try:
                 if filter_type == "photo":
-                    await status_message.edit(f"Downloading Photo {processed + 1} tunggu ya...")
                     file_path = await self._client.download_media(msg)
                     if file_path:
                         collected_files.append(
@@ -270,7 +269,6 @@ class MessageCopier:
                         processed += 1
 
                 elif filter_type == "video":
-                    progress.reset(new_task_name=f"Downloading Video {processed + 1} tunggu ya...")
                     file_path = await self._client.download_media(msg)
                     
                     if msg.video.thumbs:
