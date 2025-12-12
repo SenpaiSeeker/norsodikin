@@ -261,7 +261,7 @@ class MessageCopier:
 
             try:
                 if filter_type == "photo":
-                    await status_message.edit(new_task_name=f"Downloading Photo {processed + 1} tunggu ya...")
+                    await status_message.edit(f"Downloading Photo {processed + 1} tunggu ya...")
                     file_path = await self._client.download_media(msg)
                     if file_path:
                         collected_files.append(
