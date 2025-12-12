@@ -84,7 +84,7 @@ from .utils import (
     memoize,
 )
 
-__version__ = "0.68"
+__version__ = "0.69"
 __author__ = "@NorSodikin"
 
 
