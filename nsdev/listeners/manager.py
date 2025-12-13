@@ -3,12 +3,16 @@ from typing import Optional, Union
 from pyrogram import Client
 from pyrogram.handlers import MessageHandler
 from pyrogram.types import Message
-from .exceptions import ListenerTimeout, ListenerCanceled
+from .exceptions import ListenerTimeout, ListenerStopped, ListenerCanceled
 
 class ListenerManager:
     def __init__(self, client: Client):
         self.client = client
         self.listeners = {}
+        
+        self.ListenerTimeout = ListenerTimeout
+        self.ListenerStopped = ListenerStopped
+        self.ListenerCanceled = ListenerCanceled
         
         self.client.add_handler(MessageHandler(self._global_listener_handler), group=999)
 
