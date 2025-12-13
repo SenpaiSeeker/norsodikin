@@ -20,6 +20,7 @@ from .auth import AuthManager
 from .code import AsciiManager, CipherHandler, CodeRenderer
 from .data import DataBase, KeyManager, YamlHandler
 from .game import GameEngine
+from .listeners import ListenerManager, ListenerTimeout, ListenerStopped, ListenerCanceled
 from .payment import (
     PaymentCashify,
     PaymentMidtrans,
@@ -65,8 +66,8 @@ from .utils import (
     GitHubInfo,
     GoFileUploader,
     Gradient,
-    ImageManipulator,
     ImageInpainter,
+    ImageManipulator,
     LoggerHandler,
     MediaDownloader,
     MediaInspector,
@@ -84,7 +85,7 @@ from .utils import (
     memoize,
 )
 
-__version__ = "0.71"
+__version__ = "0.72"
 __author__ = "@NorSodikin"
 
 
@@ -124,6 +125,7 @@ class NsDev:
         self.game = SimpleNamespace(
             engine=GameEngine(),
         )
+        self.listeners = ListenerManager(self._client)
         self.payment = SimpleNamespace(
             Cashify=PaymentCashify,
             Midtrans=PaymentMidtrans,
