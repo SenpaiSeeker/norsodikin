@@ -101,7 +101,7 @@ class MediaDownloader:
         if audio_only:
             opts.update(
                 {
-                    "format": "bestaudio[ext=m4a]/bestaudio/best",
+                    "format": "bestaudio[ext=m4a]",
                     "postprocessors": [
                         {
                             "key": "FFmpegExtractAudio",
@@ -114,7 +114,7 @@ class MediaDownloader:
         else:
             opts.update(
                 {
-                    "format": "bestvideo[ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/best[ext=mp4][vcodec^=avc]/best[ext=mp4]/best",
+                    "format": "bestvideo[height<=?720][width<=?1280][ext=mp4]+bestaudio[ext=m4a]",
                     "merge_output_format": "mp4",
                 }
             )
@@ -162,9 +162,6 @@ class MediaDownloader:
 
     def _sync_download_social(self, url, audio_only, progress_callback, loop, media_name):
         ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop)
-        if not audio_only:
-            ydl_opts["format"] = "bestvideo[ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/best[ext=mp4]/best"
-
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
