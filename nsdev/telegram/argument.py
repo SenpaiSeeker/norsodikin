@@ -170,6 +170,10 @@ class Argument:
         delta_ping = (end - start).microseconds / 1000
         return delta_ping
 
+    async def deleteHistory(self, peer: Union[int, str], max_id: int = 0, revoke: bool = True):
+        resolve = await self.client.resolve_peer(peer)
+        await self.client.invoke(pyrogram.raw.functions.messages.DeleteHistory(peer=resolve, max_id=max_id, revoke=revoke))
+
     def randomEffect(self, is_premium: bool = False) -> int:
         if not is_premium:
             list_id_effect = [
