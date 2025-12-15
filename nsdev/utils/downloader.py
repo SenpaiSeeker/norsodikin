@@ -101,7 +101,7 @@ class MediaDownloader:
         if audio_only:
             opts.update(
                 {
-                    "format": "bestaudio[ext=m4a]",
+                    "format": "bestaudio/best",
                     "postprocessors": [
                         {
                             "key": "FFmpegExtractAudio",
@@ -114,11 +114,13 @@ class MediaDownloader:
         else:
             opts.update(
                 {
-                    "format": "bestvideo[height<=?720][width<=?1280][ext=mp4]+bestaudio[ext=m4a]",
+                    "format": (
+                        "bestvideo[ext=mp4][height<=?720][width<=?1280]"
+                        "+bestaudio[ext=m4a]/best"
+                    ),
                     "merge_output_format": "mp4",
                 }
             )
-
         return opts
 
     def _sync_download(self, url, audio_only, progress_callback, loop):
