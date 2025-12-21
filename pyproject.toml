@@ -51,6 +51,7 @@ dependencies = [
     "aiocron",
     "asyncssh",
     "demucs",
+    "shazamio",
     "cloudscraper25",
     "playwright",
 ]
