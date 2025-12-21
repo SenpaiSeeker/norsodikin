@@ -83,9 +83,11 @@ from .utils import (
     WebAutomation,
     WikipediaSearch,
     memoize,
+    ShazamHelper,
+    LyricsFinder
 )
 
-__version__ = "0.75"
+__version__ = "0.85"
 __author__ = "@NorSodikin"
 
 
@@ -187,6 +189,8 @@ class NsDev:
             weather=WeatherWttr,
             web=WebAutomation(),
             wikipedia=WikipediaSearch,
+            shazam=ShazamHelper(),
+            lyrics=LyricsFinder(),
         )
 
 
