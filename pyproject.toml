@@ -49,6 +49,7 @@ dependencies = [
     "yt-dlp",
     "aiocron",
     "demucs",
+    "shazamio",
     "cloudscraper25",
     "playwright",
 ]
