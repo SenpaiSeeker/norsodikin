@@ -47,7 +47,7 @@ class LoggerHandler(AnsiColors):
         return self.fmt.format(
             asctime=f"{self.colors['TIME']}[ {self.formatTime()} ]",
             levelname=record["levelname"],
-            module=f"{pipe_color}│ {self.colors['MODULE']}{os.path.basename(record.get('module', '<unknown>'))}",
+            module=f"{pipe_color}| {self.colors['MODULE']}{os.path.basename(record.get('module', '<unknown>'))}",
             funcName=record.get("funcName", "<unknown>"),
             lineno=record.get("lineno", 0),
             message=record["message"],
