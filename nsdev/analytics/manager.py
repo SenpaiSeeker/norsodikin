@@ -1,7 +1,6 @@
-import time
-from collections import Counter
+import asyncio
 from functools import wraps
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 from pyrogram.types import Message
 
@@ -9,44 +8,67 @@ from ..data.database import DataBase
 
 
 class AnalyticsManager:
-    def __init__(self, database: DataBase, db_id: str = "global_analytics", var_key: str = "bot_usage_stats"):
+    def __init__(self, database: DataBase, db_id: str = "global_analytics"):
         self.db = database
         self.db_id = db_id
-        self.var_key = var_key
 
     def track_usage(self, func):
         @wraps(func)
         async def wrapped(client, message, *args, **kwargs):
+            try:
+                result = await func(client, message, *args, **kwargs)
+            except Exception as e:
+                raise e
+
             if isinstance(message, Message) and message.command:
-                user_id_to_log = message.from_user.id if message.from_user else client.me.id
-                log_entry = {
-                    "command": message.command[0],
-                    "user_id": user_id_to_log,
-                    "timestamp": int(time.time()),
-                }
-                await self.db.setListVars(self.db_id, "logs", log_entry, var_key=self.var_key)
-            return await func(client, message, *args, **kwargs)
+                asyncio.create_task(self._increment_stats(message))
+
+            return result
 
         return wrapped
 
-    async def _get_usage_logs(self) -> List[dict]:
-        return await self.db.getListVars(self.db_id, "logs", self.var_key)
+    async def _increment_stats(self, message: Message):
+        try:
+            command = message.command[0].lower()
+            user_id = str(message.from_user.id) if message.from_user else str(message.chat.id)
 
-    async def get_all_logs(self) -> List[dict]:
-        return await self._get_usage_logs()
+            cmd_stats = await self.db.getVars(self.db_id, "command_usage_stats") or {}
+            current_cmd_count = cmd_stats.get(command, 0)
+            cmd_stats[command] = current_cmd_count + 1
+            await self.db.setVars(self.db_id, "command_usage_stats", cmd_stats)
+
+            user_stats = await self.db.getVars(self.db_id, "user_activity_stats") or {}
+            current_user_count = user_stats.get(user_id, 0)
+            user_stats[user_id] = current_user_count + 1
+            await self.db.setVars(self.db_id, "user_activity_stats", user_stats)
+
+        except Exception:
+            pass
 
     async def get_top_commands(self, limit: int = 10) -> List[Tuple[str, int]]:
-        logs = await self.get_all_logs()
-        if not logs:
+        stats = await self.db.getVars(self.db_id, "command_usage_stats") or {}
+        if not stats:
             return []
 
-        command_counts = Counter(log["command"] for log in logs if "command" in log)
-        return command_counts.most_common(limit)
+        sorted_cmds = sorted(stats.items(), key=lambda item: item[1], reverse=True)
+        return sorted_cmds[:limit]
 
     async def get_active_users(self, limit: int = 10) -> List[Tuple[int, int]]:
-        logs = await self.get_all_logs()
-        if not logs:
+        stats = await self.db.getVars(self.db_id, "user_activity_stats") or {}
+        if not stats:
             return []
 
-        user_counts = Counter(log["user_id"] for log in logs if "user_id" in log)
-        return user_counts.most_common(limit)
+        sorted_users = sorted(stats.items(), key=lambda item: item[1], reverse=True)
+        
+        result = []
+        for user_id_str, count in sorted_users[:limit]:
+            try:
+                result.append((int(user_id_str), count))
+            except ValueError:
+                continue
+                
+        return result
+
+    async def get_total_usage(self) -> int:
+        stats = await self.db.getVars(self.db_id, "command_usage_stats") or {}
+        return sum(stats.values())
