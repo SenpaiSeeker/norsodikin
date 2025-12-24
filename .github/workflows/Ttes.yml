@@ -1,0 +1,110 @@
+name: Auto Add Analytics Tracking
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  add-analytics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Inject Analytics Decorator
+        run: |
+          python3 -c '
+import os
+import re
+
+def process_file(filepath):
+    with open(filepath, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    lines = content.splitlines()
+    new_lines = []
+    modified = False
+    
+    # Regex untuk mendeteksi @ctx.nsuserbot yang menggunakan ctx.cmd
+    # Menangkap dekorator yang mungkin multi-line
+    nsuserbot_pattern = re.compile(r"^\s*@ctx\.nsuserbot\(.*ctx\.cmd\(", re.DOTALL)
+    
+    # Regex untuk mengecek apakah sudah ada @ctx.analytics.track_usage di baris SEBELUM atau SESUDAHNYA
+    analytics_decorator = "@ctx.analytics.track_usage"
+
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped_line = line.strip()
+        
+        # Cek apakah baris ini adalah awal dari dekorator @ctx.nsuserbot
+        if stripped_line.startswith("@ctx.nsuserbot") and "ctx.cmd" in line:
+            # Cek apakah baris berikutnya sudah analytics
+            has_analytics_below = False
+            if i + 1 < len(lines):
+                next_line = lines[i+1].strip()
+                if next_line == analytics_decorator:
+                    has_analytics_below = True
+            
+            # Cek apakah baris sebelumnya sudah analytics (walaupun jarang urutannya begini)
+            has_analytics_above = False
+            if i > 0:
+                prev_line = lines[i-1].strip()
+                if prev_line == analytics_decorator:
+                    has_analytics_above = True
+
+            if not has_analytics_below and not has_analytics_above:
+                # Tambahkan baris ini (dekorator asli)
+                new_lines.append(line)
+                
+                # Tambahkan analytics di bawahnya dengan indentasi yang sama
+                indent = line[:len(line) - len(stripped_line)]
+                new_lines.append(f"{indent}{analytics_decorator}")
+                
+                print(f"  [+] Menambahkan tracking ke: {filepath} (Baris {i+1})")
+                modified = True
+            else:
+                new_lines.append(line)
+        else:
+            new_lines.append(line)
+        
+        i += 1
+
+    if modified:
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("\n".join(new_lines) + "\n")
+        return True
+    return False
+
+print("Mulai memindai file modul...")
+count = 0
+for root, dirs, files in os.walk("NSuserBot/Modules"):
+    for file in files:
+        if file.endswith(".py") and not file.startswith("__"):
+            path = os.path.join(root, file)
+            if process_file(path):
+                count += 1
+
+print(f"Selesai. {count} file telah diperbarui.")
+'
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if [[ -n $(git status --porcelain) ]]; then
+            git add .
+            git commit -m "chore: auto-add @ctx.analytics.track_usage to commands [skip ci]"
+            git push
+            echo "Changes pushed successfully."
+          else
+            echo "No changes to commit."
+          fi
