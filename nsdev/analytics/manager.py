@@ -30,7 +30,7 @@ class AnalyticsManager:
     async def _increment_stats(self, message: Message):
         try:
             command = message.command[0].lower()
-            user_id = str(message.from_user.id) if message.from_user else str(message.chat.id)
+            user_id = str(message.from_user.id) if message.from_user else str(message._client.me.id)
 
             cmd_stats = await self.db.getVars(self.db_id, "command_usage_stats") or {}
             current_cmd_count = cmd_stats.get(command, 0)
