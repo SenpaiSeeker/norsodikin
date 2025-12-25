@@ -89,6 +89,7 @@ class MediaDownloader:
             "quiet": True,
             "geo_bypass": True,
             "nocheckcertificate": True,
+            "ignoreerrors": True,
             "user_agent": self.fake.user_agent(),
         }
 
