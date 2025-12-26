@@ -1,5 +1,5 @@
 import asyncio
-import cloudscraper
+import cloudscraper25 as cloudscraper
 from functools import partial
 
 class AsyncScraper:
