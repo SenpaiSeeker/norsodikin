@@ -17,6 +17,7 @@ from .lookup import TMDbClient
 from .lyrics import LyricsFinder
 from .mediainfo import MediaInspector
 from .mockup import DeviceMockup
+from .network import AsyncScraper
 from .osint import OsintTools
 from .paste import PasteClient
 from .progress import TelegramProgressBar
