@@ -6,15 +6,15 @@ class AsyncScraper:
     def __init__(self):
         self.scraper = cloudscraper.create_scraper()
 
-    async def get(self, url, headers=None, params=None):
+    async def get(self, url, **kwargs):
         loop = asyncio.get_running_loop()
-        func = partial(self.scraper.get, url, headers=headers, params=params)
+        func = partial(self.scraper.get, url, **kwargs)
         response = await loop.run_in_executor(None, func)
         return response
 
-    async def post(self, url, headers=None, data=None, json=None):
+    async def post(self, url, **kwargs):
         loop = asyncio.get_running_loop()
-        func = partial(self.scraper.post, url, headers=headers, data=data, json=json)
+        func = partial(self.scraper.post, url, **kwargs)
         response = await loop.run_in_executor(None, func)
         return response
 
