@@ -75,7 +75,7 @@ class MediaDownloader:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(self._sync_extract_info, query, limit))
 
-    def _build_ydl_opts(self, url: str, audio_only: bool, progress_callback, simple_format=False, loop):
+    def _build_ydl_opts(self, url: str, audio_only: bool, progress_callback, simple_format, loop):
         def _hook(d):
             if d["status"] == "downloading" and progress_callback:
                 total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate")
