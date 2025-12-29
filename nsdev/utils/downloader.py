@@ -75,7 +75,7 @@ class MediaDownloader:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(self._sync_extract_info, query, limit))
 
-    def _build_ydl_opts(self, url: str, audio_only: bool, progress_callback, loop):
+    def _build_ydl_opts(self, url: str, audio_only: bool, progress_callback, simple_format=False, loop):
         def _hook(d):
             if d["status"] == "downloading" and progress_callback:
                 total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate")
@@ -115,17 +115,14 @@ class MediaDownloader:
         else:
             opts.update(
                 {
-                    "format": (
-                        "bestvideo[ext=mp4][height<=?720][width<=?1280]"
-                        "+bestaudio[ext=m4a]/best"
-                    ),
+                    "format": "bestvideo+bestaudio/best" if simple_format else "bestvideo[ext=mp4][height<=?720][width<=?1280]+bestaudio[ext=m4a]/best",
                     "merge_output_format": "mp4",
                 }
             )
         return opts
 
-    def _sync_download(self, url, audio_only, progress_callback, loop):
-        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop)
+    def _sync_download(self, url, audio_only, progress_callback, simple_format, loop):
+        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, simple_format, loop)
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -158,13 +155,13 @@ class MediaDownloader:
             else:
                 raise Exception(f"Gagal mengunduh: {e}")
 
-    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> object:
+    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None, simple_format: bool = False) -> object:
         loop = asyncio.get_running_loop()
-        func_call = partial(self._sync_download, url, audio_only, progress_callback, loop)
+        func_call = partial(self._sync_download, url, audio_only, progress_callback, simple_format, loop)
         return await loop.run_in_executor(None, func_call)
 
     def _sync_download_social(self, url, audio_only, progress_callback, loop, media_name):
-        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop)
+        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, simple_format=False, loop)
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
