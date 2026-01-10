@@ -61,7 +61,7 @@ Homepage = "https://github.com/SenpaiSeeker/norsodikin"
 
 [project.optional-dependencies]
 pyrogram = [
-    "navygram",
+    "pyrogram-navy",
     "TgCrypto2",
     "uvloop",
 ]
