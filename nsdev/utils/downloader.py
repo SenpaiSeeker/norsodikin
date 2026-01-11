@@ -75,7 +75,7 @@ class MediaDownloader:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(self._sync_extract_info, query, limit))
 
-    def _build_ydl_opts(self, url: str, audio_only: bool, progress_callback, loop, use_flexible_format: bool = False):
+    def _build_ydl_opts(self, url: str, audio_only: bool, progress_callback, loop, use_flexible_format: bool = False, referer: str = None):
         def _hook(d):
             if d["status"] == "downloading" and progress_callback:
                 total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate")
@@ -91,7 +91,21 @@ class MediaDownloader:
             "nocheckcertificate": True,
             "ignoreerrors": True,
             "user_agent": self.fake.user_agent(),
+            "hls_prefer_native": True,
+            "concurrent_fragment_downloads": 4,
+            "restrictfilenames": True,
+            "nopart": True,
         }
+        
+        http_headers = {
+            "User-Agent": opts["user_agent"],
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+        
+        if referer:
+            http_headers["Referer"] = referer
+            
+        opts["http_headers"] = http_headers
 
         if progress_callback:
             opts["progress_hooks"] = [_hook]
@@ -132,8 +146,8 @@ class MediaDownloader:
                 )
         return opts
 
-    def _sync_download(self, url, audio_only, progress_callback, loop, use_flexible_format):
-        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop, use_flexible_format)
+    def _sync_download(self, url, audio_only, progress_callback, loop, use_flexible_format, referer):
+        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop, use_flexible_format, referer)
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -163,13 +177,13 @@ class MediaDownloader:
                 return result_obj
         except Exception as e:
             if "HTTP Error 403" in str(e):
-                raise Exception("Akses ditolak (403). Perbarui cookies.txt atau pastikan video publik.")
+                raise Exception("Akses ditolak (403). Server memblokir permintaan.")
             else:
                 raise Exception(f"Gagal mengunduh: {e}")
 
-    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None, use_flexible_format: bool = True) -> object:
+    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None, use_flexible_format: bool = True, referer: str = None) -> object:
         loop = asyncio.get_running_loop()
-        func_call = partial(self._sync_download, url, audio_only, progress_callback, loop, use_flexible_format)
+        func_call = partial(self._sync_download, url, audio_only, progress_callback, loop, use_flexible_format, referer)
         return await loop.run_in_executor(None, func_call)
 
     def _sync_download_social(self, url, audio_only, progress_callback, loop, media_name):
@@ -206,7 +220,7 @@ class MediaDownloader:
                 return result_obj
         except Exception as e:
             if "HTTP Error 403" in str(e):
-                raise Exception(f"❌ {media_name}: Akses ditolak (403). Gunakan cookies atau pastikan media publik.")
+                raise Exception(f"❌ {media_name}: Akses ditolak (403).")
             else:
                 raise Exception(f"❌ {media_name}: {e}")
 
