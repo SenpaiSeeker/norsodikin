@@ -38,6 +38,22 @@ class MediaDownloader:
         parsed_url = urlparse(url)
         return parsed_url.netloc in ("www.tiktok.com", "tiktok.com", "vt.tiktok.com")
 
+    def _get_headers(self, url=None):
+        headers = {
+            "User-Agent": self.fake.user_agent(),
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+        
+        if url and "cloud.hownetwork.xyz" in url:
+            video_id = url.split('/')[-3] 
+            referer_url = f"https://cloud.hownetwork.xyz/video.php?id={video_id}"
+            headers["Referer"] = referer_url
+            
+        elif url:
+             headers["Referer"] = "https://www.google.com/"
+             
+        return headers
+
     def _sync_extract_info(self, query: str, limit: int = 10):
         ydl_opts = {
             "format": "best",
@@ -45,7 +61,8 @@ class MediaDownloader:
             "no_warnings": True,
             "noplaylist": True,
             "extract_flat": "in_playlist",
-            "user_agent": self.fake.user_agent(),
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "http_headers": self._get_headers(query if query.startswith("http") else None)
         }
 
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
@@ -75,7 +92,7 @@ class MediaDownloader:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(self._sync_extract_info, query, limit))
 
-    def _build_ydl_opts(self, url: str, audio_only: bool, progress_callback, loop, use_flexible_format: bool = False, referer: str = None):
+    def _build_ydl_opts(self, url: str, audio_only: bool, progress_callback, loop, use_flexible_format: bool = False):
         def _hook(d):
             if d["status"] == "downloading" and progress_callback:
                 total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate")
@@ -91,21 +108,12 @@ class MediaDownloader:
             "nocheckcertificate": True,
             "ignoreerrors": True,
             "user_agent": self.fake.user_agent(),
+            "http_headers": self._get_headers(url),
             "hls_prefer_native": True,
-            "concurrent_fragment_downloads": 4,
-            "restrictfilenames": True,
-            "nopart": True,
+            "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+            "restrictfilenames": True, 
+            "concurrent_fragment_downloads": 4, 
         }
-        
-        http_headers = {
-            "User-Agent": opts["user_agent"],
-            "Accept-Language": "en-US,en;q=0.9",
-        }
-        
-        if referer:
-            http_headers["Referer"] = referer
-            
-        opts["http_headers"] = http_headers
 
         if progress_callback:
             opts["progress_hooks"] = [_hook]
@@ -137,17 +145,14 @@ class MediaDownloader:
             else:
                 opts.update(
                     {
-                        "format": (
-                            "bestvideo[ext=mp4][height<=?720][width<=?1280]"
-                            "+bestaudio[ext=m4a]/best"
-                        ),
+                        "format": "bestvideo[ext=mp4][height<=?720][width<=?1280]+bestaudio[ext=m4a]/best",
                         "merge_output_format": "mp4",
                     }
                 )
         return opts
 
-    def _sync_download(self, url, audio_only, progress_callback, loop, use_flexible_format, referer):
-        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop, use_flexible_format, referer)
+    def _sync_download(self, url, audio_only, progress_callback, loop, use_flexible_format):
+        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop, use_flexible_format)
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -181,9 +186,9 @@ class MediaDownloader:
             else:
                 raise Exception(f"Gagal mengunduh: {e}")
 
-    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None, use_flexible_format: bool = True, referer: str = None) -> object:
+    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None, use_flexible_format: bool = True) -> object:
         loop = asyncio.get_running_loop()
-        func_call = partial(self._sync_download, url, audio_only, progress_callback, loop, use_flexible_format, referer)
+        func_call = partial(self._sync_download, url, audio_only, progress_callback, loop, use_flexible_format)
         return await loop.run_in_executor(None, func_call)
 
     def _sync_download_social(self, url, audio_only, progress_callback, loop, media_name):
