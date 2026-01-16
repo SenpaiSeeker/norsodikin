@@ -1,4 +1,5 @@
 import datetime
+import re
 import logging
 import os
 import sys
@@ -129,25 +130,40 @@ class LoggerHandler(AnsiColors):
         else:
             return self._format_classic(record)
 
+    def _strip_ansi(self, s: str) -> str:
+        return re.sub(r"\x1b\[[0-9;]*m", "", s)
+
     def print(self, message: str, isPrint: bool = True) -> Optional[str]:
         lines = message.splitlines() or [""]
         timestamp = self.formatTime()
-        inner_width = max(len(timestamp), max((len(l) for l in lines))) + 2
+
+        clean_time = self._strip_ansi(timestamp)
+        clean_lines = [self._strip_ansi(l) for l in lines]
+
+        inner_width = max(len(clean_time), max(len(l) for l in clean_lines)) + 2
+
         top = f"{self.CYAN}{self.box['tl']}{self.box['h'] * inner_width}{self.box['tr']}{self.RESET}"
+
         time_line = (
             f"{self.CYAN}{self.box['v']} "
             f"{self.WHITE}{timestamp.ljust(inner_width - 1)}"
             f"{self.CYAN}{self.box['v']}{self.RESET}"
         )
+
         content_lines = []
         for ln in lines:
+            clean = self._strip_ansi(ln)
+            pad = inner_width - 1 - len(clean)
             content_lines.append(
                 f"{self.CYAN}{self.box['v']} "
-                f"{self.WHITE}{ln.ljust(inner_width - 1)}"
+                f"{self.WHITE}{ln}{' ' * pad}"
                 f"{self.CYAN}{self.box['v']}{self.RESET}"
             )
+
         bottom = f"{self.CYAN}{self.box['bl']}{self.box['h'] * inner_width}{self.box['br']}{self.RESET}"
+
         text = "\n".join([top, time_line] + content_lines + [bottom])
+
         if isPrint:
             print(f"\033[2K{text}")
         else:
