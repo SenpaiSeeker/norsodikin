@@ -130,12 +130,24 @@ class LoggerHandler(AnsiColors):
             return self._format_classic(record)
 
     def print(self, message: str, isPrint: bool = True) -> Optional[str]:
-        text = (
-            f"{self.CYAN}{self.box['tl']}{self.box['h']} "
-            f"{self.WHITE}{self.formatTime()} "
-            f"{self.CYAN}{self.box['h']}{self.box['tr']}\n"
-            f"{self.CYAN}{self.box['v']} {self.WHITE}{message}{self.RESET}"
+        lines = message.splitlines() or [""]
+        timestamp = self.formatTime()
+        inner_width = max(len(timestamp), max((len(l) for l in lines))) + 2
+        top = f"{self.CYAN}{self.box['tl']}{self.box['h'] * inner_width}{self.box['tr']}{self.RESET}"
+        time_line = (
+            f"{self.CYAN}{self.box['v']} "
+            f"{self.WHITE}{timestamp.ljust(inner_width - 1)}"
+            f"{self.CYAN}{self.box['v']}{self.RESET}"
         )
+        content_lines = []
+        for ln in lines:
+            content_lines.append(
+                f"{self.CYAN}{self.box['v']} "
+                f"{self.WHITE}{ln.ljust(inner_width - 1)}"
+                f"{self.CYAN}{self.box['v']}{self.RESET}"
+            )
+        bottom = f"{self.CYAN}{self.box['bl']}{self.box['h'] * inner_width}{self.box['br']}{self.RESET}"
+        text = "\n".join([top, time_line] + content_lines + [bottom])
         if isPrint:
             print(f"\033[2K{text}")
         else:
