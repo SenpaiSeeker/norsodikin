@@ -130,11 +130,13 @@ class LoggerHandler(AnsiColors):
             return self._format_classic(record)
 
     def print(self, message: str, isPrint: bool = True) -> Optional[str]:
+        width = min(self._get_terminal_width(), 80)
         text = (
             f"{self.CYAN}{self.box['tl']}{self.box['h']} "
             f"{self.WHITE}{self.formatTime()} "
             f"{self.CYAN}{self.box['h']}{self.box['tr']}\n"
-            f"{self.CYAN}{self.box['sep']} {self.WHITE}{message}{self.RESET}"
+            f"{self.CYAN}{self.box['sep']} {self.WHITE}{message}{self.RESET}\n"
+            f"{self.CYAN}{self.box['bl']}{self.box['h']*width}"
         )
         if isPrint:
             print(f"\033[2K{text}")
