@@ -34,11 +34,11 @@ class LoggerHandler(AnsiColors):
         
         self.icons = {
             "INFO": "ℹ️ ",
-            "DEBUG": "🔍",
+            "DEBUG": "🔍 ",
             "WARNING": "⚠️ ",
-            "ERROR": "❌",
-            "CRITICAL": "💥",
-            "SUCCESS": "✅",
+            "ERROR": "❌ ",
+            "CRITICAL": "💥 ",
+            "SUCCESS": "✅ ",
         }
         
         self.box = {
