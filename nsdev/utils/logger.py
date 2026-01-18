@@ -135,8 +135,8 @@ class LoggerHandler(AnsiColors):
             f"{self.CYAN}{self.box['tl']}{self.box['h']} "
             f"{self.WHITE}{self.formatTime()} "
             f"{self.CYAN}{self.box['h']*(width-len(self.formatTime()))}{self.box['tr']}\n"
-            f"{self.CYAN}{self.box['sep']} {self.WHITE}{message}{self.RESET}\n"
-            f"{self.CYAN}{self.box['bl']}{self.box['h']*width}{self.box['br']}"
+            f"{self.CYAN}{self.box['sep']} {self.WHITE}{message}\n"
+            f"{self.CYAN}{self.box['bl']}{self.box['h']*width}{self.box['br']}{self.RESET}"
         )
         if isPrint:
             print(f"\033[2K{text}")
