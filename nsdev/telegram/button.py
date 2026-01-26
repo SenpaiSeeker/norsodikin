@@ -3,11 +3,6 @@ import re
 from typing import Dict, List
 import pyrogram
 
-try:
-    from pyrogram.types import CopyTextButton
-    HAS_COPY_TYPE = True
-except ImportError:
-    HAS_COPY_TYPE = False
 
 class Button:
     def get_urls(self, text):
@@ -61,7 +56,7 @@ class Button:
                 button = pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
                 
             elif is_copy:
-                if HAS_COPY_TYPE:
+                if hasattr(pyrogram.types, "CopyTextButton"):
                     button = pyrogram.types.InlineKeyboardButton(
                         label, 
                         copy_text=pyrogram.types.CopyTextButton(text=cb_data)
