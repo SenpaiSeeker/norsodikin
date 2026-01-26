@@ -65,6 +65,9 @@ pyrogram = [
     "TgCrypto2",
     "uvloop",
 ]
+pyrotgfork = [
+    "pyrotgfork[fast]"
+]
 
 [tool.setuptools]
 include-package-data = true
