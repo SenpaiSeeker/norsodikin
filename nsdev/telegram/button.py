@@ -10,7 +10,6 @@ except ImportError:
     HAS_COPY_TYPE = False
 
 class Button:
-
     def get_urls(self, text):
         return re.findall(r"(?:https?://)?(?:www\.)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:[/?]\S+)?|tg://\S+$", text)
 
