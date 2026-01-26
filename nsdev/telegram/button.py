@@ -1,11 +1,16 @@
 import math
 import re
 from typing import Dict, List
-
 import pyrogram
 
+try:
+    from pyrogram.types import CopyTextButton
+    HAS_COPY_TYPE = True
+except ImportError:
+    HAS_COPY_TYPE = False
 
 class Button:
+
     def get_urls(self, text):
         return re.findall(r"(?:https?://)?(?:www\.)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:[/?]\S+)?|tg://\S+$", text)
 
@@ -14,11 +19,13 @@ class Button:
             button_data = re.findall(r"\| ([^|]+) - ([^|]+) \|", text)
             extracted_text = re.split(r"\| [^|]+ - [^|]+ \|", text)[0].strip() if "|" in text else text.strip()
             return button_data, extracted_text
+        
         elif mode == "reply":
             pattern = r"\|\s*([^\|]+?)\s*\|"
             raw_data = re.findall(pattern, text)
             extracted_text = re.sub(pattern, "", text).strip()
             buttons = []
+            
             for chunk in raw_data:
                 parts = chunk.split("-")
                 for part in parts:
@@ -28,15 +35,16 @@ class Button:
                     else:
                         buttons.append((part.strip().strip("]"), []))
             return buttons, extracted_text
+            
         else:
             raise ValueError("Invalid parse mode. Use 'inline' or 'reply'.")
 
     def create_inline_keyboard(self, text, inline_cmd=None, is_id=None, cb_prefix=None):
         layout = []
         buttons, remaining_text = self.parse_buttons_and_text(text, mode="inline")
+        
         for label, payload in buttons:
             cb_data, *extra_params = payload.split(";")
-
             is_webapp = "webapp" in extra_params
             is_url = bool(self.get_urls(cb_data)) and not is_webapp
             is_copy = "copy" in extra_params
@@ -52,12 +60,22 @@ class Button:
 
             if is_user:
                 button = pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
+                
             elif is_copy:
-                button = pyrogram.types.InlineKeyboardButton(label, copy_text=cb_data)
+                if HAS_COPY_TYPE:
+                    button = pyrogram.types.InlineKeyboardButton(
+                        label, 
+                        copy_text=pyrogram.types.CopyTextButton(text=cb_data)
+                    )
+                else:
+                    button = pyrogram.types.InlineKeyboardButton(label, copy_text=cb_data)
+                    
             elif is_webapp:
                 button = pyrogram.types.InlineKeyboardButton(label, web_app=pyrogram.types.WebAppInfo(url=cb_data))
+                
             elif is_url:
                 button = pyrogram.types.InlineKeyboardButton(label, url=cb_data)
+                
             else:
                 button = pyrogram.types.InlineKeyboardButton(label, callback_data=cb_data)
 
@@ -65,20 +83,24 @@ class Button:
                 layout[-1].append(button)
             else:
                 layout.append([button])
+                
         return pyrogram.types.InlineKeyboardMarkup(layout), remaining_text
 
     def create_button_keyboard(self, text):
         layout = []
         buttons, remaining_text = self.parse_buttons_and_text(text, mode="reply")
+        
         for label, params in buttons:
             if "is_contact" in params:
                 button = pyrogram.types.KeyboardButton(label, request_contact=True)
             else:
                 button = pyrogram.types.KeyboardButton(label)
+                
             if "same" in params and layout:
                 layout[-1].append(button)
             else:
                 layout.append([button])
+                
         return pyrogram.types.ReplyKeyboardMarkup(layout, resize_keyboard=True), remaining_text
 
     def remove_reply_keyboard(self, selective=False):
@@ -111,12 +133,9 @@ class Button:
 
         total_items = len(items)
         total_pages = math.ceil(total_items / items_per_page) or 1
-
         current_page = min(current_page, total_pages)
-
         start_index = (current_page - 1) * items_per_page
         end_index = start_index + items_per_page
-
         page_items = items[start_index:end_index]
 
         item_buttons_data = [
