@@ -1,25 +1,29 @@
 import httpx
-
+import asyncio
 
 class PasteClient:
-    def __init__(self, timeout: int = 15):
-        self.post_url = "https://spaceb.in/"
-        self.timeout = timeout
+    def __init__(self, token: str):
+        self.token = token
+        self.post_url = "https://api.github.com/gists"
 
-    async def paste(self, text: str, extension: str = "txt") -> str:
+    async def paste(self, text: str, filename="paste.md") -> str:
         payload = {
-            "content": (None, text),
-            "extension": (None, extension),
+            "public": True,
+            "files": {
+                filename: {
+                    "content": text
+                }
+            }
         }
 
-        async with httpx.AsyncClient(follow_redirects=True) as client:
-            try:
-                response = await client.post(self.post_url, files=payload, timeout=self.timeout)
-                response.raise_for_status()
+        headers = {
+            "Authorization": f"token {self.token}",
+            "Accept": "application/vnd.github+json"
+        }
 
-                return str(response.url)
+        async with httpx.AsyncClient(headers=headers) as client:
+            r = await client.post(self.post_url, json=payload)
+            r.raise_for_status()
+            return r.json()["html_url"]
 
-            except httpx.RequestError as e:
-                raise Exception(f"Failed to connect to the paste service: {e}")
-            except httpx.HTTPStatusError as e:
-                raise Exception(f"The paste service returned an error: {e}")
+
