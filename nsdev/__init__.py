@@ -87,7 +87,7 @@ from .utils import (
     LyricsFinder
 )
 
-__version__ = "2026.01.12"
+__version__ = "2026.01.13"
 __author__ = "@NorSodikin"
 
 
