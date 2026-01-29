@@ -61,12 +61,17 @@ class MediaDownloader:
             "no_warnings": True,
             "noplaylist": True,
             "extract_flat": "in_playlist",
+            "nocheckcertificate": True,
+            "geo_bypass": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "web"],
+                    "skip": ["webpage", "auth_check"],
+                }
+            },
             "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "http_headers": self._get_headers(query if query.startswith("http") else None)
         }
-
-        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
-            ydl_opts["cookiefile"] = self.cookies_file_path
 
         is_url = query.startswith("http")
         if is_url:
@@ -110,16 +115,18 @@ class MediaDownloader:
             "user_agent": self.fake.user_agent(),
             "http_headers": self._get_headers(url),
             "hls_prefer_native": True,
-            "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "web"],
+                    "skip": ["webpage", "auth_check"],
+                }
+            },
             "restrictfilenames": True, 
             "concurrent_fragment_downloads": 4, 
         }
 
         if progress_callback:
             opts["progress_hooks"] = [_hook]
-
-        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
-            opts["cookiefile"] = self.cookies_file_path
 
         if audio_only:
             opts.update(
