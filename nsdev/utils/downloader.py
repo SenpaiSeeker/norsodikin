@@ -125,6 +125,9 @@ class MediaDownloader:
             "concurrent_fragment_downloads": 4, 
         }
 
+        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
+            ydl_opts["cookiefile"] = self.cookies_file_path
+
         if progress_callback:
             opts["progress_hooks"] = [_hook]
 
