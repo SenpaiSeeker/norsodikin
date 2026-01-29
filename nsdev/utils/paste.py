@@ -1,4 +1,5 @@
 import httpx
+import asyncio
 import base64
 import mimetypes
 import os
@@ -36,12 +37,12 @@ class PasteClient:
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Media Preview</title>
                 <style>
-                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0d1117; color: #c9d1d9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-                    .container { text-align: center; padding: 20px; background: #161b22; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); border: 1px solid #30363d; max-width: 90%; }
-                    img, video, audio { max-width: 100%; border-radius: 8px; margin-top: 10px; }
-                    .info { margin-bottom: 15px; font-size: 0.9em; color: #8b949e; }
-                    a.btn { display: inline-block; margin-top: 15px; padding: 8px 16px; background: #238636; color: white; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600; }
-                    a.btn:hover { background: #2ea043; }
+                    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0d1117; color: #c9d1d9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }}
+                    .container {{ text-align: center; padding: 20px; background: #161b22; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); border: 1px solid #30363d; max-width: 90%; }}
+                    img, video, audio {{ max-width: 100%; border-radius: 8px; margin-top: 10px; }}
+                    .info {{ margin-bottom: 15px; font-size: 0.9em; color: #8b949e; }}
+                    a.btn {{ display: inline-block; margin-top: 15px; padding: 8px 16px; background: #238636; color: white; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600; }}
+                    a.btn:hover {{ background: #2ea043; }}
                 </style>
             </head>
             <body>
@@ -78,8 +79,7 @@ class PasteClient:
             filename = "index.html"
 
         else:
-            text_content = str(content)
-            final_content = f"```text\n{text_content}\n```"
+            final_content = str(content)
 
         payload = {
             "description": "Uploaded via NSUserBot Tools",
