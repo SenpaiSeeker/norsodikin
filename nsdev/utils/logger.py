@@ -76,7 +76,7 @@ class LoggerHandler(AnsiColors):
         text_c = self.colors["TEXT"]
         rst = self.colors["RESET"]
 
-        top_bar_len = width - len(timestamp) - 7
+        top_bar_len = width - len(timestamp) - 6
         if top_bar_len < 0: top_bar_len = 0
         
         header = (
