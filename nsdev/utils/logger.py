@@ -16,20 +16,20 @@ class LoggerHandler(AnsiColors):
         self.show_emoji = options.get("show_emoji", True)
 
         self.colors = {
-            "INFO": self.LIGHT_GREEN,
-            "DEBUG": self.LIGHT_BLUE,
-            "WARNING": self.LIGHT_YELLOW,
-            "ERROR": self.LIGHT_RED,
-            "CRITICAL": self.LIGHT_MAGENTA,
-            "SUCCESS": self.LIGHT_GREEN,
+            "INFO": self.GREEN,
+            "DEBUG": self.BLUE,
+            "WARNING": self.YELLOW,
+            "ERROR": self.RED,
+            "CRITICAL": self.MAGENTA,
+            "SUCCESS": self.GREEN,
             "TIME": self.WHITE,
-            "MODULE": self.LIGHT_CYAN,
-            "FUNC": self.LIGHT_PURPLE,
-            "LINE": self.LIGHT_ORANGE,
-            "PIPE": self.LIGHT_GRAY,
-            "BOX": self.LIGHT_GRAY,
+            "MODULE": self.CYAN,
+            "FUNC": self.PURPLE,
+            "LINE": self.ORANGE,
+            "PIPE": self.GRAY,
+            "BOX": self.GRAY,
             "RESET": self.RESET,
-            "TEXT": self.LIGHT_WHITE,
+            "TEXT": self.WHITE,
         }
 
         self.box = {
@@ -68,12 +68,11 @@ class LoggerHandler(AnsiColors):
 
         box_c = self.colors["BOX"]
         time_c = self.colors["TIME"]
-        lvl_c = self.colors.get(level, self.LIGHT_GREEN)
+        lvl_c = self.colors.get(level, self.GREEN)
         mod_c = self.colors["MODULE"]
         func_c = self.colors["FUNC"]
         ln_c = self.colors["LINE"]
         pipe_c = self.colors["PIPE"]
-        self.colors["TEXT"]
         rst = self.colors["RESET"]
 
         top_bar_len = width - len(timestamp) - 7
@@ -131,9 +130,9 @@ class LoggerHandler(AnsiColors):
     def banner(self, title: str, subtitle: str = ""):
         width = min(self._get_terminal_width(), 80)
         box_c = self.colors["BOX"]
-        title_c = self.colors["LIGHT_CYAN"]
-        sub_c = self.colors["WHITE"]
-        rst = self.colors["RESET"]
+        title_c = self.CYAH
+        sub_c = self.WHITE
+        rst = self.RESET
 
         print(f"\n{box_c}{self.box['tl']}{self.box['h'] * (width - 2)}{self.box['tr']}")
         print(f"{box_c}{self.box['v']}{title_c}{title.center(width - 2)}{rst}{box_c}{self.box['v']}")
@@ -142,7 +141,7 @@ class LoggerHandler(AnsiColors):
         print(f"{box_c}{self.box['bl']}{self.box['h'] * (width - 2)}{self.box['br']}{rst}\n")
 
     def separator(self, char: str = "─", color: str = None):
-        width = min(self._get_terminal_width(), 80)
+        width = min(self._get_terminal_width(), 100)
         col = color or self.colors["BOX"]
         print(f"{col}{char * width}{self.RESET}")
 
