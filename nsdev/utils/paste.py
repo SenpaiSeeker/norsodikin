@@ -1,8 +1,9 @@
-import httpx
-import asyncio
 import base64
 import mimetypes
 import os
+
+import httpx
+
 
 class PasteClient:
     def __init__(self, token: str):
@@ -11,7 +12,7 @@ class PasteClient:
 
     async def paste(self, content, filename="paste.md", is_media=False, extension=None) -> str:
         final_content = ""
-        
+
         if is_media:
             if isinstance(content, str) and os.path.exists(content):
                 with open(content, "rb") as f:
@@ -22,7 +23,7 @@ class PasteClient:
                 raise ValueError("Content must be bytes or valid file path for media upload")
 
             b64_data = base64.b64encode(file_data).decode("utf-8")
-            
+
             if extension:
                 mime_guess = mimetypes.guess_type(f"file.{extension}")[0]
                 mime_type = mime_guess if mime_guess else "application/octet-stream"
@@ -55,7 +56,7 @@ class PasteClient:
             </body>
             </html>
             """
-            
+
             data_uri = f"data:{mime_type};base64,{b64_data}"
             media_tag = ""
 
@@ -64,18 +65,16 @@ class PasteClient:
             elif "video" in mime_type:
                 media_tag = f'<video controls autoplay muted><source src="{data_uri}" type="{mime_type}">Browser not supported.</video>'
             elif "audio" in mime_type:
-                media_tag = f'<audio controls><source src="{data_uri}" type="{mime_type}">Browser not supported.</audio>'
+                media_tag = (
+                    f'<audio controls><source src="{data_uri}" type="{mime_type}">Browser not supported.</audio>'
+                )
             else:
                 media_tag = f'<div style="padding: 50px; background: #21262d; border-radius: 8px;">BINARY FILE PREVIEW NOT AVAILABLE</div>'
 
             final_content = html_template.format(
-                mime_type=mime_type,
-                size=len(file_data),
-                media_tag=media_tag,
-                data_uri=data_uri,
-                ext=extension or "bin"
+                mime_type=mime_type, size=len(file_data), media_tag=media_tag, data_uri=data_uri, ext=extension or "bin"
             )
-            
+
             filename = "index.html"
 
         else:
@@ -84,27 +83,20 @@ class PasteClient:
         payload = {
             "description": "Uploaded via NSUserBot Tools",
             "public": True,
-            "files": {
-                filename: {
-                    "content": final_content
-                }
-            }
+            "files": {filename: {"content": final_content}},
         }
 
-        headers = {
-            "Authorization": f"token {self.token}",
-            "Accept": "application/vnd.github+json"
-        }
+        headers = {"Authorization": f"token {self.token}", "Accept": "application/vnd.github+json"}
 
         async with httpx.AsyncClient(headers=headers, timeout=120.0) as client:
             r = await client.post(self.post_url, json=payload)
             r.raise_for_status()
             raw_url = r.json()["html_url"]
-            
+
             if is_media:
                 user = r.json()["owner"]["login"]
                 gist_id = r.json()["id"]
                 raw_file_url = f"https://gist.githubusercontent.com/{user}/{gist_id}/raw/index.html"
                 return f"https://htmlpreview.github.io/?{raw_file_url}"
-            
+
             return raw_url

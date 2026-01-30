@@ -1,16 +1,18 @@
 import asyncio
+import colorsys
 import io
 import zipfile
-import colorsys
+
 from PIL import Image
+
 
 class ThemeGenerator:
     def _rgb_to_hex(self, rgb):
         return "{:02x}{:02x}{:02x}".format(*rgb)
 
     def _hex_to_rgb(self, hex_color):
-        hex_color = hex_color.lstrip('#')
-        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        hex_color = hex_color.lstrip("#")
+        return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
 
     def _adjust_brightness(self, rgb, factor):
         r, g, b = rgb
@@ -31,15 +33,15 @@ class ThemeGenerator:
 
     def _generate_theme_content(self, main_rgb):
         is_dark = self._is_dark(main_rgb)
-        
+
         bg_color = self._rgb_to_hex(main_rgb)
         accent = "50a8eb" if is_dark else "2ea6ff"
         text_primary = "ffffff" if is_dark else "000000"
         text_secondary = "808080"
-        
+
         darker_bg = self._rgb_to_hex(self._adjust_brightness(main_rgb, 0.8))
-        lighter_bg = self._rgb_to_hex(self._adjust_brightness(main_rgb, 1.2))
-        
+        self._rgb_to_hex(self._adjust_brightness(main_rgb, 1.2))
+
         bubble_in = self._rgb_to_hex(self._adjust_brightness(main_rgb, 1.3)) if is_dark else "ffffff"
         bubble_out = self._rgb_to_hex(self._adjust_brightness(main_rgb, 1.5)) if is_dark else "eeffde"
 
@@ -73,11 +75,11 @@ divider=#{darker_bg}
 
         wallpaper_buffer = io.BytesIO()
         img.convert("RGB").save(wallpaper_buffer, format="JPEG", quality=90)
-        
-        with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+
+        with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
             zf.writestr("colors.attheme", theme_config)
             zf.writestr("wallpaper.jpg", wallpaper_buffer.getvalue())
-        
+
         return output_path
 
     async def generate_from_image(self, image_bytes: bytes, output_path: str = "custom.attheme") -> str:

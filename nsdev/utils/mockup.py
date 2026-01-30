@@ -1,29 +1,30 @@
-import asyncio
 import base64
+
 from playwright.async_api import async_playwright
+
 
 class DeviceMockup:
     async def wrap_in_frame(self, screenshot_bytes: bytes, device_type: str = "iphone_14_pro") -> bytes:
         screenshot_base64 = "data:image/png;base64," + base64.b64encode(screenshot_bytes).decode()
-        
+
         html_content = self._generate_html(screenshot_base64, device_type)
-        
+
         async with async_playwright() as p:
             browser = await p.chromium.launch()
             page = await browser.new_page(viewport={"width": 1200, "height": 1200}, device_scale_factor=2)
-            
+
             await page.set_content(html_content)
             await page.wait_for_selector(".device-wrapper")
-            
+
             element = await page.query_selector(".device-wrapper")
             screenshot_bytes = await element.screenshot(omit_background=True)
-            
+
             await browser.close()
             return screenshot_bytes
 
     def _generate_html(self, image_src: str, device_type: str) -> str:
         device_css = ""
-        
+
         if device_type == "iphone_14_pro":
             device_css = """
                 .device {
@@ -82,7 +83,7 @@ class DeviceMockup:
                 }
                 .notch { display: none; }
             """
-        else: 
+        else:
             device_css = """
                 .device {
                     width: 360px;

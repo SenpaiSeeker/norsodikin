@@ -1,14 +1,16 @@
-import httpx
 import base64
+
+import httpx
 from google import genai
 from google.genai import types
+
 
 class SpeechToText:
     def __init__(self, api_key: str, provider: str = "gemini", model_id: str = "openai/whisper-large-v3"):
         self.api_key = api_key
         self.provider = provider
         self.model_id = model_id
-        
+
         if provider == "gemini":
             self.client = genai.Client(api_key=api_key)
         else:
@@ -38,9 +40,9 @@ class SpeechToText:
 
     async def _transcribe_gemini(self, audio_bytes: bytes) -> str:
         encoded_audio = base64.b64encode(audio_bytes).decode("utf-8")
-        
+
         prompt = "Transcribe this audio file accurately. Return only the text."
-        
+
         contents = [
             {
                 "parts": [
@@ -49,23 +51,19 @@ class SpeechToText:
                 ]
             }
         ]
-        
+
         try:
             config = types.GenerateContentConfig(response_mime_type="text/plain")
             response = await self.client.aio.models.generate_content(
-                model="gemini-2.5-flash", 
-                contents=contents,
-                config=config
+                model="gemini-2.5-flash", contents=contents, config=config
             )
             return response.text
-        except Exception as e:
-             try:
-                 contents[0]["parts"][1]["inline_data"]["mime_type"] = "audio/mp3"
-                 response = await self.client.aio.models.generate_content(
-                    model="gemini-2.0-flash", 
-                    contents=contents,
-                    config=config
+        except Exception:
+            try:
+                contents[0]["parts"][1]["inline_data"]["mime_type"] = "audio/mp3"
+                response = await self.client.aio.models.generate_content(
+                    model="gemini-2.0-flash", contents=contents, config=config
                 )
-                 return response.text
-             except Exception as e2:
+                return response.text
+            except Exception as e2:
                 raise Exception(f"Gemini STT failed: {e2}")

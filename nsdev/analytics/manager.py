@@ -1,6 +1,6 @@
 import asyncio
 from functools import wraps
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 
 from pyrogram.types import Message
 
@@ -34,7 +34,7 @@ class AnalyticsManager:
             command = None
             if hasattr(message, "command") and message.command:
                 command = message.command[0]
-            
+
             if not command and (message.text or message.caption):
                 text = message.text or message.caption
                 first_word = text.split()[0]
@@ -42,12 +42,12 @@ class AnalyticsManager:
                     command = first_word[1:]
                 else:
                     command = first_word
-            
+
             if not command:
                 return
 
             command = command.lower()
-            
+
             if message.from_user:
                 user_id = str(message.from_user.id)
             elif message.sender_chat:
@@ -56,16 +56,16 @@ class AnalyticsManager:
                 user_id = str(message.chat.id)
 
             cmd_stats = await self.db.getVars(self.db_id, "command_usage_stats", var_key="analytics") or {}
-            
+
             if not isinstance(cmd_stats, dict):
                 cmd_stats = {}
-                
+
             current_cmd_count = int(cmd_stats.get(command, 0))
             cmd_stats[command] = current_cmd_count + 1
             await self.db.setVars(self.db_id, "command_usage_stats", cmd_stats, var_key="analytics")
 
             user_stats = await self.db.getVars(self.db_id, "user_activity_stats", var_key="analytics") or {}
-            
+
             if not isinstance(user_stats, dict):
                 user_stats = {}
 
@@ -92,14 +92,14 @@ class AnalyticsManager:
 
         clean_stats = {k: int(v) for k, v in stats.items()}
         sorted_users = sorted(clean_stats.items(), key=lambda item: item[1], reverse=True)
-        
+
         result = []
         for user_id_str, count in sorted_users[:limit]:
             try:
                 result.append((int(user_id_str), count))
             except ValueError:
                 continue
-                
+
         return result
 
     async def get_total_usage(self) -> int:

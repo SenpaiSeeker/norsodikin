@@ -1,5 +1,7 @@
-import httpx
 from types import SimpleNamespace
+
+import httpx
+
 
 class LyricsFinder:
     def __init__(self):
@@ -12,12 +14,12 @@ class LyricsFinder:
             data = response.json()
             if not data:
                 return None
-            
+
             track = data[0]
             return SimpleNamespace(
                 title=track.get("name"),
                 artist=track.get("artistName"),
                 album=track.get("albumName"),
                 lyrics=track.get("plainLyrics"),
-                synced=track.get("syncedLyrics")
+                synced=track.get("syncedLyrics"),
             )

@@ -1,6 +1,8 @@
 import asyncio
-import cloudscraper25 as cloudscraper
 from functools import partial
+
+import cloudscraper25 as cloudscraper
+
 
 class AsyncScraper:
     def __init__(self):

@@ -1,22 +1,50 @@
 import calendar
 from datetime import datetime
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
 
 class CalendarUI:
     def __init__(self, language: str = "id"):
         if language == "id":
             self.days = ["Sn", "Sl", "Rb", "Km", "Jm", "Sb", "Mg"]
-            self.months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+            self.months = [
+                "Januari",
+                "Februari",
+                "Maret",
+                "April",
+                "Mei",
+                "Juni",
+                "Juli",
+                "Agustus",
+                "September",
+                "Oktober",
+                "November",
+                "Desember",
+            ]
         else:
             self.days = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
-            self.months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+            self.months = [
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+            ]
 
     def create_calendar(self, year: int = None, month: int = None):
         now = datetime.now()
-        if year is None: 
-          year = now.year
-        if month is None: 
-          month = now.month
+        if year is None:
+            year = now.year
+        if month is None:
+            month = now.month
 
         keyboard = []
 
@@ -24,7 +52,7 @@ class CalendarUI:
         header_row = [
             InlineKeyboardButton("«", callback_data=f"CALENDAR|PREV|{year}|{month}"),
             InlineKeyboardButton(f"{month_name} {year}", callback_data="CALENDAR|IGNORE"),
-            InlineKeyboardButton("»", callback_data=f"CALENDAR|NEXT|{year}|{month}")
+            InlineKeyboardButton("»", callback_data=f"CALENDAR|NEXT|{year}|{month}"),
         ]
         keyboard.append(header_row)
 

@@ -19,9 +19,9 @@ class RateLimiter(Gradient):
             @wraps(func)
             async def wrapped(client, update, *args, **kwargs):
                 if isinstance(update, Message):
-                    user_id = update.from_user.id if update.from_user else client.me.id 
+                    user_id = update.from_user.id if update.from_user else client.me.id
                 elif isinstance(update, CallbackQuery):
-                    user_id = update.from_user.id if update.from_user else client.me.id 
+                    user_id = update.from_user.id if update.from_user else client.me.id
                 else:
                     return await func(client, update, *args, **kwargs)
 

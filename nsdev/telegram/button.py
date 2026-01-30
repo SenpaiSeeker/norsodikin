@@ -1,6 +1,7 @@
 import math
 import re
 from typing import Dict, List
+
 import pyrogram
 
 
@@ -13,13 +14,13 @@ class Button:
             button_data = re.findall(r"\| ([^|]+) - ([^|]+) \|", text)
             extracted_text = re.split(r"\| [^|]+ - [^|]+ \|", text)[0].strip() if "|" in text else text.strip()
             return button_data, extracted_text
-        
+
         elif mode == "reply":
             pattern = r"\|\s*([^\|]+?)\s*\|"
             raw_data = re.findall(pattern, text)
             extracted_text = re.sub(pattern, "", text).strip()
             buttons = []
-            
+
             for chunk in raw_data:
                 parts = chunk.split("-")
                 for part in parts:
@@ -29,14 +30,14 @@ class Button:
                     else:
                         buttons.append((part.strip().strip("]"), []))
             return buttons, extracted_text
-            
+
         else:
             raise ValueError("Invalid parse mode. Use 'inline' or 'reply'.")
 
     def create_inline_keyboard(self, text, inline_cmd=None, is_id=None, cb_prefix=None):
         layout = []
         buttons, remaining_text = self.parse_buttons_and_text(text, mode="inline")
-        
+
         for label, payload in buttons:
             cb_data, *extra_params = payload.split(";")
             is_webapp = "webapp" in extra_params
@@ -54,22 +55,21 @@ class Button:
 
             if is_user:
                 button = pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
-                
+
             elif is_copy:
                 if hasattr(pyrogram.types, "CopyTextButton"):
                     button = pyrogram.types.InlineKeyboardButton(
-                        label, 
-                        copy_text=pyrogram.types.CopyTextButton(text=cb_data)
+                        label, copy_text=pyrogram.types.CopyTextButton(text=cb_data)
                     )
                 else:
                     button = pyrogram.types.InlineKeyboardButton(label, copy_text=cb_data)
-                    
+
             elif is_webapp:
                 button = pyrogram.types.InlineKeyboardButton(label, web_app=pyrogram.types.WebAppInfo(url=cb_data))
-                
+
             elif is_url:
                 button = pyrogram.types.InlineKeyboardButton(label, url=cb_data)
-                
+
             else:
                 button = pyrogram.types.InlineKeyboardButton(label, callback_data=cb_data)
 
@@ -77,24 +77,24 @@ class Button:
                 layout[-1].append(button)
             else:
                 layout.append([button])
-                
+
         return pyrogram.types.InlineKeyboardMarkup(layout), remaining_text
 
     def create_button_keyboard(self, text):
         layout = []
         buttons, remaining_text = self.parse_buttons_and_text(text, mode="reply")
-        
+
         for label, params in buttons:
             if "is_contact" in params:
                 button = pyrogram.types.KeyboardButton(label, request_contact=True)
             else:
                 button = pyrogram.types.KeyboardButton(label)
-                
+
             if "same" in params and layout:
                 layout[-1].append(button)
             else:
                 layout.append([button])
-                
+
         return pyrogram.types.ReplyKeyboardMarkup(layout, resize_keyboard=True), remaining_text
 
     def remove_reply_keyboard(self, selective=False):

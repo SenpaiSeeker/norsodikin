@@ -1,10 +1,9 @@
 import asyncio
 import os
 import re
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 from urllib.parse import parse_qs, urlparse
 
-import pyrogram
 from pyrogram.enums import MessagesFilter
 from pyrogram.errors import ChatForwardsRestricted, FloodWait, RPCError
 from pyrogram.types import InputMediaPhoto, InputMediaVideo, Message
@@ -99,23 +98,23 @@ class MessageCopier:
                     pass
 
             upl_prog = TelegramProgressBar(self._client, status_message, "Uploading Restricted")
-            
+
             send_func_name = f"send_{message.media.value}"
             if not hasattr(self._client, send_func_name):
-                return 
+                return
 
             send_func = getattr(self._client, send_func_name)
-            
+
             caption = message.caption.html if message.caption else ""
-            
+
             kwargs = {
                 "chat_id": user_chat_id,
                 "caption": caption,
                 "progress": upl_prog.update,
                 message.media.value: file_path,
-                **extra_params
+                **extra_params,
             }
-            
+
             if hasattr(media_obj, "duration"):
                 kwargs["duration"] = media_obj.duration
             if thumb_to_use and message.media.value in ["video", "audio", "document"]:
@@ -154,22 +153,17 @@ class MessageCopier:
                 target_arg = parts[0]
                 limit = 20
                 media_type_filter = None
-                
+
                 if len(parts) >= 2 and parts[1].isdigit():
                     limit = int(parts[1])
-                
+
                 if "--photo" in lower_args:
                     media_type_filter = "photo"
                 elif "--video" in lower_args:
                     media_type_filter = "video"
 
                 return await self.copy_mass_media(
-                    user_chat_id, 
-                    target_arg, 
-                    limit, 
-                    media_type_filter, 
-                    status_message, 
-                    **extra_params
+                    user_chat_id, target_arg, limit, media_type_filter, status_message, **extra_params
                 )
 
             links_to_process = []
@@ -225,7 +219,7 @@ class MessageCopier:
         limit: int,
         filter_type: str,
         status_message: Message,
-        **kwargs
+        **kwargs,
     ):
         collected_files = []
         thumb_files = []
@@ -237,23 +231,23 @@ class MessageCopier:
             clean_id = str(target_source)
             if clean_id.startswith("100") and clean_id.isdigit() and len(clean_id) > 10:
                 clean_id = f"-{clean_id}"
-            
+
             if clean_id.lstrip("-").isdigit():
                 chat_id = int(clean_id)
             else:
                 chat_id = target_source
 
         try:
-             await self._client.resolve_peer(chat_id)
+            await self._client.resolve_peer(chat_id)
         except Exception as e:
-             raise ValueError(f"Tidak dapat mengakses chat {chat_id}. Pastikan Userbot sudah join.\nError: {e}")
+            raise ValueError(f"Tidak dapat mengakses chat {chat_id}. Pastikan Userbot sudah join.\nError: {e}")
 
         pyro_filter = MessagesFilter.PHOTO if filter_type == "photo" else MessagesFilter.VIDEO
 
         await status_message.edit(f"📥 Mengunduh {limit} {filter_type} dari {chat_id}...")
 
         processed = 0
-        
+
         async for msg in self._client.search_messages(chat_id, limit=limit, filter=pyro_filter):
             file_path = None
             thumb_path = None
@@ -263,14 +257,12 @@ class MessageCopier:
                 if filter_type == "photo":
                     file_path = await self._client.download_media(msg)
                     if file_path:
-                        collected_files.append(
-                            InputMediaPhoto(file_path, caption=caption)
-                        )
+                        collected_files.append(InputMediaPhoto(file_path, caption=caption))
                         processed += 1
 
                 elif filter_type == "video":
                     file_path = await self._client.download_media(msg)
-                    
+
                     if msg.video.thumbs:
                         try:
                             thumb_path = await self._client.download_media(msg.video.thumbs[-1].file_id)
@@ -281,24 +273,21 @@ class MessageCopier:
                     if file_path:
                         collected_files.append(
                             InputMediaVideo(
-                                media=file_path, 
-                                caption=caption,
-                                duration=msg.video.duration or 0,
-                                thumb=thumb_path
+                                media=file_path, caption=caption, duration=msg.video.duration or 0, thumb=thumb_path
                             )
                         )
                         processed += 1
-                
+
                 if len(collected_files) >= 9:
                     await self._client.send_media_group(dest_chat_id, collected_files, **kwargs)
-                    
+
                     for item in collected_files:
                         if os.path.exists(item.media):
                             os.remove(item.media)
                     for t_path in thumb_files:
                         if t_path and os.path.exists(t_path):
                             os.remove(t_path)
-                    
+
                     collected_files = []
                     thumb_files = []
                     await asyncio.sleep(4)

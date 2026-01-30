@@ -1,9 +1,9 @@
 import asyncio
-import sys
 import json
 import os
 import shutil
 import sqlite3
+import sys
 import zipfile
 from datetime import datetime
 from functools import partial
@@ -23,8 +23,8 @@ class DataBase:
         self.keys_encrypt = options.get("keys_encrypt", "default_db_key_12345")
         self.method_encrypt = options.get("method_encrypt", "bytes")
         self.cipher = CipherHandler(key=self.keys_encrypt, method=self.method_encrypt)
-        
-        self._lock = asyncio.Lock() 
+
+        self._lock = asyncio.Lock()
 
         self.auto_backup = options.get("auto_backup", False)
         self.backup_bot_token = options.get("backup_bot_token")
@@ -71,21 +71,21 @@ class DataBase:
     async def perform_backup(self):
         async with self._lock:
             db_path = self.data_file if self.storage_type == "local" else self.db_file
-            
+
             if not await self._run_sync(os.path.exists, db_path):
-                 self.cipher.log.warning("Database file not found for backup.")
-                 return
+                self.cipher.log.warning("Database file not found for backup.")
+                return
 
             temp_backup_dir = "temp_db_backup"
             if not os.path.exists(temp_backup_dir):
                 os.makedirs(temp_backup_dir)
-            
+
             try:
                 temp_db_path = os.path.join(temp_backup_dir, os.path.basename(db_path))
                 await self._run_sync(shutil.copy2, db_path, temp_db_path)
-                
+
                 source_paths = [temp_db_path]
-                
+
                 if self.file_env and os.path.exists(self.file_env):
                     source_paths.append(self.file_env)
                 elif not self.file_env:
@@ -93,7 +93,7 @@ class DataBase:
                     sys.exit(1)
 
                 zip_path = await self._run_sync(self._create_zip_archive, source_paths, temp_backup_dir)
-                
+
                 if zip_path:
                     timestamp = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S %Z")
                     caption = (
@@ -107,9 +107,9 @@ class DataBase:
             finally:
                 await self._run_sync(shutil.rmtree, temp_backup_dir, ignore_errors=True)
                 if zip_path and os.path.exists(zip_path):
-                     try:
+                    try:
                         os.remove(zip_path)
-                     except:
+                    except:
                         pass
 
     def _create_zip_archive(self, source_paths: list, temp_dir: str):
@@ -150,7 +150,7 @@ class DataBase:
                 async with aiofiles.open(self.data_file, "r") as f:
                     content = await f.read()
                     if not content.strip():
-                         return {"vars": {}, "bots": []}
+                        return {"vars": {}, "bots": []}
                     return json.loads(content)
             except (FileNotFoundError, json.JSONDecodeError):
                 return {"vars": {}, "bots": []}
@@ -160,7 +160,7 @@ class DataBase:
             temp_file = f"{self.data_file}.tmp"
             async with aiofiles.open(temp_file, "w") as f:
                 await f.write(json.dumps(data, indent=4))
-            
+
             await self._run_sync(os.replace, temp_file, self.data_file)
 
     def __del__(self):
@@ -350,13 +350,13 @@ class DataBase:
             full_data = await self._load_data()
             bots_list = full_data.get("bots", [])
             existing_index = next((index for (index, d) in enumerate(bots_list) if d.get("user_id") == user_id_str), -1)
-            
+
             if existing_index != -1:
                 bots_list[existing_index].update(bot_data)
             else:
                 new_entry = {"user_id": user_id_str, **bot_data}
                 bots_list.append(new_entry)
-            
+
             full_data["bots"] = bots_list
             await self._save_data(full_data)
 
@@ -393,7 +393,7 @@ class DataBase:
                     if val:
                         dec_val = self.cipher.decrypt(val)
                         decrypted[key] = int(dec_val) if key == "api_id" else dec_val
-                
+
                 if (is_token and "bot_token" in decrypted) or (not is_token and "session_string" in decrypted):
                     decrypted_bots.append(decrypted)
             except:

@@ -43,15 +43,15 @@ class MediaDownloader:
             "User-Agent": self.fake.user_agent(),
             "Accept-Language": "en-US,en;q=0.9",
         }
-        
+
         if url and "cloud.hownetwork.xyz" in url:
-            video_id = url.split('/')[-3] 
+            video_id = url.split("/")[-3]
             referer_url = f"https://cloud.hownetwork.xyz/video.php?id={video_id}"
             headers["Referer"] = referer_url
-            
+
         elif url:
-             headers["Referer"] = "https://www.google.com/"
-             
+            headers["Referer"] = "https://www.google.com/"
+
         return headers
 
     def _sync_extract_info(self, query: str, limit: int = 10):
@@ -70,7 +70,7 @@ class MediaDownloader:
                 }
             },
             "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "http_headers": self._get_headers(query if query.startswith("http") else None)
+            "http_headers": self._get_headers(query if query.startswith("http") else None),
         }
 
         is_url = query.startswith("http")
@@ -121,8 +121,8 @@ class MediaDownloader:
                     "skip": ["webpage", "auth_check"],
                 }
             },
-            "restrictfilenames": True, 
-            "concurrent_fragment_downloads": 4, 
+            "restrictfilenames": True,
+            "concurrent_fragment_downloads": 4,
         }
 
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
@@ -196,7 +196,9 @@ class MediaDownloader:
             else:
                 raise Exception(f"Gagal mengunduh: {e}")
 
-    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None, use_flexible_format: bool = True) -> object:
+    async def download(
+        self, url: str, audio_only: bool = False, progress_callback: callable = None, use_flexible_format: bool = True
+    ) -> object:
         loop = asyncio.get_running_loop()
         func_call = partial(self._sync_download, url, audio_only, progress_callback, loop, use_flexible_format)
         return await loop.run_in_executor(None, func_call)
@@ -209,7 +211,7 @@ class MediaDownloader:
                 result_obj = self.convert._convertToNamespace(info)
 
                 filename = ydl.prepare_filename(info)
-                
+
                 if not audio_only and ydl_opts.get("merge_output_format") == "mp4":
                     base, _ = os.path.splitext(filename)
                     filename = base + ".mp4"

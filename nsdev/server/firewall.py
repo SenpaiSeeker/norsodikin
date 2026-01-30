@@ -1,6 +1,7 @@
 import asyncio
 import shutil
 
+
 class FirewallManager:
     def __init__(self):
         self.has_ufw = shutil.which("ufw") is not None
@@ -8,9 +9,7 @@ class FirewallManager:
 
     async def _run_cmd(self, cmd):
         process = await asyncio.create_subprocess_shell(
-            cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         stdout, stderr = await process.communicate()
         return stdout.decode().strip(), stderr.decode().strip(), process.returncode
@@ -21,7 +20,7 @@ class FirewallManager:
             if code == 0:
                 return f"Successfully banned {ip_address} using UFW."
             return f"UFW Error: {stderr}"
-        
+
         if self.has_iptables:
             check_cmd = f"sudo iptables -C INPUT -s {ip_address} -j DROP"
             _, _, check_code = await self._run_cmd(check_cmd)

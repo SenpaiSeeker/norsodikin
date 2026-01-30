@@ -1,19 +1,22 @@
 import asyncio
 from typing import Optional, Union
+
 from pyrogram import Client
 from pyrogram.handlers import MessageHandler
 from pyrogram.types import Message
-from .exceptions import ListenerTimeout, ListenerStopped, ListenerCanceled
+
+from .exceptions import ListenerCanceled, ListenerStopped, ListenerTimeout
+
 
 class ListenerManager:
     def __init__(self, client: Client):
         self.client = client
         self.listeners = {}
-        
+
         self.ListenerTimeout = ListenerTimeout
         self.ListenerStopped = ListenerStopped
         self.ListenerCanceled = ListenerCanceled
-        
+
         self.client.add_handler(MessageHandler(self._global_listener_handler), group=999)
 
     async def _global_listener_handler(self, client, message):
@@ -22,27 +25,23 @@ class ListenerManager:
 
         for listener_id in list(self.listeners.keys()):
             future, check_func = self.listeners[listener_id]
-            
+
             if future.done():
                 continue
-                
+
             if check_func(client, message):
                 future.set_result(message)
                 if listener_id in self.listeners:
                     del self.listeners[listener_id]
 
     async def listen(
-        self,
-        chat_id: Union[int, str],
-        user_id: Optional[Union[int, str]] = None,
-        filters=None,
-        timeout: int = 300
+        self, chat_id: Union[int, str], user_id: Optional[Union[int, str]] = None, filters=None, timeout: int = 300
     ) -> Message:
         chat_id = await self._resolve_id(chat_id)
         user_id = await self._resolve_id(user_id) if user_id else None
 
         listener_id = f"{chat_id}_{user_id}" if user_id else str(chat_id)
-        
+
         future = asyncio.get_running_loop().create_future()
 
         def _check(client, message):
@@ -74,10 +73,10 @@ class ListenerManager:
         user_id: Optional[Union[int, str]] = None,
         filters=None,
         timeout: int = 300,
-        **kwargs
+        **kwargs,
     ) -> Message:
         sent_message = await self.client.send_message(chat_id, text, **kwargs)
-        
+
         try:
             response = await self.listen(chat_id, user_id, filters, timeout)
             response.request = sent_message
@@ -91,9 +90,9 @@ class ListenerManager:
     async def _cancel_async(self, chat_id, user_id):
         chat_id = await self._resolve_id(chat_id)
         user_id = await self._resolve_id(user_id) if user_id else None
-        
+
         listener_id = f"{chat_id}_{user_id}" if user_id else str(chat_id)
-        
+
         if listener_id in self.listeners:
             future, _ = self.listeners[listener_id]
             if not future.done():

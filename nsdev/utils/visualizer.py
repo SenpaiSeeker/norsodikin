@@ -1,20 +1,26 @@
 import asyncio
 import os
-import subprocess
+
 
 class AudioVisualizer:
     async def _run_ffmpeg(self, command):
         process = await asyncio.create_subprocess_exec(
-            *command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            *command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         stdout, stderr = await process.communicate()
         if process.returncode != 0:
             raise RuntimeError(f"FFmpeg error: {stderr.decode().strip()}")
         return stdout
 
-    async def generate_waveform(self, audio_path: str, output_path: str, width: int = 1280, height: int = 720, color: str = "cyan", bg_color: str = "black"):
+    async def generate_waveform(
+        self,
+        audio_path: str,
+        output_path: str,
+        width: int = 1280,
+        height: int = 720,
+        color: str = "cyan",
+        bg_color: str = "black",
+    ):
         if not os.path.exists(audio_path):
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
@@ -23,18 +29,28 @@ class AudioVisualizer:
         command = [
             "ffmpeg",
             "-y",
-            "-i", audio_path,
-            "-filter_complex", filter_str,
-            "-map", "[v]",
-            "-map", "0:a",
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-crf", "23",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-pix_fmt", "yuv420p",
+            "-i",
+            audio_path,
+            "-filter_complex",
+            filter_str,
+            "-map",
+            "[v]",
+            "-map",
+            "0:a",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-crf",
+            "23",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-pix_fmt",
+            "yuv420p",
             "-shortest",
-            output_path
+            output_path,
         ]
 
         await self._run_ffmpeg(command)
@@ -49,15 +65,23 @@ class AudioVisualizer:
         command = [
             "ffmpeg",
             "-y",
-            "-i", audio_path,
-            "-filter_complex", filter_str,
-            "-map", "[v]",
-            "-map", "0:a",
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-c:a", "aac",
-            "-pix_fmt", "yuv420p",
-            output_path
+            "-i",
+            audio_path,
+            "-filter_complex",
+            filter_str,
+            "-map",
+            "[v]",
+            "-map",
+            "0:a",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-c:a",
+            "aac",
+            "-pix_fmt",
+            "yuv420p",
+            output_path,
         ]
 
         await self._run_ffmpeg(command)
@@ -72,17 +96,26 @@ class AudioVisualizer:
         command = [
             "ffmpeg",
             "-y",
-            "-i", audio_path,
-            "-i", image_path,
-            "-filter_complex", filter_str,
-            "-map", "[v]",
-            "-map", "0:a",
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-c:a", "aac",
-            "-pix_fmt", "yuv420p",
+            "-i",
+            audio_path,
+            "-i",
+            image_path,
+            "-filter_complex",
+            filter_str,
+            "-map",
+            "[v]",
+            "-map",
+            "0:a",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-c:a",
+            "aac",
+            "-pix_fmt",
+            "yuv420p",
             "-shortest",
-            output_path
+            output_path,
         ]
 
         await self._run_ffmpeg(command)

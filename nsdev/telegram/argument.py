@@ -56,7 +56,7 @@ class Argument:
     ) -> Union[str, pyrogram.types.Message, Tuple[Optional[str], Optional[str]]]:
 
         full_text = message.text or message.caption or ""
-        full_html = getattr(full_text, "html", full_text)
+        getattr(full_text, "html", full_text)
         command_parts = full_text.split()
         replied = message.reply_to_message
 
@@ -172,7 +172,9 @@ class Argument:
 
     async def deleteHistory(self, peer: Union[int, str], max_id: int = 0, revoke: bool = True):
         resolve = await self.client.resolve_peer(peer)
-        await self.client.invoke(pyrogram.raw.functions.messages.DeleteHistory(peer=resolve, max_id=max_id, revoke=revoke))
+        await self.client.invoke(
+            pyrogram.raw.functions.messages.DeleteHistory(peer=resolve, max_id=max_id, revoke=revoke)
+        )
 
     def randomEffect(self, is_premium: bool = False) -> int:
         if not is_premium:

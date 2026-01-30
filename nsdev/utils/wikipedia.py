@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import List, Optional
+from typing import List
 from urllib.parse import quote
 
 import fake_useragent

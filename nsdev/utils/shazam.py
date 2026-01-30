@@ -1,5 +1,5 @@
-import io
 from shazamio import Shazam
+
 
 class ShazamHelper:
     def __init__(self):

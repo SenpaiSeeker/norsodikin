@@ -1,6 +1,7 @@
-import asyncio
 from datetime import datetime, timezone
+
 from playwright.async_api import async_playwright
+
 
 class WebArchiver:
     async def capture_evidence(self, url: str, output_path: str = "evidence.pdf") -> str:
@@ -10,12 +11,12 @@ class WebArchiver:
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             )
             page = await context.new_page()
-            
+
             try:
                 await page.goto(url, wait_until="networkidle", timeout=60000)
-                
+
                 timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-                
+
                 footer_html = f"""
                 <div style="
                     position: fixed;
@@ -37,18 +38,18 @@ class WebArchiver:
                     Archived by: Norsodikin WebArchiver
                 </div>
                 """
-                
+
                 await page.evaluate(f"document.body.insertAdjacentHTML('beforeend', `{footer_html}`)")
-                
+
                 await page.pdf(
                     path=output_path,
                     format="A4",
                     print_background=True,
-                    margin={"top": "20px", "bottom": "60px", "left": "20px", "right": "20px"}
+                    margin={"top": "20px", "bottom": "60px", "left": "20px", "right": "20px"},
                 )
-                
+
                 return output_path
-                
+
             except Exception as e:
                 raise RuntimeError(f"Failed to capture evidence: {e}")
             finally:
@@ -58,12 +59,12 @@ class WebArchiver:
         async with async_playwright() as p:
             browser = await p.chromium.launch()
             page = await browser.new_page(viewport={"width": 1280, "height": 720})
-            
+
             try:
                 await page.goto(url, wait_until="networkidle", timeout=60000)
-                
+
                 timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-                
+
                 await page.evaluate(f"""
                     const div = document.createElement('div');
                     div.style.position = 'fixed';
@@ -80,10 +81,10 @@ class WebArchiver:
                     div.innerText = 'SNAPSHOT: {timestamp} | {url}';
                     document.body.prepend(div);
                 """)
-                
+
                 await page.screenshot(path=output_path, full_page=True)
                 return output_path
-                
+
             except Exception as e:
                 raise RuntimeError(f"Failed to screenshot evidence: {e}")
             finally:

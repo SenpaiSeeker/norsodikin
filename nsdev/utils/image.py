@@ -614,7 +614,7 @@ class ImageManipulator(FontManager):
         </body>
         </html>
         """ % background_css
-        
+
         formatted_html = html_template.format(
             pfp_base64=pfp_base64,
             name=name,

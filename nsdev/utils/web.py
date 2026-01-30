@@ -41,14 +41,12 @@ class WebAutomation:
                     await asyncio.sleep(wait_time)
 
                 if dark_mode:
-                    await page.evaluate(
-                        """() => {
+                    await page.evaluate("""() => {
                         document.documentElement.classList.add('dark');
                         document.body.classList.add('dark-mode');
                         document.body.style.backgroundColor = '#121212';
                         document.body.style.color = '#ffffff';
-                    }"""
-                    )
+                    }""")
 
                 await page.add_style_tag(
                     content="body { overflow-y: hidden !important; } ::-webkit-scrollbar { display: none; }"
