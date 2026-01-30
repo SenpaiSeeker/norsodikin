@@ -76,7 +76,7 @@ class LoggerHandler(AnsiColors):
         text_c = self.colors["TEXT"]
         rst = self.colors["RESET"]
 
-        top_bar_len = width - len(timestamp) - 8
+        top_bar_len = width - len(timestamp) - 7
         if top_bar_len < 0: top_bar_len = 0
         
         header = (
@@ -94,7 +94,7 @@ class LoggerHandler(AnsiColors):
             f"{func_c}{func}{rst}:"
             f"{ln_c}{line}{rst} "
             f"{pipe_c}{self.box['pipe']} "
-            f"{text_c}{message}{rst}"
+            f"{lvl_c}{message}{rst}"
         )
         
         footer = f"{box_c}{self.box['bl']}{self.box['h'] * (width - 2)}{self.box['br']}{rst}"
