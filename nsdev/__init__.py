@@ -87,8 +87,8 @@ from .utils import (
     LyricsFinder
 )
 
-__version__ = "2026.01.17"
-__author__ = "@NorSodikin"
+__version__ = "2026.01.18"
+__author__ = "NorSodikin.t.me"
 
 
 class NsDev:
