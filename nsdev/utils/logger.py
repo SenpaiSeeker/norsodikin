@@ -86,7 +86,7 @@ class LoggerHandler(AnsiColors):
         )
         
         content = (
-            f"{box_c}{self.box['sep']} {self.box['obr']}"
+            f"{box_c}{self.box['sep']}{self.box['obr']}"
             f"{lvl_c}{level}{rst}"
             f"{box_c}{self.box['cbr']} "
             f"{pipe_c}{self.box['pipe']} "
