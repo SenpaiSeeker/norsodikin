@@ -126,7 +126,7 @@ class MediaDownloader:
         }
 
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
-            ydl_opts["cookiefile"] = self.cookies_file_path
+            opts["cookiefile"] = self.cookies_file_path
 
         if progress_callback:
             opts["progress_hooks"] = [_hook]
