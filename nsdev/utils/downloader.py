@@ -105,11 +105,14 @@ class MediaDownloader:
             "quiet": True,
             "geo_bypass": True,
             "nocheckcertificate": True,
-            "ignoreerrors": True,
+            "ignoreerrors": False,
             "http_headers": self._get_headers(url),
             "hls_prefer_native": True,
             "restrictfilenames": True,
             "concurrent_fragment_downloads": 4,
+            "retries": 3,
+            "fragment_retries": 3,
+            "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
         }
 
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
@@ -148,87 +151,87 @@ class MediaDownloader:
                 )
         return opts
 
-    def _sync_download(self, url, audio_only, progress_callback, loop, use_flexible_format):
-        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop, use_flexible_format)
-        try:
-            with YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                if info is None:
-                    raise Exception("Failed to extract video information.")
-                result_obj = self.convert._convertToNamespace(info)
+    def _normalize_info(self, info, error_message):
+        if info is None:
+            raise Exception(error_message)
+        if "entries" in info:
+            entries = [entry for entry in info.get("entries") or [] if entry]
+            if not entries:
+                raise Exception(error_message)
+            info = entries[0]
+        return info
 
-                filename = ydl.prepare_filename(info)
+    def _finalize_download_result(self, info, ydl, ydl_opts, audio_only, thumbnail_url):
+        result_obj = self.convert._convertToNamespace(info)
+        filename = ydl.prepare_filename(info)
 
-                if not audio_only and ydl_opts.get("merge_output_format") == "mp4":
-                    base, _ = os.path.splitext(filename)
-                    filename = base + ".mp4"
+        if not audio_only and ydl_opts.get("merge_output_format") == "mp4":
+            base, _ = os.path.splitext(filename)
+            filename = base + ".mp4"
 
-                if audio_only and filename:
-                    base, _ = os.path.splitext(filename)
-                    filename = base + ".mp3"
+        if audio_only and filename:
+            base, _ = os.path.splitext(filename)
+            filename = base + ".mp3"
 
+        thumb_path = None
+        if thumbnail_url:
+            try:
+                thumb_path = wget.download(thumbnail_url, out=self.download_path)
+            except Exception:
                 thumb_path = None
-                if hasattr(result_obj, "id"):
-                    try:
-                        thumb_url = f"https://i.ytimg.com/vi/{result_obj.id}/maxresdefault.jpg"
-                        thumb_path = wget.download(thumb_url, out=self.download_path)
-                    except Exception:
-                        thumb_path = None
 
-                result_obj.downloaded_path = filename
-                result_obj.thumbnail_path = thumb_path
+        result_obj.downloaded_path = filename
+        result_obj.thumbnail_path = thumb_path
 
-                return result_obj
+        return result_obj
+
+    def _attempt_download(self, url, audio_only, progress_callback, loop, use_flexible_format):
+        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop, use_flexible_format)
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            info = self._normalize_info(info, "Failed to extract video information.")
+            thumb_url = None
+            if "id" in info:
+                thumb_url = f"https://i.ytimg.com/vi/{info['id']}/maxresdefault.jpg"
+            return self._finalize_download_result(info, ydl, ydl_opts, audio_only, thumb_url)
+
+    def _sync_download(self, url, audio_only, progress_callback, loop, use_flexible_format):
+        try:
+            return self._attempt_download(url, audio_only, progress_callback, loop, use_flexible_format)
         except Exception as e:
+            if "Requested format is not available" in str(e) and not use_flexible_format:
+                return self._attempt_download(url, audio_only, progress_callback, loop, True)
             if "HTTP Error 403" in str(e):
                 raise Exception("Akses ditolak (403). Server memblokir permintaan.")
-            else:
-                raise Exception(f"Gagal mengunduh: {e}")
+            raise Exception(f"Gagal mengunduh: {e}")
 
     async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None, use_flexible_format: bool = False) -> object:
         loop = asyncio.get_running_loop()
         func_call = partial(self._sync_download, url, audio_only, progress_callback, loop, use_flexible_format)
         return await loop.run_in_executor(None, func_call)
 
+    def _attempt_download_social(self, url, audio_only, progress_callback, loop, media_name, use_flexible_format):
+        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop, use_flexible_format)
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            info = self._normalize_info(info, f"Failed to extract {media_name} information.")
+            thumb_url = None
+            if "thumbnail" in info:
+                thumb_url = info.get("thumbnail")
+            result_obj = self._finalize_download_result(info, ydl, ydl_opts, audio_only, thumb_url)
+            if not hasattr(result_obj, "title"):
+                result_obj.title = media_name
+            return result_obj
+
     def _sync_download_social(self, url, audio_only, progress_callback, loop, media_name):
-        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop, use_flexible_format=False)
         try:
-            with YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                if info is None:
-                    raise Exception(f"Failed to extract {media_name} information.")
-                result_obj = self.convert._convertToNamespace(info)
-
-                filename = ydl.prepare_filename(info)
-
-                if not audio_only and ydl_opts.get("merge_output_format") == "mp4":
-                    base, _ = os.path.splitext(filename)
-                    filename = base + ".mp4"
-
-                if audio_only and filename:
-                    base, _ = os.path.splitext(filename)
-                    filename = base + ".mp3"
-
-                thumb_path = None
-                if hasattr(result_obj, "thumbnail") and result_obj.thumbnail:
-                    try:
-                        thumb_url = result_obj.thumbnail
-                        thumb_path = wget.download(thumb_url, out=self.download_path)
-                    except Exception:
-                        thumb_path = None
-
-                result_obj.downloaded_path = filename
-                result_obj.thumbnail_path = thumb_path
-
-                if not hasattr(result_obj, "title"):
-                    result_obj.title = media_name
-
-                return result_obj
+            return self._attempt_download_social(url, audio_only, progress_callback, loop, media_name, False)
         except Exception as e:
+            if "Requested format is not available" in str(e):
+                return self._attempt_download_social(url, audio_only, progress_callback, loop, media_name, True)
             if "HTTP Error 403" in str(e):
                 raise Exception(f"❌ {media_name}: Akses ditolak (403).")
-            else:
-                raise Exception(f"❌ {media_name}: {e}")
+            raise Exception(f"❌ {media_name}: {e}")
 
     async def download_instagram(self, url, audio_only=False, progress_callback=None):
         loop = asyncio.get_running_loop()
