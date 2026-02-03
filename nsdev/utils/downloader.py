@@ -14,14 +14,14 @@ class MediaDownloader:
     def __init__(self, cookies_file_path: str = None, download_path: str = "downloads"):
         self.download_path = download_path
         self.cookies_file_path = cookies_file_path
-        self.fake = Faker("id_ID")
         self.convert = YamlHandler()
+        
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
 
     def _get_headers(self):
         return {
-            "User-Agent": self.fake.user_agent(),
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Accept-Language": "en-US,en;q=0.9",
         }
 
