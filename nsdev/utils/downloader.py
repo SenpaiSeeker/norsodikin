@@ -185,21 +185,28 @@ class MediaDownloader:
 
         return result_obj
 
+    def _format_unavailable(self, error):
+        return "Requested format is not available" in str(error)
+
+    def _build_youtube_thumbnail(self, info):
+        video_id = info.get("id") if isinstance(info, dict) else None
+        if not video_id:
+            return None
+        return f"https://i.ytimg.com/vi/{video_id}/maxresdefault.jpg"
+
     def _attempt_download(self, url, audio_only, progress_callback, loop, use_flexible_format):
         ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop, use_flexible_format)
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             info = self._normalize_info(info, "Failed to extract video information.")
-            thumb_url = None
-            if "id" in info:
-                thumb_url = f"https://i.ytimg.com/vi/{info['id']}/maxresdefault.jpg"
+            thumb_url = self._build_youtube_thumbnail(info)
             return self._finalize_download_result(info, ydl, ydl_opts, audio_only, thumb_url)
 
     def _sync_download(self, url, audio_only, progress_callback, loop, use_flexible_format):
         try:
             return self._attempt_download(url, audio_only, progress_callback, loop, use_flexible_format)
         except Exception as e:
-            if "Requested format is not available" in str(e) and not use_flexible_format:
+            if self._format_unavailable(e) and not use_flexible_format:
                 return self._attempt_download(url, audio_only, progress_callback, loop, True)
             if "HTTP Error 403" in str(e):
                 raise Exception("Akses ditolak (403). Server memblokir permintaan.")
@@ -210,14 +217,17 @@ class MediaDownloader:
         func_call = partial(self._sync_download, url, audio_only, progress_callback, loop, use_flexible_format)
         return await loop.run_in_executor(None, func_call)
 
+    def _build_social_thumbnail(self, info):
+        if isinstance(info, dict):
+            return info.get("thumbnail")
+        return None
+
     def _attempt_download_social(self, url, audio_only, progress_callback, loop, media_name, use_flexible_format):
         ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop, use_flexible_format)
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             info = self._normalize_info(info, f"Failed to extract {media_name} information.")
-            thumb_url = None
-            if "thumbnail" in info:
-                thumb_url = info.get("thumbnail")
+            thumb_url = self._build_social_thumbnail(info)
             result_obj = self._finalize_download_result(info, ydl, ydl_opts, audio_only, thumb_url)
             if not hasattr(result_obj, "title"):
                 result_obj.title = media_name
@@ -227,7 +237,7 @@ class MediaDownloader:
         try:
             return self._attempt_download_social(url, audio_only, progress_callback, loop, media_name, False)
         except Exception as e:
-            if "Requested format is not available" in str(e):
+            if self._format_unavailable(e):
                 return self._attempt_download_social(url, audio_only, progress_callback, loop, media_name, True)
             if "HTTP Error 403" in str(e):
                 raise Exception(f"❌ {media_name}: Akses ditolak (403).")
