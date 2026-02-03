@@ -17,7 +17,7 @@ class ListenerManager:
         self.ListenerStopped = ListenerStopped
         self.ListenerCanceled = ListenerCanceled
 
-        self.client.add_handler(MessageHandler(self._global_listener_handler), group=999)
+        self.client.add_handler(MessageHandler(self._global_listener_handler), group=-999)
 
     async def _global_listener_handler(self, client, message):
         if not self.listeners:
