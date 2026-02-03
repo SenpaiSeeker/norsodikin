@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 
 import wget
 import yt_dlp
-from faker import Faker
 
 from ..data.ymlreder import YamlHandler
 
@@ -15,7 +14,7 @@ class MediaDownloader:
         self.download_path = download_path
         self.cookies_file_path = cookies_file_path
         self.convert = YamlHandler()
-        
+
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
 
@@ -40,38 +39,43 @@ class MediaDownloader:
             "outtmpl": os.path.join(self.download_path, "%(id)s.%(ext)s"),
             "quiet": True,
             "no_warnings": True,
-            "ignoreerrors": True,
+            "ignoreerrors": False,
             "socket_timeout": 60,
             "retries": 10,
             "fragment_retries": 10,
             "skip_unavailable_fragments": True,
             "restrictfilenames": True,
-            "concurrent_fragment_downloads": 4,
+            "concurrent_fragment_downloads": 4
         }
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
             opts["cookiefile"] = self.cookies_file_path
         return opts
 
     def _sync_search_youtube(self, query: str, limit: int = 10):
-        opts = self._base_opts().copy()
+        opts = self._base_opts()
         opts.update({
-            "format": "best",
             "default_search": f"ytsearch{limit}",
-            "noplaylist": True,
+            "format": "bv*+ba/best"
         })
         with yt_dlp.YoutubeDL(opts) as ydl:
-            result = ydl.extract_info(query, download=False) or {}
-            entries = result.get("entries", [])
-            if not entries and "id" in result:
-                entries = [result]
-            return [self.convert._convertToNamespace(item) for item in entries]
+            result = ydl.extract_info(query, download=False)
+            if not result:
+                return []
+            entries = result.get("entries") or []
+            if isinstance(entries, dict):
+                entries = [entries]
+            clean = []
+            for item in entries:
+                if item:
+                    clean.append(self.convert._convertToNamespace(item))
+            return clean
 
     async def search_youtube(self, query: str, limit: int = 10) -> List:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(self._sync_search_youtube, query, limit))
 
     def _sync_download(self, url: str, audio_only: bool, progress_callback, loop):
-        opts = self._base_opts().copy()
+        opts = self._base_opts()
         if audio_only:
             opts.update({
                 "format": "bestaudio/best",
@@ -83,8 +87,8 @@ class MediaDownloader:
             })
         else:
             opts.update({
-                "format": "bestvideo+bestaudio/best",
-                "merge_output_format": "mp4",
+                "format": "bv*+ba/best",
+                "merge_output_format": "mp4"
             })
 
         if progress_callback:
@@ -100,25 +104,28 @@ class MediaDownloader:
 
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            
             if not info:
-                raise Exception("Gagal mengambil informasi media atau unduhan gagal.")
+                raise Exception("Media tidak dapat diambil")
+
+            if "entries" in info and isinstance(info["entries"], list):
+                info = next((x for x in info["entries"] if x), None)
+
+            if not info:
+                raise Exception("Tidak ada data valid")
 
             out_file = ydl.prepare_filename(info)
             ns = self.convert._convertToNamespace(info)
 
-            if not audio_only and opts.get("merge_output_format") == "mp4":
-                base, _ = os.path.splitext(out_file)
-                out_file = base + ".mp4"
-
+            base, ext = os.path.splitext(out_file)
             if audio_only:
-                base, _ = os.path.splitext(out_file)
                 out_file = base + ".mp3"
+            else:
+                out_file = base + ".mp4"
 
             ns.downloaded_path = out_file
 
-            thumb_path = None
             thumb_url = getattr(ns, "thumbnail", None)
+            thumb_path = None
 
             if not thumb_url and self._is_youtube(url) and hasattr(ns, "id"):
                 thumb_url = f"https://i.ytimg.com/vi/{ns.id}/maxresdefault.jpg"
@@ -126,25 +133,17 @@ class MediaDownloader:
             if thumb_url:
                 try:
                     thumb_path = wget.download(thumb_url, out=self.download_path)
-                except Exception:
+                except:
                     thumb_path = None
 
             ns.thumbnail_path = thumb_path
-
             return ns
 
     async def download(self, url: str, audio_only: bool = False, progress_callback=None):
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(
-            None,
-            partial(self._sync_download, url, audio_only, progress_callback, loop)
-        )
+        return await loop.run_in_executor(None, partial(self._sync_download, url, audio_only, progress_callback, loop))
 
     async def download_social(self, url: str, audio_only: bool = False, progress_callback=None):
-        if self._is_instagram(url):
+        if self._is_instagram(url) or self._is_twitter(url) or self._is_tiktok(url):
             return await self.download(url, audio_only, progress_callback)
-        if self._is_twitter(url):
-            return await self.download(url, audio_only, progress_callback)
-        if self._is_tiktok(url):
-            return await self.download(url, audio_only, progress_callback)
-        raise Exception("Unsupported URL format")
+        raise Exception("URL tidak didukung")
