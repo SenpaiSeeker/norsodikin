@@ -16,7 +16,6 @@ class MediaDownloader:
         self.cookies_file_path = cookies_file_path
         self.fake = Faker("id_ID")
         self.convert = YamlHandler()
-
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
 
@@ -48,8 +47,10 @@ class MediaDownloader:
             "quiet": True,
             "no_warnings": True,
             "ignoreerrors": True,
-            "socket_timeout": 30,
-            "retries": 5,
+            "socket_timeout": 60,
+            "retries": 10,
+            "fragment_retries": 10,
+            "skip_unavailable_fragments": True,
             "http_headers": self._get_headers(),
             "restrictfilenames": True,
             "concurrent_fragment_downloads": 4,
@@ -76,7 +77,7 @@ class MediaDownloader:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(self._sync_search_youtube, query, limit))
 
-    def _sync_download(self, url: str, audio_only: bool, progress_callback, loop, platform_name: str):
+    def _sync_download(self, url: str, audio_only: bool, progress_callback, loop):
         opts = self._base_opts().copy()
         if audio_only:
             opts.update({
@@ -89,7 +90,7 @@ class MediaDownloader:
             })
         else:
             opts.update({
-                "format": "best/bestvideo+bestaudio",
+                "format": "bestvideo+bestaudio/best",
                 "merge_output_format": "mp4",
             })
 
@@ -98,17 +99,21 @@ class MediaDownloader:
                 if d.get("status") == "downloading":
                     total = d.get("total_bytes") or d.get("total_bytes_estimate")
                     if total:
-                        asyncio.run_coroutine_threadsafe(progress_callback(d["downloaded_bytes"], total), loop)
+                        asyncio.run_coroutine_threadsafe(
+                            progress_callback(d["downloaded_bytes"], total),
+                            loop
+                        )
             opts["progress_hooks"] = [hook]
 
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
             ns = self.convert._convertToNamespace(info)
-
             out_file = ydl.prepare_filename(info)
+
             if not audio_only and opts.get("merge_output_format") == "mp4":
                 base, _ = os.path.splitext(out_file)
                 out_file = base + ".mp4"
+
             if audio_only:
                 base, _ = os.path.splitext(out_file)
                 out_file = base + ".mp3"
@@ -117,8 +122,10 @@ class MediaDownloader:
 
             thumb_path = None
             thumb_url = getattr(ns, "thumbnail", None)
+
             if not thumb_url and self._is_youtube(url) and hasattr(ns, "id"):
                 thumb_url = f"https://i.ytimg.com/vi/{ns.id}/maxresdefault.jpg"
+
             if thumb_url:
                 try:
                     thumb_path = wget.download(thumb_url, out=self.download_path)
@@ -126,11 +133,15 @@ class MediaDownloader:
                     thumb_path = None
 
             ns.thumbnail_path = thumb_path
+
             return ns
 
     async def download(self, url: str, audio_only: bool = False, progress_callback=None):
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, partial(self._sync_download, url, audio_only, progress_callback, loop, "Media"))
+        return await loop.run_in_executor(
+            None,
+            partial(self._sync_download, url, audio_only, progress_callback, loop)
+        )
 
     async def download_social(self, url: str, audio_only: bool = False, progress_callback=None):
         if self._is_instagram(url):
