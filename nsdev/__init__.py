@@ -92,7 +92,7 @@ from .utils import (
     memoize,
 )
 
-__version__ = "2026.02.35"
+__version__ = "2026.02.36"
 __author__ = "NorSodikin.t.me"
 
 
