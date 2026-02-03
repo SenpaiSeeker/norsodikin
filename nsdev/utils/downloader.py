@@ -36,7 +36,7 @@ class MediaDownloader:
         parsed_url = urlparse(url)
         return parsed_url.netloc in ("www.tiktok.com", "tiktok.com", "vt.tiktok.com")
 
-    def _get_headers(self, url=None):
+    def _get_headers(self, url: str =None):
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Accept-Language": "en-US,en;q=0.9",
@@ -61,15 +61,11 @@ class MediaDownloader:
             "extract_flat": "in_playlist",
             "nocheckcertificate": True,
             "geo_bypass": True,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["ios", "android", "web"],
-                    "skip": ["webpage", "auth_check"],
-                }
-            },
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "http_headers": self._get_headers(query if query.startswith("http") else None),
+            "http_headers": self._get_headers(query),
         }
+        
+        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
+            ydl_opts["cookiefile"] = self.cookies_file_path
 
         is_url = query.startswith("http")
         if is_url:
@@ -110,15 +106,8 @@ class MediaDownloader:
             "geo_bypass": True,
             "nocheckcertificate": True,
             "ignoreerrors": True,
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "http_headers": self._get_headers(url),
             "hls_prefer_native": True,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["ios", "android", "web"],
-                    "skip": ["webpage", "auth_check"],
-                }
-            },
             "restrictfilenames": True,
             "concurrent_fragment_downloads": 4,
         }
@@ -196,7 +185,7 @@ class MediaDownloader:
             else:
                 raise Exception(f"Gagal mengunduh: {e}")
 
-    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None, use_flexible_format: bool = True) -> object:
+    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None, use_flexible_format: bool = False) -> object:
         loop = asyncio.get_running_loop()
         func_call = partial(self._sync_download, url, audio_only, progress_callback, loop, use_flexible_format)
         return await loop.run_in_executor(None, func_call)
