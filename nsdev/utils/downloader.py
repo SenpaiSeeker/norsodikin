@@ -105,11 +105,14 @@ class MediaDownloader:
             "quiet": True,
             "geo_bypass": True,
             "nocheckcertificate": True,
-            "ignoreerrors": True,
+            "ignoreerrors": False,
             "http_headers": self._get_headers(url),
             "hls_prefer_native": True,
             "restrictfilenames": True,
             "concurrent_fragment_downloads": 4,
+            "retries": 3,
+            "fragment_retries": 3,
+            "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
         }
 
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
@@ -155,6 +158,11 @@ class MediaDownloader:
                 info = ydl.extract_info(url, download=True)
                 if info is None:
                     raise Exception("Failed to extract video information.")
+                if "entries" in info:
+                    entries = [entry for entry in info.get("entries") or [] if entry]
+                    if not entries:
+                        raise Exception("Failed to extract video information.")
+                    info = entries[0]
                 result_obj = self.convert._convertToNamespace(info)
 
                 filename = ydl.prepare_filename(info)
@@ -197,6 +205,11 @@ class MediaDownloader:
                 info = ydl.extract_info(url, download=True)
                 if info is None:
                     raise Exception(f"Failed to extract {media_name} information.")
+                if "entries" in info:
+                    entries = [entry for entry in info.get("entries") or [] if entry]
+                    if not entries:
+                        raise Exception(f"Failed to extract {media_name} information.")
+                    info = entries[0]
                 result_obj = self.convert._convertToNamespace(info)
 
                 filename = ydl.prepare_filename(info)
