@@ -19,12 +19,6 @@ class MediaDownloader:
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
 
-    def _get_headers(self):
-        return {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept-Language": "en-US,en;q=0.9",
-        }
-
     def _is_platform(self, url: str, domains: List[str]):
         parsed = urlparse(url)
         return any(parsed.netloc.lower().endswith(domain) for domain in domains)
@@ -51,7 +45,6 @@ class MediaDownloader:
             "retries": 10,
             "fragment_retries": 10,
             "skip_unavailable_fragments": True,
-            "http_headers": self._get_headers(),
             "restrictfilenames": True,
             "concurrent_fragment_downloads": 4,
         }
