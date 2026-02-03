@@ -55,7 +55,7 @@ class MediaDownloader:
         opts = self._base_opts()
         opts.update({
             "default_search": f"ytsearch{limit}",
-            "format": "bv*+ba/best"
+            "format": "best"
         })
         with yt_dlp.YoutubeDL(opts) as ydl:
             result = ydl.extract_info(query, download=False)
