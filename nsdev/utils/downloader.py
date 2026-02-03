@@ -107,8 +107,12 @@ class MediaDownloader:
 
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            ns = self.convert._convertToNamespace(info)
+            
+            if not info:
+                raise Exception("Gagal mengambil informasi media atau unduhan gagal.")
+
             out_file = ydl.prepare_filename(info)
+            ns = self.convert._convertToNamespace(info)
 
             if not audio_only and opts.get("merge_output_format") == "mp4":
                 base, _ = os.path.splitext(out_file)
