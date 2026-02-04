@@ -106,6 +106,7 @@ class MediaDownloader:
             "geo_bypass": True,
             "nocheckcertificate": True,
             "ignoreerrors": False,
+            "source_address": "0.0.0.0",
             "http_headers": self._get_headers(url),
             "hls_prefer_native": True,
             "restrictfilenames": True,
