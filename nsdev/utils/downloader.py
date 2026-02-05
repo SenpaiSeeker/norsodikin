@@ -5,7 +5,6 @@ from typing import List
 from urllib.parse import urlparse
 
 import wget
-from faker import Faker
 from yt_dlp import YoutubeDL
 
 from ..data.ymlreder import YamlHandler
@@ -20,7 +19,6 @@ class MediaDownloader:
             os.makedirs(self.download_path)
 
         self.convert = YamlHandler()
-        self.fake = Faker("id_ID")
 
     def _is_youtube_url(self, url):
         parsed_url = urlparse(url)
@@ -40,7 +38,7 @@ class MediaDownloader:
 
     def _get_headers(self, url=None):
         headers = {
-            "User-Agent": self.fake.user_agent(),
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Accept-Language": "en-US,en;q=0.9",
         }
 
@@ -65,12 +63,10 @@ class MediaDownloader:
             "geo_bypass": True,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android", "web"],
+                    "player_client": ["android"],
                     "skip": ["webpage", "auth_check"],
                 }
             },
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "http_headers": self._get_headers(query if query.startswith("http") else None),
         }
 
         is_url = query.startswith("http")
@@ -107,23 +103,17 @@ class MediaDownloader:
         opts = {
             "outtmpl": os.path.join(self.download_path, "%(id)s.%(ext)s"),
             "no_warnings": True,
-            "noplaylist": True,
             "quiet": True,
             "geo_bypass": True,
             "nocheckcertificate": True,
-            "ignoreerrors": True,
-            "source_address": "0.0.0.0",
-            "user_agent": self.fake.user_agent(),
             "http_headers": self._get_headers(url),
-            "hls_prefer_native": True,
+            "source_address": "0.0.0.0",
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android", "web"],
+                    "player_client": ["android"],
                     "skip": ["webpage", "auth_check"],
                 }
             },
-            "restrictfilenames": True,
-            "concurrent_fragment_downloads": 4,
         }
 
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
