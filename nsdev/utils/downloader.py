@@ -5,6 +5,7 @@ from typing import List
 from urllib.parse import urlparse
 
 import wget
+from faker import Faker
 from yt_dlp import YoutubeDL
 
 from ..data.ymlreder import YamlHandler
@@ -19,6 +20,7 @@ class MediaDownloader:
             os.makedirs(self.download_path)
 
         self.convert = YamlHandler()
+        self.fake = Faker("id_ID")
 
     def _is_youtube_url(self, url):
         parsed_url = urlparse(url)
@@ -36,20 +38,6 @@ class MediaDownloader:
         parsed_url = urlparse(url)
         return parsed_url.netloc in ("www.tiktok.com", "tiktok.com", "vt.tiktok.com")
 
-    def _get_headers(self, url=None):
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        }
-
-        if url and "cloud.hownetwork.xyz" in url:
-            video_id = url.split("/")[-3]
-            referer_url = f"https://cloud.hownetwork.xyz/video.php?id={video_id}"
-            headers["Referer"] = referer_url
-        elif url:
-            headers["Referer"] = "https://www.google.com"
-
-        return headers
-
     def _sync_extract_info(self, query: str, limit: int = 10):
         ydl_opts = {
             "format": "best",
@@ -57,16 +45,11 @@ class MediaDownloader:
             "no_warnings": True,
             "noplaylist": True,
             "extract_flat": "in_playlist",
-            "nocheckcertificate": True,
-            "geo_bypass": True,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["android"],
-                    "skip": ["webpage", "auth_check"],
-                }
-            },
-            "format_sort": ["res:720", "vcodec:vp9.2", "acodec:opus"],
+            "user_agent": self.fake.user_agent(),
         }
+
+        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
+            ydl_opts["cookiefile"] = self.cookies_file_path
 
         is_url = query.startswith("http")
         if is_url:
@@ -96,35 +79,24 @@ class MediaDownloader:
         def _hook(d):
             if d["status"] == "downloading" and progress_callback:
                 total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate")
-                downloaded = d.get("downloaded_bytes", 0)
-                if total_bytes and downloaded:
-                    asyncio.run_coroutine_threadsafe(
-                        progress_callback(downloaded, total_bytes), loop
-                    )
+                if total_bytes:
+                    asyncio.run_coroutine_threadsafe(progress_callback(d["downloaded_bytes"], total_bytes), loop)
 
         opts = {
             "outtmpl": os.path.join(self.download_path, "%(id)s.%(ext)s"),
             "no_warnings": True,
-            "quiet": False,
+            "noplaylist": True,
+            "quiet": True,
             "geo_bypass": True,
             "nocheckcertificate": True,
-            "http_headers": self._get_headers(url),
-            "source_address": "0.0.0.0",
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["android", "web"],
-                    "skip": ["auth_check"],
-                }
-            },
-            "format_sort": ["res:720", "vcodec:vp9.2", "acodec:opus", "filesize"],
-            "check_formats": "selected",
+            "user_agent": self.fake.user_agent(),
         }
-
-        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
-            opts["cookiefile"] = self.cookies_file_path
 
         if progress_callback:
             opts["progress_hooks"] = [_hook]
+
+        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
+            opts["cookiefile"] = self.cookies_file_path
 
         if audio_only:
             opts.update(
@@ -137,18 +109,13 @@ class MediaDownloader:
                             "preferredquality": "192",
                         }
                     ],
-                    "postprocessor_args": {
-                        "ffmpeg": ["-ac", "2"]
-                    },
                 }
             )
         else:
-            opts.update(
-                {
-                    "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/bestvideo+bestaudio/best",
-                    "merge_output_format": "mp4",
-                }
+            opts["format"] = (
+                "bestvideo[ext=mp4][height<=720][vcodec^=avc]+bestaudio/bestvideo[ext=mp4][height<=720]+bestaudio/best[ext=mp4][height<=720]/best"
             )
+
         return opts
 
     def _sync_download(self, url, audio_only, progress_callback, loop):
@@ -159,45 +126,24 @@ class MediaDownloader:
                 result_obj = self.convert._convertToNamespace(info)
 
                 filename = ydl.prepare_filename(info)
-                
-                if audio_only:
-                    base = os.path.splitext(filename)[0]
-                    actual_file = base + ".mp3"
-                    if os.path.exists(actual_file):
-                        filename = actual_file
-                else:
-                    if not filename.lower().endswith(('.mp4', '.mkv', '.webm')):
-                        base = os.path.splitext(filename)[0]
-                        for ext in ['.mp4', '.mkv', '.webm']:
-                            candidate = base + ext
-                            if os.path.exists(candidate):
-                                filename = candidate
-                                break
 
-                thumb_path = None
-                if hasattr(result_obj, "id"):
-                    try:
-                        thumb_url = f"https://i.ytimg.com/vi/{result_obj.id}/maxresdefault.jpg"
-                        thumb_path = wget.download(thumb_url, out=self.download_path)
-                    except Exception:
-                        try:
-                            thumb_url = f"https://i.ytimg.com/vi/{result_obj.id}/hqdefault.jpg"
-                            thumb_path = wget.download(thumb_url, out=self.download_path)
-                        except Exception:
-                            thumb_path = None
+                if audio_only and filename:
+                    base, _ = os.path.splitext(filename)
+                    filename = base + ".mp3"
+
+                try:
+                    thumb_url = f"https://i.ytimg.com/vi/{result_obj.id}/maxresdefault.jpg"
+                    thumb_path = wget.download(thumb_url, out=self.download_path)
+                except Exception:
+                    thumb_path = None
 
                 result_obj.downloaded_path = filename
                 result_obj.thumbnail_path = thumb_path
 
                 return result_obj
         except Exception as e:
-            error_msg = str(e)
-            if "HTTP Error 403" in error_msg:
-                raise Exception("Akses ditolak (403). Server memblokir permintaan.")
-            elif "Requested format" in error_msg or "No video formats" in error_msg:
-                raise Exception(
-                    "Format video tidak tersedia. Coba lagi tanpa filter resolusi atau periksa ketersediaan video."
-                )
+            if "HTTP Error 403" in str(e):
+                raise Exception("Akses ditolak (403). " "Perbarui cookies.txt atau pastikan video publik.")
             else:
                 raise Exception(f"Gagal mengunduh: {e}")
 
@@ -208,18 +154,16 @@ class MediaDownloader:
 
     def _sync_download_social(self, url, audio_only, progress_callback, loop, media_name):
         ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop)
+        ydl_opts["format"] = "best[ext=mp4]/best"
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 result_obj = self.convert._convertToNamespace(info)
 
                 filename = ydl.prepare_filename(info)
-
-                if audio_only:
-                    base = os.path.splitext(filename)[0]
-                    actual_file = base + ".mp3"
-                    if os.path.exists(actual_file):
-                        filename = actual_file
+                if audio_only and filename:
+                    base, _ = os.path.splitext(filename)
+                    filename = base + ".mp3"
 
                 thumb_path = None
                 if hasattr(result_obj, "thumbnail") and result_obj.thumbnail:
@@ -237,11 +181,8 @@ class MediaDownloader:
 
                 return result_obj
         except Exception as e:
-            error_msg = str(e)
-            if "HTTP Error 403" in error_msg:
-                raise Exception(f"❌ {media_name}: Akses ditolak (403).")
-            elif "Requested format" in error_msg:
-                raise Exception(f"❌ {media_name}: Format media tidak tersedia untuk URL ini.")
+            if "HTTP Error 403" in str(e):
+                raise Exception(f"❌ {media_name}: Akses ditolak (403). Gunakan cookies atau pastikan media publik.")
             else:
                 raise Exception(f"❌ {media_name}: {e}")
 
