@@ -39,7 +39,6 @@ class MediaDownloader:
     def _get_headers(self, url=None):
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept-Language": "en-US,en;q=0.9",
         }
 
         if url and "cloud.hownetwork.xyz" in url:
@@ -48,7 +47,7 @@ class MediaDownloader:
             headers["Referer"] = referer_url
 
         elif url:
-            headers["Referer"] = "https://www.google.com/"
+            headers["Referer"] = "https://www.google.com"
 
         return headers
 
@@ -93,7 +92,7 @@ class MediaDownloader:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(self._sync_extract_info, query, limit))
 
-    def _build_ydl_opts(self, url: str, audio_only: bool, progress_callback, loop, use_flexible_format: bool = False):
+    def _build_ydl_opts(self, url: str, audio_only: bool, progress_callback, loop):
         def _hook(d):
             if d["status"] == "downloading" and progress_callback:
                 total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate")
@@ -106,7 +105,7 @@ class MediaDownloader:
             "quiet": True,
             "geo_bypass": True,
             "nocheckcertificate": True,
-            "http_headers": self._get_headers(url),
+            # "http_headers": self._get_headers(url),
             "source_address": "0.0.0.0",
             "extractor_args": {
                 "youtube": {
@@ -136,20 +135,11 @@ class MediaDownloader:
                 }
             )
         else:
-            if use_flexible_format:
-                opts.update(
-                    {
-                        "format": "bestvideo+bestaudio/best",
-                        "merge_output_format": "mp4",
-                    }
-                )
-            else:
-                opts.update(
-                    {
-                        "format": "bestvideo[ext=mp4][height<=?720][width<=?1280]+bestaudio[ext=m4a]/best",
-                        "merge_output_format": "mp4",
-                    }
-                )
+            opts.update(
+                {
+                    "format": "best[ext=mp4]/best",
+                }
+            )
         return opts
 
     def _sync_download(self, url, audio_only, progress_callback, loop, use_flexible_format):
@@ -161,14 +151,14 @@ class MediaDownloader:
 
                 filename = ydl.prepare_filename(info)
 
-                if not audio_only and ydl_opts.get("merge_output_format") == "mp4":
-                    base, _ = os.path.splitext(filename)
-                    filename = base + ".mp4"
-
-                if audio_only and filename:
+                if audio_only:
                     base, _ = os.path.splitext(filename)
                     filename = base + ".mp3"
 
+                else:
+                    base, _ = os.path.splitext(filename)
+                    filename = base + ".mp4"
+                
                 thumb_path = None
                 if hasattr(result_obj, "id"):
                     try:
@@ -187,15 +177,13 @@ class MediaDownloader:
             else:
                 raise Exception(f"Gagal mengunduh: {e}")
 
-    async def download(
-        self, url: str, audio_only: bool = False, progress_callback: callable = None, use_flexible_format: bool = True
-    ) -> object:
+    async def download(self, url: str, audio_only: bool = False, progress_callback: callable = None) -> object:
         loop = asyncio.get_running_loop()
-        func_call = partial(self._sync_download, url, audio_only, progress_callback, loop, use_flexible_format)
+        func_call = partial(self._sync_download, url, audio_only, progress_callback, loop)
         return await loop.run_in_executor(None, func_call)
 
     def _sync_download_social(self, url, audio_only, progress_callback, loop, media_name):
-        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop, use_flexible_format=False)
+        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop)
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
