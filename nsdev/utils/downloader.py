@@ -142,8 +142,8 @@ class MediaDownloader:
             )
         return opts
 
-    def _sync_download(self, url, audio_only, progress_callback, loop, use_flexible_format):
-        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop, use_flexible_format)
+    def _sync_download(self, url, audio_only, progress_callback, loop):
+        ydl_opts = self._build_ydl_opts(url, audio_only, progress_callback, loop)
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
