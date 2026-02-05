@@ -75,9 +75,6 @@ client.ns.utils.log.info("Logger canggih siap mencatat progres bot!")
 # images = await client.ns.pinterest.search("anime aesthetic")
 ```
 
-## Fitur Baru: Pinterest Engine
-Modul Pinterest kini lebih handal dengan engine khusus yang mendukung pencarian, unduhan gambar/video, dan penanganan media yang lebih baik untuk menghindari error format.
-
 ## Lisensi
 
 Pustaka ini dirilis di bawah [Lisensi MIT](https://opensource.org/licenses/MIT). Artinya, Anda bebas menggunakan, memodifikasi, dan mendistribusikan kode ini untuk proyek komersial maupun non-komersial.
