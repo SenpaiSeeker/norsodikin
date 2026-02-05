@@ -90,18 +90,25 @@ class MediaDownloader:
             "geo_bypass": True,
             "nocheckcertificate": True,
             "user_agent": self.fake.user_agent(),
+            "source_address": "0.0.0.0",
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android"],
+                    "skip": ["webpage", "auth_check"],
+                }
+            },
         }
 
         if progress_callback:
             opts["progress_hooks"] = [_hook]
 
         if self.cookies_file_path and os.path.exists(self.cookies_file_path):
-            opts["cookiefile"] = self.cookies_file_path
+            del opts["cookiefile"]
 
         if audio_only:
             opts.update(
                 {
-                    "format": "bestaudio[ext=m4a]/bestaudio/best",
+                    "format": "bestaudio/best",
                     "postprocessors": [
                         {
                             "key": "FFmpegExtractAudio",
@@ -112,9 +119,7 @@ class MediaDownloader:
                 }
             )
         else:
-            opts["format"] = (
-                "bestvideo[ext=mp4][height<=720][vcodec^=avc]+bestaudio/bestvideo[ext=mp4][height<=720]+bestaudio/best[ext=mp4][height<=720]/best"
-            )
+            opts["format"] = "best[ext=mp4]/best"
 
         return opts
 
@@ -143,7 +148,7 @@ class MediaDownloader:
                 return result_obj
         except Exception as e:
             if "HTTP Error 403" in str(e):
-                raise Exception("Akses ditolak (403). " "Perbarui cookies.txt atau pastikan video publik.")
+                raise Exception(f"Akses ditolak (403). Perbarui {self.cookies_file_path} atau pastikan video publik.")
             else:
                 raise Exception(f"Gagal mengunduh: {e}")
 
