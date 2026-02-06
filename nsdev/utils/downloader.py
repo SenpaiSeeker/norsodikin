@@ -48,9 +48,6 @@ class MediaDownloader:
             "user_agent": self.fake.user_agent(),
         }
 
-        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
-            ydl_opts["cookiefile"] = self.cookies_file_path
-
         is_url = query.startswith("http")
         if is_url:
             ydl_opts["noplaylist"] = False
