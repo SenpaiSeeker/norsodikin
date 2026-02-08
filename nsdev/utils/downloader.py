@@ -88,6 +88,12 @@ class MediaDownloader:
             "geo_bypass": True,
             "nocheckcertificate": True,
             "user_agent": self.fake.user_agent(),
+            "source_address": "0.0.0.0",
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android"]
+                }
+            },
         }
 
         if progress_callback:
