@@ -99,8 +99,8 @@ class MediaDownloader:
         if progress_callback:
             opts["progress_hooks"] = [_hook]
 
-        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
-            opts["cookiefile"] = self.cookies_file_path
+        if "cookiefile" in opts:
+            del opts["cookiefile"]
 
         if audio_only:
             opts.update(
