@@ -80,7 +80,7 @@ class MediaDownloader:
                     asyncio.run_coroutine_threadsafe(progress_callback(d["downloaded_bytes"], total_bytes), loop)
 
         opts = {
-            "outtmpl": os.path.join(self.download_path, "%(id).50s.%(ext)s"),
+            "outtmpl": os.path.join(self.download_path, "%(id)s.%(ext)s"),
             "restrictfilenames": True,
             "no_warnings": True,
             "noplaylist": True,
@@ -88,12 +88,6 @@ class MediaDownloader:
             "geo_bypass": True,
             "nocheckcertificate": True,
             "user_agent": self.fake.user_agent(),
-            "source_address": "0.0.0.0",
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["android"]
-                }
-            },
         }
 
         if progress_callback:
