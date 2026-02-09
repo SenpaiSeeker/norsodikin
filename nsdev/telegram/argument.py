@@ -56,7 +56,6 @@ class Argument:
     ) -> Union[str, pyrogram.types.Message, Tuple[Optional[str], Optional[str]]]:
 
         full_text = message.text or message.caption or ""
-        getattr(full_text, "html", full_text)
         command_parts = full_text.split()
         replied = message.reply_to_message
 
@@ -96,7 +95,7 @@ class Argument:
                 return source_text
 
             if replied and replied_text:
-                return getattr(replied_text, "html", str(replied_text))
+                return replied_text
 
             return ""
 
