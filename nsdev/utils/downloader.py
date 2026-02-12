@@ -127,7 +127,7 @@ class MediaDownloader:
         loop,
     ):
         opts = self._build_base_opts(progress_callback, loop)
-        opts["format"] = self._select_format(resolution, audio_only)})
+        opts["format"] = self._select_format(resolution, audio_only)
 
         if audio_only:
             opts["postprocessors"] = [
