@@ -219,7 +219,7 @@ class MediaDownloader:
                 "quiet": True,
                 "no_warnings": True,
                 "skip_download": True,
-                "extract_flat": "in_playlist",
+                "extract_flat": False,
                 "user_agent": self.fake.user_agent(),
             }
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
@@ -227,8 +227,8 @@ class MediaDownloader:
             
             is_youtube_url = self._is_youtube_url(query)            
             if not is_youtube_url:
-                opts["default_search"] = f"ytsearch{limit}"                
-                
+                opts["default_search"] = f"ytsearch{limit}"
+
             with YoutubeDL(opts) as ydl:
                 result = ydl.extract_info(query, download=False)
                 entries = result.get("entries", [])
@@ -239,6 +239,3 @@ class MediaDownloader:
                     return [self.convert._convertToNamespace(result)]                
 
         return await loop.run_in_executor(None, _search)
-
- [0;31mERROR: [0m [youtube] OA2glZLFAz8: Requested format is not available. Use --list-formats for a list of available formats
-di search saat menggunakan url query nya 
