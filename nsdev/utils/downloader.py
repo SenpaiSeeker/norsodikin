@@ -76,8 +76,17 @@ class MediaDownloader:
             "retries": 10,
             "fragment_retries": 10,
             "concurrent_fragment_downloads": 5,
-            "user_agent": self.fake.user_agent(),
             "merge_output_format": "mkv",
+            "user_agent": self.fake.user_agent(),
+            "js_runtimes": {
+                "node": {}
+            },
+            "remote_components": ["ejs:github"],
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["web"]
+                }
+            },
         }
 
         if os.path.exists(self.cookies_file_path):
