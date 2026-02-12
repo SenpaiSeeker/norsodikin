@@ -73,6 +73,7 @@ class MediaDownloader:
         opts = {
             "outtmpl": os.path.join(self.download_path, "%(id)s.%(ext)s"),
             "restrictfilenames": True,
+            "trim_filenames": 150,
             "windowsfilenames": True,
             "quiet": True,
             "no_warnings": True,
@@ -128,10 +129,7 @@ class MediaDownloader:
         loop,
     ):
         opts = self._build_base_opts(progress_callback, loop)
-        opts.update({
-            "format": self._select_format(resolution, audio_only),
-            "outtmpl": os.path.join(self.download_path, "%(id)s.%(ext)s"),
-        })
+        opts.update({"format": self._select_format(resolution, audio_only)})
 
         if audio_only:
             opts.update(
