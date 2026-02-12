@@ -222,14 +222,13 @@ class MediaDownloader:
 
         def _search():
             opts = self._build_base_opts(None, None)
-            opts.update({"skip_download": True})
-            
             is_url = query.startswith("http")
             if not is_url:
                 opts.update(
                     {
                         "default_search": f"ytsearch{limit}",
                         "extract_flat": "in_playlist"
+                        "noplaylist": False
                     }
                 )
 
