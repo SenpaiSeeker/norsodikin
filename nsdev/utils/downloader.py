@@ -216,7 +216,6 @@ class MediaDownloader:
 
         def _search():
             opts = {
-                "format": "best",
                 "quiet": True,
                 "no_warnings": True,
                 "skip_download": True,
@@ -240,3 +239,6 @@ class MediaDownloader:
                     return [self.convert._convertToNamespace(result)]                
 
         return await loop.run_in_executor(None, _search)
+
+ [0;31mERROR: [0m [youtube] OA2glZLFAz8: Requested format is not available. Use --list-formats for a list of available formats
+di search saat menggunakan url query nya 
