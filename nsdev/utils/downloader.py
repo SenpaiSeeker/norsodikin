@@ -73,7 +73,7 @@ class MediaDownloader:
         opts = {
             "outtmpl": os.path.join(
                 self.download_path,
-                "%(title).80s_%(id)s.%(ext)s",
+                "%(title).50s_%(id)s.%(ext)s",
             ),
             "restrictfilenames": True,
             "quiet": True,
