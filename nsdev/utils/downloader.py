@@ -112,18 +112,6 @@ class MediaDownloader:
 
         return "bestvideo*+bestaudio/bestvideo+bestaudio/best"
 
-    def _sync_list_formats(self, url: str):
-        opts = self._build_base_opts(None, None)
-        opts["skip_download"] = True
-
-        with YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            return info.get("formats", [])
-
-    async def list_formats(self, url: str):
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, partial(self._sync_list_formats, url))
-
     def _sync_download(
         self,
         url: str,
@@ -133,16 +121,24 @@ class MediaDownloader:
         loop,
     ):
         opts = self._build_base_opts(progress_callback, loop)
-        opts["format"] = self._select_format(resolution, audio_only)
+        opts.update(
+            {
+                "format": self._select_format(resolution, audio_only)
+            }
+        )
 
         if audio_only:
-            opts["postprocessors"] = [
+            opts.update(
                 {
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": "mp3",
-                    "preferredquality": "192",
+                    "postprocessors": [
+                        {
+                            "key": "FFmpegExtractAudio",
+                            "preferredcodec": "mp3",
+                            "preferredquality": "192",
+                        }
+                    ]
                 }
-            ]
+            )
 
         with YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
@@ -225,12 +221,14 @@ class MediaDownloader:
         loop = asyncio.get_running_loop()
 
         def _search():
-            opts = {
-                "quiet": True,
-                "no_warnings": True,
-                "default_search": f"ytsearch{limit}",
-                "extract_flat": "in_playlist",
-            }
+            opts = self._build_base_opts(None, None)
+            opts.update(
+                {
+                    "default_search": f"ytsearch{limit}",
+                    "extract_flat": "in_playlist",
+                    "skip_download": True
+                }
+            )
 
             with YoutubeDL(opts) as ydl:
                 result = ydl.extract_info(query, download=False)
