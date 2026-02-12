@@ -62,7 +62,7 @@ class MediaDownloader:
 
     def _build_base_opts(self, progress_callback, loop):
         def _hook(d):
-            if d["status"] == "downloading" and progress_callback and loop:
+            if d["status"] == "downloading" and progress_callback:
                 total = d.get("total_bytes") or d.get("total_bytes_estimate")
                 if total:
                     asyncio.run_coroutine_threadsafe(
@@ -71,10 +71,11 @@ class MediaDownloader:
                     )
 
         opts = {
-            "outtmpl": os.path.join(self.download_path, "%(id)s.%(ext)s"),
+            "outtmpl": os.path.join(
+                self.download_path,
+                "%(title).50s_%(id)s.%(ext)s",
+            ),
             "restrictfilenames": True,
-            "trim_filenames": 150,
-            "windowsfilenames": True,
             "quiet": True,
             "no_warnings": True,
             "geo_bypass": True,
@@ -87,12 +88,12 @@ class MediaDownloader:
             "merge_output_format": "mkv",
             "user_agent": self.fake.user_agent(),
             "js_runtimes": {
-                "node": {},
+                "node": {}
             },
             "remote_components": ["ejs:github"],
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["web"],
+                    "player_client": ["web"]
                 }
             },
         }
@@ -106,7 +107,7 @@ class MediaDownloader:
         if self.speed_limit:
             opts["ratelimit"] = self.speed_limit
 
-        if progress_callback and loop:
+        if progress_callback:
             opts["progress_hooks"] = [_hook]
 
         return opts
