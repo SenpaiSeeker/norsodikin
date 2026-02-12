@@ -224,9 +224,9 @@ class MediaDownloader:
             opts = self._build_base_opts(None, None)
             opts.update(
                 {
-                    "default_search": f"ytsearch{limit}",
+                    "default_search": None if query.startswitch("http") else f"ytsearch{limit}",
                     "extract_flat": "in_playlist",
-                    "noplaylist": False if query.startswitch("http") else True 
+                    "noplaylist": False if query.startswitch("http") else True
                     "skip_download": True,
                     
                 }
