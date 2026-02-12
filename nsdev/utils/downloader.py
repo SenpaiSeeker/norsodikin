@@ -82,18 +82,15 @@ class MediaDownloader:
             "nocheckcertificate": True,
             "noplaylist": True,
             "continuedl": True,
-            "retries": 10,
-            "fragment_retries": 10,
-            "concurrent_fragment_downloads": 5,
             "merge_output_format": "mkv",
             "user_agent": self.fake.user_agent(),
             "js_runtimes": {
-                "node": {}
+                "node": {},
             },
             "remote_components": ["ejs:github"],
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["web"]
+                    "player_client": ["web"],
                 }
             },
         }
@@ -148,11 +145,7 @@ class MediaDownloader:
         with YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
 
-            if "requested_downloads" in info:
-                filepath = info["requested_downloads"][0]["filepath"]
-            else:
-                filepath = ydl.prepare_filename(info)
-
+            filepath = ydl.prepare_filename(info)
             if audio_only:
                 filepath = os.path.splitext(filepath)[0] + ".mp3"
 
