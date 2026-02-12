@@ -127,20 +127,16 @@ class MediaDownloader:
         loop,
     ):
         opts = self._build_base_opts(progress_callback, loop)
-        opts.update({"format": self._select_format(resolution, audio_only)})
+        opts["format"] = self._select_format(resolution, audio_only)})
 
         if audio_only:
-            opts.update(
+            opts["postprocessors"] = [
                 {
-                    "postprocessors": [
-                        {
-                            "key": "FFmpegExtractAudio",
-                            "preferredcodec": "mp3",
-                            "preferredquality": "192",
-                        }
-                    ]
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
                 }
-            )
+            ]
 
         with YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
@@ -220,8 +216,9 @@ class MediaDownloader:
 
         def _search():
             opts = self._build_base_opts(None, None)
-            is_youtube_url = self._is_youtube_url(query)
+            opts["skip_download"] = True
             
+            is_youtube_url = self._is_youtube_url(query)            
             if not is_youtube_url:
                 opts["default_search"] = f"ytsearch{limit}"                
                 
