@@ -226,7 +226,9 @@ class MediaDownloader:
                 {
                     "default_search": f"ytsearch{limit}",
                     "extract_flat": "in_playlist",
-                    "skip_download": True
+                    "noplaylist": False if query.startswitch("http") else True 
+                    "skip_download": True,
+                    
                 }
             )
 
