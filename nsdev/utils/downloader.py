@@ -62,7 +62,7 @@ class MediaDownloader:
 
     def _build_base_opts(self, progress_callback, loop):
         def _hook(d):
-            if d["status"] == "downloading" and progress_callback:
+            if d["status"] == "downloading" and progress_callback and loop:
                 total = d.get("total_bytes") or d.get("total_bytes_estimate")
                 if total:
                     asyncio.run_coroutine_threadsafe(
@@ -73,9 +73,10 @@ class MediaDownloader:
         opts = {
             "outtmpl": os.path.join(
                 self.download_path,
-                "%(title).35s_%(id)s.%(ext)s",
+                "%(id)s.%(ext)s"
             ),
             "restrictfilenames": True,
+            "windowsfilenames": True,
             "quiet": True,
             "no_warnings": True,
             "geo_bypass": True,
@@ -107,7 +108,7 @@ class MediaDownloader:
         if self.speed_limit:
             opts["ratelimit"] = self.speed_limit
 
-        if progress_callback:
+        if progress_callback and loop:
             opts["progress_hooks"] = [_hook]
 
         return opts
