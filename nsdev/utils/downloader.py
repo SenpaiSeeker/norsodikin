@@ -220,6 +220,11 @@ class MediaDownloader:
                 "no_warnings": True,
                 "skip_download": True,
                 "extract_flat": "in_playlist",
+                "extractor_args": {
+                    "youtube": {
+                        "player_client": ["web"],
+                    }
+                },
                 "user_agent": self.fake.user_agent(),
             }
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
