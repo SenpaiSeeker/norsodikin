@@ -238,8 +238,9 @@ class MediaDownloader:
                 
             with YoutubeDL(opts) as ydl:
                 result = ydl.extract_info(query, download=False)
+                entries = result.get("entries", [])
                 
-                if result.get("entries", []):
+                if entries:
                     return [self.convert._convertToNamespace(e) for e in entries] 
                 else: 
                     return [self.convert._convertToNamespace(result)]                
