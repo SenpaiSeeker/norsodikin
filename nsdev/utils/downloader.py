@@ -71,10 +71,7 @@ class MediaDownloader:
                     )
 
         opts = {
-            "outtmpl": os.path.join(
-                self.download_path,
-                "%(id)s.%(ext)s"
-            ),
+            "outtmpl": os.path.join(self.download_path, "%(id)s.%(ext)s"),
             "restrictfilenames": True,
             "windowsfilenames": True,
             "quiet": True,
@@ -89,12 +86,12 @@ class MediaDownloader:
             "merge_output_format": "mkv",
             "user_agent": self.fake.user_agent(),
             "js_runtimes": {
-                "node": {}
+                "node": {},
             },
             "remote_components": ["ejs:github"],
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["web"]
+                    "player_client": ["web"],
                 }
             },
         }
@@ -131,11 +128,10 @@ class MediaDownloader:
         loop,
     ):
         opts = self._build_base_opts(progress_callback, loop)
-        opts.update(
-            {
-                "format": self._select_format(resolution, audio_only)
-            }
-        )
+        opts.update({
+            "format": self._select_format(resolution, audio_only),
+            "outtmpl": os.path.join(self.download_path, "%(id)s.%(ext)s"),
+        })
 
         if audio_only:
             opts.update(
