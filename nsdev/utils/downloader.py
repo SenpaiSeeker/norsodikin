@@ -226,42 +226,22 @@ class MediaDownloader:
             progress_callback=progress_callback,
         )
 
-    async def search_youtube(self, query: str, limit: int = 10) -> List:
+    async def search_youtube(self, query: str, limit: int = 10):
         loop = asyncio.get_running_loop()
 
-        def _sync_search(q: str, lim: int):
-            try:
-                opts = self._build_base_opts(None, None)
-                opts["skip_download"] = True
+        def _search():
+            opts = self._build_base_opts(None, None)
+            is_youtube_url = self._is_youtube_url(query)
+            
+            if not is_youtube_url:
+                opts["default_search"] = f"ytsearch{limit}"                
+                
+            with YoutubeDL(opts) as ydl:
+                result = ydl.extract_info(query, download=False)
+                
+                if result.get("entries", []):
+                    return [self.convert._convertToNamespace(e) for e in entries] 
+                else: 
+                    return [self.convert._convertToNamespace(result)]                
 
-                if self._is_youtube_url(q):
-                    with YoutubeDL(opts) as ydl:
-                        result = ydl.extract_info(q, download=False)
-                else:
-                    opts["default_search"] = f"ytsearch{lim}"
-                    with YoutubeDL(opts) as ydl:
-                        result = ydl.extract_info(q, download=False)
-
-                if not result:
-                    return []
-
-                entries = result.get("entries", [])
-                if entries:
-                    return [
-                        self.convert._convertToNamespace(e)
-                        for e in entries
-                        if e
-                    ]
-
-                if "id" in result:
-                    return [self.convert._convertToNamespace(result)]
-
-                return []
-
-            except Exception as e:
-                raise Exception(f"Gagal mencari video: {e}")
-
-        return await loop.run_in_executor(
-            None,
-            partial(_sync_search, query, limit),
-        )
+        return await loop.run_in_executor(None, _search)
