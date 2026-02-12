@@ -222,15 +222,16 @@ class MediaDownloader:
 
         def _search():
             opts = self._build_base_opts(None, None)
-            opts.update(
-                {
-                    "default_search": None if query.startswith("http") else f"ytsearch{limit}",
-                    "extract_flat": "in_playlist",
-                    "noplaylist": False if query.startswith("http") else True,
-                    "skip_download": True,
-                    
-                }
-            )
+            opts.update({"skip_download": True})
+            
+            is_url = query.startswith("http")
+            if not is_url:
+                opts.update(
+                    {
+                        "default_search": f"ytsearch{limit}",
+                        "extract_flat": "in_playlist"
+                    }
+                )
 
             with YoutubeDL(opts) as ydl:
                 result = ydl.extract_info(query, download=False)
