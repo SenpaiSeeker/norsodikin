@@ -227,7 +227,7 @@ class MediaDownloader:
                 opts.update(
                     {
                         "default_search": f"ytsearch{limit}",
-                        "extract_flat": "in_playlist"
+                        "extract_flat": "in_playlist",
                         "noplaylist": False
                     }
                 )
