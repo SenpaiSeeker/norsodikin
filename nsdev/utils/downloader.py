@@ -219,7 +219,7 @@ class MediaDownloader:
                 "quiet": True,
                 "no_warnings": True,
                 "skip_download": True,
-                "extract_flat": False,
+                "extract_flat": "in_playlist",
                 "user_agent": self.fake.user_agent(),
             }
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
@@ -227,7 +227,12 @@ class MediaDownloader:
             
             is_youtube_url = self._is_youtube_url(query)            
             if not is_youtube_url:
-                opts["default_search"] = f"ytsearch{limit}"
+                opts.update(
+                    {
+                        "ignoreerrors": True,
+                        "default_search": f"ytsearch{limit}"
+                    }
+                )
 
             with YoutubeDL(opts) as ydl:
                 result = ydl.extract_info(query, download=False)
