@@ -215,8 +215,12 @@ class MediaDownloader:
         loop = asyncio.get_running_loop()
 
         def _search():
-            opts = self._build_base_opts(None, None)
-            opts["skip_download"] = True
+            opts = {
+                "quiet": True,
+                "no_warnings": True,
+                "skip_download": True,
+                "extract_flat": True,
+            }
             
             is_youtube_url = self._is_youtube_url(query)            
             if not is_youtube_url:
