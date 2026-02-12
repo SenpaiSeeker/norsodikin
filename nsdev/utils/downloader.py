@@ -216,11 +216,15 @@ class MediaDownloader:
 
         def _search():
             opts = {
+                "format": "best",
                 "quiet": True,
                 "no_warnings": True,
                 "skip_download": True,
-                "extract_flat": True,
+                "extract_flat": "in_playlist",
+                "user_agent": self.fake.user_agent(),
             }
+            if self.cookies_file_path and os.path.exists(self.cookies_file_path):
+                opts["cookiefile"] = self.cookies_file_path
             
             is_youtube_url = self._is_youtube_url(query)            
             if not is_youtube_url:
