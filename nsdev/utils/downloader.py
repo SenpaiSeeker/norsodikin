@@ -225,14 +225,18 @@ class MediaDownloader:
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
                 opts["cookiefile"] = self.cookies_file_path
             
-            is_youtube_url = self._is_youtube_url(query)            
-            if not is_youtube_url:
+            is_youtube_url = self._is_youtube_url(query)
+            if is_youtube_url:
+                opts["extract_flat"] = False
+            else:
                 opts.update(
                     {
+                        "default_search": f"ytsearch{limit}",
+                        "extract_flat": "in_playlist",
                         "ignoreerrors": True,
-                        "default_search": f"ytsearch{limit}"
                     }
                 )
+
             with YoutubeDL(opts) as ydl:
                 result = ydl.extract_info(query, download=False)
                 entries = result.get("entries", [])
