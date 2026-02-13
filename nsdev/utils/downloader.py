@@ -220,6 +220,11 @@ class MediaDownloader:
                 "no_warnings": True,
                 "skip_download": True,
                 "user_agent": self.fake.user_agent(),
+                "extractor_args": {
+                    "youtube": {
+                        "player_client": ["web", "android", "ios"],
+                    }
+                },
             }
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
                 opts["cookiefile"] = self.cookies_file_path
