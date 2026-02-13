@@ -216,6 +216,7 @@ class MediaDownloader:
 
         def _search():
             opts = {
+                "format": "best",
                 "quiet": True,
                 "no_warnings": True,
                 "skip_download": True,
