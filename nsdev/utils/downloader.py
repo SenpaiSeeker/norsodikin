@@ -219,15 +219,6 @@ class MediaDownloader:
                 "quiet": True,
                 "no_warnings": True,
                 "skip_download": True,
-                "js_runtimes": {
-                    "node": {},
-                },
-                "remote_components": ["ejs:github"],
-                "extractor_args": {
-                    "youtube": {
-                        "player_client": ["web"],
-                    }
-                },
                 "user_agent": self.fake.user_agent(),
             }
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
@@ -238,7 +229,7 @@ class MediaDownloader:
                 opts.update(
                     {
                         "default_search": f"ytsearch{limit}",
-                        "extract_flat": True,
+                        "extract_flat": "in_playlist",
                         "ignoreerrors": True,
                     }
                 )
