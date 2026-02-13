@@ -216,44 +216,41 @@ class MediaDownloader:
 
         def _search():
             opts = {
-                "format": "best",
                 "quiet": True,
                 "no_warnings": True,
                 "skip_download": True,
+                "ignoreerrors": True,
                 "user_agent": self.fake.user_agent(),
+                "format": "best",
                 "extractor_args": {
                     "youtube": {
-                        "player_client": ["web"],
+                        "player_client": ["web", "android", "ios"],
                     }
                 },
             }
+
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
                 opts["cookiefile"] = self.cookies_file_path
-            
+
             is_youtube_url = self._is_youtube_url(query)
-            if is_youtube_url:
-                opts.update(
-                    {
-                        "noplaylist": True,
-                        "ignoreerrors": True,
-                    }
-            )
-            else:
+
+            if not is_youtube_url:
                 opts.update(
                     {
                         "default_search": f"ytsearch{limit}",
-                        "extract_flat": "in_playlist",
-                        "ignoreerrors": True,
+                        "extract_flat": True,
                     }
                 )
 
             with YoutubeDL(opts) as ydl:
                 result = ydl.extract_info(query, download=False)
-                entries = result.get("entries", [])
-                
-                if entries:
-                    return [self.convert._convertToNamespace(e) for e in entries] 
-                else: 
-                    return [self.convert._convertToNamespace(result)]                
+
+                if not result:
+                    return []
+
+                if "entries" in result and result["entries"]:
+                    return [self.convert._convertToNamespace(e) for e in result["entries"] if e]
+
+                return [self.convert._convertToNamespace(result)]
 
         return await loop.run_in_executor(None, _search)
