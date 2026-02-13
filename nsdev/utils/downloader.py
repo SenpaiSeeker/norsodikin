@@ -219,7 +219,10 @@ class MediaDownloader:
                 "quiet": True,
                 "no_warnings": True,
                 "skip_download": True,
-                "extract_flat": "in_playlist",
+                "js_runtimes": {
+                    "node": {},
+                },
+                "remote_components": ["ejs:github"],
                 "extractor_args": {
                     "youtube": {
                         "player_client": ["web"],
@@ -231,13 +234,11 @@ class MediaDownloader:
                 opts["cookiefile"] = self.cookies_file_path
             
             is_youtube_url = self._is_youtube_url(query)
-            if is_youtube_url:
-                opts["extract_flat"] = False
-            else:
+            if not is_youtube_url:
                 opts.update(
                     {
                         "default_search": f"ytsearch{limit}",
-                        "extract_flat": "in_playlist",
+                        "extract_flat": True,
                         "ignoreerrors": True,
                     }
                 )
