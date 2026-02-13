@@ -220,8 +220,9 @@ class MediaDownloader:
                 "no_warnings": True,
                 "skip_download": True,
                 "ignoreerrors": True,
-                "user_agent": self.fake.user_agent(),
+                "noplaylist": True,
                 "format": "best",
+                "user_agent": self.fake.user_agent(),
                 "extractor_args": {
                     "youtube": {
                         "player_client": ["web", "android", "ios"],
@@ -249,7 +250,11 @@ class MediaDownloader:
                     return []
 
                 if "entries" in result and result["entries"]:
-                    return [self.convert._convertToNamespace(e) for e in result["entries"] if e]
+                    return [
+                        self.convert._convertToNamespace(e)
+                        for e in result["entries"]
+                        if e
+                    ]
 
                 return [self.convert._convertToNamespace(result)]
 
