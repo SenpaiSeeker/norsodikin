@@ -222,7 +222,7 @@ class MediaDownloader:
                 "user_agent": self.fake.user_agent(),
                 "extractor_args": {
                     "youtube": {
-                        "player_client": ["web", "android", "ios"],
+                        "player_client": ["web"],
                     }
                 },
             }
@@ -230,7 +230,14 @@ class MediaDownloader:
                 opts["cookiefile"] = self.cookies_file_path
             
             is_youtube_url = self._is_youtube_url(query)
-            if not is_youtube_url:
+            if is_youtube_url:
+                opts.update(
+                    {
+                        "noplaylist": True,
+                        "ignoreerrors": True,
+                    }
+            )
+            else:
                 opts.update(
                     {
                         "default_search": f"ytsearch{limit}",
