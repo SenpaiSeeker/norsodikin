@@ -210,7 +210,6 @@ class MediaDownloader:
             audio_only=audio_only,
             progress_callback=progress_callback,
         )
-
     async def search_youtube(self, query: str, limit: int = 10):
         loop = asyncio.get_running_loop()
 
@@ -219,7 +218,10 @@ class MediaDownloader:
                 "quiet": True,
                 "no_warnings": True,
                 "skip_download": True,
-                "nocheckcertificate": True,
+                "ignoreerrors": True,
+                "noplaylist": False,
+                "extract_flat": True,
+                "format": "best",
                 "user_agent": self.fake.user_agent(),
                 "extractor_args": {
                     "youtube": {
@@ -230,26 +232,31 @@ class MediaDownloader:
                     }
                 },
             }
+
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
                 opts["cookiefile"] = self.cookies_file_path
-            
+
             is_youtube_url = self._is_youtube_url(query)
+
             if not is_youtube_url:
-                opts.update(
-                    {
-                        "default_search": f"ytsearch{limit}",
-                        "extract_flat": "in_playlist",
-                        "ignoreerrors": True,
-                    }
-                )
+                opts["default_search"] = f"ytsearch{limit}"
 
             with YoutubeDL(opts) as ydl:
-                result = ydl.extract_info(query, download=False)
-                entries = result.get("entries", [])
-                
-                if entries:
-                    return [self.convert._convertToNamespace(e) for e in entries] 
-                else: 
-                    return [self.convert._convertToNamespace(result)]                
+                try:
+                    result = ydl.extract_info(query, download=False)
+                except Exception:
+                    return []
+
+                if not result:
+                    return []
+
+                if "entries" in result and result["entries"]:
+                    return [
+                        self.convert._convertToNamespace(e)
+                        for e in result["entries"]
+                        if e
+                    ]
+
+                return [self.convert._convertToNamespace(result)]
 
         return await loop.run_in_executor(None, _search)
