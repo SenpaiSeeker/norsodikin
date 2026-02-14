@@ -219,6 +219,8 @@ class MediaDownloader:
                 "quiet": True,
                 "no_warnings": True,
                 "skip_download": True,
+                "simulate": True,
+                "format": "best",
                 "user_agent": self.fake.user_agent(),
                 "extractor_args": {
                     "youtube": {
@@ -226,10 +228,12 @@ class MediaDownloader:
                     }
                 },
             }
+
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
                 opts["cookiefile"] = self.cookies_file_path
-            
+
             is_youtube_url = self._is_youtube_url(query)
+
             if not is_youtube_url:
                 opts.update(
                     {
@@ -241,11 +245,15 @@ class MediaDownloader:
 
             with YoutubeDL(opts) as ydl:
                 result = ydl.extract_info(query, download=False)
-                entries = result.get("entries", [])
-                
-                if entries:
-                    return [self.convert._convertToNamespace(e) for e in entries] 
-                else: 
-                    return [self.convert._convertToNamespace(result)]                
+
+                if isinstance(result, dict) and "entries" in result:
+                    entries = result.get("entries") or []
+                    return [
+                        self.convert._convertToNamespace(e)
+                        for e in entries
+                        if e
+                    ]
+
+                return [self.convert._convertToNamespace(result)]
 
         return await loop.run_in_executor(None, _search)
