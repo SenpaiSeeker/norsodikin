@@ -82,15 +82,6 @@ class ChatbotGemini:
             system_instruction=system_instruction if isinstance(system_instruction, str) else None,
         )
 
-        if model_override:
-            try:
-                response = await self.client.aio.models.generate_content(
-                    model=model_override, contents=contents, config=config
-                )
-                return response.text
-            except Exception as e:
-                raise Exception(f"API request failed with specific model {model_override}: {e}")
-
         attempts = 0
         max_attempts = len(self.models)
         last_error = None
