@@ -224,7 +224,9 @@ class MediaDownloader:
                 "extractor_args": {
                     "youtube": {
                         "player_client": ["web", "android", "ios"],
-                        "skip": ["webpage", "auth_check"],
+                    },
+                    "youtubetab": {
+                        "skip": ["authcheck"]
                     }
                 },
             }
