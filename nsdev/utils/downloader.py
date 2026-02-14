@@ -211,7 +211,7 @@ class MediaDownloader:
             progress_callback=progress_callback,
         )
 
-        async def search_youtube(self, query: str, limit: int = 10):
+    async def search_youtube(self, query: str, limit: int = 10):
         loop = asyncio.get_running_loop()
 
         def _search():
