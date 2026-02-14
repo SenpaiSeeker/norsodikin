@@ -219,10 +219,12 @@ class MediaDownloader:
                 "quiet": True,
                 "no_warnings": True,
                 "skip_download": True,
+                "nocheckcertificate": True,
                 "user_agent": self.fake.user_agent(),
                 "extractor_args": {
                     "youtube": {
                         "player_client": ["web", "android", "ios"],
+                        "skip": ["webpage", "auth_check"],
                     }
                 },
             }
