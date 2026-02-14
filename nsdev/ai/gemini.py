@@ -10,12 +10,17 @@ class ChatbotGemini:
         self.client = genai.Client(api_key=api_key)
         self.models = collections.deque(
             [
+                "gemini-3-pro-preview",
+                "gemini-3-flash-preview",
+                "gemini-2.5-pro",
+                "gemini-2.5-flash",
+                "gemini-2.5-flash-lite",
+                "gemini-2.5-flash-preview-09-25",
+                "gemini-2.5-flash-lite-preview-09-25",
                 "gemini-2.0-flash",
-                "gemini-2.0-flash-lite-preview-02-05",
-                "gemini-2.0-pro-exp-02-05",
-                "gemini-1.5-flash",
-                "gemini-1.5-flash-8b",
-                "gemini-1.5-pro",
+                "gemini-2.0-flash-lite",
+                "gemini-2.0-flash-001",
+                "gemini-2.0-flash-lite-001",
             ]
         )
         self.generation_config = {
