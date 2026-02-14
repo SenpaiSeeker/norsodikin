@@ -220,13 +220,8 @@ class MediaDownloader:
                 "no_warnings": True,
                 "skip_download": True,
                 "simulate": True,
-                "format": "best",
+                "ignore_no_formats_error": True,
                 "user_agent": self.fake.user_agent(),
-                "extractor_args": {
-                    "youtube": {
-                        "player_client": ["web", "android", "ios"],
-                    }
-                },
             }
 
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
@@ -238,22 +233,22 @@ class MediaDownloader:
                 opts.update(
                     {
                         "default_search": f"ytsearch{limit}",
-                        "extract_flat": "in_playlist",
-                        "ignoreerrors": True,
+                        "extract_flat": False,
                     }
                 )
 
             with YoutubeDL(opts) as ydl:
                 result = ydl.extract_info(query, download=False)
 
-                if isinstance(result, dict) and "entries" in result:
-                    entries = result.get("entries") or []
-                    return [
-                        self.convert._convertToNamespace(e)
-                        for e in entries
-                        if e
-                    ]
+                if result and result.get("_type") != "playlist":
+                    return [self.convert._convertToNamespace(result)]
 
-                return [self.convert._convertToNamespace(result)]
+                entries = result.get("entries", []) if result else []
+
+                return [
+                    self.convert._convertToNamespace(e)
+                    for e in entries
+                    if e
+                ]
 
         return await loop.run_in_executor(None, _search)
