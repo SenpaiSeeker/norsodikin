@@ -73,7 +73,7 @@ class ChatbotGemini:
             )
         return ""
 
-    async def _send_request(self, model_override: str = None, **payload) -> str:
+    async def _send_request(self, **payload) -> str:
         contents = payload.get("contents", [])
         system_instruction = payload.get("systemInstruction")
 
