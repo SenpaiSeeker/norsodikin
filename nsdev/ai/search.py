@@ -1,57 +1,66 @@
 from types import SimpleNamespace
 from typing import List
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse, parse_qs, unquote
 
 import bs4
+import fake_useragent
 import httpx
 
 
 class WebSearch:
     def __init__(self, timeout: int = 10):
-        self.timeout = httpx.Timeout(timeout)
-
-        self.headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/123.0.0.0 Safari/537.36"
-            ),
-            "Accept-Language": "en-US,en;q=0.9",
-        }
+        self.timeout = timeout
+        self.headers = {"User-Agent": fake_useragent.UserAgent().random}
 
     async def query(self, query: str, num_results: int = 5) -> List[SimpleNamespace]:
         search_url = f"https://html.duckduckgo.com/html/?q={quote_plus(query)}"
 
-        async with httpx.AsyncClient(follow_redirects=True, timeout=self.timeout, http2=True) as client:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
             try:
-                response = await client.get(search_url, headers=self.headers)
+                response = await client.get(search_url, headers=self.headers, timeout=self.timeout)
                 response.raise_for_status()
-            except httpx.HTTPError as e:
-                raise RuntimeError(f"Failed to fetch search results: {e}") from e
+            except httpx.RequestError as e:
+                raise Exception(f"Failed to fetch search results: {e}")
 
-        soup = bs4.BeautifulSoup(response.text, "lxml")
-        raw_results = soup.select("div.result")[:num_results]
+            soup = bs4.BeautifulSoup(response.text, "lxml")
+            results_container = soup.find(id="links")
+            if not results_container:
+                return []
 
-        parsed_results: List[SimpleNamespace] = []
+            raw_results = results_container.find_all("div", class_="result", limit=num_results)
 
-        for res in raw_results:
-            title_tag = res.select_one("a.result__a")
-            snippet_tag = (
-                res.select_one("div.result__snippet")
-                or res.select_one("a.result__snippet")
-            )
+            parsed_results = []
+            for res in raw_results:
+                title_tag = res.find("a", class_="result__a")
+                snippet_tag = res.find(class_="result__snippet")
 
-            if not title_tag:
-                continue
+                if not snippet_tag:
+                    snippet_tag = res.find("a", class_="result__snippet")
 
-            title = title_tag.get_text(strip=True)
-            url = title_tag.get("href", "")
+                if title_tag:
+                    title = title_tag.get_text(strip=True)
+                    snippet = snippet_tag.get_text(strip=True) if snippet_tag else ""
+                    raw_url = title_tag.get("href", "")
 
-            snippet = ""
-            if snippet_tag:
-                snippet = snippet_tag.get_text(strip=True)
+                    url = self._extract_real_url(raw_url)
 
-            if url:
-                parsed_results.append(SimpleNamespace(title=title, snippet=snippet, url=url))
+                    if url:
+                        parsed_results.append(SimpleNamespace(title=title, snippet=snippet, url=url))
 
-        return parsed_results
+            return parsed_results
+
+    def _extract_real_url(self, raw_url: str) -> str:
+        if not raw_url:
+            return ""
+
+        if raw_url.startswith("//"):
+            raw_url = "https:" + raw_url
+
+        parsed = urlparse(raw_url)
+
+        if "duckduckgo.com" in parsed.netloc:
+            query_params = parse_qs(parsed.query)
+            if "uddg" in query_params:
+                return unquote(query_params["uddg"][0])
+
+        return raw_url
