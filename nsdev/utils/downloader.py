@@ -216,7 +216,6 @@ class MediaDownloader:
 
         def _search():
             opts = {
-                "format": "best",
                 "quiet": True,
                 "no_warnings": True,
                 "noplaylist": True,
@@ -229,7 +228,12 @@ class MediaDownloader:
             
             is_youtube_url = self._is_youtube_url(query)
             if is_youtube_url:
-                opts["noplaylist"] = False
+                opts.update(
+                    {
+                        "noplaylist": False,
+                        "extract_flat": True,
+                    }
+                )
             else:
                 opts["default_search"] = f"ytsearch{limit}"
 
