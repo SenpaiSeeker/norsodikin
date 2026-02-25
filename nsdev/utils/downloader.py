@@ -218,39 +218,32 @@ class MediaDownloader:
             opts = {
                 "quiet": True,
                 "no_warnings": True,
+                "noplaylist": True,
+                "extract_flat": "in_playlist",
                 "nocheckcertificate": True,
                 "geo_bypass": True,
-                "skip_download": True,
             }
-
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
                 opts["cookiefile"] = self.cookies_file_path
-
+            
             is_youtube_url = self._is_youtube_url(query)
-
             if is_youtube_url:
                 opts.update(
                     {
-                        "extract_flat": True,
                         "noplaylist": False,
+                        "extract_flat": True,
                     }
                 )
             else:
-                opts.update(
-                    {
-                        "default_search": f"ytsearch{limit}",
-                        "extract_flat": True,
-                        "noplaylist": True,
-                    }
-                )
+                opts["default_search"] = f"ytsearch{limit}"
 
             with YoutubeDL(opts) as ydl:
                 result = ydl.extract_info(query, download=False)
                 entries = result.get("entries", [])
-
+                
                 if entries:
                     return [self.convert._convertToNamespace(e) for e in entries] 
                 else: 
-                    return [self.convert._convertToNamespace(result)]
+                    return [self.convert._convertToNamespace(result)]                
 
         return await loop.run_in_executor(None, _search)
