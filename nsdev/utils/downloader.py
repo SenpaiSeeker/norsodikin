@@ -220,19 +220,18 @@ class MediaDownloader:
                 "no_warnings": True,
                 "nocheckcertificate": True,
                 "geo_bypass": True,
-                "noplaylist": True,
+                "noplaylist": False,
                 "extract_flat": True,
                 "skip_download": True,
+                "format": "best",
             }
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
                 opts["cookiefile"] = self.cookies_file_path
-
+            
             is_youtube_url = self._is_youtube_url(query)
-            if is_youtube_url:
-                opts["noplaylist"] = False
-            else:
+            if not is_youtube_url:
                 opts["default_search"] = f"ytsearch{limit}"
-
+                
             with YoutubeDL(opts) as ydl:
                 result = ydl.extract_info(query, download=False)
                 entries = result.get("entries", [])
