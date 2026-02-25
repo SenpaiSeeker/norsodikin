@@ -222,6 +222,7 @@ class MediaDownloader:
                 "geo_bypass": True,
                 "noplaylist": True,
                 "extract_flat": True,
+                "skip_download": True,
             }
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
                 opts["cookiefile"] = self.cookies_file_path
