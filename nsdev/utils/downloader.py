@@ -215,37 +215,42 @@ class MediaDownloader:
         loop = asyncio.get_running_loop()
 
         def _search():
-            is_youtube_url = self._is_youtube_url(query)
-
             opts = {
                 "quiet": True,
                 "no_warnings": True,
                 "nocheckcertificate": True,
                 "geo_bypass": True,
-                "extract_flat": True,
                 "skip_download": True,
             }
 
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
                 opts["cookiefile"] = self.cookies_file_path
 
-            if not is_youtube_url:
+            is_youtube_url = self._is_youtube_url(query)
+
+            if is_youtube_url:
                 opts.update(
                     {
-                        "default_search": f"ytsearch{limit}",
-                        "noplaylist": True
+                        "extract_flat": True,
+                        "noplaylist": False,
                     }
                 )
             else:
-                opts["noplaylist"] = False
+                opts.update(
+                    {
+                        "default_search": f"ytsearch{limit}",
+                        "extract_flat": True,
+                        "noplaylist": True,
+                    }
+                )
 
             with YoutubeDL(opts) as ydl:
                 result = ydl.extract_info(query, download=False)
                 entries = result.get("entries", [])
-                
+
                 if entries:
                     return [self.convert._convertToNamespace(e) for e in entries] 
                 else: 
-                    return [self.convert._convertToNamespace(result)]                
+                    return [self.convert._convertToNamespace(result)]
 
         return await loop.run_in_executor(None, _search)
