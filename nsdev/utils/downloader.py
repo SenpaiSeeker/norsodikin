@@ -246,4 +246,4 @@ class MediaDownloader:
                 else: 
                     return [self.convert._convertToNamespace(result)]                
 
-        return await loop.run_in_executor(None, _search)
+        return await loop.run_in_executor(None, partial(_search))
