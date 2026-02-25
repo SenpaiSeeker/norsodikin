@@ -240,7 +240,7 @@ class MediaDownloader:
                 opts["noplaylist"] = False
 
             with YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(query, download=False)
+                result = ydl.extract_info(query, download=False)
                 entries = result.get("entries", [])
                 
                 if entries:
