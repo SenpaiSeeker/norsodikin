@@ -19,7 +19,6 @@ class DataBase:
     def __init__(self, **options):
         self.storage_type = options.get("storage_type", "local")
         self.file_name = options.get("file_name", "database")
-        self.file_env = options.get("file_env")
         self.keys_encrypt = options.get("keys_encrypt", "default_db_key_12345")
         self.method_encrypt = options.get("method_encrypt", "bytes")
         self.cipher = CipherHandler(key=self.keys_encrypt, method=self.method_encrypt)
@@ -85,12 +84,6 @@ class DataBase:
                 await self._run_sync(shutil.copy2, db_path, temp_db_path)
 
                 source_paths = [temp_db_path]
-
-                if self.file_env and os.path.exists(self.file_env):
-                    source_paths.append(self.file_env)
-                elif not self.file_env:
-                    self.cipher.log.warning(f"File env: {self.file_env} tidak ditemukan")
-                    sys.exit(1)
 
                 zip_path = await self._run_sync(self._create_zip_archive, source_paths, temp_backup_dir)
 
