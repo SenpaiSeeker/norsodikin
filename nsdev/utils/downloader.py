@@ -238,7 +238,7 @@ class MediaDownloader:
                 opts["default_search"] = f"ytsearch{limit}"
 
             with YoutubeDL(opts) as ydl:
-                result = ydl.extract_info(query, download=False)
+                result = ydl.extract_info(query, download=False, process=False)
                 entries = result.get("entries", [])
                 
                 if entries:
