@@ -83,9 +83,7 @@ class DataBase:
                 temp_db_path = os.path.join(temp_backup_dir, os.path.basename(db_path))
                 await self._run_sync(shutil.copy2, db_path, temp_db_path)
 
-                source_paths = [temp_db_path]
-
-                zip_path = await self._run_sync(self._create_zip_archive, source_paths, temp_backup_dir)
+                zip_path = await self._run_sync(self._create_zip_archive, temp_db_path, temp_backup_dir)
 
                 if zip_path:
                     timestamp = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S %Z")
@@ -105,14 +103,13 @@ class DataBase:
                     except:
                         pass
 
-    def _create_zip_archive(self, source_paths: list, temp_dir: str):
+    def _create_zip_archive(self, source_path: str, temp_dir: str):
         timestamp = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y%m%d_%H%M%S")
         zip_filename = f"backup_{self.file_name}_{timestamp}.zip"
         try:
             with zipfile.ZipFile(zip_filename, "w", zipfile.ZIP_DEFLATED) as zf:
-                for path in source_paths:
-                    arcname = os.path.basename(path)
-                    zf.write(path, arcname)
+                arcname = os.path.basename(source_path)
+                zf.write(source_path, arcname)
             return zip_filename
         except Exception as e:
             self.cipher.log.error(f"Failed to create ZIP: {e}")
