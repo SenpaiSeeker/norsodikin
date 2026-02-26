@@ -256,6 +256,7 @@ class MediaDownloader:
                             result = fallback_ydl.extract_info(query, download=False, process=False)
                     else:
                         raise
+                result = ydl.extract_info(query, download=False, process=False)
                 entries = result.get("entries", [])
 
                 if entries:
