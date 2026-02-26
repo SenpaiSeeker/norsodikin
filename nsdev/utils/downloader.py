@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 import wget
 from faker import Faker
 from yt_dlp import YoutubeDL
+from yt_dlp.utils import ExtractorError
 
 from ..data.ymlreder import YamlHandler
 
@@ -215,6 +216,7 @@ class MediaDownloader:
         loop = asyncio.get_running_loop()
 
         def _search():
+            is_youtube_url = self._is_youtube_url(query)
             opts = {
                 "quiet": True,
                 "no_warnings": True,
@@ -225,8 +227,7 @@ class MediaDownloader:
             }
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
                 opts["cookiefile"] = self.cookies_file_path
-            
-            is_youtube_url = self._is_youtube_url(query)
+
             if is_youtube_url:
                 opts.update(
                     {
@@ -238,9 +239,26 @@ class MediaDownloader:
                 opts["default_search"] = f"ytsearch{limit}"
 
             with YoutubeDL(opts) as ydl:
+                try:
+                    result = ydl.extract_info(
+                        query,
+                        download=False,
+                        process=not is_youtube_url,
+                    )
+                except ExtractorError as error:
+                    if is_youtube_url and "Requested format is not available" in str(error):
+                        fallback_opts = {
+                            **opts,
+                            "noplaylist": False,
+                            "extract_flat": True,
+                        }
+                        with YoutubeDL(fallback_opts) as fallback_ydl:
+                            result = fallback_ydl.extract_info(query, download=False, process=False)
+                    else:
+                        raise
                 result = ydl.extract_info(query, download=False, process=False)
                 entries = result.get("entries", [])
-                
+
                 if entries:
                     return [self.convert._convertToNamespace(e) for e in entries] 
                 else: 
