@@ -84,10 +84,6 @@ class MediaDownloader:
             "continuedl": True,
             "merge_output_format": "mkv",
             "user_agent": self.fake.user_agent(),
-            "js_runtimes": {
-                "node": {},
-            },
-            "remote_components": ["ejs:github"],
             "extractor_args": {
                 "youtube": {
                     "player_client": ["web"],
@@ -116,7 +112,7 @@ class MediaDownloader:
         if resolution:
             return f"bestvideo[height<={resolution}]+bestaudio/best[height<={resolution}]/best"
 
-        return "bestvideo+bestaudio/best"
+        return "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/best"
 
     def _sync_download(
         self,
