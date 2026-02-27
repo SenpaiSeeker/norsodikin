@@ -82,7 +82,6 @@ class MediaDownloader:
             "nocheckcertificate": True,
             "noplaylist": True,
             "continuedl": True,
-            "merge_output_format": "mkv",
             "user_agent": self.fake.user_agent(),
             "js_runtimes": {
                 "node": {},
