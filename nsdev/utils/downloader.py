@@ -82,13 +82,7 @@ class MediaDownloader:
             "nocheckcertificate": True,
             "noplaylist": True,
             "continuedl": True,
-            "merge_output_format": "mkv",
             "user_agent": self.fake.user_agent(),
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["web"],
-                }
-            },
         }
 
         if os.path.exists(self.cookies_file_path):
