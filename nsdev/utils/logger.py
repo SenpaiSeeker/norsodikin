@@ -127,24 +127,6 @@ class LoggerHandler(AnsiColors):
         else:
             return text
 
-    def banner(self, title: str, subtitle: str = ""):
-        width = min(self._get_terminal_width(), 80)
-        box_c = self.colors["BOX"]
-        title_c = self.CYAH
-        sub_c = self.WHITE
-        rst = self.RESET
-
-        print(f"\n{box_c}{self.box['tl']}{self.box['h'] * (width - 2)}{self.box['tr']}")
-        print(f"{box_c}{self.box['v']}{title_c}{title.center(width - 2)}{rst}{box_c}{self.box['v']}")
-        if subtitle:
-            print(f"{box_c}{self.box['v']}{sub_c}{subtitle.center(width - 2)}{rst}{box_c}{self.box['v']}")
-        print(f"{box_c}{self.box['bl']}{self.box['h'] * (width - 2)}{self.box['br']}{rst}\n")
-
-    def separator(self, char: str = "─", color: str = None):
-        width = min(self._get_terminal_width(), 100)
-        col = color or self.colors["BOX"]
-        print(f"{col}{char * width}{self.RESET}")
-
     def log(self, level: str, message: str):
         frame = sys._getframe(2)
         filename = os.path.basename(frame.f_globals.get("__file__", "<unknown>"))
