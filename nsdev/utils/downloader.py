@@ -114,9 +114,9 @@ class MediaDownloader:
             return "bestaudio/best"
 
         if resolution:
-            return f"bestvideo[height<={resolution}]+bestaudio/best[height<={resolution}]"
+            return f"bestvideo[height<={resolution}]+bestaudio/best[height<={resolution}]/best"
 
-        return "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]"
+        return "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/best"
 
     def _sync_download(
         self,
