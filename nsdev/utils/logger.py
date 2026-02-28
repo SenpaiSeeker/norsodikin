@@ -13,7 +13,6 @@ class LoggerHandler(AnsiColors):
         super().__init__()
         self.tz = zoneinfo.ZoneInfo(options.get("tz", "Asia/Jakarta"))
         self.datefmt = options.get("datefmt", "%Y-%m-%d %H:%M:%S %Z")
-        self.show_emoji = options.get("show_emoji", True)
 
         self.colors = {
             "INFO": self.GREEN,
