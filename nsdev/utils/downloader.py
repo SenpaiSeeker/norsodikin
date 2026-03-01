@@ -274,6 +274,3 @@ class MediaDownloader:
                     return [self.convert._convertToNamespace(result)]                
 
         return await loop.run_in_executor(None, _search)
-
-tolong bagian download tambahkan headers Referer jika url https://cloud.hownetwork.xyz/zzz/023fee9c5ee929fed8987d0aa1964ec9/5/480.m3u8
-Referer = https://cloud.hownetwork.xyz/zzz/023fee9c5ee929fed8987d0aa1964ec9
