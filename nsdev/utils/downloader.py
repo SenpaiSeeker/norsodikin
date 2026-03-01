@@ -118,6 +118,26 @@ class MediaDownloader:
 
         return "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]"
 
+    def _get_referer_headers(self, url: str):
+        parsed = urlparse(url)
+
+        if (
+            parsed.netloc == "cloud.hownetwork.xyz"
+            and url.endswith(".m3u8")
+        ):
+            referer = (
+                f"{parsed.scheme}://{parsed.netloc}"
+                + os.path.dirname(parsed.path)
+            )
+
+            return {
+                "Referer": referer,
+                "Origin": f"{parsed.scheme}://{parsed.netloc}",
+                "User-Agent": self.fake.user_agent(),
+            }
+
+        return None
+
     def _sync_download(
         self,
         url: str,
@@ -128,6 +148,10 @@ class MediaDownloader:
     ):
         opts = self._build_base_opts(progress_callback, loop)
         opts["format"] = self._select_format(resolution, audio_only)
+
+        headers = self._get_referer_headers(url)
+        if headers:
+            opts["http_headers"] = headers
 
         if audio_only:
             opts["postprocessors"] = [
@@ -247,3 +271,6 @@ class MediaDownloader:
                     return [self.convert._convertToNamespace(result)]                
 
         return await loop.run_in_executor(None, _search)
+
+tolong bagian download tambahkan headers Referer jika url https://cloud.hownetwork.xyz/zzz/023fee9c5ee929fed8987d0aa1964ec9/5/480.m3u8
+Referer = https://cloud.hownetwork.xyz/zzz/023fee9c5ee929fed8987d0aa1964ec9
