@@ -123,12 +123,16 @@ class MediaDownloader:
 
         if (
             parsed.netloc == "cloud.hownetwork.xyz"
-            and url.endswith(".m3u8")
+            and parsed.path.endswith(".m3u8")
         ):
-            referer = (
-                f"{parsed.scheme}://{parsed.netloc}"
-                + os.path.dirname(parsed.path)
-            )
+            parts = parsed.path.strip("/").split("/")
+
+            if len(parts) >= 2:
+                base_path = f"/{parts[0]}/{parts[1]}"
+            else:
+                base_path = os.path.dirname(parsed.path)
+
+            referer = f"{parsed.scheme}://{parsed.netloc}{base_path}"
 
             return {
                 "Referer": referer,
