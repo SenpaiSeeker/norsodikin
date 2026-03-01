@@ -88,10 +88,13 @@ class MediaDownloader:
                 "node": {},
             },
             "remote_components": ["ejs:github"],
+            "impersonate": "chrome",
             "extractor_args": {
                 "youtube": {
                     "player_client": ["web"],
-                }
+                "generic": {
+                    "impersonate": ["chrome"],
+                },
             },
         }
 
