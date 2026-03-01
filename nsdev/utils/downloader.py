@@ -91,6 +91,7 @@ class MediaDownloader:
             "extractor_args": {
                 "youtube": {
                     "player_client": ["web"],
+                }
             },
         }
 
