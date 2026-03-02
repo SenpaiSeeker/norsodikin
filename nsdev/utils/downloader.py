@@ -58,6 +58,7 @@ class MediaDownloader:
             "youtube.com",
             "youtu.be",
             "m.youtube.com",
+            "ymusicapp.com",
         )
 
     def _build_base_opts(self, progress_callback, loop):
