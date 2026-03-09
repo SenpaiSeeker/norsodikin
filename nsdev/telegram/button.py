@@ -12,7 +12,7 @@ class Button:
     def parse_buttons_and_text(self, text, mode="inline"):
         if mode == "inline":
             button_data = re.findall(r"\| ([^|]+) - ([^|]+) \|", text)
-            extracted_text = re.split(r"\| [^|]+ - [^|]+ \|", text)[0].strip() if "|" in text else text.strip()
+            extracted_text = re.split(r"\|[^|]+ - [^|]+ \|", text)[0].strip() if "|" in text else text.strip()
             return button_data, extracted_text
         elif mode == "reply":
             pattern = r"\|\s*([^\|]+?)\s*\|"
@@ -26,7 +26,7 @@ class Button:
                         label, *params = part.split(";")
                         buttons.append((label.strip().strip("]"), [p.strip() for p in params]))
                     else:
-                        buttons.append((part.strip().strip("]"), []))
+                        buttons.append((part.strip().strip("]"),[]))
             return buttons, extracted_text
         else:
             raise ValueError("Invalid parse mode. Use 'inline' or 'reply'.")
@@ -35,7 +35,32 @@ class Button:
         layout = []
         buttons, remaining_text = self.parse_buttons_and_text(text, mode="inline")
         for label, payload in buttons:
-            cb_data, *extra_params = payload.split(";")
+            parts = payload.split(";")
+            cb_data = parts[0].strip()
+            extra_params = [p.strip() for p in parts[1:]]
+
+            style = None
+            emoji = None
+            filtered_params = []
+
+            for param in extra_params:
+                if param.startswith("style="):
+                    style_val = param.split("=", 1)[1].strip().lower()
+                    if style_val == "red":
+                        style = pyrogram.enums.ButtonStyle.DANGER
+                    elif style_val == "blue":
+                        style = pyrogram.enums.ButtonStyle.PRIMARY
+                    elif style_val == "green":
+                        style = pyrogram.enums.ButtonStyle.SUCCESS
+                elif param.startswith("emoji="):
+                    try:
+                        emoji = int(param.split("=", 1)[1].strip())
+                    except ValueError:
+                        pass
+                else:
+                    filtered_params.append(param)
+
+            extra_params = filtered_params
 
             is_url = bool(self.get_urls(cb_data)) and "webapp" not in extra_params
             is_copy = "copy" in extra_params
@@ -50,18 +75,24 @@ class Button:
                 elif inline_cmd:
                     cb_data = f"{inline_cmd} {cb_data}"
 
+            btn_kwargs = {"text": label.strip()}
+            if style:
+                btn_kwargs["style"] = style
+            if emoji:
+                btn_kwargs["icon_custom_emoji_id"] = emoji
+
             if is_user:
-                button = pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
+                btn_kwargs["user_id"] = cb_data
             elif is_copy:
-                button = pyrogram.types.InlineKeyboardButton(
-                    label, copy_text=pyrogram.types.CopyTextButton(text=cb_data)
-                )
+                btn_kwargs["copy_text"] = pyrogram.types.CopyTextButton(text=cb_data)
             elif is_webapp:
-                button = pyrogram.types.InlineKeyboardButton(label, web_app=pyrogram.types.WebAppInfo(url=cb_data))
+                btn_kwargs["web_app"] = pyrogram.types.WebAppInfo(url=cb_data)
             elif is_url:
-                button = pyrogram.types.InlineKeyboardButton(label, url=cb_data)
+                btn_kwargs["url"] = cb_data
             else:
-                button = pyrogram.types.InlineKeyboardButton(label, callback_data=cb_data)
+                btn_kwargs["callback_data"] = cb_data
+
+            button = pyrogram.types.InlineKeyboardButton(**btn_kwargs)
 
             if "same" in extra_params and layout:
                 layout[-1].append(button)
@@ -142,7 +173,7 @@ class Button:
             item_buttons_data[i : i + items_per_row] for i in range(0, len(item_buttons_data), items_per_row)
         ]
 
-        nav_row_data = []
+        nav_row_data =[]
         if current_page > 1:
             nav_row_data.append({"text": "⬅️", "callback_data": f"{callback_prefix}_{current_page - 1}"})
 
