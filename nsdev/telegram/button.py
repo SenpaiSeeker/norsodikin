@@ -57,12 +57,7 @@ class Button:
                 button = pyrogram.types.InlineKeyboardButton(label, user_id=cb_data)
 
             elif is_copy:
-                if hasattr(pyrogram.types, "CopyTextButton"):
-                    button = pyrogram.types.InlineKeyboardButton(
-                        label, copy_text=pyrogram.types.CopyTextButton(text=cb_data)
-                    )
-                else:
-                    button = pyrogram.types.InlineKeyboardButton(label, copy_text=cb_data)
+                button = pyrogram.types.InlineKeyboardButton(label, copy_text=cb_data)
 
             elif is_webapp:
                 button = pyrogram.types.InlineKeyboardButton(label, web_app=pyrogram.types.WebAppInfo(url=cb_data))
