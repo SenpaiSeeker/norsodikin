@@ -109,11 +109,30 @@ class Button:
     def build_button_grid(self, layout: List[List[Dict]]):
         keyboard = []
         for row_data in layout:
-            row = []
+            row =[]
             for button_info in row_data:
-                if "web_app" in button_info:
-                    button_info["web_app"] = pyrogram.types.WebAppInfo(url=button_info["web_app"])
-                row.append(pyrogram.types.InlineKeyboardButton(**button_info))
+                btn_kwargs = button_info.copy()
+
+                if "web_app" in btn_kwargs and isinstance(btn_kwargs["web_app"], str):
+                    btn_kwargs["web_app"] = pyrogram.types.WebAppInfo(url=btn_kwargs["web_app"])
+
+                if "style" in btn_kwargs and isinstance(btn_kwargs["style"], str):
+                    style_val = btn_kwargs["style"].lower()
+                    if style_val == "red":
+                        btn_kwargs["style"] = pyrogram.enums.ButtonStyle.DANGER
+                    elif style_val == "blue":
+                        btn_kwargs["style"] = pyrogram.enums.ButtonStyle.PRIMARY
+                    elif style_val == "green":
+                        btn_kwargs["style"] = pyrogram.enums.ButtonStyle.SUCCESS
+                
+                if "emoji" in btn_kwargs:
+                    try:
+                        btn_kwargs["icon_custom_emoji_id"] = int(btn_kwargs.pop("emoji"))
+                    except ValueError:
+                        btn_kwargs["icon_custom_emoji_id"] = btn_kwargs.pop("emoji")
+
+                row.append(pyrogram.types.InlineKeyboardButton(**btn_kwargs))
+            
             if row:
                 keyboard.append(row)
         return pyrogram.types.InlineKeyboardMarkup(keyboard) if keyboard else None
