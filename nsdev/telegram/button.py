@@ -109,7 +109,7 @@ class Button:
     def build_button_grid(self, layout: List[List[Dict]]):
         keyboard = []
         for row_data in layout:
-            row =[]
+            row = []
             for button_info in row_data:
                 btn_kwargs = button_info.copy()
 
@@ -124,17 +124,19 @@ class Button:
                         btn_kwargs["style"] = pyrogram.enums.ButtonStyle.PRIMARY
                     elif style_val == "green":
                         btn_kwargs["style"] = pyrogram.enums.ButtonStyle.SUCCESS
-                
+
                 if "emoji" in btn_kwargs:
+                    emoji_val = btn_kwargs.pop("emoji")
                     try:
-                        btn_kwargs["icon_custom_emoji_id"] = int(btn_kwargs.pop("emoji"))
-                    except ValueError:
-                        btn_kwargs["icon_custom_emoji_id"] = btn_kwargs.pop("emoji")
+                        btn_kwargs["icon_custom_emoji_id"] = int(emoji_val)
+                    except (ValueError, TypeError):
+                        btn_kwargs["icon_custom_emoji_id"] = emoji_val
 
                 row.append(pyrogram.types.InlineKeyboardButton(**btn_kwargs))
-            
+
             if row:
                 keyboard.append(row)
+
         return pyrogram.types.InlineKeyboardMarkup(keyboard) if keyboard else None
 
     def create_pagination_keyboard(
