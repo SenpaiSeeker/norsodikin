@@ -91,7 +91,8 @@ class MediaDownloader:
             "remote_components": ["ejs:github"],
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["web"],
+                    "player_client": ["ios", "android", "web"],
+                    "player_skip": ["webpage", "configs"],
                 }
             },
         }
@@ -251,6 +252,12 @@ class MediaDownloader:
                 "extract_flat": "in_playlist",
                 "nocheckcertificate": True,
                 "geo_bypass": True,
+                "extractor_args": {
+                    "youtube": {
+                        "player_client": ["ios", "android", "web"],
+                        "player_skip": ["webpage", "configs"],
+                    }
+                },
             }
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
                 opts["cookiefile"] = self.cookies_file_path
