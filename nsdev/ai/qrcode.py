@@ -6,7 +6,7 @@ import random
 from typing import Optional, Union
 
 import qrcode
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from pyzbar import pyzbar
 from qrcode.image.styledpil import StyledPilImage
 from qrcode.image.styles.moduledrawers import CircleModuleDrawer
@@ -14,10 +14,7 @@ from qrcode.image.styles.moduledrawers import CircleModuleDrawer
 from ..utils.font_manager import FontManager
 
 
-class QrCodeGenerator(FontManager):
-    def __init__(self):
-        super().__init__()
-
+class QrCodeGenerator:
     def _sync_create_glow_background(self, size: int, color: tuple) -> Image.Image:
         background = Image.new("RGB", (size, size))
         draw = ImageDraw.Draw(background)
@@ -88,9 +85,9 @@ class QrCodeGenerator(FontManager):
 
             qr_w, qr_h = img.size
 
-            font_button = self._get_font_from_package("NotoSans-Bold.ttf", 30)
-            font_creator = self._get_font_from_package("NotoSans-Regular.ttf", 40)
-
+            font_button = ImageFont.load_default(30)
+            font_creator = ImageFont.load_default(40)
+ 
             button_w, creator_w = 0, 0
             if bottom_text:
                 button_w = font_button.getbbox(bottom_text)[2] + 80
