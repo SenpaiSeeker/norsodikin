@@ -7,7 +7,7 @@ import random
 import subprocess
 from typing import Dict, List, Tuple
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from ..utils.font_manager import FontManager
 
@@ -190,8 +190,8 @@ class VideoFX(FontManager):
         return output_path
 
     def _sync_create_afk_animation(self, text_lines: List[str], output_path: str):
-        font_main = self._get_font_from_package("NotoSans-Bold.ttf", 60)
-        font_sub = self._get_font_from_package("NotoSans-Regular.ttf", 40)
+        font_main = ImageFont.load_default(60)
+        font_sub = ImageFont.load_default(40)
 
         canvas_w, canvas_h = 512, 288
         img = Image.new("RGB", (canvas_w, canvas_h), "#181818")
