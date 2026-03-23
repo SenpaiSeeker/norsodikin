@@ -118,6 +118,7 @@ class Button:
 
                 if "style" in btn_kwargs and isinstance(btn_kwargs["style"], str):
                     style_val = btn_kwargs["style"].lower()
+                    del btn_kwargs["style"]
                     if style_val == "red":
                         btn_kwargs["style"] = pyrogram.enums.ButtonStyle.DANGER
                     elif style_val == "blue":
@@ -127,6 +128,7 @@ class Button:
 
                 if "emoji" in btn_kwargs:
                     emoji_val = btn_kwargs.pop("emoji")
+                    del btn_kwargs["emoji"]
                     try:
                         btn_kwargs["icon_custom_emoji_id"] = int(emoji_val)
                     except (ValueError, TypeError):
