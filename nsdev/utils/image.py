@@ -1228,9 +1228,8 @@ class ImageManipulator(FontManager):
         return await self._run_in_executor(self._sharpen_image_sync, image_bytes, factor)
 
     def _sync_create_quote_carbon(self, text, user_name, pfp_bytes):
-
-        font_code = self._get_font_from_package("JetBrainsMono-Regular.ttf", 32)
-        font_name = self._get_font_from_package("NotoSans-Regular.ttf", 36)
+        font_code = ImageFont.load_default(32)
+        font_name = ImageFont.load_default(36)
 
         if not pfp_bytes:
             pfp_data = self._get_default_pfp(user_name[0].upper())
