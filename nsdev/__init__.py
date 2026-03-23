@@ -19,6 +19,14 @@ from .analytics import AnalyticsManager, ChatAnalyzer
 from .auth import AuthManager
 from .code import AsciiManager, CipherHandler, CodeRenderer
 from .data import DataBase, KeyManager, YamlHandler
+from .drama import (
+    DramaBiteAPI,
+    DramaboxAPI,
+    MeloloAPI,
+    NetShortAPI,
+    ReelifeAPI,
+    StardustTVAPI,
+)
 from .game import GameEngine
 from .listeners import (
     ListenerCanceled,
@@ -128,6 +136,14 @@ class NsDev:
             db=DataBase,
             key=KeyManager,
             yaml=YamlHandler(),
+        )
+        self.drama = SimpleNamespace(
+            melolo=MeloloAPI,
+            dramabox=DramaboxAPI,
+            netshort=NetShortAPI,
+            reelife=ReelifeAPI,
+            stardusttv=StardustTVAPI,
+            dramabite=DramaBiteAPI,
         )
         self.game = SimpleNamespace(
             engine=GameEngine(),

@@ -2,7 +2,7 @@ import requests
 from typing import Optional, Dict, Any
 
 class DramaboxAPI:
-    def __init__(self, token: str = "715B92C587621A9914F00563A7FB6852", lang: str = "in"):
+    def __init__(self, token: str, lang: str = "in"):
         self.base_url = "https://dramabox.dramabos.my.id"
         self.token = token
         self.lang = lang

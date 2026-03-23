@@ -13,5 +13,3 @@ __all__ = [
     "StardustTVAPI",
     "DramaBiteAPI"
 ]
-
-DEFAULT_TOKEN = "715B92C587621A9914F00563A7FB6852"
