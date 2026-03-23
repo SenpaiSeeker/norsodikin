@@ -69,12 +69,5 @@ pyrotgfork = [
     "pyrotgfork[fast]"
 ]
 
-[tool.setuptools]
-include-package-data = true
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["nsdev*", "assets*"]
-
 [tool.setuptools.dynamic]
 version = { attr = "nsdev.__version__" }
