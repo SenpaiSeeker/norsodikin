@@ -11,8 +11,6 @@ from pyzbar import pyzbar
 from qrcode.image.styledpil import StyledPilImage
 from qrcode.image.styles.moduledrawers import CircleModuleDrawer
 
-from ..utils.font_manager import FontManager
-
 
 class QrCodeGenerator:
     def _sync_create_glow_background(self, size: int, color: tuple) -> Image.Image:
@@ -87,7 +85,7 @@ class QrCodeGenerator:
 
             font_button = ImageFont.load_default(30)
             font_creator = ImageFont.load_default(40)
- 
+
             button_w, creator_w = 0, 0
             if bottom_text:
                 button_w = font_button.getbbox(bottom_text)[2] + 80

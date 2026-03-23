@@ -123,10 +123,7 @@ class MediaDownloader:
     def _get_referer_headers(self, url: str):
         parsed = urlparse(url)
 
-        if (
-            parsed.netloc == "cloud.hownetwork.xyz"
-            and parsed.path.endswith(".m3u8")
-        ):
+        if parsed.netloc == "cloud.hownetwork.xyz" and parsed.path.endswith(".m3u8"):
             parts = parsed.path.strip("/").split("/")
 
             if len(parts) >= 2:
@@ -218,10 +215,7 @@ class MediaDownloader:
         resolution: Optional[str] = None,
         audio_only: bool = False,
     ):
-        tasks = [
-            self.download(url, resolution, audio_only)
-            for url in urls
-        ]
+        tasks = [self.download(url, resolution, audio_only) for url in urls]
         return await asyncio.gather(*tasks, return_exceptions=True)
 
     async def download_social(
@@ -261,7 +255,7 @@ class MediaDownloader:
             }
             if self.cookies_file_path and os.path.exists(self.cookies_file_path):
                 opts["cookiefile"] = self.cookies_file_path
-            
+
             is_youtube_url = self._is_youtube_url(query)
             if is_youtube_url:
                 opts.update(
@@ -278,8 +272,8 @@ class MediaDownloader:
                 entries = result.get("entries", [])
 
                 if entries:
-                    return [self.convert._convertToNamespace(e) for e in entries] 
-                else: 
-                    return [self.convert._convertToNamespace(result)]                
+                    return [self.convert._convertToNamespace(e) for e in entries]
+                else:
+                    return [self.convert._convertToNamespace(result)]
 
         return await loop.run_in_executor(None, _search)

@@ -7,7 +7,7 @@ from io import BytesIO
 from typing import Tuple
 
 from bs4 import BeautifulSoup
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 from playwright.async_api import async_playwright
 
 from .font_manager import FontManager

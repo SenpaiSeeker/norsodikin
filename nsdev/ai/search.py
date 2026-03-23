@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 from typing import List
-from urllib.parse import quote_plus, urlparse, parse_qs, unquote
+from urllib.parse import parse_qs, quote_plus, unquote, urlparse
 
 import bs4
 import fake_useragent

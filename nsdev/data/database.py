@@ -3,7 +3,6 @@ import json
 import os
 import shutil
 import sqlite3
-import sys
 import zipfile
 from datetime import datetime
 from functools import partial
