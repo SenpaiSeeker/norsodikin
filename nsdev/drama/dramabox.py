@@ -1,4 +1,4 @@
-import requests
+import httpx
 from typing import Optional, Dict, Any
 
 class DramaboxAPI:
@@ -6,7 +6,7 @@ class DramaboxAPI:
         self.base_url = "https://dramabox.dramabos.my.id"
         self.token = token
         self.lang = lang
-        self.session = requests.Session()
+        self.session = httpx.Client()
 
     def homepage(self, page: int = 1) -> Dict[str, Any]:
         params = {"page": str(page), "lang": self.lang}

@@ -1,4 +1,4 @@
-import requests
+import httpx
 from typing import Optional, Dict, Any
 
 class MeloloAPI:
@@ -6,7 +6,7 @@ class MeloloAPI:
         self.base_url = "https://melolo.dramabos.my.id"
         self.token = token
         self.lang = lang
-        self.session = requests.Session()
+        self.session = httpx.Client()
 
     def home(self, offset: int = 0) -> Dict[str, Any]:
         params = {"lang": self.lang, "offset": str(offset)}

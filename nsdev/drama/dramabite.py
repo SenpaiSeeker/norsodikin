@@ -1,4 +1,4 @@
-import requests
+import httpx
 from typing import Optional, Dict, Any
 
 class DramaBiteAPI:
@@ -6,7 +6,7 @@ class DramaBiteAPI:
         self.base_url = "https://dramabite.dramabos.my.id"
         self.token = token
         self.lang = lang
-        self.session = requests.Session()
+        self.session = httpx.Client()
 
     def languages(self) -> Dict[str, Any]:
         response = self.session.get(f"{self.base_url}/languages")
