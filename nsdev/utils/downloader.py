@@ -165,7 +165,7 @@ class MediaDownloader:
             downloaded = 0
 
             with open(filepath, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
+                for chunk in r.iter_content(chunk_size=32768):
                     if chunk:
                         f.write(chunk)
                         downloaded += len(chunk)
