@@ -6,6 +6,7 @@ from typing import List, Optional
 from urllib.parse import urlparse
 
 import wget
+import requests
 from faker import Faker
 from yt_dlp import YoutubeDL
 
@@ -61,6 +62,9 @@ class MediaDownloader:
             "ymusicapp.com",
         )
 
+    def _is_direct_media(self, url: str) -> bool:
+        return url.lower().endswith((".mp4", ".mov", ".mkv", ".webm"))
+
     def _build_base_opts(self, progress_callback, loop):
         def _hook(d):
             if d["status"] == "downloading" and progress_callback:
@@ -83,7 +87,6 @@ class MediaDownloader:
             "nocheckcertificate": True,
             "noplaylist": True,
             "continuedl": True,
-            "merge_output_format": "mkv",
             "user_agent": self.fake.user_agent(),
             "js_runtimes": {
                 "node": {},
@@ -139,7 +142,45 @@ class MediaDownloader:
                 "User-Agent": self.fake.user_agent(),
             }
 
-        return None
+        return {
+            "User-Agent": self.fake.user_agent(),
+            "Referer": url,
+        }
+
+    def _download_direct(
+        self,
+        url: str,
+        progress_callback,
+        loop,
+    ):
+        filename = os.path.basename(urlparse(url).path)
+        safe_name = self._sanitize_filename(filename)
+        filepath = os.path.join(self.download_path, safe_name)
+
+        headers = self._get_referer_headers(url) or {}
+
+        with requests.get(url, stream=True, headers=headers) as r:
+            r.raise_for_status()
+            total = int(r.headers.get("content-length", 0))
+            downloaded = 0
+
+            with open(filepath, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+
+                        if progress_callback and total:
+                            asyncio.run_coroutine_threadsafe(
+                                progress_callback(downloaded, total),
+                                loop,
+                            )
+
+        result_obj = self.convert._convertToNamespace({})
+        result_obj.downloaded_path = filepath
+        result_obj.thumbnail_path = None
+
+        return result_obj
 
     def _sync_download(
         self,
@@ -149,6 +190,9 @@ class MediaDownloader:
         progress_callback,
         loop,
     ):
+        if self._is_direct_media(url):
+            return self._download_direct(url, progress_callback, loop)
+
         opts = self._build_base_opts(progress_callback, loop)
         opts["format"] = self._select_format(resolution, audio_only)
 
