@@ -1,7 +1,7 @@
+
 import asyncio
 import os
 import re
-import httpx
 from functools import partial
 from typing import List, Optional
 from urllib.parse import urlparse
@@ -61,16 +61,6 @@ class MediaDownloader:
             "m.youtube.com",
             "ymusicapp.com",
         )
-
-    def _is_direct_media_url(self, url: str) -> bool:
-        parsed = urlparse(url)
-        path = parsed.path.lower().split("?")[0]
-        MEDIA_EXTENSIONS = (
-            ".mp4", ".mkv", ".avi", ".mov", ".webm",
-            ".mp3", ".m4a", ".aac", ".flac", ".ogg",
-            ".m3u8", ".ts", ".wmv", ".flv",
-        )
-        return any(path.endswith(ext) for ext in MEDIA_EXTENSIONS)
 
     def _build_base_opts(self, progress_callback, loop):
         def _hook(d):
@@ -152,50 +142,6 @@ class MediaDownloader:
 
         return None
 
-    def _sync_direct_download(
-        self,
-        url: str,
-        progress_callback,
-        loop,
-    ):
-        parsed = urlparse(url)
-        raw_name = os.path.basename(parsed.path.split("?")[0]) or self.download_path
-        safe_name = self._sanitize_filename(raw_name)
-        filepath = os.path.join(self.download_path, safe_name)
-
-        headers = {
-            "User-Agent": self.fake.user_agent(),
-            "Referer": f"{parsed.scheme}://{parsed.netloc}/",
-            "Origin": f"{parsed.scheme}://{parsed.netloc}",
-        }
-
-        proxies = {"http://": self.proxy, "https://": self.proxy} if self.proxy else None
-
-        with httpx.Client(headers=headers, proxies=proxies, verify=False, follow_redirects=True) as client:
-            with client.stream("GET", url) as response:
-                response.raise_for_status()
-                total = int(response.headers.get("content-length", 0))
-                downloaded = 0
-
-                with open(filepath, "wb") as f:
-                    for chunk in response.iter_bytes(chunk_size=1024 * 64):
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        if progress_callback and total:
-                            asyncio.run_coroutine_threadsafe(
-                                progress_callback(downloaded, total),
-                                loop,
-                            )
-
-        result = self.convert._convertToNamespace({
-            "id": safe_name,
-            "title": safe_name,
-            "ext": os.path.splitext(safe_name)[-1].lstrip("."),
-            "url": url,
-        })
-        result.downloaded_path = filepath
-        return result
-
     def _sync_download(
         self,
         url: str,
@@ -204,9 +150,6 @@ class MediaDownloader:
         progress_callback,
         loop,
     ):
-        if self._is_direct_media_url(url):
-            return self._sync_direct_download(url, progress_callback, loop)
-
         opts = self._build_base_opts(progress_callback, loop)
         opts["format"] = self._select_format(resolution, audio_only)
 
