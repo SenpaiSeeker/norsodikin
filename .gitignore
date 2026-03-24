@@ -1,1 +1,1 @@
-Nothing should be ignored based on the provided file changes, as they only contain Python source files (.py) which are legitimate source code files and not build artifacts, dependencies, or temporary files.
+Nothing should be ignored since the modified files are only Python source code files (.py) which are legitimate project files and not build artifacts, dependencies, or temporary files.
