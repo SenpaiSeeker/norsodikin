@@ -1,4 +1,5 @@
-import requests
+import httpx
+import asyncio
 from typing import Optional, Dict, Any
 
 class MeloloAPI:
@@ -6,24 +7,27 @@ class MeloloAPI:
         self.base_url = "https://melolo.dramabos.my.id"
         self.token = token
         self.lang = lang
-        self.session = requests.Session()
 
-    def home(self, offset: int = 0) -> Dict[str, Any]:
+    async def home(self, offset: int = 0) -> Dict[str, Any]:
         params = {"lang": self.lang, "offset": str(offset)}
-        response = self.session.get(f"{self.base_url}/api/home", params=params)
-        return response.json()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{self.base_url}/api/home", params=params)
+            return response.json()
 
-    def detail(self, drama_id: str) -> Dict[str, Any]:
+    async def detail(self, drama_id: str) -> Dict[str, Any]:
         params = {"id": drama_id, "lang": self.lang}
-        response = self.session.get(f"{self.base_url}/api/detail/{drama_id}", params=params)
-        return response.json()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{self.base_url}/api/detail/{drama_id}", params=params)
+            return response.json()
 
-    def search(self, query: str) -> Dict[str, Any]:
+    async def search(self, query: str) -> Dict[str, Any]:
         params = {"lang": self.lang, "q": query}
-        response = self.session.get(f"{self.base_url}/api/search", params=params)
-        return response.json()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{self.base_url}/api/search", params=params)
+            return response.json()
 
-    def video(self, vid: str) -> Dict[str, Any]:
+    async def video(self, vid: str) -> Dict[str, Any]:
         params = {"vid": vid, "lang": self.lang, "code": self.token}
-        response = self.session.get(f"{self.base_url}/api/video/{vid}", params=params)
-        return response.json()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{self.base_url}/api/video/{vid}", params=params)
+            return response.json()
