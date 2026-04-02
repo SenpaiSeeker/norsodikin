@@ -4,6 +4,7 @@ import re
 from functools import partial
 from typing import List, Optional
 from urllib.parse import urlparse
+from http.cookiejar import MozillaCookieJar
 
 import wget
 import httpx
@@ -96,7 +97,7 @@ class MediaDownloader:
             "extractor_args": {
                 "youtube": {
                     "player_client": ["ios", "android", "web"],
-                    "player_skip":["webpage", "configs"],
+                    "player_skip": ["webpage", "configs"],
                 }
             },
         }
@@ -194,6 +195,23 @@ class MediaDownloader:
 
             return result_obj
 
+    def _get_httpx_cookies(self):
+        cookies = httpx.Cookies()
+        cookies.set("age_verified", "1", domain="www.dubbindo.site")
+        cookies.set("is_adult", "1", domain="www.dubbindo.site")
+        cookies.set("age_verified", "1", domain=".dubbindo.site")
+        
+        if self.cookies_file_path and os.path.exists(self.cookies_file_path):
+            try:
+                cj = MozillaCookieJar(self.cookies_file_path)
+                cj.load(ignore_discard=True, ignore_expires=True)
+                for cookie in cj:
+                    cookies.set(cookie.name, cookie.value, domain=cookie.domain, path=cookie.path)
+            except Exception:
+                pass
+                
+        return cookies
+
     async def _download_dubbindo(self, url: str, progress_callback):
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -201,10 +219,15 @@ class MediaDownloader:
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
         }
 
-        async with httpx.AsyncClient(follow_redirects=True, headers=headers, timeout=30.0) as client:
+        cookies = self._get_httpx_cookies()
+
+        async with httpx.AsyncClient(follow_redirects=True, headers=headers, cookies=cookies, timeout=30.0) as client:
             res = await client.get(url)
             res.raise_for_status()
             html = res.text
+
+        if "Please subscribe" in html or "Log In" in html:
+            raise Exception("Video eksklusif (Terkunci)! Anda harus memberikan cookies.txt dari akun yang sudah berlangganan/login ke Dubbindo.")
 
         soup = BeautifulSoup(html, 'html.parser')
 
@@ -228,10 +251,10 @@ class MediaDownloader:
                 video_url = cari_mp4.group(1)
 
         if not video_url:
-            raise Exception("Gagal menemukan tautan video MP4 langsung.")
+            raise Exception("Gagal menemukan tautan video MP4 langsung. Pastikan link video tersedia dan bukan link premium.")
 
         duration_sec = 0
-        pola_durasi =[
+        pola_durasi = [
             r'duration["\']?\s*[:=]\s*["\']?([0-9:]+)["\']?',
             r'class=["\'][^"\']*duration[^"\']*["\'][^>]*>\s*([0-9:]+)\s*<',
             r'>\s*([0-9]{1,2}:[0-9]{2}:[0-9]{2})\s*<',
@@ -254,7 +277,7 @@ class MediaDownloader:
         if thumb_url:
             thumb_path = os.path.join(self.download_path, f"{title_clean}_thumb.jpg")
             try:
-                async with httpx.AsyncClient(follow_redirects=True, headers=headers, timeout=30.0) as client:
+                async with httpx.AsyncClient(follow_redirects=True, headers=headers, cookies=cookies, timeout=30.0) as client:
                     t_res = await client.get(thumb_url)
                     t_res.raise_for_status()
                     with open(thumb_path, 'wb') as f:
@@ -262,7 +285,7 @@ class MediaDownloader:
             except Exception:
                 thumb_path = None
 
-        async with httpx.AsyncClient(follow_redirects=True, headers=headers, timeout=60.0) as client:
+        async with httpx.AsyncClient(follow_redirects=True, headers=headers, cookies=cookies, timeout=60.0) as client:
             async with client.stream('GET', video_url) as stream:
                 stream.raise_for_status()
                 total_size = int(stream.headers.get('Content-Length', 0))
@@ -371,11 +394,11 @@ class MediaDownloader:
 
             with YoutubeDL(opts) as ydl:
                 result = ydl.extract_info(query, download=False, process=not is_youtube_url)
-                entries = result.get("entries", [])
+                entries = result.get("entries",[])
 
                 if entries:
-                    return[self.convert._convertToNamespace(e) for e in entries]
+                    return [self.convert._convertToNamespace(e) for e in entries]
                 else:
-                    return[self.convert._convertToNamespace(result)]
+                    return [self.convert._convertToNamespace(result)]
 
         return await loop.run_in_executor(None, _search)
