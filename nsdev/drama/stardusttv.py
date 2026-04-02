@@ -1,5 +1,7 @@
+from typing import Any, Dict
+
 import httpx
-from typing import Optional, Dict, Any
+
 
 class StardustTVAPI:
     def __init__(self, token: str, lang: str = "id"):

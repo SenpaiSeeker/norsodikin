@@ -1,6 +1,7 @@
+from typing import Any, Dict
+
 import httpx
-import asyncio
-from typing import Optional, Dict, Any
+
 
 class MeloloAPI:
     def __init__(self, token: str, lang: str = "id"):

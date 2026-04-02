@@ -1,5 +1,7 @@
+from typing import Any, Dict, Optional
+
 import httpx
-from typing import Optional, Dict, Any
+
 
 class NetShortAPI:
     def __init__(self, token: str, lang: str = "in"):
@@ -19,7 +21,14 @@ class NetShortAPI:
             response = await client.get(f"{self.base_url}/api/categories", params=params)
             return response.json()
 
-    async def list_drama(self, page: int = 1, region: Optional[str] = None, audio: Optional[str] = None, tag: Optional[str] = None, sort: Optional[str] = None) -> Dict[str, Any]:
+    async def list_drama(
+        self,
+        page: int = 1,
+        region: Optional[str] = None,
+        audio: Optional[str] = None,
+        tag: Optional[str] = None,
+        sort: Optional[str] = None,
+    ) -> Dict[str, Any]:
         params = {"lang": self.lang}
         if region:
             params["region"] = region

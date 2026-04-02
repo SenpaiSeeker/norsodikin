@@ -1,5 +1,7 @@
+from typing import Any, Dict
+
 import httpx
-from typing import Optional, Dict, Any
+
 
 class DramaboxAPI:
     def __init__(self, token: str, lang: str = "in"):

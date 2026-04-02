@@ -1,5 +1,7 @@
+from typing import Any, Dict
+
 import httpx
-from typing import Optional, Dict, Any
+
 
 class ReelifeAPI:
     def __init__(self, token: str, lang: str = "in"):
@@ -50,7 +52,13 @@ class ReelifeAPI:
             return response.json()
 
     async def episode_detail(self, book_id: str, chapter_id: str, preload: int = 3) -> Dict[str, Any]:
-        params = {"bookId": book_id, "chapterId": chapter_id, "preload": str(preload), "code": self.token, "lang": self.lang}
+        params = {
+            "bookId": book_id,
+            "chapterId": chapter_id,
+            "preload": str(preload),
+            "code": self.token,
+            "lang": self.lang,
+        }
         async with httpx.AsyncClient() as client:
             response = await client.get(f"{self.base_url}/api/v1/book/{book_id}/episode/{chapter_id}", params=params)
             return response.json()
