@@ -215,16 +215,15 @@ class NsDev:
         )
 
 
-@property
-def ns(self) -> NsDev:
-    if not hasattr(self, "_nsdev_instance"):
-        self._nsdev_instance = NsDev(self)
-    return self._nsdev_instance
-
-
 try:
     from pyrogram import Client
 
-    Client.ns = ns
-except Exception:
+    def get_ns(self) -> NsDev:
+        if not hasattr(self, "_nsdev_instance"):
+            self._nsdev_instance = NsDev(self)
+        return self._nsdev_instance
+
+    Client.ns = property(get_ns)
+
+except ImportError:
     pass
