@@ -1,4 +1,4 @@
-__version__ = "2026.04.112"
+__version__ = "2026.04.113"
 __author__ = "NorSodikin.t.me"
 
 from types import SimpleNamespace
