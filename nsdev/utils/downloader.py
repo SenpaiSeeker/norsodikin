@@ -93,10 +93,10 @@ class MediaDownloader:
             "js_runtimes": {
                 "node": {},
             },
-            "remote_components":["ejs:github"],
+            "remote_components": ["ejs:github"],
             "extractor_args": {
                 "youtube": {
-                    "player_client":["ios", "android", "web"],
+                    "player_client": ["ios", "android", "web"],
                     "player_skip": ["webpage", "configs"],
                 }
             },
@@ -112,7 +112,7 @@ class MediaDownloader:
             opts["ratelimit"] = self.speed_limit
 
         if progress_callback:
-            opts["progress_hooks"] =[_hook]
+            opts["progress_hooks"] = [_hook]
 
         return opts
 
@@ -195,143 +195,6 @@ class MediaDownloader:
 
             return result_obj
 
-    async def _download_viu_custom(self, url: str, progress_callback):
-        match = re.search(r"viu\.com/ott/([^/]+)/.*?vod/(\d+)", url)
-        if not match:
-            raise Exception("URL Viu tidak valid atau tidak dikenali.")
-        
-        region = match.group(1)
-        product_id = match.group(2)
-
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Referer": "https://www.viu.com/",
-            "Origin": "https://www.viu.com"
-        }
-
-        async with httpx.AsyncClient(headers=headers, timeout=30.0) as client:
-            detail_api = f"https://www.viu.com/ott/{region}/index.php?r=vod/ajax-detail&platform_flag_label=web&product_id={product_id}"
-            res = await client.get(detail_api)
-            res.raise_for_status()
-            data = res.json()
-
-            if "data" not in data or "vod" not in data["data"]:
-                raise Exception("Gagal mengambil data video dari Viu API.")
-
-            current_product = data["data"]["vod"].get("current_product", {})
-            title = current_product.get("title", f"Viu_Video_{product_id}")
-            title_clean = self._sanitize_filename(title)
-            desc = current_product.get("description", "")
-            thumb_url = current_product.get("cover_image_url", "")
-            duration = int(current_product.get("duration", 0))
-
-            m3u8_url = None
-            if "url" in current_product and current_product["url"] and "m3u8" in current_product["url"]:
-                m3u8_url = current_product["url"]["m3u8"]
-            else:
-                lang_id = current_product.get("language_flag_id", "3")
-                area_id = current_product.get("area_id", "2")
-                
-                player_api = f"https://www.viu.com/ott/{region}/index.php?r=player/ajax-get-video-url&platform_flag_label=web&product_id={product_id}&language_flag_id={lang_id}&area_id={area_id}"
-                
-                pres = await client.get(player_api)
-                pres.raise_for_status()
-                pdata = pres.json()
-                
-                if "data" in pdata and pdata["data"] and "stream" in pdata["data"]:
-                    stream_data = pdata["data"]["stream"]
-                    if isinstance(stream_data, dict):
-                        for res_key in['1080p', '720p', '480p', 'url']:
-                            if res_key in stream_data and stream_data[res_key]:
-                                m3u8_url = stream_data[res_key]
-                                break
-                        if not m3u8_url:
-                            m3u8_url = list(stream_data.values())[0]
-                    elif isinstance(stream_data, str):
-                        m3u8_url = stream_data
-
-            if not m3u8_url:
-                raise Exception("Tautan stream M3U8 tidak ditemukan. Video ini mungkin memerlukan akses VIP/Premium.")
-
-            thumb_path = None
-            if thumb_url:
-                thumb_path = os.path.join(self.download_path, f"{title_clean}_thumb.jpg")
-                try:
-                    t_res = await client.get(thumb_url)
-                    t_res.raise_for_status()
-                    with open(thumb_path, 'wb') as f:
-                        f.write(t_res.content)
-                except Exception:
-                    thumb_path = None
-
-        vid_path = os.path.join(self.download_path, f"{title_clean}.mp4")
-        
-        cmd =[
-            "ffmpeg",
-            "-y",
-            "-i", m3u8_url,
-            "-c", "copy",
-            "-bsf:a", "aac_adtstoasc",
-            vid_path
-        ]
-        
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-
-        duration_sec_ffmpeg = duration
-        
-        while True:
-            if process.returncode is not None:
-                break
-            try:
-                line = await asyncio.wait_for(process.stderr.readline(), timeout=1.0)
-                if not line:
-                    continue
-                line_str = line.decode('utf-8', errors='ignore')
-                
-                if progress_callback:
-                    time_match = re.search(r"time=(\d{2}):(\d{2}):(\d{2})", line_str)
-                    if time_match and duration_sec_ffmpeg > 0:
-                        h, m, s = map(int, time_match.groups())
-                        current_sec = h * 3600 + m * 60 + s
-                        
-                        fake_current = current_sec * 1024 * 1024
-                        fake_total = duration_sec_ffmpeg * 1024 * 1024
-                        
-                        if asyncio.iscoroutinefunction(progress_callback):
-                            await progress_callback(fake_current, fake_total)
-                        else:
-                            progress_callback(fake_current, fake_total)
-
-            except asyncio.TimeoutError:
-                continue
-
-        await process.communicate()
-        
-        if process.returncode != 0:
-            if os.path.exists(vid_path):
-                os.remove(vid_path)
-            raise Exception("FFmpeg gagal mengunduh stream. Video ini kemungkinan dilindungi DRM (Widevine).")
-
-        if not os.path.exists(vid_path) or os.path.getsize(vid_path) < 100000:
-            if os.path.exists(vid_path):
-                os.remove(vid_path)
-            raise Exception("File video gagal diunduh atau terlalu kecil.")
-
-        result_obj = SimpleNamespace(
-            id=title_clean,
-            title=title,
-            duration=duration,
-            description=desc,
-            downloaded_path=vid_path,
-            thumbnail_path=thumb_path,
-            url=m3u8_url
-        )
-        return result_obj
-
     def _get_httpx_cookies(self):
         cookies = httpx.Cookies()
         cookies.set("age_verified", "1", domain="www.dubbindo.site")
@@ -390,50 +253,6 @@ class MediaDownloader:
         if not video_url:
             raise Exception("Gagal menemukan tautan video MP4 langsung. Pastikan link video tersedia dan bukan link premium.")
 
-        duration_sec = 0
-
-        meta_duration = soup.find('meta', property='video:duration')
-        if meta_duration and meta_duration.get('content', '').isdigit():
-            duration_sec = int(meta_duration['content'])
-
-        if duration_sec == 0:
-            meta_itemprop = soup.find('meta', itemprop='duration')
-            if meta_itemprop and meta_itemprop.get('content', '').startswith('PT'):
-                content = meta_itemprop['content']
-                h_match = re.search(r'(\d+)H', content)
-                m_match = re.search(r'(\d+)M', content)
-                s_match = re.search(r'(\d+)S', content)
-                h = int(h_match.group(1)) if h_match else 0
-                m = int(m_match.group(1)) if m_match else 0
-                s = int(s_match.group(1)) if s_match else 0
-                duration_sec = h * 3600 + m * 60 + s
-
-        if duration_sec == 0:
-            match_js = re.search(r'(?:duration|video_duration)\s*[:=]\s*["\']?([0-9:]+)["\']?', html, re.IGNORECASE)
-            if match_js:
-                val = match_js.group(1)
-                if val.isdigit():
-                    duration_sec = int(val)
-                elif ':' in val:
-                    parts = val.split(':')
-                    if len(parts) == 3:
-                        duration_sec = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
-                    elif len(parts) == 2:
-                        duration_sec = int(parts[0]) * 60 + int(parts[1])
-
-        if duration_sec == 0:
-            for tag in soup.find_all(['span', 'div', 'p', 'time']):
-                class_name = " ".join(tag.get('class',[])).lower()
-                if 'duration' in class_name or 'time' in class_name:
-                    text_val = tag.get_text(strip=True)
-                    if re.match(r'^([0-9]{1,2}:)?[0-9]{1,2}:[0-9]{2}$', text_val):
-                        parts = text_val.split(':')
-                        if len(parts) == 3:
-                            duration_sec = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
-                        elif len(parts) == 2:
-                            duration_sec = int(parts[0]) * 60 + int(parts[1])
-                        break
-
         vid_path = os.path.join(self.download_path, f"{title_clean}.mp4")
         thumb_path = None
 
@@ -464,6 +283,44 @@ class MediaDownloader:
                             else:
                                 progress_callback(downloaded, total_size)
 
+        duration_sec = 0
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "ffprobe", "-v", "error", "-show_entries", "format=duration", 
+                "-of", "default=noprint_wrappers=1:nokey=1", vid_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await proc.communicate()
+            if stdout:
+                duration_sec = int(float(stdout.decode('utf-8').strip()))
+        except Exception:
+            pass
+
+        if duration_sec == 0:
+            meta_dur = soup.find('meta', property='video:duration')
+            if meta_dur and meta_dur.get('content', '').isdigit():
+                duration_sec = int(meta_dur['content'])
+
+        if duration_sec == 0:
+            for script in soup.find_all('script', type='application/ld+json'):
+                try:
+                    import json
+                    data = json.loads(script.string)
+                    if '@type' in data and data['@type'] == 'VideoObject':
+                        iso_dur = data.get('duration', '')
+                        if iso_dur.startswith('PT'):
+                            h = re.search(r'(\d+)H', iso_dur)
+                            m = re.search(r'(\d+)M', iso_dur)
+                            s = re.search(r'(\d+)S', iso_dur)
+                            h_sec = int(h.group(1)) * 3600 if h else 0
+                            m_sec = int(m.group(1)) * 60 if m else 0
+                            s_sec = int(s.group(1)) if s else 0
+                            duration_sec = h_sec + m_sec + s_sec
+                            break
+                except Exception:
+                    continue
+
         result_obj = SimpleNamespace(
             id=title_clean,
             title=title,
@@ -485,8 +342,6 @@ class MediaDownloader:
         async with self.semaphore:
             if "dubbindo.site" in url:
                 return await self._download_dubbindo(url, progress_callback)
-            if "viu.com" in url:
-                return await self._download_viu_custom(url, progress_callback)
                 
             loop = asyncio.get_running_loop()
             func = partial(
@@ -559,7 +414,7 @@ class MediaDownloader:
 
             with YoutubeDL(opts) as ydl:
                 result = ydl.extract_info(query, download=False, process=not is_youtube_url)
-                entries = result.get("entries", [])
+                entries = result.get("entries",[])
 
                 if entries:
                     return [self.convert._convertToNamespace(e) for e in entries]
