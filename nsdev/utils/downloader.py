@@ -93,11 +93,11 @@ class MediaDownloader:
             "js_runtimes": {
                 "node": {},
             },
-            "remote_components": ["ejs:github"],
+            "remote_components":["ejs:github"],
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["ios", "android", "web"],
-                    "player_skip":["webpage", "configs"],
+                    "player_client":["ios", "android", "web"],
+                    "player_skip": ["webpage", "configs"],
                 }
             },
         }
@@ -112,7 +112,7 @@ class MediaDownloader:
             opts["ratelimit"] = self.speed_limit
 
         if progress_callback:
-            opts["progress_hooks"] = [_hook]
+            opts["progress_hooks"] =[_hook]
 
         return opts
 
@@ -195,71 +195,142 @@ class MediaDownloader:
 
             return result_obj
 
-    def _sync_download_viu(
-        self,
-        url: str,
-        progress_callback,
-        loop,
-    ):
-        opts = self._build_base_opts(progress_callback, loop)
+    async def _download_viu_custom(self, url: str, progress_callback):
+        match = re.search(r"viu\.com/ott/([^/]+)/.*?vod/(\d+)", url)
+        if not match:
+            raise Exception("URL Viu tidak valid atau tidak dikenali.")
         
-        opts["format"] = "best"
-        
-        opts.pop("merge_output_format", None)
-        opts["writesubtitles"] = False
-        opts["embedsubtitles"] = False
-
-        if "extractor_args" not in opts:
-            opts["extractor_args"] = {}
-        opts["extractor_args"]["viu"] = {"region": ["id"]}
+        region = match.group(1)
+        product_id = match.group(2)
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Referer": "https://www.viu.com/",
             "Origin": "https://www.viu.com"
         }
-        opts["http_headers"] = headers
 
-        with YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=True)
+        async with httpx.AsyncClient(headers=headers, timeout=30.0) as client:
+            detail_api = f"https://www.viu.com/ott/{region}/index.php?r=vod/ajax-detail&platform_flag_label=web&product_id={product_id}"
+            res = await client.get(detail_api)
+            res.raise_for_status()
+            data = res.json()
 
-            filepath = ydl.prepare_filename(info)
-            
-            base_filepath = os.path.splitext(filepath)[0]
-            if os.path.exists(base_filepath + ".mp4"):
-                filepath = base_filepath + ".mp4"
-            elif os.path.exists(base_filepath + ".mkv"):
-                filepath = base_filepath + ".mkv"
-            elif os.path.exists(base_filepath + ".webm"):
-                filepath = base_filepath + ".webm"
+            if "data" not in data or "vod" not in data["data"]:
+                raise Exception("Gagal mengambil data video dari Viu API.")
+
+            current_product = data["data"]["vod"].get("current_product", {})
+            title = current_product.get("title", f"Viu_Video_{product_id}")
+            title_clean = self._sanitize_filename(title)
+            desc = current_product.get("description", "")
+            thumb_url = current_product.get("cover_image_url", "")
+            duration = int(current_product.get("duration", 0))
+
+            m3u8_url = None
+            if "url" in current_product and current_product["url"] and "m3u8" in current_product["url"]:
+                m3u8_url = current_product["url"]["m3u8"]
+            else:
+                lang_id = current_product.get("language_flag_id", "3")
+                area_id = current_product.get("area_id", "2")
+                
+                player_api = f"https://www.viu.com/ott/{region}/index.php?r=player/ajax-get-video-url&platform_flag_label=web&product_id={product_id}&language_flag_id={lang_id}&area_id={area_id}"
+                
+                pres = await client.get(player_api)
+                pres.raise_for_status()
+                pdata = pres.json()
+                
+                if "data" in pdata and pdata["data"] and "stream" in pdata["data"]:
+                    stream_data = pdata["data"]["stream"]
+                    if isinstance(stream_data, dict):
+                        for res_key in['1080p', '720p', '480p', 'url']:
+                            if res_key in stream_data and stream_data[res_key]:
+                                m3u8_url = stream_data[res_key]
+                                break
+                        if not m3u8_url:
+                            m3u8_url = list(stream_data.values())[0]
+                    elif isinstance(stream_data, str):
+                        m3u8_url = stream_data
+
+            if not m3u8_url:
+                raise Exception("Tautan stream M3U8 tidak ditemukan. Video ini mungkin memerlukan akses VIP/Premium.")
 
             thumb_path = None
-            thumb_url = info.get("thumbnail")
-
             if thumb_url:
+                thumb_path = os.path.join(self.download_path, f"{title_clean}_thumb.jpg")
                 try:
-                    safe_name = self._sanitize_filename(info.get("id", "thumb"))
-                    thumb_file = os.path.join(self.download_path, f"{safe_name}_thumb.jpg")
-                    wget.download(thumb_url, thumb_file)
-                    thumb_path = thumb_file
+                    t_res = await client.get(thumb_url)
+                    t_res.raise_for_status()
+                    with open(thumb_path, 'wb') as f:
+                        f.write(t_res.content)
                 except Exception:
                     thumb_path = None
 
-            result_obj = self.convert._convertToNamespace(info)
-            result_obj.downloaded_path = filepath
-            result_obj.thumbnail_path = thumb_path
-
-            return result_obj
-
-    async def _download_viu(self, url: str, progress_callback):
-        loop = asyncio.get_running_loop()
-        func = partial(
-            self._sync_download_viu,
-            url,
-            progress_callback,
-            loop,
+        vid_path = os.path.join(self.download_path, f"{title_clean}.mp4")
+        
+        cmd =[
+            "ffmpeg",
+            "-y",
+            "-i", m3u8_url,
+            "-c", "copy",
+            "-bsf:a", "aac_adtstoasc",
+            vid_path
+        ]
+        
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
         )
-        return await loop.run_in_executor(None, func)
+
+        duration_sec_ffmpeg = duration
+        
+        while True:
+            if process.returncode is not None:
+                break
+            try:
+                line = await asyncio.wait_for(process.stderr.readline(), timeout=1.0)
+                if not line:
+                    continue
+                line_str = line.decode('utf-8', errors='ignore')
+                
+                if progress_callback:
+                    time_match = re.search(r"time=(\d{2}):(\d{2}):(\d{2})", line_str)
+                    if time_match and duration_sec_ffmpeg > 0:
+                        h, m, s = map(int, time_match.groups())
+                        current_sec = h * 3600 + m * 60 + s
+                        
+                        fake_current = current_sec * 1024 * 1024
+                        fake_total = duration_sec_ffmpeg * 1024 * 1024
+                        
+                        if asyncio.iscoroutinefunction(progress_callback):
+                            await progress_callback(fake_current, fake_total)
+                        else:
+                            progress_callback(fake_current, fake_total)
+
+            except asyncio.TimeoutError:
+                continue
+
+        await process.communicate()
+        
+        if process.returncode != 0:
+            if os.path.exists(vid_path):
+                os.remove(vid_path)
+            raise Exception("FFmpeg gagal mengunduh stream. Video ini kemungkinan dilindungi DRM (Widevine).")
+
+        if not os.path.exists(vid_path) or os.path.getsize(vid_path) < 100000:
+            if os.path.exists(vid_path):
+                os.remove(vid_path)
+            raise Exception("File video gagal diunduh atau terlalu kecil.")
+
+        result_obj = SimpleNamespace(
+            id=title_clean,
+            title=title,
+            duration=duration,
+            description=desc,
+            downloaded_path=vid_path,
+            thumbnail_path=thumb_path,
+            url=m3u8_url
+        )
+        return result_obj
 
     def _get_httpx_cookies(self):
         cookies = httpx.Cookies()
@@ -415,7 +486,7 @@ class MediaDownloader:
             if "dubbindo.site" in url:
                 return await self._download_dubbindo(url, progress_callback)
             if "viu.com" in url:
-                return await self._download_viu(url, progress_callback)
+                return await self._download_viu_custom(url, progress_callback)
                 
             loop = asyncio.get_running_loop()
             func = partial(
@@ -467,7 +538,7 @@ class MediaDownloader:
                 "geo_bypass": True,
                 "extractor_args": {
                     "youtube": {
-                        "player_client": ["ios", "android", "web"],
+                        "player_client":["ios", "android", "web"],
                         "player_skip": ["webpage", "configs"],
                     }
                 },
@@ -488,7 +559,7 @@ class MediaDownloader:
 
             with YoutubeDL(opts) as ydl:
                 result = ydl.extract_info(query, download=False, process=not is_youtube_url)
-                entries = result.get("entries",[])
+                entries = result.get("entries", [])
 
                 if entries:
                     return [self.convert._convertToNamespace(e) for e in entries]
