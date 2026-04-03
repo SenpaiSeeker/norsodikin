@@ -1,3 +1,6 @@
+__version__ = "2026.04.110"
+__author__ = "NorSodikin.t.me"
+
 from types import SimpleNamespace
 
 from .ai import (
@@ -99,9 +102,6 @@ from .utils import (
     WikipediaSearch,
     memoize,
 )
-
-__version__ = "2026.04.110"
-__author__ = "NorSodikin.t.me"
 
 
 class NsDev:
