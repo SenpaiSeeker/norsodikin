@@ -203,17 +203,20 @@ class MediaDownloader:
     ):
         opts = self._build_base_opts(progress_callback, loop)
         
-        opts["format"] = "bestvideo+bestaudio/best"
-        opts["writesubtitles"] = True
-        opts["subtitleslangs"] = ["id", "id-ID", "ind", "en"]
-        opts["embedsubtitles"] = True
-        opts["merge_output_format"] = "mkv"
+        opts["format"] = "best"
         
+        opts.pop("merge_output_format", None)
+        opts["writesubtitles"] = False
+        opts["embedsubtitles"] = False
+
+        if "extractor_args" not in opts:
+            opts["extractor_args"] = {}
+        opts["extractor_args"]["viu"] = {"region": ["id"]}
+
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Referer": "https://www.viu.com/",
-            "Origin": "https://www.viu.com",
-            "X-Forwarded-For": "114.122.100.1" 
+            "Origin": "https://www.viu.com"
         }
         opts["http_headers"] = headers
 
@@ -221,12 +224,14 @@ class MediaDownloader:
             info = ydl.extract_info(url, download=True)
 
             filepath = ydl.prepare_filename(info)
-            base_filepath = os.path.splitext(filepath)[0]
             
-            if os.path.exists(base_filepath + ".mkv"):
-                filepath = base_filepath + ".mkv"
-            elif os.path.exists(base_filepath + ".mp4"):
+            base_filepath = os.path.splitext(filepath)[0]
+            if os.path.exists(base_filepath + ".mp4"):
                 filepath = base_filepath + ".mp4"
+            elif os.path.exists(base_filepath + ".mkv"):
+                filepath = base_filepath + ".mkv"
+            elif os.path.exists(base_filepath + ".webm"):
+                filepath = base_filepath + ".webm"
 
             thumb_path = None
             thumb_url = info.get("thumbnail")
