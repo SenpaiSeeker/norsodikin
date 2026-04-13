@@ -19,6 +19,7 @@ from .progress import TelegramProgressBar
 from .ratelimit import RateLimiter
 from .shell import ShellExecutor
 from .splitter import AudioSplitter
+from .telegram_ph import TelegramPH
 from .url import UrlUtils
 from .weather import WeatherWttr
 from .web import WebAutomation
