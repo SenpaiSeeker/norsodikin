@@ -63,6 +63,7 @@ from .utils import (
     ShellExecutor,
     TelegramProgressBar,
     TMDbClient,
+    TelegramPH,
     UrlUtils,
     WeatherWttr,
     WebAutomation,
@@ -155,6 +156,7 @@ class NsDev:
             ratelimit=RateLimiter(self._client),
             shell=ShellExecutor(),
             splitter=AudioSplitter,
+            telegraph=TelegramPH()
             url=UrlUtils(),
             weather=WeatherWttr,
             web=WebAutomation(),
