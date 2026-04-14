@@ -40,18 +40,21 @@ class TelegramPH:
         return await self.create_page(access_token=token, title=title, content=content_nodes)
 
     async def upload_image(self, file_data) -> str:
-        async with httpx.AsyncClient(timeout=self.timeout, headers=self.headers) as client:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
             files = None
             opened_file = None
             try:
                 if isinstance(file_data, bytes):
-                    files = {"file": ("image.jpg", file_data, "image/jpeg")}
+                    files = {"file": ("media.jpg", file_data, "image/jpeg")}
                 else:
                     opened_file = open(file_data, "rb")
-                    files = {"file": ("image.jpg", opened_file, "image/jpeg")}
+                    files = {"file": ("media.jpg", opened_file, "image/jpeg")}
                 
                 res = await client.post(self.upload_url, files=files)
-                res.raise_for_status()
+                
+                if res.status_code != 200:
+                    raise Exception(f"HTTP {res.status_code} - {res.text}")
+                
                 data = res.json()
                 
                 if isinstance(data, list) and len(data) > 0 and "src" in data[0]:
@@ -59,7 +62,7 @@ class TelegramPH:
                 if isinstance(data, dict) and "error" in data:
                     raise Exception(data["error"])
                     
-                raise Exception("Gagal mengunggah gambar ke Telegra.ph")
+                raise Exception(f"Format respon salah: {data}")
             finally:
                 if opened_file:
                     opened_file.close()
