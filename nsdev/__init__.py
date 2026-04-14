@@ -71,7 +71,7 @@ from .utils import (
     memoize,
 )
 
-__version__ = "0.33"
+__version__ = "0.34"
 __author__ = "@NorSodikin"
 
 
@@ -156,7 +156,7 @@ class NsDev:
             ratelimit=RateLimiter(self._client),
             shell=ShellExecutor(),
             splitter=AudioSplitter,
-            telegraph=TelegramPH()
+            telegraph=TelegramPH(),
             url=UrlUtils(),
             weather=WeatherWttr,
             web=WebAutomation(),
