@@ -61,7 +61,7 @@ Homepage = "https://github.com/SenpaiSeeker/norsodikin"
 
 [project.optional-dependencies]
 pyrogram = [
-    "Hypergram",
+    "git+https://github.com/navycodes/pyro.git@beta",
     "TgCrypto2",
     "uvloop",
 ]
